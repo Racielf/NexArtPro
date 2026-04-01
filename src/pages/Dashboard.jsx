@@ -7,7 +7,7 @@ import StatusBadge from '@/components/shared/StatusBadge';
 import { 
   Calendar, FileText, ClipboardList, Receipt, 
   TrendingUp, Clock, CheckCircle, AlertCircle,
-  ArrowRight, Plus
+  ArrowRight, Plus, Truck, Navigation, ChevronRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -65,6 +65,30 @@ export default function Dashboard() {
           <Button asChild size="sm">
             <Link to="/estimates"><Plus className="w-4 h-4 mr-1" />New Estimate</Link>
           </Button>
+        </div>
+      </div>
+
+      {/* WORKFLOW PIPELINE */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Your Workflow</h2>
+        <div className="flex items-center gap-1 flex-wrap">
+          {[
+            { step: '1', label: 'Add Client', desc: 'Save contact & property info', icon: '👤', link: '/clients', color: 'bg-blue-50 border-blue-200 text-blue-700' },
+            { step: '2', label: 'Schedule Appointment', desc: 'Set date, notify client', icon: '📅', link: '/appointments', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+            { step: '3', label: 'OMW → Finish', desc: 'Track miles, complete job', icon: '🚗', link: '/appointments', color: 'bg-orange-50 border-orange-200 text-orange-700' },
+            { step: '4', label: 'Create Estimate', desc: 'Build & send professionally', icon: '📋', link: '/estimates', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+            { step: '5', label: 'Approval', desc: 'Client approves or declines', icon: '✅', link: '/estimates', color: 'bg-green-50 border-green-200 text-green-700' },
+            { step: '6', label: 'Work Order / Invoice', desc: 'Convert & get paid', icon: '💰', link: '/invoices', color: 'bg-purple-50 border-purple-200 text-purple-700' },
+          ].map((item, idx, arr) => (
+            <React.Fragment key={item.step}>
+              <Link to={item.link} className={`flex-1 min-w-[120px] border rounded-lg p-3 hover:shadow-md transition-all ${item.color}`}>
+                <div className="text-lg mb-1">{item.icon}</div>
+                <div className="font-semibold text-xs">{item.step}. {item.label}</div>
+                <div className="text-xs opacity-70 mt-0.5">{item.desc}</div>
+              </Link>
+              {idx < arr.length - 1 && <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />}
+            </React.Fragment>
+          ))}
         </div>
       </div>
 
@@ -150,7 +174,7 @@ export default function Dashboard() {
                 <p className="text-muted-foreground text-sm">No estimates yet</p>
               </div>
             ) : recentEstimates.map(est => (
-              <Link key={est.id} to="/estimates">
+              <Link key={est.id} to={`/estimate-editor?id=${est.id}`}>
                 <div className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                   <div>
                     <p className="text-sm font-medium text-foreground">#{est.estimate_number} · {est.client_name}</p>
