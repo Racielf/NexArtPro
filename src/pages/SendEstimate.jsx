@@ -89,9 +89,8 @@ export default function SendEstimate() {
             size="sm"
             className="bg-primary hover:bg-primary/90 text-white px-5 h-8 text-sm"
             onClick={handleSend}
-            disabled={sending}
           >
-            {sending ? 'Sending...' : 'Send'}
+            Send
           </Button>
         </div>
       </div>

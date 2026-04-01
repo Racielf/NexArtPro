@@ -280,7 +280,7 @@ export default function Estimates() {
                         <Pencil className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" asChild title="Send / Preview">
-                        <Link to={`/send-estimate?id=${est.id}`}><Send className="w-4 h-4" /></Link>
+                        <Link to={`/estimate-editor?id=${est.id}`}><Send className="w-4 h-4" /></Link>
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" asChild title="Schedule">
                         <Link to={`/schedule-estimate?id=${est.id}`}><Calendar className="w-4 h-4" /></Link>
