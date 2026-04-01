@@ -10,23 +10,25 @@ import { toast } from 'sonner';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 
 const steps = [
-  { id: 'schedule', label: 'Schedule', icon: Calendar },
-  { id: 'omw',      label: 'OMW',      icon: Navigation2 },
-  { id: 'finish',   label: 'Finish',   icon: CheckSquare },
-  { id: 'sent',     label: 'Send',     icon: Send },
-  { id: 'approved', label: 'Approval', icon: ThumbsUp },
-  { id: 'converted',label: 'Copy to Job', icon: Copy },
+  { id: 'schedule',  label: 'Schedule',    icon: Calendar },
+  { id: 'omw',       label: 'OMW',         icon: Navigation2 },
+  { id: 'finish',    label: 'Finish',      icon: CheckSquare },
+  { id: 'sent',      label: 'Send',        icon: Send },
+  { id: 'approved',  label: 'Approval',    icon: ThumbsUp },
+  { id: 'converted', label: 'Copy to Job', icon: Copy },
 ];
 
 const statusToIdx = {
   draft: 0,
   scheduled: 1,
+  on_my_way: 2,
   omw: 2,
+  finished: 3,
   completed: 3,
-  sent: 3,
-  approved: 4,
-  declined: 4,
-  converted: 5,
+  sent: 4,
+  approved: 5,
+  declined: 5,
+  converted: 6,
 };
 
 export default function EstimateStatusStepper({ status, estimate, onStatusChange }) {
@@ -66,7 +68,7 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
     };
     const appt = await base44.entities.Appointment.create(apptData);
     await base44.entities.Estimate.update(estimate.id, {
-      status: 'draft',
+      status: 'scheduled',
       appointment_id: appt.id,
       scheduled_date: schedDate,
       scheduled_time: schedTime,
@@ -85,17 +87,16 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
     }
     toast.success(`Appointment scheduled for ${schedDate} at ${schedTime}`);
     setScheduleOpen(false);
-    onStatusChange('draft');
+    onStatusChange('scheduled');
   };
 
   // --- 2. OMW ---
   const handleOMW = async () => {
     const now = new Date().toISOString();
     await base44.entities.Estimate.update(estimate.id, {
-      status: 'draft',
+      status: 'on_my_way',
       omw_start_time: now,
     });
-    // Create TimeEntry for tracking
     await base44.entities.TimeEntry.create({
       team_member: estimate.assigned_to || 'Technician',
       date: now.split('T')[0],
@@ -107,7 +108,6 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
       duration_seconds: 0,
       miles_traveled: 0,
     });
-    // Simulate mileage increase
     setOmwActive(true);
     setOmwMiles(0);
     const interval = setInterval(() => {
@@ -115,15 +115,14 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
     }, 3000);
     setOmwInterval(interval);
     toast.success('OMW started — tracking mileage');
-    onStatusChange('omw');
+    onStatusChange('on_my_way');
   };
 
-  // --- OMW Stop ---
+  // --- OMW Stop → moves to "finished" step so Finish is now active ---
   const handleStopOMW = async () => {
     if (omwInterval) clearInterval(omwInterval);
     setOmwInterval(null);
     setOmwActive(false);
-    // Complete running TimeEntry
     const running = await base44.entities.TimeEntry.filter({ status: 'running' });
     const entry = running.find(e => e.client_name === estimate.client_name);
     if (entry) {
@@ -135,20 +134,19 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
         miles_traveled: omwMiles,
       });
     }
-    await base44.entities.Estimate.update(estimate.id, { miles_traveled: omwMiles });
+    await base44.entities.Estimate.update(estimate.id, { status: 'on_my_way', miles_traveled: omwMiles });
     toast.success(`OMW stopped — ${omwMiles} miles tracked`);
-    onStatusChange('draft');
+    // Don't change status — stay at on_my_way so Finish is still clickable
   };
 
   // --- 3. FINISH ---
   const handleFinish = async () => {
     const now = new Date().toISOString();
     await base44.entities.Estimate.update(estimate.id, {
-      status: 'draft',
+      status: 'finished',
       completed_time: now,
       notes: finishNotes ? (estimate.notes ? estimate.notes + '\n\n' + finishNotes : finishNotes) : estimate.notes,
     });
-    // Update linked appointment if exists
     if (estimate.appointment_id) {
       await base44.entities.Appointment.update(estimate.appointment_id, {
         status: 'completed',
@@ -159,7 +157,7 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
     }
     toast.success('Visit marked as completed');
     setFinishOpen(false);
-    onStatusChange('completed');
+    onStatusChange('finished');
   };
 
   // --- 4. SEND ---
@@ -243,10 +241,10 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
 
           let subLabel = null;
           if (step.id === 'omw' && omwActive) subLabel = `${omwMiles} mi`;
-          if (step.id === 'finish' && status === 'completed') subLabel = 'Done';
+          if (step.id === 'finish' && (status === 'finished' || status === 'completed')) subLabel = 'Done';
           if (step.id === 'sent' && status === 'sent') subLabel = 'Sent to customer';
           if (step.id === 'approved' && status === 'approved') subLabel = 'Approved';
-          if (step.id === 'approved' && isActive && status === 'sent') subLabel = 'Awaiting Approval';
+          if (step.id === 'approved' && status === 'sent') subLabel = 'Awaiting';
           if (step.id === 'approved' && status === 'declined') subLabel = 'Declined';
 
           return (

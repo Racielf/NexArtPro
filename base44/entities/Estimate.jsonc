@@ -30,6 +30,9 @@
       "type": "string",
       "enum": [
         "draft",
+        "scheduled",
+        "on_my_way",
+        "finished",
         "sent",
         "approved",
         "declined",
