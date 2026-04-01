@@ -133,7 +133,7 @@ export default function EstimateEditor() {
 
       {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
-        <div className="flex items-center justify-between px-4 py-2">
+        <div className="flex items-center justify-between px-5 py-3">
 
           {/* Left: close + title + option tabs */}
           <div className="flex items-center gap-0 flex-1 min-w-0">
@@ -153,7 +153,7 @@ export default function EstimateEditor() {
           </div>
 
           {/* Right: actions */}
-          <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
+          <div className="flex items-center gap-2.5 flex-shrink-0 ml-4">
             {estimate.status === 'sent' && (
               <>
                 <Button size="sm" variant="outline" className="border-green-300 text-green-600 hover:bg-green-50 h-8" onClick={handleApprove}>
@@ -192,7 +192,7 @@ export default function EstimateEditor() {
         </div>
 
         {/* STATUS STEPPER */}
-        <div className="px-6 pb-2 pt-0.5 flex items-center flex-wrap gap-2">
+        <div className="px-6 pb-3 pt-1 flex items-center flex-wrap gap-2 border-t border-slate-100">
           <EstimateStatusStepper
             status={estimate.status}
             estimate={estimate}
@@ -217,17 +217,17 @@ export default function EstimateEditor() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* LEFT SIDEBAR */}
-        <div className="w-[270px] flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white">
+        <div className="w-[260px] flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white">
           <EstimateClientSidebar estimate={estimate} client={client} />
           {/* Communications Timeline */}
-          <div className="px-4 pb-4 pt-2 border-t border-slate-100">
+          <div className="px-4 pb-5 pt-3 border-t border-slate-100">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Communications</p>
             <CommTimeline estimateId={estimate.id} />
           </div>
         </div>
 
         {/* RIGHT CANVAS */}
-        <div className="flex-1 overflow-auto p-5">
+        <div className="flex-1 overflow-auto p-7">
           <EstimateLineItems
             estimate={estimate}
             onSave={handleSave}

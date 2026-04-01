@@ -68,14 +68,14 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
   const total = subtotal + taxAmount;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden" style={{ maxWidth: 820 }}>
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" style={{ maxWidth: 900 }}>
 
       {/* ESTIMATE HEADER */}
-      <div className="px-5 pt-4 pb-3 border-b border-slate-200">
-        <div className="flex items-baseline gap-2 mb-2">
-          <h2 className="text-xl font-bold text-slate-900">Estimate <span className="text-primary">#{estimate?.estimate_number}</span></h2>
+      <div className="px-7 pt-6 pb-4 border-b border-slate-200">
+        <div className="flex items-baseline gap-2 mb-3">
+          <h2 className="text-2xl font-bold text-slate-900">Estimate <span className="text-primary">#{estimate?.estimate_number}</span></h2>
         </div>
-        <div className="flex items-center gap-5 text-xs text-slate-500 flex-wrap">
+        <div className="flex items-center gap-6 text-xs text-slate-500 flex-wrap">
           <div className="flex items-center gap-1.5">
             <span>Expiration date:</span>
             {expirationDate ? (
@@ -109,7 +109,7 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
       </div>
 
       {/* LINE ITEMS HEADER */}
-      <div className="px-5 py-3 flex items-center justify-between border-b border-slate-100">
+      <div className="px-7 py-3.5 flex items-center justify-between border-b border-slate-100">
         <h3 className="text-sm font-bold text-slate-800">Line items</h3>
         <div className="flex items-center gap-1.5">
           <button
@@ -129,7 +129,7 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
       </div>
 
       {/* ASSIGNED TO ROW */}
-      <div className="px-5 py-2 border-b border-slate-100 flex items-center gap-2">
+      <div className="px-7 py-3 border-b border-slate-100 flex items-center gap-2">
         <div className="flex items-center gap-2 bg-slate-100 rounded-full px-3 py-1 text-xs text-slate-700 font-medium">
           <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
             {(assignedTo || 'T').charAt(0).toUpperCase()}
@@ -142,7 +142,7 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
       </div>
 
       {/* SERVICES SECTION HEADER */}
-      <div className="px-5 py-2 flex items-center justify-between">
+      <div className="px-7 py-3 flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Services</span>
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
@@ -155,8 +155,8 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
       </div>
 
       {/* COLUMN HEADERS */}
-      <div className="grid text-xs text-slate-400 font-semibold px-5 py-1.5 bg-slate-50/60 border-y border-slate-100"
-        style={{ gridTemplateColumns: '20px 1fr 80px 90px 100px 60px' }}>
+      <div className="grid text-xs text-slate-400 font-semibold px-7 py-2.5 bg-slate-50/80 border-y border-slate-100"
+        style={{ gridTemplateColumns: '20px 1fr 90px 110px 120px 56px' }}>
         <div />
         <div>Service</div>
         <div className="text-right">Quantity</div>
@@ -183,7 +183,7 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
       </div>
 
       {/* ADD SERVICE */}
-      <div className="px-5 py-3 border-t border-slate-100">
+      <div className="px-7 py-4 border-t border-slate-100">
         <button
           onClick={addItem}
           className="flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
@@ -193,13 +193,13 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
       </div>
 
       {/* TOTALS */}
-      <div className="px-5 py-4 border-t border-slate-200 flex justify-end">
-        <div className="w-64 space-y-1.5 text-sm">
-          <div className="flex justify-between py-1">
+      <div className="px-7 py-6 border-t border-slate-200 flex justify-end">
+        <div className="w-72 space-y-2 text-sm">
+          <div className="flex justify-between py-2">
             <span className="text-slate-500">Subtotal</span>
             <span className="font-semibold text-slate-800">${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
-          <div className="flex items-center justify-between py-1 gap-4">
+          <div className="flex items-center justify-between py-2 gap-4">
             <span className="text-slate-500">Tax (%)</span>
             <Input
               type="number"
@@ -210,12 +210,12 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
             />
           </div>
           {taxRate > 0 && (
-            <div className="flex justify-between py-1">
+            <div className="flex justify-between py-2">
               <span className="text-slate-500">Tax ({taxRate}%)</span>
               <span className="font-semibold">${taxAmount.toFixed(2)}</span>
             </div>
           )}
-          <div className="flex justify-between pt-2 border-t-2 border-slate-200">
+          <div className="flex justify-between pt-3 border-t-2 border-slate-200">
             <span className="font-bold text-slate-900 text-base">Total</span>
             <span className="font-bold text-primary text-lg">${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
@@ -223,24 +223,24 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
       </div>
 
       {/* NOTES */}
-      <div className="px-5 pb-4 pt-2 border-t border-slate-100 grid grid-cols-2 gap-3">
+      <div className="px-7 pb-7 pt-5 border-t border-slate-100 grid grid-cols-2 gap-5">
         <div>
-          <label className="text-xs text-slate-400 mb-1 block font-medium">Customer Notes</label>
+          <label className="text-xs text-slate-400 mb-1.5 block font-medium">Customer Notes</label>
           <Textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             placeholder="Visible to client..."
-            rows={2}
+            rows={3}
             className="text-sm resize-none border-slate-200"
           />
         </div>
         <div>
-          <label className="text-xs text-slate-400 mb-1 block font-medium">Internal Notes</label>
+          <label className="text-xs text-slate-400 mb-1.5 block font-medium">Internal Notes</label>
           <Textarea
             value={internalNotes}
             onChange={e => setInternalNotes(e.target.value)}
             placeholder="Team only..."
-            rows={2}
+            rows={3}
             className="text-sm resize-none border-slate-200"
           />
         </div>
@@ -253,10 +253,10 @@ function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
   const [showMore, setShowMore] = useState(false);
 
   return (
-    <div className={`px-5 py-2.5 transition-colors group ${isEditing ? 'bg-blue-50/40 border-l-2 border-primary' : 'hover:bg-slate-50/60 border-l-2 border-transparent'}`}>
+    <div className={`px-7 py-3.5 transition-colors group ${isEditing ? 'bg-blue-50/40 border-l-2 border-primary' : 'hover:bg-slate-50/60 border-l-2 border-transparent'}`}>
 
       {/* PRIMARY ROW — always visible */}
-      <div className="grid items-center gap-2" style={{ gridTemplateColumns: '16px 1fr 72px 88px 96px 52px' }}>
+      <div className="grid items-center gap-3" style={{ gridTemplateColumns: '16px 1fr 90px 110px 120px 56px' }}>
 
         <div className="text-slate-200 cursor-grab active:cursor-grabbing">
           <GripVertical className="w-3.5 h-3.5" />
@@ -268,7 +268,7 @@ function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
           onChange={e => onUpdate(item.id, 'name', e.target.value)}
           onFocus={() => !isEditing && onEdit()}
           placeholder="Service name"
-          className="h-8 text-sm font-semibold text-slate-900 border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white transition-colors px-2"
+          className="h-9 text-sm font-semibold text-slate-900 border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white transition-colors px-2"
         />
 
         {/* Qty */}
@@ -277,7 +277,7 @@ function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
           value={item.quantity}
           onChange={e => onUpdate(item.id, 'quantity', e.target.value)}
           onFocus={() => !isEditing && onEdit()}
-          className="h-8 text-sm text-right border-slate-200 w-full"
+          className="h-9 text-sm text-right border-slate-200 w-full"
           min={0}
         />
 
@@ -290,13 +290,13 @@ function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
             value={item.unit_price}
             onChange={e => onUpdate(item.id, 'unit_price', e.target.value)}
             onFocus={() => !isEditing && onEdit()}
-            className="h-8 pl-5 text-sm text-right border-slate-200"
+            className="h-9 pl-5 text-sm text-right border-slate-200"
             min={0}
           />
         </div>
 
         {/* Total — read only */}
-        <div className="text-right font-bold text-slate-900 text-sm">
+        <div className="text-right font-bold text-slate-900 text-sm pr-1">
           ${(item.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </div>
 
@@ -313,7 +313,7 @@ function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
 
       {/* SECONDARY — show when row is active */}
       {isEditing && (
-        <div className="ml-5 mt-2 space-y-2">
+        <div className="ml-6 mt-3 space-y-2.5">
           {/* Description */}
           <Input
             value={item.description}
@@ -372,7 +372,7 @@ function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
 
       {/* Show description when not editing */}
       {!isEditing && item.description && (
-        <div className="ml-5 mt-0.5 text-xs text-slate-400 leading-snug">{item.description}</div>
+        <div className="ml-6 mt-1 text-xs text-slate-400 leading-snug">{item.description}</div>
       )}
     </div>
   );

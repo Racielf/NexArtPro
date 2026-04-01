@@ -33,7 +33,7 @@ export default function EstimateClientSidebar({ estimate, client }) {
     <div className="flex flex-col h-full text-sm bg-white">
 
       {/* CUSTOMER HEADER */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 bg-slate-50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-primary" />
           <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Customer</span>
@@ -91,7 +91,7 @@ export default function EstimateClientSidebar({ estimate, client }) {
       </div>
 
       {/* CLIENT DETAILS */}
-      <div className="px-3 py-2.5 space-y-2 border-b border-slate-100">
+      <div className="px-4 py-4 space-y-3 border-b border-slate-100">
         {/* Name */}
         <div className="flex items-start justify-between">
           <div>
@@ -201,7 +201,7 @@ export default function EstimateClientSidebar({ estimate, client }) {
           { label: 'Private notes', icon: '📋' },
           { label: 'Attachments', icon: '📎' },
         ].map(({ label, icon }) => (
-          <button key={label} className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
+          <button key={label} className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
             <div className="flex items-center gap-2">
               <span>{icon}</span>
               <span className="font-medium">{label}</span>
