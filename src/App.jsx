@@ -15,6 +15,7 @@ import Invoices from './pages/Invoices';
 import EstimateScheduler from './pages/EstimateScheduler';
 import SendEstimate from './pages/SendEstimate';
 import EstimateEditor from './pages/EstimateEditor';
+import TimeTracking from './pages/TimeTracking';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,6 +49,7 @@ const AuthenticatedApp = () => {
         <Route path="/schedule-estimate" element={<EstimateScheduler />} />
         <Route path="/send-estimate" element={<SendEstimate />} />
         <Route path="/estimate-editor" element={<EstimateEditor />} />
+        <Route path="/time-tracking" element={<TimeTracking />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

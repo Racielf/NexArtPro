@@ -8,7 +8,8 @@ import {
   ClipboardList,
   Receipt,
   Settings,
-  Wrench
+  Wrench,
+  Clock
 } from 'lucide-react';
 
 const navItems = [
@@ -18,6 +19,7 @@ const navItems = [
   { path: '/estimates', label: 'Estimates', icon: FileText },
   { path: '/work-orders', label: 'Work Orders', icon: ClipboardList },
   { path: '/invoices', label: 'Invoices', icon: Receipt },
+  { path: '/time-tracking', label: 'Time Tracking', icon: Clock },
 ];
 
 export default function Sidebar() {
