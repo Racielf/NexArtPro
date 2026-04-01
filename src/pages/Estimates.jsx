@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ const emptyForm = {
 };
 
 export default function Estimates() {
+  const navigate = useNavigate();
   const [estimates, setEstimates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -101,18 +103,20 @@ export default function Estimates() {
     if (!form.client_name) { toast.error('Client name is required'); return; }
     const { subtotal, tax_amount, total } = calcTotals(form.line_items, form.tax_rate);
     const data = { ...form, subtotal, tax_amount, total, status };
-    if (!editing) data.estimate_number = getNextNumber();
 
     if (editing) {
       await base44.entities.Estimate.update(editing.id, data);
       toast.success('Estimate updated');
+      setShowForm(false);
+      setEditing(null);
+      loadData();
     } else {
-      await base44.entities.Estimate.create(data);
-      toast.success('Estimate saved as draft');
+      data.estimate_number = getNextNumber();
+      const created = await base44.entities.Estimate.create(data);
+      setShowForm(false);
+      // Navigate to the full editor (Housecall Pro style)
+      navigate(`/estimate-editor?id=${created.id}`);
     }
-    setShowForm(false);
-    setEditing(null);
-    loadData();
   };
 
   const handleSend = async (estimate) => {
@@ -276,8 +280,8 @@ export default function Estimates() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-wrap justify-end">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openEdit(est)} title="Edit">
-                        <Pencil className="w-4 h-4" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" asChild title="Edit">
+                        <Link to={`/estimate-editor?id=${est.id}`}><Pencil className="w-4 h-4" /></Link>
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" asChild title="Send / Preview">
                         <Link to={`/estimate-editor?id=${est.id}`}><Send className="w-4 h-4" /></Link>
