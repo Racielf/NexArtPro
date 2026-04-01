@@ -30,6 +30,11 @@ export default function Estimates() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
+  const [showFinish, setShowFinish] = useState(false);
+  const [finishEstimate, setFinishEstimate] = useState(null);
+  const [finishDate, setFinishDate] = useState('');
+  const [finishTime, setFinishTime] = useState('');
+  const [finishNotify, setFinishNotify] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewingEstimate, setViewingEstimate] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -183,6 +188,40 @@ export default function Estimates() {
 
   const openPrint = (est) => { setViewingEstimate(est); setShowPrint(true); };
 
+  const openFinish = (est) => {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const year = now.getFullYear();
+    let h = now.getHours();
+    const min = pad(now.getMinutes());
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    setFinishDate(`${month}/${day}/${year}`);
+    setFinishTime(`${h}:${min}${ampm}`);
+    setFinishNotify(false);
+    setFinishEstimate(est);
+    setShowFinish(true);
+  };
+
+  const handleFinish = async () => {
+    await base44.entities.Estimate.update(finishEstimate.id, {
+      status: 'approved',
+      approved_at: new Date().toISOString()
+    });
+    if (finishNotify && finishEstimate.client_email) {
+      await base44.integrations.Core.SendEmail({
+        to: finishEstimate.client_email,
+        subject: `Estimate #${finishEstimate.estimate_number} - Completed`,
+        body: `Hi ${finishEstimate.client_name},\n\nYour estimate has been completed on ${finishDate} at ${finishTime}.\n\nThank you!`
+      });
+    }
+    toast.success('Estimate finished!');
+    setShowFinish(false);
+    loadData();
+  };
+
   const handlePrint = () => {
     const area = document.getElementById('estimate-print-area');
     if (!area) return;
@@ -246,6 +285,11 @@ export default function Estimates() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" asChild title="Schedule">
                         <Link to={`/schedule-estimate?id=${est.id}`}><Calendar className="w-4 h-4" /></Link>
                       </Button>
+                      {(est.status === 'draft' || est.status === 'sent') && (
+                        <Button size="sm" variant="outline" className="border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => openFinish(est)}>
+                          Finish
+                        </Button>
+                      )}
                       {est.status === 'draft' && (
                         <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50" onClick={() => handleSend(est)}>
                           <Send className="w-3 h-3 mr-1" />Send
@@ -419,6 +463,52 @@ export default function Estimates() {
                 <Send className="w-4 h-4 mr-2" />Save & Send to Client
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Finish Estimate Dialog */}
+      <Dialog open={showFinish} onOpenChange={setShowFinish}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Finish Estimate</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">
+            This will stop estimate duration tracking and mark the estimate end time.
+          </p>
+          <div className="space-y-3 pt-1">
+            <div>
+              <Label className="text-sm text-foreground mb-1.5 block">Finish estimate at:</Label>
+              <div className="relative">
+                <Input
+                  value={finishDate}
+                  onChange={e => setFinishDate(e.target.value)}
+                  placeholder="MM/DD/YYYY"
+                  className="pr-9"
+                />
+                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+            <Input
+              value={finishTime}
+              onChange={e => setFinishTime(e.target.value)}
+              placeholder="8:17pm"
+            />
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={finishNotify}
+                onChange={e => setFinishNotify(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <span className="text-sm text-muted-foreground">Notify customer</span>
+            </label>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" className="text-muted-foreground" onClick={() => setShowFinish(false)}>Cancel</Button>
+            <Button className="text-primary bg-transparent hover:bg-primary/5 border-0 shadow-none font-semibold" variant="outline" onClick={handleFinish}>
+              Finish
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
