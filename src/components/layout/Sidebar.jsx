@@ -20,7 +20,6 @@ const navItems = [
   { path: '/work-orders', label: 'Work Orders', icon: ClipboardList },
   { path: '/invoices', label: 'Invoices', icon: Receipt },
   { path: '/time-tracking', label: 'Time Tracking', icon: Clock },
-  { path: '/time-tracking-history', label: 'Tracking History', icon: ClipboardList },
 ];
 
 export default function Sidebar() {
