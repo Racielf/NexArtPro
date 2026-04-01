@@ -10,10 +10,11 @@ import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EstimatePrint from '@/components/estimates/EstimatePrint';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import {
   FileText, Plus, Trash2, Pencil, Send, CheckCircle,
   XCircle, Printer, Download, ClipboardList, Receipt,
-  Search, GripVertical, X
+  Search, GripVertical, X, Calendar
 } from 'lucide-react';
 
 const emptyItem = () => ({ id: Date.now(), name: '', description: '', quantity: 1, unit_price: 0, unit_cost: 0, total_price: 0 });
@@ -241,6 +242,9 @@ export default function Estimates() {
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openPrint(est)} title="Print/Download">
                         <Printer className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" asChild title="Schedule">
+                        <Link to={`/schedule-estimate?id=${est.id}`}><Calendar className="w-4 h-4" /></Link>
                       </Button>
                       {est.status === 'draft' && (
                         <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50" onClick={() => handleSend(est)}>
