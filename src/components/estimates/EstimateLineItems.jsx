@@ -23,6 +23,9 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
   const [assignedTo, setAssignedTo] = useState(estimate?.assigned_to || '');
   const [viewMode, setViewMode] = useState('list');
   const [editingItemId, setEditingItemId] = useState(null);
+  const [projectStartDate, setProjectStartDate] = useState(estimate?.project_start_date || '');
+  const [projectEndDate, setProjectEndDate] = useState(estimate?.project_end_date || '');
+  const [depositPercent, setDepositPercent] = useState(estimate?.deposit_percent || 0);
 
   useEffect(() => {
     setItems(estimate?.line_items?.length ? estimate.line_items : [emptyItem()]);
@@ -31,6 +34,9 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
     setNotes(estimate?.notes || '');
     setInternalNotes(estimate?.internal_notes || '');
     setAssignedTo(estimate?.assigned_to || '');
+    setProjectStartDate(estimate?.project_start_date || '');
+    setProjectEndDate(estimate?.project_end_date || '');
+    setDepositPercent(estimate?.deposit_percent || 0);
   }, [estimate?.id]);
 
   // Auto-save on item change
@@ -38,10 +44,10 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
     const timer = setTimeout(() => {
       const subtotal = items.reduce((s, i) => s + (parseFloat(i.total_price) || 0), 0);
       const tax_amount = subtotal * ((taxRate || 0) / 100);
-      onSave({ ...estimate, line_items: items, tax_rate: taxRate, expiration_date: expirationDate, notes, internal_notes: internalNotes, assigned_to: assignedTo, subtotal, tax_amount, total: subtotal + tax_amount });
+      onSave({ ...estimate, line_items: items, tax_rate: taxRate, expiration_date: expirationDate, notes, internal_notes: internalNotes, assigned_to: assignedTo, project_start_date: projectStartDate, project_end_date: projectEndDate, deposit_percent: depositPercent, subtotal, tax_amount, total: subtotal + tax_amount });
     }, 800);
     return () => clearTimeout(timer);
-  }, [items, taxRate]);
+  }, [items, taxRate, projectStartDate, projectEndDate, depositPercent]);
 
   const updateItem = (id, field, value) => {
     setItems(prev => prev.map(item => {
@@ -104,6 +110,38 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
             >
               {approvalMode === 'one' ? 'Only one option' : 'Multiple options'}
             </button>
+          </div>
+        </div>
+
+        {/* Project dates + deposit */}
+        <div className="flex items-center gap-6 text-xs text-slate-500 flex-wrap mt-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400">Start date:</span>
+            <input
+              type="date"
+              value={projectStartDate}
+              onChange={e => setProjectStartDate(e.target.value)}
+              className="text-xs text-slate-700 border border-slate-200 rounded px-2 py-0.5 focus:outline-none focus:border-primary"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400">End date:</span>
+            <input
+              type="date"
+              value={projectEndDate}
+              onChange={e => setProjectEndDate(e.target.value)}
+              className="text-xs text-slate-700 border border-slate-200 rounded px-2 py-0.5 focus:outline-none focus:border-primary"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400">Deposit %:</span>
+            <input
+              type="number"
+              value={depositPercent}
+              onChange={e => setDepositPercent(parseFloat(e.target.value) || 0)}
+              min={0} max={100}
+              className="text-xs text-slate-700 border border-slate-200 rounded px-2 py-0.5 w-16 text-right focus:outline-none focus:border-primary"
+            />
           </div>
         </div>
       </div>

@@ -249,6 +249,7 @@ export default function EstimateEditor() {
         estimate={estimate}
         open={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
+        onSend={() => setShowSendModal(true)}
       />
     </div>
   );

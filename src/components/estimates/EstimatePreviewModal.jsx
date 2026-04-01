@@ -1,11 +1,11 @@
 import React from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer, X } from 'lucide-react';
+import { Printer, Send, X } from 'lucide-react';
 import EstimateDocument from './EstimateDocument';
 import { printEstimate } from '@/lib/estimatePrint';
 
-export default function EstimatePreviewModal({ estimate, open, onClose }) {
+export default function EstimatePreviewModal({ estimate, open, onClose, onSend }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden p-0 gap-0">
@@ -16,8 +16,13 @@ export default function EstimatePreviewModal({ estimate, open, onClose }) {
           </span>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => printEstimate(estimate)} className="gap-1.5">
-              <Printer className="w-3.5 h-3.5" /> Print / Download PDF
+              <Printer className="w-3.5 h-3.5" /> Print / PDF
             </Button>
+            {onSend && (
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white gap-1.5" onClick={() => { onClose(); onSend(); }}>
+                <Send className="w-3.5 h-3.5" /> Send to Client
+              </Button>
+            )}
             <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded transition-colors">
               <X className="w-4 h-4 text-slate-500" />
             </button>
