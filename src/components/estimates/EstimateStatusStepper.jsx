@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Navigation2, CheckSquare, Send, ThumbsUp, Copy, Square, MapPin } from 'lucide-react';
+import { Calendar, Navigation2, CheckSquare, Send, ThumbsUp, Copy, Square, MapPin, CheckCircle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ const statusToIdx = {
   converted: 6,
 };
 
-export default function EstimateStatusStepper({ status, estimate, onStatusChange }) {
+export default function EstimateStatusStepper({ status, estimate, onStatusChange, onOpenSendReview }) {
   const navigate = useNavigate();
   const currentIdx = statusToIdx[status] ?? 0;
 
@@ -160,45 +160,41 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
     onStatusChange('finished');
   };
 
-  // --- 4. SEND ---
-  const handleSend = async () => {
-    if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
-    await base44.entities.Estimate.update(estimate.id, { status: 'sent', sent_at: new Date().toISOString() });
-    try {
-      await base44.integrations.Core.SendEmail({
-        to: estimate.client_email,
-        subject: `Estimate #${estimate.estimate_number} — Please Review`,
-        body: `Hi ${estimate.client_name},\n\nPlease review your estimate #${estimate.estimate_number}.\n\nTotal: $${(estimate.total || 0).toFixed(2)}\n\nReply to approve or decline.\n\nThank you!`,
-      });
-      await logComm({ event_type: 'estimate_sent', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email, estimate_id: estimate.id, appointment_id: estimate.appointment_id || '', subject: `Estimate #${estimate.estimate_number} — Please Review`, preview: `Total: $${(estimate.total || 0).toFixed(2)}` });
-    } catch {
-      await logCommFailed({ event_type: 'estimate_sent', client_name: estimate.client_name, client_email: estimate.client_email, estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} — Please Review` });
-    }
-    toast.success('Estimate sent to client!');
-    onStatusChange('sent');
+  // --- 4. SEND --- (note: this just validates, actual send happens in EstimateSendReview review screen)
+  const handleSend = () => {
+    // Stepper click just needs to validate and trigger the review modal in parent
+    // The parent component handles opening EstimateSendReview
+    if (!estimate.client_email) { toast.error('Client email is required'); return; }
+    // Signal parent to open review screen
+    return 'open-review';
   };
 
-  // --- 5. APPROVE / DECLINE ---
-  const handleApprove = async () => {
+  // --- 5. APPROVAL --- opens modal with Approve/Decline
+  const [approvalOpen, setApprovalOpen] = useState(false);
+
+  const handleApproveConfirm = async () => {
     await base44.entities.Estimate.update(estimate.id, { status: 'approved', approved_at: new Date().toISOString() });
     await logComm({ event_type: 'estimate_approved', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Approved`, status: 'delivered' });
+    setApprovalOpen(false);
     toast.success('Estimate approved!');
     onStatusChange('approved');
   };
 
-  const handleDecline = async () => {
+  const handleDeclineConfirm = async () => {
     await base44.entities.Estimate.update(estimate.id, { status: 'declined' });
     await logComm({ event_type: 'estimate_declined', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Declined`, status: 'delivered' });
+    setApprovalOpen(false);
     toast.success('Estimate declined');
     onStatusChange('declined');
   };
 
   // --- 6. COPY TO JOB ---
   const handleCopyToJob = async () => {
+    if (estimate.status !== 'approved') { toast.error('Copy to Job only available when Approved'); return; }
     const existing = await base44.entities.WorkOrder.filter({ estimate_id: estimate.id });
     if (existing.length > 0) { toast.error('Already converted to Work Order'); return; }
     const woNum = Math.floor(Math.random() * 9000) + 1000;
-    await base44.entities.WorkOrder.create({
+    const wo = await base44.entities.WorkOrder.create({
       work_order_number: woNum,
       estimate_id: estimate.id,
       client_id: estimate.client_id,
@@ -211,10 +207,15 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
       total: estimate.total,
       assigned_to: estimate.assigned_to || '',
       status: 'pending',
+      notes: estimate.notes || ''
     });
     await base44.entities.Estimate.update(estimate.id, { status: 'converted' });
     toast.success(`Work Order #${woNum} created!`);
     onStatusChange('converted');
+    // Redirect to work order detail (handled by parent)
+    if (window.location.pathname.includes('estimate-editor')) {
+      setTimeout(() => window.location.href = `/work-order-detail?id=${wo.id}`, 1200);
+    }
   };
 
   const handleStepClick = (stepId, idx) => {
@@ -222,10 +223,13 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
     if (stepId === 'schedule') { setScheduleOpen(true); return; }
     if (stepId === 'omw') { if (omwActive) handleStopOMW(); else handleOMW(); return; }
     if (stepId === 'finish') { setFinishOpen(true); return; }
-    if (stepId === 'sent') { handleSend(); return; }
+    if (stepId === 'sent') { 
+      if (!estimate.client_email) { toast.error('Client email is required'); return; }
+      onOpenSendReview?.(); return; 
+    }
     if (stepId === 'approved') {
       if (status === 'approved') return;
-      handleApprove(); return;
+      setApprovalOpen(true); return;
     }
     if (stepId === 'converted') { handleCopyToJob(); return; }
   };
@@ -335,6 +339,33 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
           <div className="flex gap-2 pt-1">
             <Button variant="outline" className="flex-1" onClick={() => setScheduleOpen(false)}>Cancel</Button>
             <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleSchedule}>Save & Notify Client</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* APPROVAL MODAL */}
+      <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ThumbsUp className="w-5 h-5 text-primary" />Approve or Decline?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <p className="text-sm text-slate-600">Set the status of this estimate.</p>
+            <div className="bg-slate-50 rounded p-3">
+              <p className="text-xs text-slate-500 font-medium">Estimate #{estimate?.estimate_number}</p>
+              <p className="text-sm font-semibold text-slate-800 mt-1">{estimate?.client_name}</p>
+              <p className="text-xs text-slate-500 mt-1">Total: ${(estimate?.total || 0).toFixed(2)}</p>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50" onClick={handleDeclineConfirm}>
+              <XCircle className="w-3.5 h-3.5 mr-1" />Decline
+            </Button>
+            <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleApproveConfirm}>
+              <CheckCircle className="w-3.5 h-3.5 mr-1" />Approve
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

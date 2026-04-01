@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { X, Printer, Send, CheckCircle, XCircle, ClipboardList, Receipt, Eye } from 'lucide-react';
+import { X, Printer, Eye } from 'lucide-react';
 import EstimateStatusStepper from '@/components/estimates/EstimateStatusStepper';
 import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
 import EstimateLineItems from '@/components/estimates/EstimateLineItems';
@@ -52,83 +52,9 @@ export default function EstimateEditor() {
     setSaving(false);
   };
 
-  const handleApprove = async () => {
-    await base44.entities.Estimate.update(estimateId, { status: 'approved', approved_at: new Date().toISOString() });
-    await logComm({
-      event_type: 'estimate_approved',
-      client_id: estimate.client_id || '',
-      client_name: estimate.client_name,
-      client_email: estimate.client_email || '',
-      estimate_id: estimateId,
-      subject: `Estimate #${estimate.estimate_number} Approved`,
-      status: 'delivered'
-    });
-    setEstimate(e => ({ ...e, status: 'approved' }));
-    toast.success('Estimate approved!');
-  };
 
-  const handleDecline = async () => {
-    await base44.entities.Estimate.update(estimateId, { status: 'declined' });
-    await logComm({
-      event_type: 'estimate_declined',
-      client_id: estimate.client_id || '',
-      client_name: estimate.client_name,
-      client_email: estimate.client_email || '',
-      estimate_id: estimateId,
-      subject: `Estimate #${estimate.estimate_number} Declined`,
-      status: 'delivered'
-    });
-    setEstimate(e => ({ ...e, status: 'declined' }));
-    toast.success('Estimate marked as declined');
-  };
 
-  const handleConvertToWorkOrder = async () => {
-    const existing = await base44.entities.WorkOrder.filter({ estimate_id: estimateId });
-    if (existing.length > 0) { toast.error('Already converted to work order'); return; }
-    const woNum = Math.floor(Math.random() * 9000) + 1000;
-    const wo = await base44.entities.WorkOrder.create({
-      work_order_number: woNum,
-      estimate_id: estimateId,
-      client_id: estimate.client_id,
-      client_name: estimate.client_name,
-      client_address: estimate.client_address,
-      client_phone: estimate.client_phone,
-      title: estimate.title || `Work Order from Estimate #${estimate.estimate_number}`,
-      line_items: estimate.line_items,
-      subtotal: estimate.subtotal,
-      total: estimate.total,
-      status: 'pending',
-      assigned_to: estimate.assigned_to || '',
-      notes: estimate.notes || ''
-    });
-    await base44.entities.Estimate.update(estimateId, { status: 'converted' });
-    setEstimate(e => ({ ...e, status: 'converted' }));
-    toast.success('Created Work Order! Redirecting...');
-    setTimeout(() => navigate(`/work-order-detail?id=${wo.id}`), 1200);
-  };
 
-  const handleConvertToInvoice = async () => {
-    const invNum = Math.floor(Math.random() * 9000) + 1000;
-    await base44.entities.Invoice.create({
-      invoice_number: invNum,
-      estimate_id: estimateId,
-      client_id: estimate.client_id,
-      client_name: estimate.client_name,
-      client_email: estimate.client_email,
-      client_address: estimate.client_address,
-      client_phone: estimate.client_phone,
-      line_items: estimate.line_items,
-      subtotal: estimate.subtotal,
-      tax_rate: estimate.tax_rate,
-      tax_amount: estimate.tax_amount,
-      total: estimate.total,
-      status: 'draft'
-    });
-    toast.success('Converted to Invoice!');
-    navigate('/invoices');
-  };
-
-  const handlePrint = () => printEstimate(estimate);
 
   const handleAddOption = () => {
     setOptions(prev => [...prev, { label: `Option #${prev.length + 1}` }]);
@@ -176,39 +102,9 @@ export default function EstimateEditor() {
 
           {/* Right: actions */}
           <div className="flex items-center gap-2.5 flex-shrink-0 ml-4">
-            {estimate.status === 'sent' && (
-              <>
-                <Button size="sm" variant="outline" className="border-green-300 text-green-600 hover:bg-green-50 h-8" onClick={handleApprove}>
-                  <CheckCircle className="w-3.5 h-3.5 mr-1" />Approve
-                </Button>
-                <Button size="sm" variant="outline" className="border-red-300 text-red-500 hover:bg-red-50 h-8" onClick={handleDecline}>
-                  <XCircle className="w-3.5 h-3.5 mr-1" />Decline
-                </Button>
-              </>
-            )}
-            {estimate.status === 'approved' && (
-              <>
-                <Button size="sm" variant="outline" className="border-purple-300 text-purple-600 hover:bg-purple-50 h-8" onClick={handleConvertToWorkOrder}>
-                  <ClipboardList className="w-3.5 h-3.5 mr-1" />Work Order
-                </Button>
-                <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/5 h-8" onClick={handleConvertToInvoice}>
-                  <Receipt className="w-3.5 h-3.5 mr-1" />Invoice
-                </Button>
-              </>
-            )}
             <button onClick={() => setShowPreviewModal(true)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Preview document">
               <Eye className="w-4 h-4" />
             </button>
-            <button onClick={handlePrint} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Print / Download PDF">
-              <Printer className="w-4 h-4" />
-            </button>
-            <Button
-              size="sm"
-              className="bg-primary hover:bg-primary/90 text-white h-8 px-4"
-              onClick={() => setShowSendModal(true)}
-            >
-              <Send className="w-3.5 h-3.5 mr-1.5" />Send
-            </Button>
             {saving && <span className="text-xs text-slate-400 ml-1">Saving...</span>}
           </div>
         </div>
@@ -222,16 +118,8 @@ export default function EstimateEditor() {
               setEstimate(e => ({ ...e, status: newStatus }));
               loadEstimate();
             }}
+            onOpenSendReview={() => setShowSendModal(true)}
           />
-          {/* Convert to Invoice button (when approved) */}
-          {estimate.status === 'approved' && (
-            <button
-              onClick={handleConvertToInvoice}
-              className="ml-4 flex items-center gap-1.5 text-xs bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors font-semibold"
-            >
-              <Receipt className="w-3.5 h-3.5" />Convert to Invoice
-            </button>
-          )}
         </div>
       </div>
 
