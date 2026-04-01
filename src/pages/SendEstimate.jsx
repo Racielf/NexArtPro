@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { X, Printer, Download, Send, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import EstimatePreview from '@/components/estimates/EstimatePreview';
+import SendEstimateModal from '@/components/estimates/SendEstimateModal';
 
 export default function SendEstimate() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export default function SendEstimate() {
 
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
 
   // Left panel sections
   const [layoutOpen, setLayoutOpen] = useState(true);
@@ -57,18 +58,8 @@ export default function SendEstimate() {
     handlePrint(); // browser save as PDF via print dialog
   };
 
-  const handleSend = async () => {
-    if (!estimate?.client_email) { toast.error('No client email on this estimate'); return; }
-    setSending(true);
-    await base44.entities.Estimate.update(estimate.id, { status: 'sent', sent_at: new Date().toISOString() });
-    await base44.integrations.Core.SendEmail({
-      to: estimate.client_email,
-      subject: `Estimate #${estimate.estimate_number} – Please Review`,
-      body: `Hi ${estimate.client_name},\n\nPlease find your estimate #${estimate.estimate_number} for review.\n\nTotal: $${(estimate.total || 0).toFixed(2)}\n\nPlease reply to approve or decline.\n\nThank you!`
-    });
-    setSending(false);
-    toast.success('Estimate sent to client!');
-    navigate('/estimates');
+  const handleSend = () => {
+    setShowSendModal(true);
   };
 
   if (loading) return (
@@ -162,6 +153,14 @@ export default function SendEstimate() {
           </div>
         </div>
       </div>
+      {estimate && (
+        <SendEstimateModal
+          estimate={estimate}
+          open={showSendModal}
+          onClose={() => setShowSendModal(false)}
+          onSent={() => navigate('/estimates')}
+        />
+      )}
     </div>
   );
 }

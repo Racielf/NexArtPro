@@ -1,0 +1,132 @@
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
+import { X } from 'lucide-react';
+
+export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [to, setTo] = useState(estimate?.client_email || '');
+  const [subject, setSubject] = useState(`Estimate ${estimate?.estimate_number} from FSM Pro`);
+  const [message, setMessage] = useState(
+    `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nThank you for choosing FSM Pro. Please see attached estimate.\n\nThank you!`
+  );
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!to) { toast.error('Recipient email is required'); return; }
+    setSending(true);
+    await base44.entities.Estimate.update(estimate.id, {
+      status: 'sent',
+      sent_at: new Date().toISOString()
+    });
+    await base44.integrations.Core.SendEmail({ to, subject, body: message });
+    setSending(false);
+    toast.success('Estimate sent!');
+    onSent?.();
+    onClose();
+  };
+
+  const subjectLen = subject.length;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+          <DialogTitle className="text-xl font-semibold text-slate-900">Send and present estimate</DialogTitle>
+        </DialogHeader>
+
+        <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+
+          {/* Email Toggle */}
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-slate-800">Email</span>
+            <button
+              onClick={() => setEmailEnabled(v => !v)}
+              className={`relative w-12 h-6 rounded-full transition-colors ${emailEnabled ? 'bg-blue-500' : 'bg-slate-200'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${emailEnabled ? 'translate-x-6' : ''}`} />
+            </button>
+          </div>
+
+          {emailEnabled && (
+            <div className="space-y-3">
+              {/* To */}
+              <div className="border border-slate-200 rounded-lg px-3 py-2">
+                <div className="text-xs text-slate-400 mb-1">To</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {to && (
+                    <span className="flex items-center gap-1 bg-slate-100 text-slate-700 text-sm rounded px-2 py-0.5">
+                      {to}
+                      <button onClick={() => setTo('')}><X className="w-3 h-3" /></button>
+                    </span>
+                  )}
+                  {!to && (
+                    <input
+                      className="flex-1 text-sm outline-none bg-transparent"
+                      placeholder="Add email..."
+                      onBlur={e => { if (e.target.value) setTo(e.target.value); }}
+                      onKeyDown={e => { if (e.key === 'Enter' && e.target.value) { setTo(e.target.value); e.target.value = ''; } }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div className="border border-slate-200 rounded-lg px-3 py-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-slate-400">Subject</span>
+                  <span className="text-xs text-slate-400">{subjectLen}/132</span>
+                </div>
+                <input
+                  className="w-full text-sm outline-none bg-transparent text-slate-800"
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  maxLength={132}
+                />
+              </div>
+
+              {/* Message */}
+              <div className="border border-slate-200 rounded-lg px-3 py-2">
+                <div className="text-xs text-slate-400 mb-1">Message</div>
+                <textarea
+                  className="w-full text-sm outline-none bg-transparent text-slate-800 resize-none"
+                  rows={5}
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                />
+              </div>
+
+              {/* Attachments */}
+              <div className="border border-slate-200 rounded-lg px-3 py-2">
+                <div className="text-xs text-slate-400 mb-1">Attachments</div>
+                <div className="text-sm text-slate-600">estimate-{estimate?.estimate_number}.pdf</div>
+              </div>
+            </div>
+          )}
+
+          {/* Text section (disabled) */}
+          <div className="border border-slate-200 rounded-lg px-4 py-3 bg-slate-50/50">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-slate-400">Text</span>
+              <button className="relative w-12 h-6 rounded-full bg-slate-200 opacity-50 cursor-not-allowed">
+                <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+          <Button variant="outline" onClick={onClose} className="rounded-full px-5">Cancel</Button>
+          <Button onClick={handleSend} disabled={sending} className="rounded-full px-6 bg-blue-600 hover:bg-blue-700 text-white">
+            {sending ? 'Sending...' : 'Send'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
