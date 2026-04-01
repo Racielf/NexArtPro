@@ -1,0 +1,73 @@
+{
+  "name": "Appointment",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_phone": {
+      "type": "string"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "client_address": {
+      "type": "string"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "scheduled_time": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "omw",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "scheduled"
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "omw_start_lat": {
+      "type": "number"
+    },
+    "omw_start_lng": {
+      "type": "number"
+    },
+    "omw_end_lat": {
+      "type": "number"
+    },
+    "omw_end_lng": {
+      "type": "number"
+    },
+    "miles_traveled": {
+      "type": "number"
+    },
+    "omw_start_time": {
+      "type": "string"
+    },
+    "completed_time": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "client_name",
+    "scheduled_date"
+  ]
+}
