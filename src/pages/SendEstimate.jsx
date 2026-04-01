@@ -39,14 +39,18 @@ export default function SendEstimate() {
     if (!area) return;
     const w = window.open('', '_blank');
     w.document.write(`<!DOCTYPE html><html><head><title>Estimate #${estimate?.estimate_number}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: white; }
+        body { font-family: 'Inter', sans-serif; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @page { margin: 0.5in; size: letter; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px 12px; }
+        .border-b { border-bottom: 1px solid #e2e8f0; }
       </style>
     </head><body>${area.outerHTML}</body></html>`);
     w.document.close();
-    setTimeout(() => w.print(), 500);
+    setTimeout(() => w.print(), 800);
   };
 
   const handleDownload = () => {
