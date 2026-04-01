@@ -175,7 +175,7 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
             key={item.id}
             item={item}
             isEditing={editingItemId === item.id}
-            onEdit={() => setEditingItemId(editingItemId === item.id ? null : item.id)}
+            onEdit={() => setEditingItemId(item.id)}
             onUpdate={updateItem}
             onRemove={removeItem}
           />
@@ -250,60 +250,36 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
 }
 
 function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
-  return (
-    <div className="px-5 py-3 hover:bg-slate-50/60 transition-colors group">
-      <div className="grid items-start gap-2" style={{ gridTemplateColumns: '20px 1fr 80px 90px 100px 60px' }}>
+  const [showMore, setShowMore] = useState(false);
 
-        {/* Drag handle */}
-        <div className="pt-1 text-slate-300 cursor-grab active:cursor-grabbing">
+  return (
+    <div className={`px-5 py-2.5 transition-colors group ${isEditing ? 'bg-blue-50/40 border-l-2 border-primary' : 'hover:bg-slate-50/60 border-l-2 border-transparent'}`}>
+
+      {/* PRIMARY ROW — always visible */}
+      <div className="grid items-center gap-2" style={{ gridTemplateColumns: '16px 1fr 72px 88px 96px 52px' }}>
+
+        <div className="text-slate-200 cursor-grab active:cursor-grabbing">
           <GripVertical className="w-3.5 h-3.5" />
         </div>
 
-        {/* Name + description + unit cost */}
-        <div className="space-y-1">
-          <Input
-            value={item.name}
-            onChange={e => onUpdate(item.id, 'name', e.target.value)}
-            placeholder="Service name"
-            className="h-7 text-sm font-semibold text-slate-900 border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white transition-colors"
-          />
-          {isEditing ? (
-            <Input
-              value={item.description}
-              onChange={e => onUpdate(item.id, 'description', e.target.value)}
-              placeholder="Add description..."
-              className="h-6 text-xs text-slate-500 border-slate-200 mt-0.5"
-            />
-          ) : item.description ? (
-            <div className="text-xs text-slate-500 leading-snug px-1">{item.description}</div>
-          ) : null}
-          {/* Unit cost - always visible (admin) */}
-          <div className="flex items-center gap-1 mt-1">
-            <span className="text-xs text-slate-400">Unit cost</span>
-            <div className="relative">
-              <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">$</span>
-              <Input
-                type="number"
-                step="0.01"
-                value={item.unit_cost}
-                onChange={e => onUpdate(item.id, 'unit_cost', parseFloat(e.target.value) || 0)}
-                className="h-5 w-16 pl-3.5 text-[11px] text-slate-500 border-slate-200"
-                min={0}
-              />
-            </div>
-          </div>
-        </div>
+        {/* Service name */}
+        <Input
+          value={item.name}
+          onChange={e => onUpdate(item.id, 'name', e.target.value)}
+          onFocus={() => !isEditing && onEdit()}
+          placeholder="Service name"
+          className="h-8 text-sm font-semibold text-slate-900 border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white transition-colors px-2"
+        />
 
         {/* Qty */}
-        <div className="text-right">
-          <Input
-            type="number"
-            value={item.quantity}
-            onChange={e => onUpdate(item.id, 'quantity', e.target.value)}
-            className="h-7 text-sm text-right border-slate-200 w-full"
-            min={0}
-          />
-        </div>
+        <Input
+          type="number"
+          value={item.quantity}
+          onChange={e => onUpdate(item.id, 'quantity', e.target.value)}
+          onFocus={() => !isEditing && onEdit()}
+          className="h-8 text-sm text-right border-slate-200 w-full"
+          min={0}
+        />
 
         {/* Unit Price */}
         <div className="relative">
@@ -313,34 +289,91 @@ function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
             step="0.01"
             value={item.unit_price}
             onChange={e => onUpdate(item.id, 'unit_price', e.target.value)}
-            className="h-7 pl-5 text-sm text-right border-slate-200"
+            onFocus={() => !isEditing && onEdit()}
+            className="h-8 pl-5 text-sm text-right border-slate-200"
             min={0}
           />
         </div>
 
-        {/* Total Price */}
-        <div className="text-right pt-1 font-bold text-slate-900 text-sm">
+        {/* Total — read only */}
+        <div className="text-right font-bold text-slate-900 text-sm">
           ${(item.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-0.5 pt-0.5">
-          <button
-            onClick={onEdit}
-            className={`p-1.5 rounded transition-colors ${isEditing ? 'text-primary bg-primary/10' : 'text-slate-300 hover:text-primary hover:bg-primary/5 opacity-0 group-hover:opacity-100'}`}
-            title="Edit description"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-          </button>
+        {/* Remove */}
+        <div className="flex justify-end">
           <button
             onClick={() => onRemove(item.id)}
-            className="p-1.5 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-            title="Remove"
+            className="p-1.5 rounded text-slate-200 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
+
+      {/* SECONDARY — show when row is active */}
+      {isEditing && (
+        <div className="ml-5 mt-2 space-y-2">
+          {/* Description */}
+          <Input
+            value={item.description}
+            onChange={e => onUpdate(item.id, 'description', e.target.value)}
+            placeholder="Add description (optional)"
+            className="h-7 text-xs text-slate-600 border-slate-200 bg-white"
+          />
+
+          {/* More details toggle */}
+          <button
+            onClick={() => setShowMore(v => !v)}
+            className="flex items-center gap-1 text-xs text-slate-400 hover:text-primary transition-colors"
+          >
+            <span>{showMore ? '▲' : '▼'}</span>
+            {showMore ? 'Less details' : 'More details'}
+          </button>
+
+          {showMore && (
+            <div className="flex items-center gap-4 flex-wrap pt-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-400">Unit cost</span>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={item.unit_cost}
+                    onChange={e => onUpdate(item.id, 'unit_cost', parseFloat(e.target.value) || 0)}
+                    className="h-6 w-20 pl-5 text-xs border-slate-200"
+                    min={0}
+                  />
+                </div>
+              </div>
+              <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={item.taxable ?? true}
+                  onChange={e => onUpdate(item.id, 'taxable', e.target.checked)}
+                  className="rounded"
+                />
+                Taxable
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={item.save_to_pricebook ?? false}
+                  onChange={e => onUpdate(item.id, 'save_to_pricebook', e.target.checked)}
+                  className="rounded"
+                />
+                Save to price book
+              </label>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Show description when not editing */}
+      {!isEditing && item.description && (
+        <div className="ml-5 mt-0.5 text-xs text-slate-400 leading-snug">{item.description}</div>
+      )}
     </div>
   );
 }
