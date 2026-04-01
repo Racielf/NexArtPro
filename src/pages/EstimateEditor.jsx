@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { X, Printer, Send, CheckCircle, XCircle, ClipboardList, Receipt, Navigation2 } from 'lucide-react';
+import { X, Printer, Send, CheckCircle, XCircle, ClipboardList, Receipt, Eye, Download } from 'lucide-react';
 import EstimateStatusStepper from '@/components/estimates/EstimateStatusStepper';
 import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
 import EstimateLineItems from '@/components/estimates/EstimateLineItems';
@@ -11,6 +11,7 @@ import EstimateClientSidebar from '@/components/estimates/EstimateClientSidebar'
 import CommTimeline from '@/components/shared/CommTimeline';
 import SendEstimateModal from '@/components/estimates/SendEstimateModal';
 import EstimatePreview from '@/components/estimates/EstimatePreview';
+import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function EstimateEditor() {
   const [loading, setLoading] = useState(true);
   const [showSendModal, setShowSendModal] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeOption, setActiveOption] = useState(0);
   const [options, setOptions] = useState([{ label: 'Option #1' }]);
@@ -186,7 +188,10 @@ export default function EstimateEditor() {
                 </Button>
               </>
             )}
-            <button onClick={handlePrint} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Print">
+            <button onClick={() => setShowPreviewModal(true)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Preview document">
+              <Eye className="w-4 h-4" />
+            </button>
+            <button onClick={handlePrint} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Print / Download PDF">
               <Printer className="w-4 h-4" />
             </button>
             <Button
@@ -260,6 +265,12 @@ export default function EstimateEditor() {
           onSent={() => { loadEstimate(); setShowSendModal(false); }}
         />
       )}
+
+      <EstimatePreviewModal
+        estimate={estimate}
+        open={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+      />
     </div>
   );
 }

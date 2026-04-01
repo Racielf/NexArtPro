@@ -16,6 +16,7 @@ import EstimateScheduler from './pages/EstimateScheduler';
 import SendEstimate from './pages/SendEstimate';
 import EstimateEditor from './pages/EstimateEditor';
 import TimeTracking from './pages/TimeTracking';
+import ClientEstimateView from './pages/ClientEstimateView';
 
 
 const AuthenticatedApp = () => {
@@ -53,6 +54,7 @@ const AuthenticatedApp = () => {
         <Route path="/time-tracking" element={<TimeTracking />} />
 
       </Route>
+      <Route path="/client-estimate" element={<ClientEstimateView />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

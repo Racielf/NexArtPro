@@ -1,20 +1,27 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { X } from 'lucide-react';
+import { X, Copy, ExternalLink } from 'lucide-react';
+import { logComm, logCommFailed } from '@/lib/commTracking';
 
 export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [to, setTo] = useState(estimate?.client_email || '');
-  const [subject, setSubject] = useState(`Estimate ${estimate?.estimate_number} from FSM Pro`);
+  const clientLink = `${window.location.origin}/client-estimate?id=${estimate?.id}`;
+  const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from FSM Pro`);
   const [message, setMessage] = useState(
-    `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nThank you for choosing FSM Pro. Please see attached estimate.\n\nThank you!`
+    `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nThank you for choosing FSM Pro. Please review your estimate below:\n\n${clientLink}\n\nTotal: $${(estimate?.total || 0).toFixed(2)}\n\nPlease click the link to approve or decline.\n\nThank you!`
   );
   const [sending, setSending] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(clientLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSend = async () => {
     if (!to) { toast.error('Recipient email is required'); return; }
@@ -23,7 +30,27 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
       status: 'sent',
       sent_at: new Date().toISOString()
     });
-    await base44.integrations.Core.SendEmail({ to, subject, body: message });
+    try {
+      await base44.integrations.Core.SendEmail({ to, subject, body: message });
+      await logComm({
+        event_type: 'estimate_sent',
+        client_id: estimate.client_id || '',
+        client_name: estimate.client_name,
+        client_email: to,
+        estimate_id: estimate.id,
+        appointment_id: estimate.appointment_id || '',
+        subject,
+        preview: `Total: $${(estimate.total || 0).toFixed(2)}`
+      });
+    } catch {
+      await logCommFailed({
+        event_type: 'estimate_sent',
+        client_name: estimate.client_name,
+        client_email: to,
+        estimate_id: estimate.id,
+        subject
+      });
+    }
     setSending(false);
     toast.success('Estimate sent!');
     onSent?.();
@@ -107,6 +134,20 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
               </div>
             </div>
           )}
+
+          {/* Client View Link */}
+          <div className="border border-slate-200 rounded-lg px-3 py-3 bg-blue-50/50">
+            <div className="text-xs text-slate-400 mb-2 font-medium">Client View Link</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-blue-600 truncate flex-1 font-mono">{clientLink}</span>
+              <button onClick={copyLink} className="flex-shrink-0 text-xs text-slate-500 hover:text-slate-800 border border-slate-200 rounded px-2 py-1 bg-white flex items-center gap-1">
+                <Copy className="w-3 h-3" />{copied ? 'Copied!' : 'Copy'}
+              </button>
+              <a href={clientLink} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-slate-400 hover:text-slate-700">
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
 
           {/* Text section (disabled) */}
           <div className="border border-slate-200 rounded-lg px-4 py-3 bg-slate-50/50">
