@@ -3,15 +3,15 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { X, Printer, Send, CheckCircle, XCircle, ClipboardList, Receipt, Eye, Download } from 'lucide-react';
+import { X, Printer, Send, CheckCircle, XCircle, ClipboardList, Receipt, Eye } from 'lucide-react';
 import EstimateStatusStepper from '@/components/estimates/EstimateStatusStepper';
 import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
 import EstimateLineItems from '@/components/estimates/EstimateLineItems';
 import EstimateClientSidebar from '@/components/estimates/EstimateClientSidebar';
 import CommTimeline from '@/components/shared/CommTimeline';
 import SendEstimateModal from '@/components/estimates/SendEstimateModal';
-import EstimatePreview from '@/components/estimates/EstimatePreview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
+import { printEstimate } from '@/lib/estimatePrint';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -22,7 +22,6 @@ export default function EstimateEditor() {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSendModal, setShowSendModal] = useState(false);
-  const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeOption, setActiveOption] = useState(0);
@@ -107,20 +106,7 @@ export default function EstimateEditor() {
     navigate('/invoices');
   };
 
-  const handlePrint = () => {
-    setShowPrintPreview(true);
-    setTimeout(() => {
-      const area = document.getElementById('estimate-print-area');
-      if (!area) return;
-      const w = window.open('', '_blank');
-      w.document.write(`<!DOCTYPE html><html><head><title>Estimate #${estimate?.estimate_number}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Inter',sans-serif;background:white;}</style>
-      </head><body>${area.outerHTML}</body></html>`);
-      w.document.close();
-      setTimeout(() => { w.print(); setShowPrintPreview(false); }, 800);
-    }, 300);
-  };
+  const handlePrint = () => printEstimate(estimate);
 
   const handleAddOption = () => {
     setOptions(prev => [...prev, { label: `Option #${prev.length + 1}` }]);
@@ -249,13 +235,6 @@ export default function EstimateEditor() {
           />
         </div>
       </div>
-
-      {/* Hidden print area */}
-      {showPrintPreview && (
-        <div className="hidden" id="estimate-print-area">
-          <EstimatePreview estimate={estimate} />
-        </div>
-      )}
 
       {showSendModal && (
         <SendEstimateModal
