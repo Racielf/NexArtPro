@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Printer, Download, Send, X, ClipboardList, Receipt, CheckCircle, XCircle } from 'lucide-react';
+import { X, Printer, Send, CheckCircle, XCircle, ClipboardList, Receipt } from 'lucide-react';
 import EstimateStatusStepper from '@/components/estimates/EstimateStatusStepper';
 import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
 import EstimateLineItems from '@/components/estimates/EstimateLineItems';
@@ -22,6 +22,8 @@ export default function EstimateEditor() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activeOption, setActiveOption] = useState(0);
+  const [options, setOptions] = useState([{ label: 'Option #1' }]);
 
   useEffect(() => { loadEstimate(); }, []);
 
@@ -39,20 +41,12 @@ export default function EstimateEditor() {
     setLoading(false);
   };
 
-  const calcTotals = (items = [], taxRate = 0) => {
-    const subtotal = items.reduce((s, i) => s + (parseFloat(i.total_price) || 0), 0);
-    const tax_amount = subtotal * ((taxRate || 0) / 100);
-    return { subtotal, tax_amount, total: subtotal + tax_amount };
-  };
-
   const handleSave = async (updatedEstimate) => {
     setSaving(true);
-    const totals = calcTotals(updatedEstimate.line_items, updatedEstimate.tax_rate);
-    const toSave = { ...updatedEstimate, ...totals };
+    const toSave = { ...updatedEstimate };
     await base44.entities.Estimate.update(estimateId, toSave);
     setEstimate(toSave);
     setSaving(false);
-    toast.success('Estimate saved');
   };
 
   const handleApprove = async () => {
@@ -118,11 +112,16 @@ export default function EstimateEditor() {
       const w = window.open('', '_blank');
       w.document.write(`<!DOCTYPE html><html><head><title>Estimate #${estimate?.estimate_number}</title>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Inter',sans-serif;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:0.5in;size:letter;}table{width:100%;border-collapse:collapse;}th,td{padding:8px 12px;}</style>
+        <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Inter',sans-serif;background:white;}</style>
       </head><body>${area.outerHTML}</body></html>`);
       w.document.close();
       setTimeout(() => { w.print(); setShowPrintPreview(false); }, 800);
     }, 300);
+  };
+
+  const handleAddOption = () => {
+    setOptions(prev => [...prev, { label: `Option #${prev.length + 1}` }]);
+    setActiveOption(options.length);
   };
 
   if (loading) return (
@@ -141,77 +140,80 @@ export default function EstimateEditor() {
   );
 
   return (
-    <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 font-inter overflow-hidden">
+    <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 overflow-hidden">
 
       {/* TOP BAR */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-white flex-shrink-0 shadow-sm">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/estimates')} className="p-1.5 hover:bg-slate-100 rounded-md transition-colors">
-            <X className="w-4 h-4 text-slate-500" />
-          </button>
-          <div>
-            <span className="font-bold text-slate-900 text-sm">Estimate #{estimate.estimate_number}</span>
-            <span className="text-xs text-slate-400 ml-2">{estimate.client_name}</span>
+      <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
+        <div className="flex items-center justify-between px-4 py-2">
+
+          {/* Left: close + title + option tabs */}
+          <div className="flex items-center gap-0 flex-1 min-w-0">
+            <button
+              onClick={() => navigate('/estimates')}
+              className="p-1.5 hover:bg-slate-100 rounded-md transition-colors mr-2 flex-shrink-0"
+            >
+              <X className="w-4 h-4 text-slate-500" />
+            </button>
+            <span className="font-bold text-slate-800 text-sm mr-4 whitespace-nowrap flex-shrink-0">Estimate</span>
+            <EstimateOptionTabs
+              activeOption={activeOption}
+              options={options}
+              onSelectOption={setActiveOption}
+              onAddOption={handleAddOption}
+            />
+          </div>
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
+            {estimate.status === 'sent' && (
+              <>
+                <Button size="sm" variant="outline" className="border-green-300 text-green-600 hover:bg-green-50 h-8" onClick={handleApprove}>
+                  <CheckCircle className="w-3.5 h-3.5 mr-1" />Approve
+                </Button>
+                <Button size="sm" variant="outline" className="border-red-300 text-red-500 hover:bg-red-50 h-8" onClick={handleDecline}>
+                  <XCircle className="w-3.5 h-3.5 mr-1" />Decline
+                </Button>
+              </>
+            )}
+            {estimate.status === 'approved' && (
+              <>
+                <Button size="sm" variant="outline" className="border-purple-300 text-purple-600 hover:bg-purple-50 h-8" onClick={handleConvertToWorkOrder}>
+                  <ClipboardList className="w-3.5 h-3.5 mr-1" />Work Order
+                </Button>
+                <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/5 h-8" onClick={handleConvertToInvoice}>
+                  <Receipt className="w-3.5 h-3.5 mr-1" />Invoice
+                </Button>
+              </>
+            )}
+            <button onClick={handlePrint} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Print">
+              <Printer className="w-4 h-4" />
+            </button>
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-white h-8 px-4"
+              onClick={() => setShowSendModal(true)}
+            >
+              <Send className="w-3.5 h-3.5 mr-1.5" />Send
+            </Button>
+            {saving && <span className="text-xs text-slate-400 ml-1">Saving...</span>}
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          {/* Approve / Decline for sent estimates */}
-          {estimate.status === 'sent' && (
-            <>
-              <Button size="sm" variant="outline" className="border-green-300 text-green-600 hover:bg-green-50 h-8" onClick={handleApprove}>
-                <CheckCircle className="w-3.5 h-3.5 mr-1" />Approve
-              </Button>
-              <Button size="sm" variant="outline" className="border-red-300 text-red-500 hover:bg-red-50 h-8" onClick={handleDecline}>
-                <XCircle className="w-3.5 h-3.5 mr-1" />Decline
-              </Button>
-            </>
-          )}
-          {/* Convert buttons for approved */}
-          {estimate.status === 'approved' && (
-            <>
-              <Button size="sm" variant="outline" className="border-purple-300 text-purple-600 hover:bg-purple-50 h-8" onClick={handleConvertToWorkOrder}>
-                <ClipboardList className="w-3.5 h-3.5 mr-1" />Work Order
-              </Button>
-              <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/5 h-8" onClick={handleConvertToInvoice}>
-                <Receipt className="w-3.5 h-3.5 mr-1" />Invoice
-              </Button>
-            </>
-          )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500" onClick={handlePrint} title="Print / Download PDF">
-            <Printer className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500" onClick={handlePrint} title="Download PDF">
-            <Download className="w-4 h-4" />
-          </Button>
-          <Button
-            size="sm"
-            className="bg-primary hover:bg-primary/90 text-white px-4 h-8 text-sm rounded-md"
-            onClick={() => setShowSendModal(true)}
-          >
-            <Send className="w-3.5 h-3.5 mr-1.5" />Send
-          </Button>
+
+        {/* STATUS STEPPER */}
+        <div className="px-6 pb-2 pt-0.5 flex items-center">
+          <EstimateStatusStepper status={estimate.status} estimate={estimate} />
         </div>
       </div>
 
-      {/* STATUS STEPPER */}
-      <div className="bg-white border-b border-slate-200 flex-shrink-0 px-6 py-2.5">
-        <EstimateStatusStepper status={estimate.status} />
-      </div>
-
-      {/* OPTION TABS */}
-      <div className="bg-white border-b border-slate-200 flex-shrink-0 px-6">
-        <EstimateOptionTabs />
-      </div>
-
-      {/* MAIN 3-PANEL LAYOUT */}
+      {/* MAIN 2-PANEL LAYOUT */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* LEFT: CLIENT SIDEBAR */}
-        <div className="w-72 bg-white border-r border-slate-200 overflow-y-auto flex-shrink-0">
+        {/* LEFT SIDEBAR */}
+        <div className="w-[270px] flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white">
           <EstimateClientSidebar estimate={estimate} client={client} />
         </div>
 
-        {/* CENTER: ESTIMATE CANVAS */}
+        {/* RIGHT CANVAS */}
         <div className="flex-1 overflow-auto p-5">
           <EstimateLineItems
             estimate={estimate}
@@ -223,7 +225,7 @@ export default function EstimateEditor() {
 
       {/* Hidden print area */}
       {showPrintPreview && (
-        <div className="hidden">
+        <div className="hidden" id="estimate-print-area">
           <EstimatePreview estimate={estimate} />
         </div>
       )}
