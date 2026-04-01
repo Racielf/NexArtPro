@@ -9,7 +9,7 @@ import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
 import EstimateLineItems from '@/components/estimates/EstimateLineItems';
 import EstimateClientSidebar from '@/components/estimates/EstimateClientSidebar';
 import CommTimeline from '@/components/shared/CommTimeline';
-import SendEstimateModal from '@/components/estimates/SendEstimateModal';
+import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 import { printEstimate } from '@/lib/estimatePrint';
 
@@ -237,7 +237,7 @@ export default function EstimateEditor() {
       </div>
 
       {showSendModal && (
-        <SendEstimateModal
+        <EstimateSendReview
           estimate={estimate}
           open={showSendModal}
           onClose={() => setShowSendModal(false)}
