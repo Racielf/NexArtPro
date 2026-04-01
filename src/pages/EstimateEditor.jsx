@@ -12,6 +12,7 @@ import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 import { printEstimate } from '@/lib/estimatePrint';
+import { logComm } from '@/lib/commTracking';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -53,12 +54,30 @@ export default function EstimateEditor() {
 
   const handleApprove = async () => {
     await base44.entities.Estimate.update(estimateId, { status: 'approved', approved_at: new Date().toISOString() });
+    await logComm({
+      event_type: 'estimate_approved',
+      client_id: estimate.client_id || '',
+      client_name: estimate.client_name,
+      client_email: estimate.client_email || '',
+      estimate_id: estimateId,
+      subject: `Estimate #${estimate.estimate_number} Approved`,
+      status: 'delivered'
+    });
     setEstimate(e => ({ ...e, status: 'approved' }));
     toast.success('Estimate approved!');
   };
 
   const handleDecline = async () => {
     await base44.entities.Estimate.update(estimateId, { status: 'declined' });
+    await logComm({
+      event_type: 'estimate_declined',
+      client_id: estimate.client_id || '',
+      client_name: estimate.client_name,
+      client_email: estimate.client_email || '',
+      estimate_id: estimateId,
+      subject: `Estimate #${estimate.estimate_number} Declined`,
+      status: 'delivered'
+    });
     setEstimate(e => ({ ...e, status: 'declined' }));
     toast.success('Estimate marked as declined');
   };
@@ -67,7 +86,7 @@ export default function EstimateEditor() {
     const existing = await base44.entities.WorkOrder.filter({ estimate_id: estimateId });
     if (existing.length > 0) { toast.error('Already converted to work order'); return; }
     const woNum = Math.floor(Math.random() * 9000) + 1000;
-    await base44.entities.WorkOrder.create({
+    const wo = await base44.entities.WorkOrder.create({
       work_order_number: woNum,
       estimate_id: estimateId,
       client_id: estimate.client_id,
@@ -78,11 +97,14 @@ export default function EstimateEditor() {
       line_items: estimate.line_items,
       subtotal: estimate.subtotal,
       total: estimate.total,
-      status: 'pending'
+      status: 'pending',
+      assigned_to: estimate.assigned_to || '',
+      notes: estimate.notes || ''
     });
     await base44.entities.Estimate.update(estimateId, { status: 'converted' });
     setEstimate(e => ({ ...e, status: 'converted' }));
-    toast.success('Converted to Work Order!');
+    toast.success('Created Work Order! Redirecting...');
+    setTimeout(() => navigate(`/work-order-detail?id=${wo.id}`), 1200);
   };
 
   const handleConvertToInvoice = async () => {

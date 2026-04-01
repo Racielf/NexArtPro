@@ -17,6 +17,7 @@ import SendEstimate from './pages/SendEstimate';
 import EstimateEditor from './pages/EstimateEditor';
 import TimeTracking from './pages/TimeTracking';
 import ClientEstimateView from './pages/ClientEstimateView';
+import WorkOrderDetail from './pages/WorkOrderDetail';
 
 
 const AuthenticatedApp = () => {
@@ -52,6 +53,7 @@ const AuthenticatedApp = () => {
         <Route path="/send-estimate" element={<SendEstimate />} />
         <Route path="/estimate-editor" element={<EstimateEditor />} />
         <Route path="/time-tracking" element={<TimeTracking />} />
+        <Route path="/work-order-detail" element={<WorkOrderDetail />} />
 
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />
