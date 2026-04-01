@@ -1,0 +1,61 @@
+{
+  "name": "CommEvent",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "appointment_created",
+        "appointment_reminder",
+        "omw",
+        "estimate_sent",
+        "estimate_approved",
+        "estimate_declined"
+      ]
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "email",
+        "sms"
+      ],
+      "default": "email"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "delivered",
+        "opened",
+        "clicked",
+        "failed"
+      ],
+      "default": "sent"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "appointment_id": {
+      "type": "string"
+    },
+    "estimate_id": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "preview": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_type",
+    "client_name"
+  ]
+}

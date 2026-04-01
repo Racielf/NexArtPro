@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import PageHeader from '@/components/shared/PageHeader';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, User, Phone, Mail, MapPin, Pencil, Trash2, Calendar, FileText } from 'lucide-react';
+import { Search, User, Phone, Mail, MapPin, Pencil, Trash2, Calendar, FileText, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import CommTimeline from '@/components/shared/CommTimeline';
 
 const emptyClient = { full_name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', notes: '' };
 
@@ -20,6 +21,7 @@ export default function Clients() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyClient);
+  const [expandedComm, setExpandedComm] = useState(null);
 
   useEffect(() => { loadClients(); }, []);
 
@@ -95,6 +97,18 @@ export default function Clients() {
                           {client.address && <span className="flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="w-3 h-3" />{client.address}{client.city ? `, ${client.city}` : ''}</span>}
                         </div>
                         {client.notes && <p className="text-xs text-muted-foreground mt-1 italic">{client.notes}</p>}
+                        <button
+                          onClick={() => setExpandedComm(expandedComm === client.id ? null : client.id)}
+                          className="mt-1.5 text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <Mail className="w-3 h-3" />
+                          {expandedComm === client.id ? 'Hide' : 'Communications'}
+                        </button>
+                        {expandedComm === client.id && (
+                          <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <CommTimeline clientId={client.id} limit={15} />
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">

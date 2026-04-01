@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { logComm, logCommFailed } from '@/lib/commTracking';
 
 const steps = [
   { id: 'schedule', label: 'Schedule', icon: Calendar },
@@ -71,11 +72,16 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
       scheduled_time: schedTime,
     });
     if (estimate.client_email) {
-      await base44.integrations.Core.SendEmail({
-        to: estimate.client_email,
-        subject: 'Appointment Scheduled',
-        body: `Hi ${estimate.client_name},\n\nYour appointment has been scheduled for ${schedDate} at ${schedTime}.\n\nThank you!`,
-      });
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: estimate.client_email,
+          subject: 'Appointment Scheduled',
+          body: `Hi ${estimate.client_name},\n\nYour appointment has been scheduled for ${schedDate} at ${schedTime}.\n\nThank you!`,
+        });
+        await logComm({ event_type: 'appointment_created', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: appt.id, estimate_id: estimate.id, subject: 'Appointment Scheduled', preview: `${schedDate} at ${schedTime}` });
+      } catch {
+        await logCommFailed({ event_type: 'appointment_created', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: appt.id, estimate_id: estimate.id, subject: 'Appointment Scheduled' });
+      }
     }
     toast.success(`Appointment scheduled for ${schedDate} at ${schedTime}`);
     setScheduleOpen(false);
@@ -159,31 +165,32 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
   // --- 4. SEND ---
   const handleSend = async () => {
     if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
-    await base44.entities.Estimate.update(estimate.id, {
-      status: 'sent',
-      sent_at: new Date().toISOString(),
-    });
-    await base44.integrations.Core.SendEmail({
-      to: estimate.client_email,
-      subject: `Estimate #${estimate.estimate_number} — Please Review`,
-      body: `Hi ${estimate.client_name},\n\nPlease review your estimate #${estimate.estimate_number}.\n\nTotal: $${(estimate.total || 0).toFixed(2)}\n\nReply to approve or decline.\n\nThank you!`,
-    });
+    await base44.entities.Estimate.update(estimate.id, { status: 'sent', sent_at: new Date().toISOString() });
+    try {
+      await base44.integrations.Core.SendEmail({
+        to: estimate.client_email,
+        subject: `Estimate #${estimate.estimate_number} — Please Review`,
+        body: `Hi ${estimate.client_name},\n\nPlease review your estimate #${estimate.estimate_number}.\n\nTotal: $${(estimate.total || 0).toFixed(2)}\n\nReply to approve or decline.\n\nThank you!`,
+      });
+      await logComm({ event_type: 'estimate_sent', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email, estimate_id: estimate.id, appointment_id: estimate.appointment_id || '', subject: `Estimate #${estimate.estimate_number} — Please Review`, preview: `Total: $${(estimate.total || 0).toFixed(2)}` });
+    } catch {
+      await logCommFailed({ event_type: 'estimate_sent', client_name: estimate.client_name, client_email: estimate.client_email, estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} — Please Review` });
+    }
     toast.success('Estimate sent to client!');
     onStatusChange('sent');
   };
 
   // --- 5. APPROVE / DECLINE ---
   const handleApprove = async () => {
-    await base44.entities.Estimate.update(estimate.id, {
-      status: 'approved',
-      approved_at: new Date().toISOString(),
-    });
+    await base44.entities.Estimate.update(estimate.id, { status: 'approved', approved_at: new Date().toISOString() });
+    await logComm({ event_type: 'estimate_approved', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Approved`, status: 'delivered' });
     toast.success('Estimate approved!');
     onStatusChange('approved');
   };
 
   const handleDecline = async () => {
     await base44.entities.Estimate.update(estimate.id, { status: 'declined' });
+    await logComm({ event_type: 'estimate_declined', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Declined`, status: 'delivered' });
     toast.success('Estimate declined');
     onStatusChange('declined');
   };

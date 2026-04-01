@@ -9,14 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
+import CommTimeline from '@/components/shared/CommTimeline';
 import { toast } from 'sonner';
 import { 
-  Calendar, Clock, MapPin, User, Phone, Mail,
+  Calendar, Clock, MapPin, User, Phone, Mail, MessageSquare,
   Navigation, CheckCircle, Pencil, Trash2, 
   Truck, FileText, Search, Play, Square
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { logComm, logCommFailed } from '@/lib/commTracking';
 
 const emptyForm = {
   client_id: '', client_name: '', client_phone: '', client_email: '',
@@ -35,6 +37,7 @@ export default function Appointments() {
   const [trackingId, setTrackingId] = useState(null);
   const [distance, setDistance] = useState(null);
   const [watchId, setWatchId] = useState(null);
+  const [expandedComm, setExpandedComm] = useState(null);
   const startPos = useRef(null);
 
   useEffect(() => {
@@ -84,16 +87,21 @@ export default function Appointments() {
         });
       }
     } else {
-      await base44.entities.Appointment.create(form);
+      const created = await base44.entities.Appointment.create(form);
       toast.success('Appointment created');
       // Notify client
       if (form.client_email) {
-        await base44.integrations.Core.SendEmail({
-          to: form.client_email,
-          subject: 'Appointment Scheduled',
-          body: `Hi ${form.client_name},\n\nYour appointment has been scheduled!\nDate: ${form.scheduled_date}\nTime: ${form.scheduled_time}\nLocation: ${form.client_address}\n\nSee you then!`
-        });
-        toast.success('Notification sent to client');
+        try {
+          await base44.integrations.Core.SendEmail({
+            to: form.client_email,
+            subject: 'Appointment Scheduled',
+            body: `Hi ${form.client_name},\n\nYour appointment has been scheduled!\nDate: ${form.scheduled_date}\nTime: ${form.scheduled_time}\nLocation: ${form.client_address}\n\nSee you then!`
+          });
+          await logComm({ event_type: 'appointment_created', client_id: form.client_id, client_name: form.client_name, client_email: form.client_email, appointment_id: created.id, subject: 'Appointment Scheduled', preview: `Date: ${form.scheduled_date} at ${form.scheduled_time}` });
+          toast.success('Notification sent to client');
+        } catch {
+          await logCommFailed({ event_type: 'appointment_created', client_name: form.client_name, client_email: form.client_email, appointment_id: created.id, subject: 'Appointment Scheduled' });
+        }
       }
     }
     setShowForm(false);
@@ -151,12 +159,17 @@ export default function Appointments() {
       });
 
       if (appt.client_email) {
-        await base44.integrations.Core.SendEmail({
-          to: appt.client_email,
-          subject: "We're on our way!",
-          body: `Hi ${appt.client_name},\n\nGood news! Your technician is on their way and will arrive shortly.\n\nSee you soon!`
-        });
-        toast.success('OMW notification sent to client!');
+        try {
+          await base44.integrations.Core.SendEmail({
+            to: appt.client_email,
+            subject: "We're on our way!",
+            body: `Hi ${appt.client_name},\n\nGood news! Your technician is on their way and will arrive shortly.\n\nSee you soon!`
+          });
+          await logComm({ event_type: 'omw', client_id: appt.client_id || '', client_name: appt.client_name, client_email: appt.client_email, appointment_id: appt.id, subject: "We're on our way!", preview: 'Technician is heading to your location' });
+          toast.success('OMW notification sent to client!');
+        } catch {
+          await logCommFailed({ event_type: 'omw', client_name: appt.client_name, client_email: appt.client_email, appointment_id: appt.id, subject: "We're on our way!" });
+        }
       }
       loadData();
     }, () => toast.error('Could not get GPS location'));
@@ -267,6 +280,19 @@ export default function Appointments() {
                             <span className="text-sm text-orange-700 font-medium">
                               Tracking: {distance?.toFixed(2) || '0.00'} miles
                             </span>
+                          </div>
+                        )}
+                        {/* Communications toggle */}
+                        <button
+                          onClick={() => setExpandedComm(expandedComm === appt.id ? null : appt.id)}
+                          className="mt-2 text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <Mail className="w-3 h-3" />
+                          {expandedComm === appt.id ? 'Hide' : 'Communications'}
+                        </button>
+                        {expandedComm === appt.id && (
+                          <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <CommTimeline appointmentId={appt.id} limit={10} />
                           </div>
                         )}
                       </div>

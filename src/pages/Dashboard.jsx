@@ -23,12 +23,13 @@ export default function Dashboard() {
   const loadDashboard = async () => {
     setLoading(true);
     const today = format(new Date(), 'yyyy-MM-dd');
-    const [appts, estimates, workOrders, invoices, timeEntries] = await Promise.all([
+    const [appts, estimates, workOrders, invoices, timeEntries, commEvents] = await Promise.all([
       base44.entities.Appointment.list('-created_date', 200),
       base44.entities.Estimate.list('-created_date', 50),
       base44.entities.WorkOrder.list('-created_date', 100),
       base44.entities.Invoice.list('-created_date', 100),
       base44.entities.TimeEntry.list('-created_date', 100),
+      base44.entities.CommEvent.list('-created_date', 200),
     ]);
 
     setTodayAppointments(appts.filter(a => a.scheduled_date === today));
@@ -46,6 +47,8 @@ export default function Dashboard() {
       invoices: invoices.length,
       revenue: invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0),
       milesTotal: (appts.reduce((s, a) => s + (a.miles_traveled || 0), 0) + timeEntries.reduce((s, e) => s + (e.miles_traveled || 0), 0)).toFixed(1),
+      commSent: commEvents.length,
+      commFailed: commEvents.filter(e => e.status === 'failed').length,
     });
     setLoading(false);
   };
@@ -99,7 +102,7 @@ export default function Dashboard() {
       </div>
 
       {/* FLOW STATS ROW */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {[
           { label: 'Scheduled', value: stats.appointments ?? 0, color: 'text-blue-600 bg-blue-50' },
           { label: 'OMW Active', value: stats.omw ?? 0, color: 'text-orange-600 bg-orange-50' },
@@ -109,6 +112,8 @@ export default function Dashboard() {
           { label: 'Declined', value: stats.estimatesDeclined ?? 0, color: 'text-red-600 bg-red-50' },
           { label: 'Jobs Created', value: stats.workOrders ?? 0, color: 'text-purple-600 bg-purple-50' },
           { label: 'Miles Logged', value: `${stats.milesTotal ?? 0} mi`, color: 'text-slate-700 bg-slate-100' },
+          { label: 'Comms Sent', value: stats.commSent ?? 0, color: 'text-teal-700 bg-teal-50' },
+          { label: 'Comm Errors', value: stats.commFailed ?? 0, color: 'text-red-600 bg-red-50' },
         ].map(({ label, value, color }) => (
           <div key={label} className={`rounded-lg border border-slate-200 px-3 py-2 text-center ${color.split(' ')[1]}`}>
             <div className={`text-lg font-bold ${color.split(' ')[0]}`}>{value}</div>

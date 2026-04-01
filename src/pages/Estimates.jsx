@@ -17,6 +17,7 @@ import {
   XCircle, Printer, Download, ClipboardList, Receipt,
   Search, GripVertical, X, Calendar
 } from 'lucide-react';
+import { logComm, logCommFailed } from '@/lib/commTracking';
 
 const emptyItem = () => ({ id: Date.now(), name: '', description: '', quantity: 1, unit_price: 0, unit_cost: 0, total_price: 0 });
 
@@ -122,23 +123,30 @@ export default function Estimates() {
   const handleSend = async (estimate) => {
     if (!estimate.client_email) { toast.error('Client email required to send'); return; }
     await base44.entities.Estimate.update(estimate.id, { status: 'sent', sent_at: new Date().toISOString() });
-    await base44.integrations.Core.SendEmail({
-      to: estimate.client_email,
-      subject: `Estimate #${estimate.estimate_number} - Please Review`,
-      body: `Hi ${estimate.client_name},\n\nPlease find your estimate #${estimate.estimate_number} attached for review.\n\nTotal: $${(estimate.total || 0).toFixed(2)}\n\nPlease reply to approve or decline this estimate.\n\nThank you!`
-    });
+    try {
+      await base44.integrations.Core.SendEmail({
+        to: estimate.client_email,
+        subject: `Estimate #${estimate.estimate_number} - Please Review`,
+        body: `Hi ${estimate.client_name},\n\nPlease find your estimate #${estimate.estimate_number} attached for review.\n\nTotal: $${(estimate.total || 0).toFixed(2)}\n\nPlease reply to approve or decline this estimate.\n\nThank you!`
+      });
+      await logComm({ event_type: 'estimate_sent', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email, estimate_id: estimate.id, appointment_id: estimate.appointment_id || '', subject: `Estimate #${estimate.estimate_number} - Please Review`, preview: `Total: $${(estimate.total || 0).toFixed(2)}` });
+    } catch {
+      await logCommFailed({ event_type: 'estimate_sent', client_name: estimate.client_name, client_email: estimate.client_email, estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} - Please Review` });
+    }
     toast.success('Estimate sent to client!');
     loadData();
   };
 
   const handleApprove = async (estimate) => {
     await base44.entities.Estimate.update(estimate.id, { status: 'approved', approved_at: new Date().toISOString() });
+    await logComm({ event_type: 'estimate_approved', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Approved`, status: 'delivered' });
     toast.success('Estimate approved!');
     loadData();
   };
 
   const handleDecline = async (estimate) => {
     await base44.entities.Estimate.update(estimate.id, { status: 'declined' });
+    await logComm({ event_type: 'estimate_declined', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Declined`, status: 'delivered' });
     toast.success('Estimate marked as declined');
     loadData();
   };

@@ -8,6 +8,7 @@ import EstimateStatusStepper from '@/components/estimates/EstimateStatusStepper'
 import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
 import EstimateLineItems from '@/components/estimates/EstimateLineItems';
 import EstimateClientSidebar from '@/components/estimates/EstimateClientSidebar';
+import CommTimeline from '@/components/shared/CommTimeline';
 import SendEstimateModal from '@/components/estimates/SendEstimateModal';
 import EstimatePreview from '@/components/estimates/EstimatePreview';
 
@@ -227,6 +228,11 @@ export default function EstimateEditor() {
         {/* LEFT SIDEBAR */}
         <div className="w-[270px] flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white">
           <EstimateClientSidebar estimate={estimate} client={client} />
+          {/* Communications Timeline */}
+          <div className="px-4 pb-4 pt-2 border-t border-slate-100">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Communications</p>
+            <CommTimeline estimateId={estimate.id} />
+          </div>
         </div>
 
         {/* RIGHT CANVAS */}
