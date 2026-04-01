@@ -125,6 +125,24 @@ export default function Appointments() {
       });
       setWatchId(id);
 
+      // Auto-create TimeEntry for tracking history
+      const today = new Date().toISOString().split('T')[0];
+      await base44.entities.TimeEntry.create({
+        team_member: appt.assigned_to || 'Technician',
+        date: today,
+        client_name: appt.client_name,
+        project: appt.description || 'Service Call',
+        service: 'On My Way',
+        note: `Appointment at ${appt.client_address || ''}`,
+        start_time: new Date().toISOString(),
+        start_lat: pos.coords.latitude,
+        start_lng: pos.coords.longitude,
+        status: 'running',
+        duration_seconds: 0,
+        miles_traveled: 0,
+        source: 'omw',
+      });
+
       await base44.entities.Appointment.update(appt.id, {
         status: 'omw',
         omw_start_lat: pos.coords.latitude,
@@ -147,11 +165,28 @@ export default function Appointments() {
   const handleFinish = async (appt) => {
     if (watchId) { navigator.geolocation.clearWatch(watchId); setWatchId(null); }
     const miles = distance || 0;
+    const now = new Date();
+
     await base44.entities.Appointment.update(appt.id, {
       status: 'completed',
       miles_traveled: parseFloat(miles.toFixed(2)),
-      completed_time: new Date().toISOString()
+      completed_time: now.toISOString()
     });
+
+    // Complete the running TimeEntry for this appointment (OMW)
+    const runningEntries = await base44.entities.TimeEntry.filter({ status: 'running' });
+    const omwEntry = runningEntries.find(e => e.client_name === appt.client_name && e.source === 'omw');
+    if (omwEntry) {
+      const startMs = new Date(omwEntry.start_time).getTime();
+      const durationSec = Math.floor((now.getTime() - startMs) / 1000);
+      await base44.entities.TimeEntry.update(omwEntry.id, {
+        end_time: now.toISOString(),
+        status: 'completed',
+        duration_seconds: durationSec,
+        miles_traveled: parseFloat(miles.toFixed(2)),
+      });
+    }
+
     setTrackingId(null);
     setDistance(null);
     startPos.current = null;
