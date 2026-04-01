@@ -3,7 +3,7 @@ import { X, Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperc
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { printEstimate } from '@/lib/estimatePrint';
+import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import EstimateDocumentConfigured from './EstimateDocumentConfigured';
 
@@ -90,7 +90,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
 
   const handlePrint = () => printEstimate(estimate, visibility);
 
-  const handleDownload = () => printEstimate(estimate, visibility);
+  const handleDownload = () => downloadEstimate(estimate, visibility);
 
   const handleSend = async () => {
     if (!recipientEmail) { toast.error('Recipient email is required'); return; }
