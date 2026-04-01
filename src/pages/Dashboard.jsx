@@ -12,24 +12,23 @@ import {
 import { format } from 'date-fns';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ appointments: 0, estimates: 0, workOrders: 0, invoices: 0 });
+  const [stats, setStats] = useState({});
   const [todayAppointments, setTodayAppointments] = useState([]);
   const [recentEstimates, setRecentEstimates] = useState([]);
   const [pendingInvoices, setPendingInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
+  useEffect(() => { loadDashboard(); }, []);
 
   const loadDashboard = async () => {
     setLoading(true);
     const today = format(new Date(), 'yyyy-MM-dd');
-    const [appts, estimates, workOrders, invoices] = await Promise.all([
-      base44.entities.Appointment.list('-created_date', 50),
-      base44.entities.Estimate.list('-created_date', 10),
-      base44.entities.WorkOrder.list('-created_date', 50),
-      base44.entities.Invoice.list('-created_date', 50),
+    const [appts, estimates, workOrders, invoices, timeEntries] = await Promise.all([
+      base44.entities.Appointment.list('-created_date', 200),
+      base44.entities.Estimate.list('-created_date', 50),
+      base44.entities.WorkOrder.list('-created_date', 100),
+      base44.entities.Invoice.list('-created_date', 100),
+      base44.entities.TimeEntry.list('-created_date', 100),
     ]);
 
     setTodayAppointments(appts.filter(a => a.scheduled_date === today));
@@ -37,17 +36,24 @@ export default function Dashboard() {
     setPendingInvoices(invoices.filter(i => i.status === 'sent' || i.status === 'overdue').slice(0, 5));
     setStats({
       appointments: appts.filter(a => a.status !== 'cancelled').length,
+      omw: appts.filter(a => a.status === 'omw').length,
+      completed: appts.filter(a => a.status === 'completed').length,
       estimates: estimates.length,
+      estimatesSent: estimates.filter(e => e.status === 'sent').length,
+      estimatesApproved: estimates.filter(e => e.status === 'approved').length,
+      estimatesDeclined: estimates.filter(e => e.status === 'declined').length,
       workOrders: workOrders.length,
+      invoices: invoices.length,
       revenue: invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0),
+      milesTotal: (appts.reduce((s, a) => s + (a.miles_traveled || 0), 0) + timeEntries.reduce((s, e) => s + (e.miles_traveled || 0), 0)).toFixed(1),
     });
     setLoading(false);
   };
 
   const statCards = [
-    { title: 'Total Appointments', value: stats.appointments, icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50', link: '/appointments' },
-    { title: 'Estimates', value: stats.estimates, icon: FileText, color: 'text-orange-600', bg: 'bg-orange-50', link: '/estimates' },
-    { title: 'Work Orders', value: stats.workOrders, icon: ClipboardList, color: 'text-purple-600', bg: 'bg-purple-50', link: '/work-orders' },
+    { title: 'Appointments', value: stats.appointments ?? 0, icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50', link: '/appointments' },
+    { title: 'Estimates', value: stats.estimates ?? 0, icon: FileText, color: 'text-orange-600', bg: 'bg-orange-50', link: '/estimates' },
+    { title: 'Work Orders', value: stats.workOrders ?? 0, icon: ClipboardList, color: 'text-purple-600', bg: 'bg-purple-50', link: '/work-orders' },
     { title: 'Revenue Collected', value: `$${(stats.revenue || 0).toLocaleString()}`, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', link: '/invoices' },
   ];
 
@@ -90,6 +96,25 @@ export default function Dashboard() {
             </React.Fragment>
           ))}
         </div>
+      </div>
+
+      {/* FLOW STATS ROW */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+        {[
+          { label: 'Scheduled', value: stats.appointments ?? 0, color: 'text-blue-600 bg-blue-50' },
+          { label: 'OMW Active', value: stats.omw ?? 0, color: 'text-orange-600 bg-orange-50' },
+          { label: 'Completed', value: stats.completed ?? 0, color: 'text-green-600 bg-green-50' },
+          { label: 'Estimates Sent', value: stats.estimatesSent ?? 0, color: 'text-yellow-700 bg-yellow-50' },
+          { label: 'Approved', value: stats.estimatesApproved ?? 0, color: 'text-emerald-700 bg-emerald-50' },
+          { label: 'Declined', value: stats.estimatesDeclined ?? 0, color: 'text-red-600 bg-red-50' },
+          { label: 'Jobs Created', value: stats.workOrders ?? 0, color: 'text-purple-600 bg-purple-50' },
+          { label: 'Miles Logged', value: `${stats.milesTotal ?? 0} mi`, color: 'text-slate-700 bg-slate-100' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className={`rounded-lg border border-slate-200 px-3 py-2 text-center ${color.split(' ')[1]}`}>
+            <div className={`text-lg font-bold ${color.split(' ')[0]}`}>{value}</div>
+            <div className="text-xs text-slate-500 font-medium leading-tight mt-0.5">{label}</div>
+          </div>
+        ))}
       </div>
 
       {/* Stats */}

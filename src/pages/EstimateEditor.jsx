@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { X, Printer, Send, CheckCircle, XCircle, ClipboardList, Receipt } from 'lucide-react';
+import { X, Printer, Send, CheckCircle, XCircle, ClipboardList, Receipt, Navigation2 } from 'lucide-react';
 import EstimateStatusStepper from '@/components/estimates/EstimateStatusStepper';
 import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
 import EstimateLineItems from '@/components/estimates/EstimateLineItems';
@@ -200,8 +200,24 @@ export default function EstimateEditor() {
         </div>
 
         {/* STATUS STEPPER */}
-        <div className="px-6 pb-2 pt-0.5 flex items-center">
-          <EstimateStatusStepper status={estimate.status} estimate={estimate} />
+        <div className="px-6 pb-2 pt-0.5 flex items-center flex-wrap gap-2">
+          <EstimateStatusStepper
+            status={estimate.status}
+            estimate={estimate}
+            onStatusChange={(newStatus) => {
+              setEstimate(e => ({ ...e, status: newStatus }));
+              loadEstimate();
+            }}
+          />
+          {/* Convert to Invoice button (when approved) */}
+          {estimate.status === 'approved' && (
+            <button
+              onClick={handleConvertToInvoice}
+              className="ml-4 flex items-center gap-1.5 text-xs bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors font-semibold"
+            >
+              <Receipt className="w-3.5 h-3.5" />Convert to Invoice
+            </button>
+          )}
         </div>
       </div>
 
