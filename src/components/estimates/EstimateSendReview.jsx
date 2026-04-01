@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip } from 'lucide-react';
+import { X, Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -81,6 +81,8 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`
   );
   const [sending, setSending] = useState(false);
+  const [sentSuccess, setSentSuccess] = useState(false);
+  const [sentError, setSentError] = useState(null);
 
   if (!open) return null;
 
@@ -95,40 +97,79 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
   const handleSend = async () => {
     if (!recipientEmail) { toast.error('Recipient email is required'); return; }
     setSending(true);
-    await base44.entities.Estimate.update(estimate.id, {
-      status: 'sent',
-      sent_at: new Date().toISOString(),
-    });
-    const fullMessage = `${message}\n\nView & approve your estimate here:\n${clientLink}`;
+    setSentError(null);
     try {
-      await base44.integrations.Core.SendEmail({ to: recipientEmail, subject, body: fullMessage });
-      await logComm({
-        event_type: 'estimate_sent',
-        client_id: estimate.client_id || '',
-        client_name: estimate.client_name,
-        client_email: recipientEmail,
-        estimate_id: estimate.id,
-        appointment_id: estimate.appointment_id || '',
-        subject,
-        preview: `Total: $${(estimate.total || 0).toFixed(2)}`,
+      await base44.entities.Estimate.update(estimate.id, {
+        status: 'sent',
+        sent_at: new Date().toISOString(),
       });
-    } catch {
-      await logCommFailed({
-        event_type: 'estimate_sent',
-        client_name: estimate.client_name,
-        client_email: recipientEmail,
-        estimate_id: estimate.id,
-        subject,
-      });
+      const fullMessage = `${message}\n\nView & approve your estimate here:\n${clientLink}`;
+      try {
+        await base44.integrations.Core.SendEmail({ to: recipientEmail, subject, body: fullMessage });
+        await logComm({
+          event_type: 'estimate_sent',
+          client_id: estimate.client_id || '',
+          client_name: estimate.client_name,
+          client_email: recipientEmail,
+          estimate_id: estimate.id,
+          appointment_id: estimate.appointment_id || '',
+          subject,
+          preview: `Total: $${(estimate.total || 0).toFixed(2)}`,
+        });
+        setSentSuccess(true);
+        toast.success('Estimate sent successfully!');
+      } catch (error) {
+        await logCommFailed({
+          event_type: 'estimate_sent',
+          client_name: estimate.client_name,
+          client_email: recipientEmail,
+          estimate_id: estimate.id,
+          subject,
+        });
+        setSentError('Failed to send email. Please try again.');
+        toast.error('Failed to send email');
+      }
+    } catch (error) {
+      setSentError('Failed to update estimate. Please try again.');
+      toast.error('Failed to update estimate');
+    } finally {
+      setSending(false);
     }
-    setSending(false);
-    toast.success('Estimate sent!');
-    onSent?.();
-    onClose();
   };
 
   return (
     <div className="fixed inset-0 z-[60] bg-[#f0f2f5] flex flex-col overflow-hidden">
+
+      {/* CONFIRMATION BANNER */}
+      {sentSuccess && (
+        <div className="bg-green-50 border-b border-green-200 px-5 py-3 flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-green-900">Estimate sent successfully!</p>
+            <p className="text-xs text-green-700 mt-1">Sent to: <span className="font-medium">{recipientEmail}</span></p>
+            <div className="mt-2 flex items-center gap-2 bg-white rounded-md border border-green-200 px-3 py-1.5">
+              <span className="text-xs text-slate-600 truncate">Client link: {clientLink}</span>
+              <button
+                onClick={() => { navigator.clipboard.writeText(clientLink); toast.success('Link copied!'); }}
+                className="p-1 hover:bg-green-50 rounded text-green-600 flex-shrink-0"
+                title="Copy link"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sentError && (
+        <div className="bg-red-50 border-b border-red-200 px-5 py-3 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-900">Send failed</p>
+            <p className="text-xs text-red-700 mt-0.5">{sentError}</p>
+          </div>
+        </div>
+      )}
 
       {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex items-center justify-between px-5 py-3 flex-shrink-0 shadow-sm">
@@ -150,12 +191,15 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
           </Button>
           <Button
             size="sm"
-            className="bg-primary hover:bg-primary/90 text-white gap-1.5"
+            className={`text-white gap-1.5 ${sentSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'}`}
             onClick={handleSend}
-            disabled={sending}
+            disabled={sending || sentSuccess}
           >
-            <Send className="w-3.5 h-3.5" />
-            {sending ? 'Sending...' : 'Send'}
+            {sentSuccess ? (
+              <><CheckCircle className="w-3.5 h-3.5" /> Sent</>
+            ) : (
+              <><Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Send'}</>
+            )}
           </Button>
         </div>
       </div>
