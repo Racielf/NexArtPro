@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
-import EstimatePrint from '@/components/estimates/EstimatePrint';
+import EstimatePreview from '@/components/estimates/EstimatePreview';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import {
@@ -279,8 +279,8 @@ export default function Estimates() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openEdit(est)} title="Edit">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openPrint(est)} title="Print/Download">
-                        <Printer className="w-4 h-4" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" asChild title="Send / Preview">
+                        <Link to={`/send-estimate?id=${est.id}`}><Send className="w-4 h-4" /></Link>
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" asChild title="Schedule">
                         <Link to={`/schedule-estimate?id=${est.id}`}><Calendar className="w-4 h-4" /></Link>
@@ -524,7 +524,7 @@ export default function Estimates() {
               </Button>
             </div>
           </DialogHeader>
-          {viewingEstimate && <EstimatePrint estimate={viewingEstimate} />}
+          {viewingEstimate && <EstimatePreview estimate={viewingEstimate} />}
         </DialogContent>
       </Dialog>
     </div>

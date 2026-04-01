@@ -13,6 +13,7 @@ import Estimates from './pages/Estimates';
 import WorkOrders from './pages/WorkOrders';
 import Invoices from './pages/Invoices';
 import EstimateScheduler from './pages/EstimateScheduler';
+import SendEstimate from './pages/SendEstimate';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -44,6 +45,7 @@ const AuthenticatedApp = () => {
         <Route path="/work-orders" element={<WorkOrders />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/schedule-estimate" element={<EstimateScheduler />} />
+        <Route path="/send-estimate" element={<SendEstimate />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
