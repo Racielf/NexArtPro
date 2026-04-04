@@ -23,6 +23,7 @@ import ApptTimeTracking from './pages/ApptTimeTracking';
 import Assignments from './pages/Assignments';
 import Workers from './pages/Workers';
 import InvoiceDetail from './pages/InvoiceDetail';
+import CustomerProfile from './pages/CustomerProfile';
 
 
 const AuthenticatedApp = () => {
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
         <Route path="/assignments" element={<Assignments />} />
         <Route path="/workers" element={<Workers />} />
         <Route path="/invoice-detail" element={<InvoiceDetail />} />
+        <Route path="/customer-profile" element={<CustomerProfile />} />
 
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />

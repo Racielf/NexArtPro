@@ -152,7 +152,7 @@ export default function Customers() {
               const displayName = customer.display_name || `${customer.first_name} ${customer.last_name}`;
               const fullAddress = [customer.service_address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ');
               return (
-                <div key={customer.id} className="bg-white rounded-xl border border-slate-200 px-4 py-3.5 flex items-center gap-4 hover:shadow-sm hover:border-slate-300 transition-all group">
+                <div key={customer.id} onClick={() => navigate(`/customer-profile?id=${customer.id}`)} className="bg-white rounded-xl border border-slate-200 px-4 py-3.5 flex items-center gap-4 hover:shadow-sm hover:border-slate-300 transition-all group cursor-pointer">
                   {/* Avatar */}
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-bold text-primary">
