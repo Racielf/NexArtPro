@@ -35,6 +35,7 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
       const wo = await base44.entities.WorkOrder.create({
         work_order_number: woNum,
         estimate_id: estimate.id,
+        appointment_id: estimate.appointment_id || '',
         client_id: estimate.client_id || '',
         client_name: estimate.client_name,
         client_email: estimate.client_email || '',
