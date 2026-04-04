@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { X, MapPin, User, DollarSign, CheckCircle, Receipt, Edit2, Save, UserCheck, Clock, History } from 'lucide-react';
+import { X, MapPin, User, DollarSign, CheckCircle, Receipt, Edit2, Save, UserCheck, Clock, History, Camera } from 'lucide-react';
+import PhotoGallery from '@/components/shared/PhotoGallery';
 import StatusBadge from '@/components/shared/StatusBadge';
 import CommTimeline from '@/components/shared/CommTimeline';
 import WorkerSelector from '@/components/workorders/WorkerSelector';
@@ -24,6 +25,7 @@ export default function WorkOrderDetail() {
   const [saving, setSaving] = useState(false);
   const [showWorkerSelector, setShowWorkerSelector] = useState(false);
   const [assignments, setAssignments] = useState([]);
+  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'photos'
 
   useEffect(() => { loadWorkOrder(); }, []);
 
@@ -97,22 +99,30 @@ export default function WorkOrderDetail() {
 
   const handleConvertToInvoice = async () => {
     const invNum = Math.floor(Math.random() * 9000) + 1000;
-    await base44.entities.Invoice.create({
+    const inv = await base44.entities.Invoice.create({
       invoice_number: invNum,
       work_order_id: woId,
-      client_id: workOrder.client_id,
+      estimate_id: workOrder.estimate_id || '',
+      client_id: workOrder.client_id || '',
       client_name: workOrder.client_name,
       client_email: workOrder.client_email || '',
       client_address: workOrder.client_address || '',
       client_phone: workOrder.client_phone || '',
-      line_items: workOrder.line_items,
-      subtotal: workOrder.subtotal,
-      total: workOrder.total,
-      status: 'draft'
+      title: workOrder.title || '',
+      groups: workOrder.groups || [],
+      line_items: workOrder.line_items || [],
+      subtotal: workOrder.subtotal || 0,
+      tax_rate: workOrder.tax_rate || 0,
+      tax_amount: workOrder.tax_amount || 0,
+      discount_amount: workOrder.discount_amount || 0,
+      total: workOrder.total || 0,
+      notes: workOrder.notes || '',
+      status: 'draft',
     });
     await base44.entities.WorkOrder.update(woId, { status: 'invoiced' });
     setWorkOrder(w => ({ ...w, status: 'invoiced' }));
-    toast.success('Converted to Invoice!');
+    toast.success('Invoice created!');
+    navigate(`/invoice-detail?id=${inv.id}`);
   };
 
   if (loading) return (
@@ -325,6 +335,35 @@ export default function WorkOrderDetail() {
 
         {/* RIGHT PANEL */}
         <div className="flex-1 overflow-auto p-7">
+
+          {/* TABS */}
+          <div className="flex gap-1 mb-5">
+            {[{ id: 'details', label: 'Details' }, { id: 'photos', label: 'Photos', icon: Camera }].map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}>
+                {tab.icon && <tab.icon className="w-3.5 h-3.5" />}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === 'photos' && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 max-w-4xl">
+              <h3 className="text-lg font-bold text-slate-900 mb-5">Project Photos</h3>
+              <PhotoGallery
+                workOrderId={woId}
+                customerId={workOrder.client_id}
+                customerName={workOrder.client_name}
+                workOrderNumber={workOrder.work_order_number}
+              />
+            </div>
+          )}
+
+          {activeTab === 'details' && (
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm max-w-4xl">
 
             {/* NOTES SECTION */}
@@ -388,6 +427,7 @@ export default function WorkOrderDetail() {
             </div>
 
           </div>
+          )} {/* end details tab */}
         </div>
 
       </div>

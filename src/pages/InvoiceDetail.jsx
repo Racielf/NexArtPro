@@ -1,0 +1,376 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import { X, Send, CheckCircle, Printer, DollarSign, MapPin, Receipt, Clock } from 'lucide-react';
+import StatusBadge from '@/components/shared/StatusBadge';
+import { format } from 'date-fns';
+
+export default function InvoiceDetail() {
+  const navigate = useNavigate();
+  const urlParams = new URLSearchParams(window.location.search);
+  const invoiceId = urlParams.get('id');
+
+  const [invoice, setInvoice] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [dueDate, setDueDate] = useState('');
+
+  useEffect(() => { loadInvoice(); }, []);
+
+  const loadInvoice = async () => {
+    if (!invoiceId) { setLoading(false); return; }
+    const list = await base44.entities.Invoice.filter({ id: invoiceId });
+    if (list.length) {
+      const inv = list[0];
+      setInvoice(inv);
+      setNotes(inv.notes || '');
+      setDueDate(inv.due_date || '');
+    }
+    setLoading(false);
+  };
+
+  const handleSaveNotes = async () => {
+    setSaving(true);
+    await base44.entities.Invoice.update(invoiceId, { notes, due_date: dueDate });
+    setInvoice(i => ({ ...i, notes, due_date: dueDate }));
+    setSaving(false);
+    toast.success('Invoice updated');
+  };
+
+  const handleSend = async () => {
+    if (!invoice.client_email) { toast.error('Client email required'); return; }
+    setSaving(true);
+    const now = new Date().toISOString();
+    await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now });
+    await base44.integrations.Core.SendEmail({
+      to: invoice.client_email,
+      subject: `Invoice #${invoice.invoice_number} - Payment Due`,
+      body: `Hi ${invoice.client_name},\n\nPlease find your invoice #${invoice.invoice_number}.\n\nTotal Due: $${(invoice.total || 0).toFixed(2)}${dueDate ? `\nDue Date: ${dueDate}` : ''}\n\nThank you for your business!`,
+    });
+    setInvoice(i => ({ ...i, status: 'sent', sent_at: now }));
+    setSaving(false);
+    toast.success('Invoice sent to client!');
+  };
+
+  const handleMarkPaid = async () => {
+    setSaving(true);
+    const now = new Date().toISOString();
+    await base44.entities.Invoice.update(invoiceId, { status: 'paid', paid_at: now, amount_paid: invoice.total });
+    setInvoice(i => ({ ...i, status: 'paid', paid_at: now, amount_paid: invoice.total }));
+    setSaving(false);
+    toast.success('Invoice marked as paid!');
+  };
+
+  const handlePrint = () => {
+    const inv = invoice;
+    // Resolve line items from groups or flat
+    const allItems = inv.groups?.flatMap(g => g.items || []) || inv.line_items || [];
+    const content = `<html><head><title>Invoice #${inv.invoice_number}</title>
+    <style>body{font-family:Arial,sans-serif;padding:40px;color:#111}h1{color:#1a56db}table{width:100%;border-collapse:collapse;margin:20px 0}th{background:#1f2937;color:white;padding:10px;text-align:left}td{padding:10px;border-bottom:1px solid #eee}.total{font-size:18px;font-weight:bold;color:#1a56db}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}</style></head><body>
+    <div style="display:flex;justify-content:space-between;align-items:start">
+      <div><h1>INVOICE</h1><p style="color:#666;font-size:20px">#${inv.invoice_number}</p></div>
+      <div style="text-align:right"><strong style="color:#1a56db;font-size:20px">FSM Pro</strong></div>
+    </div>
+    <div class="grid">
+      <div style="background:#f9fafb;padding:16px;border-radius:8px">
+        <p style="color:#888;font-size:11px;text-transform:uppercase;font-weight:bold">Bill To</p>
+        <p><strong>${inv.client_name}</strong></p>
+        ${inv.client_address ? `<p>${inv.client_address}</p>` : ''}${inv.client_phone ? `<p>${inv.client_phone}</p>` : ''}${inv.client_email ? `<p>${inv.client_email}</p>` : ''}
+      </div>
+      <div style="background:#f9fafb;padding:16px;border-radius:8px">
+        <p>Invoice #: <strong>${inv.invoice_number}</strong></p>
+        <p>Date: <strong>${new Date().toLocaleDateString()}</strong></p>
+        ${inv.due_date ? `<p>Due: <strong>${inv.due_date}</strong></p>` : ''}
+        <p>Status: <strong>${inv.status?.toUpperCase()}</strong></p>
+      </div>
+    </div>
+    <table><thead><tr><th>Service</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>
+    ${allItems.map(item => `<tr><td><strong>${item.service_name || item.name || ''}</strong>${item.description ? `<br><small style="color:#666">${item.description}</small>` : ''}</td><td>${item.quantity || ''}</td><td>$${(item.unit_price || 0).toFixed(2)}</td><td>$${(item.line_total || item.total_price || 0).toFixed(2)}</td></tr>`).join('')}
+    </tbody></table>
+    <div style="text-align:right;margin-top:20px">
+      <p>Subtotal: $${(inv.subtotal || 0).toFixed(2)}</p>
+      ${inv.discount_amount > 0 ? `<p>Discount: -$${(inv.discount_amount || 0).toFixed(2)}</p>` : ''}
+      ${inv.tax_rate > 0 ? `<p>Tax (${inv.tax_rate}%): $${(inv.tax_amount || 0).toFixed(2)}</p>` : ''}
+      <p class="total">TOTAL: $${(inv.total || 0).toFixed(2)}</p>
+      ${inv.status === 'paid' ? `<p style="color:green;font-weight:bold">✓ PAID</p>` : ''}
+    </div>
+    ${inv.notes ? `<div style="margin-top:30px;border-top:1px solid #eee;padding-top:20px"><p style="color:#888;font-size:11px;font-weight:bold">NOTES</p><p>${inv.notes}</p></div>` : ''}
+    ${inv.payment_terms ? `<div style="margin-top:20px"><p style="color:#888;font-size:11px;font-weight:bold">PAYMENT TERMS</p><p>${inv.payment_terms}</p></div>` : ''}
+    </body></html>`;
+    const w = window.open('', '_blank');
+    w.document.write(content);
+    w.document.close();
+    w.print();
+  };
+
+  if (loading) return (
+    <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+      <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!invoice) return (
+    <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+      <div className="text-center">
+        <p className="text-slate-500 mb-4">Invoice not found</p>
+        <Button onClick={() => navigate('/invoices')}>Back to Invoices</Button>
+      </div>
+    </div>
+  );
+
+  const allItems = invoice.groups?.flatMap(g => g.items || []) || invoice.line_items || [];
+
+  return (
+    <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 overflow-hidden">
+      {/* TOP BAR */}
+      <div className="bg-white border-b border-slate-200 flex items-center justify-between px-5 py-3 flex-shrink-0 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/invoices')} className="p-1.5 hover:bg-slate-100 rounded transition-colors">
+            <X className="w-4 h-4 text-slate-500" />
+          </button>
+          <div>
+            <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-primary" />
+              Invoice #{invoice.invoice_number}
+            </p>
+            <p className="text-xs text-slate-400">{invoice.client_name}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusBadge status={invoice.status} />
+          <Button size="sm" variant="outline" onClick={handlePrint}>
+            <Printer className="w-3.5 h-3.5 mr-1" />Print
+          </Button>
+          {invoice.status === 'draft' && (
+            <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50" onClick={handleSend} disabled={saving}>
+              <Send className="w-3.5 h-3.5 mr-1" />Send
+            </Button>
+          )}
+          {invoice.status === 'sent' && (
+            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleMarkPaid} disabled={saving}>
+              <CheckCircle className="w-3.5 h-3.5 mr-1" />Mark Paid
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* BODY */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* LEFT SIDEBAR */}
+        <div className="w-[260px] flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white">
+          {/* Client */}
+          <div className="px-4 py-4 border-b border-slate-100">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Bill To</p>
+            <p className="font-bold text-slate-900">{invoice.client_name}</p>
+            {invoice.client_address && (
+              <div className="flex items-start gap-1.5 text-xs text-slate-500 mt-1.5">
+                <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />{invoice.client_address}
+              </div>
+            )}
+            {invoice.client_phone && <p className="text-xs text-slate-500 mt-1">📞 {invoice.client_phone}</p>}
+            {invoice.client_email && <p className="text-xs text-slate-500 mt-1">✉ {invoice.client_email}</p>}
+          </div>
+
+          {/* Links */}
+          {(invoice.estimate_id || invoice.work_order_id) && (
+            <div className="px-4 py-4 border-b border-slate-100 space-y-1.5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Linked Records</p>
+              {invoice.estimate_id && (
+                <button onClick={() => navigate(`/estimate-editor?id=${invoice.estimate_id}`)}
+                  className="text-xs text-primary hover:underline block">
+                  → View Estimate
+                </button>
+              )}
+              {invoice.work_order_id && (
+                <button onClick={() => navigate(`/work-order-detail?id=${invoice.work_order_id}`)}
+                  className="text-xs text-primary hover:underline block">
+                  → View Work Order
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Dates */}
+          <div className="px-4 py-4 border-b border-slate-100 space-y-3">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Dates</p>
+            <div>
+              <label className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Due Date</label>
+              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                className="h-8 text-sm mt-1 border-slate-200" />
+            </div>
+            {invoice.sent_at && (
+              <p className="text-xs text-slate-500 flex items-center gap-1">
+                <Clock className="w-3 h-3" />Sent {format(new Date(invoice.sent_at), 'MMM d, yyyy')}
+              </p>
+            )}
+            {invoice.paid_at && (
+              <p className="text-xs text-green-600 font-semibold flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
+              </p>
+            )}
+          </div>
+
+          {/* Total */}
+          <div className="px-4 py-4 bg-slate-50 border-b border-slate-100">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Total Due</p>
+            <div className="flex items-baseline gap-1">
+              <DollarSign className="w-3.5 h-3.5 text-primary" />
+              <span className="text-2xl font-bold text-primary">{(invoice.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+            {invoice.status === 'paid' && (
+              <p className="text-xs text-green-600 font-bold mt-1">✓ PAID</p>
+            )}
+          </div>
+
+          {/* Notes */}
+          <div className="px-4 py-4">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Notes</p>
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Payment notes..." rows={3}
+              className="text-sm resize-none border-slate-200" />
+            <button onClick={handleSaveNotes} disabled={saving}
+              className="mt-2 text-xs text-primary font-semibold hover:underline disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save notes'}
+            </button>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL — Invoice document */}
+        <div className="flex-1 overflow-auto p-8 flex justify-center">
+          <div className="w-full max-w-3xl bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            {/* Invoice header */}
+            <div className="bg-slate-900 px-8 py-6 flex items-start justify-between">
+              <div>
+                <p className="text-white text-2xl font-bold">INVOICE</p>
+                <p className="text-slate-400 text-sm mt-1">#{invoice.invoice_number}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-white font-bold text-lg">FSM Pro</p>
+                <p className="text-slate-400 text-sm">Field Service Management</p>
+              </div>
+            </div>
+
+            {/* Client + dates */}
+            <div className="px-8 py-6 grid grid-cols-2 gap-6 border-b border-slate-100">
+              <div>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-wide mb-2">Bill To</p>
+                <p className="font-bold text-slate-900">{invoice.client_name}</p>
+                {invoice.client_address && <p className="text-sm text-slate-600 mt-1">{invoice.client_address}</p>}
+                {invoice.client_phone && <p className="text-sm text-slate-600">{invoice.client_phone}</p>}
+                {invoice.client_email && <p className="text-sm text-slate-600">{invoice.client_email}</p>}
+              </div>
+              <div className="text-right">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Invoice #</span>
+                    <span className="font-semibold">{invoice.invoice_number}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Date</span>
+                    <span className="font-semibold">{format(new Date(invoice.created_date || Date.now()), 'MMM d, yyyy')}</span>
+                  </div>
+                  {invoice.due_date && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Due</span>
+                      <span className="font-semibold text-orange-600">{invoice.due_date}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Status</span>
+                    <StatusBadge status={invoice.status} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Line items */}
+            <div className="px-8 py-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-slate-200">
+                    <th className="text-left py-2 font-semibold text-slate-600">Description</th>
+                    <th className="text-right py-2 font-semibold text-slate-600 w-16">Qty</th>
+                    <th className="text-right py-2 font-semibold text-slate-600 w-24">Unit Price</th>
+                    <th className="text-right py-2 font-semibold text-slate-600 w-24">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allItems.length === 0 && (
+                    <tr><td colSpan={4} className="py-6 text-center text-slate-400">No line items</td></tr>
+                  )}
+                  {allItems.map((item, idx) => (
+                    <tr key={idx} className="border-b border-slate-100">
+                      <td className="py-3">
+                        <div className="font-medium text-slate-900">{item.service_name || item.name || '—'}</div>
+                        {item.description && <div className="text-xs text-slate-500 mt-0.5">{item.description}</div>}
+                      </td>
+                      <td className="text-right text-slate-700">{item.quantity || '—'}</td>
+                      <td className="text-right text-slate-700">${(item.unit_price || 0).toFixed(2)}</td>
+                      <td className="text-right font-semibold text-slate-900">
+                        ${(item.line_total || item.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Totals */}
+              <div className="mt-6 flex justify-end">
+                <div className="w-72 space-y-2 text-sm">
+                  <div className="flex justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-600">Subtotal</span>
+                    <span className="font-semibold">${(invoice.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  {invoice.discount_amount > 0 && (
+                    <div className="flex justify-between py-1.5 border-b border-slate-100 text-green-700">
+                      <span>Discount</span>
+                      <span>-${(invoice.discount_amount || 0).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {invoice.tax_rate > 0 && (
+                    <div className="flex justify-between py-1.5 border-b border-slate-100">
+                      <span className="text-slate-600">Tax ({invoice.tax_rate}%)</span>
+                      <span className="font-semibold">${(invoice.tax_amount || 0).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-3 border-t-2 border-slate-300 font-bold text-lg">
+                    <span>Total Due</span>
+                    <span className="text-primary">${(invoice.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  {invoice.status === 'paid' && (
+                    <div className="flex justify-between py-1 text-green-600 font-bold">
+                      <span>✓ PAID</span>
+                      <span>${(invoice.amount_paid || invoice.total || 0).toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Notes / terms */}
+            {(invoice.notes || invoice.payment_terms) && (
+              <div className="px-8 py-6 bg-slate-50 border-t border-slate-100 space-y-4">
+                {invoice.notes && (
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Notes</p>
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{invoice.notes}</p>
+                  </div>
+                )}
+                {invoice.payment_terms && (
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Payment Terms</p>
+                    <p className="text-sm text-slate-700">{invoice.payment_terms}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

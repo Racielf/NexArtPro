@@ -1,21 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
-import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer } from 'lucide-react';
+import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight } from 'lucide-react';
 
 export default function Invoices() {
+  const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [showPrint, setShowPrint] = useState(false);
-  const [viewingInvoice, setViewingInvoice] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -153,7 +151,7 @@ export default function Invoices() {
         ) : (
           <div className="space-y-3">
             {filtered.map(inv => (
-              <Card key={inv.id} className="hover:shadow-md transition-shadow">
+              <Card key={inv.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex-1">
@@ -175,7 +173,7 @@ export default function Invoices() {
                         {inv.paid_at && <span className="text-xs text-green-600">Paid {new Date(inv.paid_at).toLocaleDateString()}</span>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap justify-end">
+                    <div className="flex items-center gap-1 flex-wrap justify-end" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => handlePrint(inv)} title="Print">
                         <Printer className="w-4 h-4" />
                       </Button>
@@ -189,6 +187,7 @@ export default function Invoices() {
                           <CheckCircle className="w-3 h-3 mr-1" />Mark Paid
                         </Button>
                       )}
+                      <ChevronRight className="w-4 h-4 text-slate-300" />
                     </div>
                   </div>
                 </CardContent>
