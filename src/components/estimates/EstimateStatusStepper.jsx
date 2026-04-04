@@ -221,19 +221,15 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
     }
   };
 
-  const handleStepClick = (stepId, idx) => {
-    if (idx > currentIdx + 1) return; // can't skip steps
+  const handleStepClick = (stepId) => {
     if (stepId === 'schedule') { setScheduleOpen(true); return; }
     if (stepId === 'omw') { if (omwActive) handleStopOMW(); else handleOMW(); return; }
     if (stepId === 'finish') { setFinishOpen(true); return; }
-    if (stepId === 'sent') { 
-      if (!estimate.client_email) { toast.error('Client email is required'); return; }
-      onOpenSendReview?.(); return; 
+    if (stepId === 'sent') {
+      if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
+      onOpenSendReview?.(); return;
     }
-    if (stepId === 'approved') {
-      if (status === 'approved') return;
-      setApprovalOpen(true); return;
-    }
+    if (stepId === 'approved') { setApprovalOpen(true); return; }
     if (stepId === 'converted') { handleCopyToJob(); return; }
   };
 
@@ -244,15 +240,13 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
           const Icon = step.icon;
           const isDone = idx < currentIdx;
           const isActive = idx === currentIdx;
-          const isClickable = idx <= currentIdx + 1;
 
           return (
             <div key={step.id} className="flex items-center">
               <button
-                onClick={() => isClickable && handleStepClick(step.id, idx)}
-                disabled={!isClickable}
-                className={`flex flex-col items-center gap-0.5 px-3 transition-opacity ${isClickable ? 'cursor-pointer hover:opacity-75' : 'cursor-default opacity-35'}`}
-                title={isClickable ? `Click to: ${step.label}` : step.label}
+                onClick={() => handleStepClick(step.id)}
+                className="flex flex-col items-center gap-0.5 px-3 transition-opacity cursor-pointer hover:opacity-75"
+                title={`Click to: ${step.label}`}
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
                   isDone ? 'bg-primary border-primary' :
