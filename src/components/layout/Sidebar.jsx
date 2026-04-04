@@ -10,7 +10,8 @@ import {
   Receipt,
   Settings,
   Wrench,
-  Clock
+  Clock,
+  Timer
 } from 'lucide-react';
 
 const navItems = [
@@ -21,6 +22,7 @@ const navItems = [
   { path: '/work-orders', label: 'Work Orders', icon: ClipboardList },
   { path: '/invoices', label: 'Invoices', icon: Receipt },
   { path: '/time-tracking', label: 'Time Tracking', icon: Clock },
+  { path: '/appt-time-tracking', label: 'Appt Tracking', icon: Timer },
 ];
 
 export default function Sidebar() {

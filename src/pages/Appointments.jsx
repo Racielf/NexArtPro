@@ -115,7 +115,7 @@ export default function Appointments() {
     if (newStatus === 'visit_completed') extra.completed_at = now;
     await base44.entities.Appointment.update(id, { status: newStatus, ...extra });
     toast.success(`Status: ${newStatus.replace(/_/g, ' ')}`);
-    loadData();
+    await loadData();
   };
 
   const openEdit = (appt) => { setEditing(appt); setShowForm(true); };
@@ -248,6 +248,7 @@ export default function Appointments() {
               onClose={() => setSelected(null)}
               onEdit={() => openEdit(selected)}
               onStatusChange={handleStatusChange}
+              onRefresh={loadData}
             />
           </div>
         )}
