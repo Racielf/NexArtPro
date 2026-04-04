@@ -5,6 +5,15 @@
     "full_name": {
       "type": "string"
     },
+    "worker_type": {
+      "type": "string",
+      "enum": [
+        "employee",
+        "subcontractor",
+        "agent"
+      ],
+      "default": "employee"
+    },
     "trade": {
       "type": "string",
       "enum": [
@@ -39,7 +48,34 @@
     "email": {
       "type": "string"
     },
+    "emergency_contact": {
+      "type": "string"
+    },
+    "emergency_phone": {
+      "type": "string"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "license_number": {
+      "type": "string"
+    },
+    "license_expiry": {
+      "type": "string",
+      "format": "date"
+    },
+    "insurance_expiry": {
+      "type": "string",
+      "format": "date"
+    },
+    "hourly_rate": {
+      "type": "number"
+    },
     "avatar_url": {
+      "type": "string"
+    },
+    "address": {
       "type": "string"
     },
     "notes": {

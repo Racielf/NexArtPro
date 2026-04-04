@@ -1,0 +1,45 @@
+{
+  "name": "WorkerDocument",
+  "type": "object",
+  "properties": {
+    "worker_id": {
+      "type": "string"
+    },
+    "worker_name": {
+      "type": "string"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "id",
+        "license",
+        "insurance",
+        "contract",
+        "certification",
+        "w9",
+        "other"
+      ],
+      "default": "other"
+    },
+    "name": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "worker_id",
+    "file_url"
+  ]
+}
