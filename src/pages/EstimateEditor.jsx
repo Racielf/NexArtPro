@@ -5,12 +5,11 @@ import { toast } from 'sonner';
 import { X, Eye, Save } from 'lucide-react';
 import EstimateStatusStepper from '@/components/estimates/EstimateStatusStepper';
 import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
-import EstimateLineItems from '@/components/estimates/EstimateLineItems';
+import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
 import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
-import { logComm } from '@/lib/commTracking';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -167,7 +166,7 @@ export default function EstimateEditor() {
               <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow (schedule, send, approve).
             </div>
           )}
-          <EstimateLineItems
+          <EstimateGroups
             estimate={estimate}
             onSave={handleSave}
             saving={saving}
