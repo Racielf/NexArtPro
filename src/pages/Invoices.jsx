@@ -25,14 +25,8 @@ export default function Invoices() {
   };
 
   const handleSend = async (inv) => {
-    if (!inv.client_email) { toast.error('Client email required'); return; }
     await base44.entities.Invoice.update(inv.id, { status: 'sent', sent_at: new Date().toISOString() });
-    await base44.integrations.Core.SendEmail({
-      to: inv.client_email,
-      subject: `Invoice #${inv.invoice_number} - Payment Due`,
-      body: `Hi ${inv.client_name},\n\nPlease find your invoice #${inv.invoice_number}.\n\nAmount Due: $${(inv.total || 0).toFixed(2)}\n\nThank you for your business!`
-    });
-    toast.success('Invoice sent to client!');
+    toast.success('Invoice marked as sent!');
     loadData();
   };
 
