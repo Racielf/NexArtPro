@@ -15,7 +15,6 @@ const steps = [
   { id: 'finish',    label: 'Finish',     icon: CheckSquare },
   { id: 'sent',      label: 'Send',       icon: Send },
   { id: 'approved',  label: 'Approval',   icon: ThumbsUp },
-  { id: 'converted', label: 'Convert WO', icon: Copy },
 ];
 
 const statusToIdx = {
@@ -31,7 +30,7 @@ const statusToIdx = {
   approved: 5,
   signed: 5,
   declined: 5,
-  converted: 6,
+  converted: 5,
 };
 
 export default function EstimateStatusStepper({ status, estimate, onStatusChange, onOpenSendReview }) {
@@ -191,35 +190,7 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
     onStatusChange('declined');
   };
 
-  // --- 6. COPY TO JOB ---
-  const handleCopyToJob = async () => {
-    if (estimate.status !== 'approved') { toast.error('Copy to Job only available when Approved'); return; }
-    const existing = await base44.entities.WorkOrder.filter({ estimate_id: estimate.id });
-    if (existing.length > 0) { toast.error('Already converted to Work Order'); return; }
-    const woNum = Math.floor(Math.random() * 9000) + 1000;
-    const wo = await base44.entities.WorkOrder.create({
-      work_order_number: woNum,
-      estimate_id: estimate.id,
-      client_id: estimate.client_id,
-      client_name: estimate.client_name,
-      client_address: estimate.client_address,
-      client_phone: estimate.client_phone,
-      title: estimate.title || `Job from Estimate #${estimate.estimate_number}`,
-      line_items: estimate.line_items,
-      subtotal: estimate.subtotal,
-      total: estimate.total,
-      assigned_to: estimate.assigned_to || '',
-      status: 'pending',
-      notes: estimate.notes || ''
-    });
-    await base44.entities.Estimate.update(estimate.id, { status: 'converted' });
-    toast.success(`Work Order #${woNum} created!`);
-    onStatusChange('converted');
-    // Redirect to work order detail (handled by parent)
-    if (window.location.pathname.includes('estimate-editor')) {
-      setTimeout(() => window.location.href = `/work-order-detail?id=${wo.id}`, 1200);
-    }
-  };
+
 
   const handleStepClick = (stepId) => {
     if (stepId === 'schedule') { setScheduleOpen(true); return; }
@@ -230,11 +201,6 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
       onOpenSendReview?.(); return;
     }
     if (stepId === 'approved') { setApprovalOpen(true); return; }
-    if (stepId === 'converted') {
-      const isApproved = ['approved', 'signed'].includes(estimate.status);
-      if (!isApproved) { toast.error('Estimate must be approved before converting to Work Order'); return; }
-      handleCopyToJob(); return;
-    }
   };
 
   return (
@@ -245,43 +211,34 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
           const isDone = idx < currentIdx;
           const isActive = idx === currentIdx;
           const isApproved = ['approved', 'signed', 'converted'].includes(estimate.status);
-          const isConverted = estimate.status === 'converted';
 
           // Special coloring for Approval step
           const isApprovalDone = step.id === 'approved' && isApproved;
-          // Convert WO is locked if not approved
-          const isConvertLocked = step.id === 'converted' && !isApproved;
 
           const circleClass = isApprovalDone
             ? 'bg-green-500 border-green-500'
-            : isConvertLocked
-              ? 'bg-white border-slate-200'
-              : isDone || isActive
-                ? 'bg-primary border-primary'
-                : 'bg-white border-slate-300';
+            : isDone || isActive
+              ? 'bg-primary border-primary'
+              : 'bg-white border-slate-300';
 
-          const iconClass = isApprovalDone || (!isConvertLocked && (isDone || isActive))
+          const iconClass = isApprovalDone || (isDone || isActive)
             ? 'text-white'
-            : isConvertLocked
-              ? 'text-slate-300'
-              : 'text-slate-400';
+            : 'text-slate-400';
 
           const labelClass = isApprovalDone
             ? 'text-green-600'
-            : isConvertLocked
-              ? 'text-slate-300'
-              : isActive
-                ? 'text-primary'
-                : isDone
-                  ? 'text-slate-600'
-                  : 'text-slate-400';
+            : isActive
+              ? 'text-primary'
+              : isDone
+                ? 'text-slate-600'
+                : 'text-slate-400';
 
           return (
             <div key={step.id} className="flex items-center">
               <button
                 onClick={() => handleStepClick(step.id)}
-                className={`flex flex-col items-center gap-0.5 px-3 transition-opacity cursor-pointer ${isConvertLocked ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-75'}`}
-                title={isConvertLocked ? 'Estimate must be approved first' : `Click to: ${step.label}`}
+                className="flex flex-col items-center gap-0.5 px-3 transition-opacity cursor-pointer hover:opacity-75"
+                title={`Click to: ${step.label}`}
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${circleClass}`}>
                   {step.id === 'omw' && omwActive ? (
