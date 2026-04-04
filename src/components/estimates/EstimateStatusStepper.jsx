@@ -26,7 +26,10 @@ const statusToIdx = {
   finished: 3,
   completed: 3,
   sent: 4,
+  viewed: 4,
+  changes_requested: 4,
   approved: 5,
+  signed: 5,
   declined: 5,
   converted: 6,
 };

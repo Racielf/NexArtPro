@@ -10,6 +10,7 @@ import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCusto
 import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
+import ManualApprovalPanel from '@/components/estimates/ManualApprovalPanel';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -150,6 +151,11 @@ export default function EstimateEditor() {
             estimate={estimate}
             onCustomerChange={handleCustomerChange}
           />
+          {/* Manual Approval Panel */}
+          {hasClient && (
+            <ManualApprovalPanel estimate={estimate} onRefresh={loadEstimate} />
+          )}
+
           {/* Communications below customer */}
           {hasClient && (
             <div className="px-4 pb-5 pt-3 border-t border-slate-100 mt-auto">

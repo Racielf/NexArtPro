@@ -30,11 +30,11 @@
       "type": "string",
       "enum": [
         "draft",
-        "scheduled",
-        "on_my_way",
-        "finished",
         "sent",
+        "viewed",
+        "changes_requested",
         "approved",
+        "signed",
         "declined",
         "converted"
       ],
@@ -182,10 +182,46 @@
     "sent_at": {
       "type": "string"
     },
+    "viewed_at": {
+      "type": "string"
+    },
     "approved_at": {
       "type": "string"
     },
+    "approved_by": {
+      "type": "string",
+      "description": "Email or name of admin who approved manually"
+    },
+    "approval_note": {
+      "type": "string",
+      "description": "Internal note when manually approved"
+    },
     "declined_reason": {
+      "type": "string"
+    },
+    "changes_requested_at": {
+      "type": "string"
+    },
+    "changes_requested_note": {
+      "type": "string"
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "signer_name": {
+      "type": "string"
+    },
+    "signer_email": {
+      "type": "string"
+    },
+    "signer_ip": {
+      "type": "string"
+    },
+    "signed_at": {
+      "type": "string"
+    },
+    "signature_image_base64": {
       "type": "string"
     }
   },
