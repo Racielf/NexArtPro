@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Phone, Mail, MapPin, User, Clock, Wrench, FileText,
   CheckCircle, Navigation, UserCheck, RefreshCw, X, Pencil,
-  ThumbsDown, Send, Timer, AlertCircle
+  ThumbsDown, Send, Timer, AlertCircle, Receipt, Loader2, Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import ApptStatusBadge from './ApptStatusBadge';
 import CommTimeline from '@/components/shared/CommTimeline';
+import { base44 } from '@/api/base44Client';
+import { createEstimateFromContext } from '@/lib/createEstimateFromContext';
 import {
   actionOMW,
   actionArrived,
@@ -19,9 +21,58 @@ import {
 } from '@/lib/apptActions';
 
 export default function ApptDetailPanel({ appt, onClose, onEdit, onStatusChange, onRefresh }) {
+  const navigate = useNavigate();
   const [finishOpen, setFinishOpen] = useState(false);
   const [visitNotes, setVisitNotes] = useState('');
-  const [loading, setLoading] = useState(null); // which action is loading
+  const [loading, setLoading] = useState(null);
+  const [relatedDocs, setRelatedDocs] = useState({ estimate: null, workOrder: null, invoice: null });
+  const [creatingEstimate, setCreatingEstimate] = useState(false);
+
+  useEffect(() => {
+    if (appt) loadRelated();
+  }, [appt?.id]);
+
+  const loadRelated = async () => {
+    const promises = [];
+    // Estimate: by estimate_id on appointment, or by appointment_id on estimate
+    if (appt.estimate_id) {
+      promises.push(base44.entities.Estimate.filter({ id: appt.estimate_id }, '-created_date', 1));
+    } else if (appt.customer_id) {
+      promises.push(base44.entities.Estimate.filter({ appointment_id: appt.id }, '-created_date', 1));
+    } else {
+      promises.push(Promise.resolve([]));
+    }
+    // Work orders linked to appointment's estimate or customer
+    promises.push(appt.customer_id
+      ? base44.entities.WorkOrder.filter({ client_id: appt.customer_id }, '-created_date', 1)
+      : Promise.resolve([])
+    );
+    // Invoices
+    promises.push(appt.customer_id
+      ? base44.entities.Invoice.filter({ client_id: appt.customer_id }, '-created_date', 1)
+      : Promise.resolve([])
+    );
+    const [ests, wos, invs] = await Promise.all(promises);
+    setRelatedDocs({
+      estimate: ests[0] || null,
+      workOrder: wos[0] || null,
+      invoice: invs[0] || null,
+    });
+  };
+
+  const handleCreateEstimate = async () => {
+    setCreatingEstimate(true);
+    // Build client-like object from appointment data
+    const clientLike = {
+      id: appt.customer_id || '',
+      full_name: appt.customer_display_name || '',
+      email: appt.customer_email || '',
+      phone: appt.customer_phone || '',
+      address: appt.service_address || '',
+    };
+    await createEstimateFromContext({ client: clientLike, appointment: appt, navigate });
+    setCreatingEstimate(false);
+  };
 
   if (!appt) {
     return (
@@ -224,15 +275,58 @@ export default function ApptDetailPanel({ appt, onClose, onEdit, onStatusChange,
               </button>
             )}
 
-            {/* Create Estimate CTA */}
-            {['visit_completed', 'arrived'].includes(s) && (
-              <Link
-                to="/estimates"
+            {/* Create / View Estimate CTA — always shown */}
+            {relatedDocs.estimate ? (
+              <button
+                onClick={() => navigate(`/estimate-editor?id=${relatedDocs.estimate.id}`)}
                 className={`${secondaryBtn} justify-center border-primary/30 text-primary hover:bg-primary/5`}
               >
-                <FileText className="w-3.5 h-3.5" />Create Estimate
-              </Link>
+                <FileText className="w-3.5 h-3.5" />
+                View Estimate #{relatedDocs.estimate.estimate_number}
+                <span className={`ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded capitalize
+                  ${relatedDocs.estimate.status === 'approved' ? 'bg-green-100 text-green-700' :
+                    relatedDocs.estimate.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                    'bg-slate-100 text-slate-500'}`}>
+                  {relatedDocs.estimate.status}
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={handleCreateEstimate}
+                disabled={creatingEstimate}
+                className={`${secondaryBtn} justify-center border-primary/30 text-primary hover:bg-primary/5`}
+              >
+                {creatingEstimate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                {creatingEstimate ? 'Creating...' : 'Create Estimate'}
+              </button>
             )}
+
+            {/* View Work Order */}
+            {relatedDocs.workOrder && (
+              <button
+                onClick={() => navigate(`/work-order-detail?id=${relatedDocs.workOrder.id}`)}
+                className={`${secondaryBtn} justify-center border-slate-200 text-slate-600 hover:bg-slate-50`}
+              >
+                <Wrench className="w-3.5 h-3.5" />
+                View Work Order #{relatedDocs.workOrder.work_order_number}
+              </button>
+            )}
+
+            {/* View Invoice */}
+            {relatedDocs.invoice && (
+              <button
+                onClick={() => navigate(`/invoice-detail?id=${relatedDocs.invoice.id}`)}
+                className={`${secondaryBtn} justify-center border-slate-200 text-slate-600 hover:bg-slate-50`}
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                View Invoice #{relatedDocs.invoice.invoice_number}
+              </button>
+            )}
+
+            {/* Reschedule */}
+            <button onClick={onEdit} className={`${secondaryBtn} border-indigo-200 text-indigo-600 hover:bg-indigo-50`}>
+              <Calendar className="w-3.5 h-3.5" />Reschedule / Edit
+            </button>
 
             {/* Cancel / No-Show */}
             {!['visit_completed', 'cancelled', 'no_show'].includes(s) && (
@@ -265,16 +359,6 @@ export default function ApptDetailPanel({ appt, onClose, onEdit, onStatusChange,
             {appt.omw_started_at && <p className="text-xs text-slate-500">🚗 OMW: {new Date(appt.omw_started_at).toLocaleTimeString()}</p>}
             {appt.arrived_at && <p className="text-xs text-slate-500">📍 Arrived: {new Date(appt.arrived_at).toLocaleTimeString()}</p>}
             {appt.completed_at && <p className="text-xs text-slate-500">✅ Completed: {new Date(appt.completed_at).toLocaleTimeString()}</p>}
-          </div>
-        )}
-
-        {/* Related estimate */}
-        {appt.estimate_id && (
-          <div className="px-4 py-3">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Related</p>
-            <Link to={`/estimate-editor?id=${appt.estimate_id}`} className="flex items-center gap-1.5 text-xs text-primary hover:underline">
-              <FileText className="w-3.5 h-3.5" />View Estimate
-            </Link>
           </div>
         )}
 

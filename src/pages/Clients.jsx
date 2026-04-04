@@ -7,14 +7,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import PageHeader from '@/components/shared/PageHeader';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, User, Phone, Mail, MapPin, Pencil, Trash2, Calendar, FileText, MessageSquare } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Search, User, Phone, Mail, MapPin, Pencil, Trash2, Calendar, FileText, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import CommTimeline from '@/components/shared/CommTimeline';
+import ClientDocuments from '@/components/clients/ClientDocuments';
 
 const emptyClient = { full_name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', notes: '' };
 
 export default function Clients() {
+  const navigate = useNavigate();
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,7 @@ export default function Clients() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyClient);
   const [expandedComm, setExpandedComm] = useState(null);
+  const [expandedDocs, setExpandedDocs] = useState(null);
 
   useEffect(() => { loadClients(); }, []);
 
@@ -97,13 +100,28 @@ export default function Clients() {
                           {client.address && <span className="flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="w-3 h-3" />{client.address}{client.city ? `, ${client.city}` : ''}</span>}
                         </div>
                         {client.notes && <p className="text-xs text-muted-foreground mt-1 italic">{client.notes}</p>}
-                        <button
-                          onClick={() => setExpandedComm(expandedComm === client.id ? null : client.id)}
-                          className="mt-1.5 text-xs text-primary hover:underline flex items-center gap-1"
-                        >
-                          <Mail className="w-3 h-3" />
-                          {expandedComm === client.id ? 'Hide' : 'Communications'}
-                        </button>
+                        <div className="mt-2 flex items-center gap-3">
+                          <button
+                            onClick={() => setExpandedDocs(expandedDocs === client.id ? null : client.id)}
+                            className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+                          >
+                            <FileText className="w-3 h-3" />
+                            {expandedDocs === client.id ? 'Hide Documents' : 'Documents'}
+                            {expandedDocs === client.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+                          <button
+                            onClick={() => setExpandedComm(expandedComm === client.id ? null : client.id)}
+                            className="text-xs text-slate-500 hover:underline flex items-center gap-1"
+                          >
+                            <Mail className="w-3 h-3" />
+                            {expandedComm === client.id ? 'Hide Comms' : 'Communications'}
+                          </button>
+                        </div>
+                        {expandedDocs === client.id && (
+                          <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <ClientDocuments client={client} />
+                          </div>
+                        )}
                         {expandedComm === client.id && (
                           <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
                             <CommTimeline clientId={client.id} limit={15} />
@@ -112,16 +130,13 @@ export default function Clients() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <Button variant="ghost" size="icon" asChild className="h-8 w-8 text-muted-foreground">
+                      <Button variant="ghost" size="icon" asChild className="h-8 w-8 text-muted-foreground" title="Appointments">
                         <Link to={`/appointments?client=${client.id}`}><Calendar className="w-4 h-4" /></Link>
                       </Button>
-                      <Button variant="ghost" size="icon" asChild className="h-8 w-8 text-muted-foreground">
-                        <Link to={`/estimates?client=${client.id}`}><FileText className="w-4 h-4" /></Link>
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openEdit(client)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openEdit(client)} title="Edit client">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => handleDelete(client.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => handleDelete(client.id)} title="Delete">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
