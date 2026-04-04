@@ -81,17 +81,21 @@ export default function EstimateEditor() {
 
       {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
-        <div className="flex items-center justify-between px-5 py-3">
+        <div className="flex items-center px-4 h-12 gap-0">
 
-          {/* Left: close + title + option tabs */}
-          <div className="flex items-center gap-0 flex-1 min-w-0">
-            <button
-              onClick={() => navigate('/estimates')}
-              className="p-1.5 hover:bg-slate-100 rounded-md transition-colors mr-2 flex-shrink-0"
-            >
-              <X className="w-4 h-4 text-slate-500" />
-            </button>
-            <span className="font-bold text-slate-800 text-sm mr-4 whitespace-nowrap flex-shrink-0">Estimate</span>
+          {/* Close */}
+          <button
+            onClick={() => navigate('/estimates')}
+            className="p-1.5 hover:bg-slate-100 rounded-md transition-colors mr-2 flex-shrink-0"
+          >
+            <X className="w-4 h-4 text-slate-500" />
+          </button>
+
+          {/* Title */}
+          <span className="font-bold text-slate-900 text-sm mr-1 whitespace-nowrap flex-shrink-0">Estimate</span>
+
+          {/* Option tabs — inline right after title, with bottom border */}
+          <div className="flex items-stretch h-full flex-shrink-0">
             <EstimateOptionTabs
               activeOption={activeOption}
               options={options}
@@ -100,26 +104,29 @@ export default function EstimateEditor() {
             />
           </div>
 
-          {/* Right: actions */}
-          <div className="flex items-center gap-2.5 flex-shrink-0 ml-4">
-            <button onClick={() => setShowPreviewModal(true)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors" title="Preview document">
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Stepper — right side */}
+          <div className="flex items-center flex-shrink-0 border-l border-slate-100 pl-5 ml-2">
+            <EstimateStatusStepper
+              status={estimate.status}
+              estimate={estimate}
+              onStatusChange={(newStatus) => {
+                setEstimate(e => ({ ...e, status: newStatus }));
+                loadEstimate();
+              }}
+              onOpenSendReview={() => setShowSendModal(true)}
+            />
+          </div>
+
+          {/* Eye icon */}
+          <div className="flex items-center gap-1 ml-4 flex-shrink-0 border-l border-slate-100 pl-4">
+            <button onClick={() => setShowPreviewModal(true)} className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title="Preview document">
               <Eye className="w-4 h-4" />
             </button>
-            {saving && <span className="text-xs text-slate-400 ml-1">Saving...</span>}
+            {saving && <span className="text-xs text-slate-400">Saving...</span>}
           </div>
-        </div>
-
-        {/* STATUS STEPPER */}
-        <div className="px-6 pb-3 pt-1 flex items-center flex-wrap gap-2 border-t border-slate-100">
-          <EstimateStatusStepper
-            status={estimate.status}
-            estimate={estimate}
-            onStatusChange={(newStatus) => {
-              setEstimate(e => ({ ...e, status: newStatus }));
-              loadEstimate();
-            }}
-            onOpenSendReview={() => setShowSendModal(true)}
-          />
         </div>
       </div>
 

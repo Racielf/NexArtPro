@@ -243,55 +243,33 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
           const isActive = idx === currentIdx;
           const isClickable = idx <= currentIdx + 1;
 
-          let subLabel = null;
-          if (step.id === 'omw' && omwActive) subLabel = `${omwMiles} mi`;
-          if (step.id === 'finish' && (status === 'finished' || status === 'completed')) subLabel = 'Done';
-          if (step.id === 'sent' && status === 'sent') subLabel = 'Sent to customer';
-          if (step.id === 'approved' && status === 'approved') subLabel = 'Approved';
-          if (step.id === 'approved' && status === 'sent') subLabel = 'Awaiting';
-          if (step.id === 'approved' && status === 'declined') subLabel = 'Declined';
-
           return (
             <div key={step.id} className="flex items-center">
               <button
                 onClick={() => isClickable && handleStepClick(step.id, idx)}
                 disabled={!isClickable}
-                className={`flex flex-col items-center gap-1 transition-opacity ${isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default opacity-40'}`}
-                style={{ minWidth: 70 }}
+                className={`flex flex-col items-center gap-0.5 px-3 transition-opacity ${isClickable ? 'cursor-pointer hover:opacity-75' : 'cursor-default opacity-35'}`}
                 title={isClickable ? `Click to: ${step.label}` : step.label}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all shadow-sm ${
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
                   isDone ? 'bg-primary border-primary' :
                   isActive ? 'bg-primary border-primary' :
                   'bg-white border-slate-300'
                 }`}>
                   {step.id === 'omw' && omwActive ? (
-                    <Square className="text-white" style={{ width: 18, height: 18 }} />
+                    <Square className="text-white w-3.5 h-3.5" />
                   ) : (
-                    <Icon className={isDone || isActive ? 'text-white' : 'text-slate-400'} style={{ width: 18, height: 18 }} />
+                    <Icon className={`w-3.5 h-3.5 ${isDone || isActive ? 'text-white' : 'text-slate-400'}`} />
                   )}
                 </div>
-                <span className={`text-xs font-semibold whitespace-nowrap ${
-                  isActive ? 'text-primary' : isDone ? 'text-slate-700' : 'text-slate-400'
+                <span className={`text-[10px] font-bold uppercase tracking-wide whitespace-nowrap leading-tight ${
+                  isActive ? 'text-primary' : isDone ? 'text-slate-600' : 'text-slate-400'
                 }`}>
-                  {step.id === 'omw' && omwActive ? 'Stop' : step.label}
+                  {step.id === 'omw' && omwActive ? 'STOP' : step.label.toUpperCase()}
                 </span>
-                {subLabel && (
-                  <span className="text-xs text-slate-400 -mt-0.5 whitespace-nowrap" style={{ fontSize: 10 }}>
-                    {subLabel}
-                  </span>
-                )}
-                {step.id === 'approved' && status === 'sent' && !subLabel && (
-                  <button
-                    onClick={e => { e.stopPropagation(); handleDecline(); }}
-                    className="text-[10px] text-red-400 hover:text-red-600 -mt-0.5 leading-none"
-                  >
-                    Decline
-                  </button>
-                )}
               </button>
               {idx < steps.length - 1 && (
-                <div className="h-0.5 mb-5 transition-colors" style={{ width: 32, background: idx < currentIdx ? 'hsl(var(--primary))' : '#e2e8f0' }} />
+                <div className="h-0.5 flex-shrink-0 mb-3.5 transition-colors" style={{ width: 20, background: idx < currentIdx ? 'hsl(var(--primary))' : '#e2e8f0' }} />
               )}
             </div>
           );
@@ -300,11 +278,10 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
 
       {/* OMW live banner */}
       {omwActive && (
-        <div className="flex items-center gap-2 ml-4 bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5">
-          <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-          <MapPin className="w-3.5 h-3.5 text-orange-500" />
-          <span className="text-xs text-orange-700 font-medium">Tracking: {omwMiles} mi</span>
-          <button onClick={handleStopOMW} className="text-xs text-red-500 hover:text-red-700 font-semibold ml-1">
+        <div className="flex items-center gap-1.5 ml-3 bg-orange-50 border border-orange-200 rounded-lg px-2.5 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+          <span className="text-xs text-orange-700 font-medium">{omwMiles} mi</span>
+          <button onClick={handleStopOMW} className="text-xs text-red-500 hover:text-red-700 font-semibold ml-0.5">
             Stop
           </button>
         </div>

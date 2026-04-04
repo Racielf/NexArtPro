@@ -77,30 +77,24 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" style={{ maxWidth: 900 }}>
 
       {/* ESTIMATE HEADER */}
-      <div className="px-7 pt-6 pb-4 border-b border-slate-200">
-        <div className="flex items-baseline gap-2 mb-3">
-          <h2 className="text-2xl font-bold text-slate-900">Estimate <span className="text-primary">#{estimate?.estimate_number}</span></h2>
-        </div>
-        <div className="flex items-center gap-6 text-xs text-slate-500 flex-wrap">
+      <div className="px-7 pt-6 pb-5 border-b border-slate-200">
+        <h2 className="text-2xl font-bold text-slate-900 mb-3">
+          Estimate <span className="text-primary">#{estimate?.estimate_number}</span>
+        </h2>
+        <div className="flex items-center gap-6 text-sm text-slate-500 flex-wrap">
           <div className="flex items-center gap-1.5">
             <span>Expiration date:</span>
-            {expirationDate ? (
-              <span className="text-slate-700 font-medium">{expirationDate}</span>
-            ) : (
-              <button
-                onClick={() => document.getElementById('expiry-input').showPicker?.()}
-                className="text-primary font-medium flex items-center gap-1 hover:underline"
-              >
-                <Plus className="w-3 h-3" />Expiration date
-              </button>
-            )}
-            <input
-              id="expiry-input"
-              type="date"
-              value={expirationDate}
-              onChange={e => setExpirationDate(e.target.value)}
-              className="absolute opacity-0 pointer-events-none w-0 h-0"
-            />
+            <label className="flex items-center gap-1 cursor-pointer">
+              {!expirationDate && <Plus className="w-3.5 h-3.5 text-primary" />}
+              <input
+                type="date"
+                value={expirationDate}
+                onChange={e => setExpirationDate(e.target.value)}
+                className={`text-sm border-none outline-none bg-transparent cursor-pointer ${expirationDate ? 'text-slate-700 font-medium' : 'text-primary font-medium w-5 opacity-0 absolute'}`}
+              />
+              {!expirationDate && <span className="text-primary font-medium hover:underline">Expiration date</span>}
+              {expirationDate && <span className="text-slate-700 font-medium">{expirationDate}</span>}
+            </label>
           </div>
           <div className="flex items-center gap-1.5">
             <span>Customer can approve:</span>
@@ -112,56 +106,25 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
             </button>
           </div>
         </div>
-
-        {/* Project dates + deposit */}
-        <div className="flex items-center gap-6 text-xs text-slate-500 flex-wrap mt-3 pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">Start date:</span>
-            <input
-              type="date"
-              value={projectStartDate}
-              onChange={e => setProjectStartDate(e.target.value)}
-              className="text-xs text-slate-700 border border-slate-200 rounded px-2 py-0.5 focus:outline-none focus:border-primary"
-            />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">End date:</span>
-            <input
-              type="date"
-              value={projectEndDate}
-              onChange={e => setProjectEndDate(e.target.value)}
-              className="text-xs text-slate-700 border border-slate-200 rounded px-2 py-0.5 focus:outline-none focus:border-primary"
-            />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">Deposit %:</span>
-            <input
-              type="number"
-              value={depositPercent}
-              onChange={e => setDepositPercent(parseFloat(e.target.value) || 0)}
-              min={0} max={100}
-              className="text-xs text-slate-700 border border-slate-200 rounded px-2 py-0.5 w-16 text-right focus:outline-none focus:border-primary"
-            />
-          </div>
-        </div>
       </div>
 
       {/* LINE ITEMS HEADER */}
       <div className="px-7 py-3.5 flex items-center justify-between border-b border-slate-100">
         <h3 className="text-sm font-bold text-slate-800">Line items</h3>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => setViewMode(v => v === 'list' ? 'grid' : 'list')}
-            className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-            title="Toggle view"
-          >
-            {viewMode === 'list' ? <LayoutGrid className="w-4 h-4" /> : <AlignLeft className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => setViewMode(v => v === 'list' ? 'grid' : 'list')}
-            className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            onClick={() => setViewMode('list')}
+            className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+            title="List view"
           >
             <AlignLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+            title="Grid view"
+          >
+            <LayoutGrid className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -193,8 +156,8 @@ export default function EstimateLineItems({ estimate, onSave, saving }) {
       </div>
 
       {/* COLUMN HEADERS */}
-      <div className="grid text-xs text-slate-400 font-semibold px-7 py-2.5 bg-slate-50/80 border-y border-slate-100"
-        style={{ gridTemplateColumns: '20px 1fr 90px 110px 120px 56px' }}>
+      <div className="grid text-xs text-slate-400 font-semibold px-7 py-2.5 bg-slate-50 border-y border-slate-100"
+        style={{ gridTemplateColumns: '16px 1fr 80px 100px 110px 64px' }}>
         <div />
         <div>Service</div>
         <div className="text-right">Quantity</div>
@@ -291,86 +254,38 @@ function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
   const [showMore, setShowMore] = useState(false);
 
   return (
-    <div className={`px-7 py-3.5 transition-colors group ${isEditing ? 'bg-blue-50/40 border-l-2 border-primary' : 'hover:bg-slate-50/60 border-l-2 border-transparent'}`}>
+    <div className={`px-7 py-4 transition-colors group ${isEditing ? 'bg-blue-50/30 border-l-2 border-primary' : 'hover:bg-slate-50/60 border-l-2 border-transparent'}`}>
 
-      {/* PRIMARY ROW — always visible */}
-      <div className="grid items-center gap-3" style={{ gridTemplateColumns: '16px 1fr 90px 110px 120px 56px' }}>
+      {/* PRIMARY ROW */}
+      <div className="grid items-start gap-3" style={{ gridTemplateColumns: '16px 1fr 80px 100px 110px 64px' }}>
 
-        <div className="text-slate-200 cursor-grab active:cursor-grabbing">
+        <div className="text-slate-200 cursor-grab active:cursor-grabbing pt-1">
           <GripVertical className="w-3.5 h-3.5" />
         </div>
 
-        {/* Service name */}
-        <Input
-          value={item.name}
-          onChange={e => onUpdate(item.id, 'name', e.target.value)}
-          onFocus={() => !isEditing && onEdit()}
-          placeholder="Service name"
-          className="h-9 text-sm font-semibold text-slate-900 border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white transition-colors px-2"
-        />
-
-        {/* Qty */}
-        <Input
-          type="number"
-          value={item.quantity}
-          onChange={e => onUpdate(item.id, 'quantity', e.target.value)}
-          onFocus={() => !isEditing && onEdit()}
-          className="h-9 text-sm text-right border-slate-200 w-full"
-          min={0}
-        />
-
-        {/* Unit Price */}
-        <div className="relative">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+        {/* Service name + description always below */}
+        <div>
           <Input
-            type="number"
-            step="0.01"
-            value={item.unit_price}
-            onChange={e => onUpdate(item.id, 'unit_price', e.target.value)}
+            value={item.name}
+            onChange={e => onUpdate(item.id, 'name', e.target.value)}
             onFocus={() => !isEditing && onEdit()}
-            className="h-9 pl-5 text-sm text-right border-slate-200"
-            min={0}
+            placeholder="Service name"
+            className="h-8 text-sm font-semibold text-slate-900 border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white transition-colors px-2 mb-1"
           />
-        </div>
-
-        {/* Total — read only */}
-        <div className="text-right font-bold text-slate-900 text-sm pr-1">
-          ${(item.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-        </div>
-
-        {/* Remove */}
-        <div className="flex justify-end">
-          <button
-            onClick={() => onRemove(item.id)}
-            className="p-1.5 rounded text-slate-200 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* SECONDARY — show when row is active */}
-      {isEditing && (
-        <div className="ml-6 mt-3 space-y-2.5">
-          {/* Description */}
-          <Input
-            value={item.description}
-            onChange={e => onUpdate(item.id, 'description', e.target.value)}
-            placeholder="Add description (optional)"
-            className="h-7 text-xs text-slate-600 border-slate-200 bg-white"
-          />
-
-          {/* More details toggle */}
-          <button
-            onClick={() => setShowMore(v => !v)}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-primary transition-colors"
-          >
-            <span>{showMore ? '▲' : '▼'}</span>
-            {showMore ? 'Less details' : 'More details'}
-          </button>
-
-          {showMore && (
-            <div className="flex items-center gap-4 flex-wrap pt-0.5">
+          {/* Description — always visible, editable when active */}
+          {isEditing ? (
+            <Input
+              value={item.description}
+              onChange={e => onUpdate(item.id, 'description', e.target.value)}
+              placeholder="Add description..."
+              className="h-7 text-xs text-slate-500 border-slate-200 bg-white"
+            />
+          ) : item.description ? (
+            <p className="text-xs text-slate-400 leading-snug px-2">{item.description}</p>
+          ) : null}
+          {/* Unit cost row when expanded */}
+          {isEditing && (
+            <div className="mt-2 flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-slate-400">Unit cost</span>
                 <div className="relative">
@@ -386,32 +301,65 @@ function LineItemRow({ item, isEditing, onEdit, onUpdate, onRemove }) {
                 </div>
               </div>
               <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={item.taxable ?? true}
-                  onChange={e => onUpdate(item.id, 'taxable', e.target.checked)}
-                  className="rounded"
-                />
+                <input type="checkbox" checked={item.taxable ?? true} onChange={e => onUpdate(item.id, 'taxable', e.target.checked)} className="rounded" />
                 Taxable
               </label>
               <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={item.save_to_pricebook ?? false}
-                  onChange={e => onUpdate(item.id, 'save_to_pricebook', e.target.checked)}
-                  className="rounded"
-                />
+                <input type="checkbox" checked={item.save_to_pricebook ?? false} onChange={e => onUpdate(item.id, 'save_to_pricebook', e.target.checked)} className="rounded" />
                 Save to price book
               </label>
             </div>
           )}
+          {!isEditing && item.unit_cost > 0 && (
+            <p className="text-xs text-slate-400 px-2 mt-1">Unit cost: ${item.unit_cost?.toFixed(2)}</p>
+          )}
         </div>
-      )}
 
-      {/* Show description when not editing */}
-      {!isEditing && item.description && (
-        <div className="ml-6 mt-1 text-xs text-slate-400 leading-snug">{item.description}</div>
-      )}
+        {/* Qty */}
+        <Input
+          type="number"
+          value={item.quantity}
+          onChange={e => onUpdate(item.id, 'quantity', e.target.value)}
+          onFocus={() => !isEditing && onEdit()}
+          className="h-8 text-sm text-right border-slate-200 w-full"
+          min={0}
+        />
+
+        {/* Unit Price */}
+        <div className="relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+          <Input
+            type="number"
+            step="0.01"
+            value={item.unit_price}
+            onChange={e => onUpdate(item.id, 'unit_price', e.target.value)}
+            onFocus={() => !isEditing && onEdit()}
+            className="h-8 pl-5 text-sm text-right border-slate-200"
+            min={0}
+          />
+        </div>
+
+        {/* Total — read only */}
+        <div className="text-right font-bold text-slate-900 text-sm pt-1 pr-1">
+          ${(item.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </div>
+
+        {/* Actions: edit + remove — always visible */}
+        <div className="flex items-center justify-end gap-1 pt-0.5">
+          <button
+            onClick={onEdit}
+            className="p-1.5 rounded text-slate-300 hover:text-primary hover:bg-primary/5 transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onRemove(item.id)}
+            className="p-1.5 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
