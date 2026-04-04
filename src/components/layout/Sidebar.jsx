@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
+  UserSquare,
   Calendar, 
   FileText, 
   ClipboardList,
@@ -14,7 +15,7 @@ import {
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/clients', label: 'Clients', icon: Users },
+  { path: '/customers', label: 'Customers', icon: UserSquare },
   { path: '/appointments', label: 'Appointments', icon: Calendar },
   { path: '/estimates', label: 'Estimates', icon: FileText },
   { path: '/work-orders', label: 'Work Orders', icon: ClipboardList },

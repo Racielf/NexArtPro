@@ -2,19 +2,16 @@
   "name": "Appointment",
   "type": "object",
   "properties": {
-    "client_id": {
+    "customer_id": {
       "type": "string"
     },
-    "client_name": {
+    "customer_display_name": {
       "type": "string"
     },
-    "client_phone": {
+    "customer_phone": {
       "type": "string"
     },
-    "client_email": {
-      "type": "string"
-    },
-    "client_address": {
+    "customer_email": {
       "type": "string"
     },
     "title": {
@@ -23,84 +20,77 @@
     "service_type": {
       "type": "string"
     },
-    "scheduled_date": {
+    "description": {
+      "type": "string"
+    },
+    "appointment_date": {
       "type": "string",
       "format": "date"
     },
-    "scheduled_time": {
+    "start_time": {
       "type": "string"
     },
     "end_time": {
       "type": "string"
     },
-    "description": {
+    "arrival_window": {
       "type": "string"
     },
-    "internal_notes": {
+    "service_address": {
       "type": "string"
     },
     "status": {
       "type": "string",
       "enum": [
         "new",
-        "confirmed",
         "scheduled",
+        "confirmed",
         "on_the_way",
-        "in_progress",
-        "completed",
+        "arrived",
+        "visit_completed",
+        "follow_up_needed",
         "cancelled",
-        "no_show",
-        "follow_up_needed"
+        "no_show"
       ],
       "default": "new"
     },
-    "assigned_to": {
+    "assigned_worker_id": {
       "type": "string"
     },
-    "source": {
+    "assigned_worker_name": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "internal_notes": {
       "type": "string"
     },
     "notify_customer": {
       "type": "boolean",
       "default": true
     },
-    "reminder_set": {
-      "type": "boolean",
-      "default": false
-    },
-    "omw_start_lat": {
-      "type": "number"
-    },
-    "omw_start_lng": {
-      "type": "number"
-    },
-    "omw_end_lat": {
-      "type": "number"
-    },
-    "omw_end_lng": {
-      "type": "number"
-    },
-    "miles_traveled": {
-      "type": "number"
-    },
-    "omw_start_time": {
+    "confirmation_sent_at": {
       "type": "string"
     },
-    "completed_time": {
+    "reminder_sent_at": {
       "type": "string"
     },
-    "notes": {
+    "omw_started_at": {
+      "type": "string"
+    },
+    "arrived_at": {
+      "type": "string"
+    },
+    "completed_at": {
       "type": "string"
     },
     "estimate_id": {
       "type": "string"
-    },
-    "job_id": {
-      "type": "string"
     }
   },
   "required": [
-    "client_name",
-    "scheduled_date"
+    "customer_display_name",
+    "appointment_date"
   ]
 }

@@ -13,20 +13,27 @@ const SERVICE_TYPES = [
 
 const STATUS_OPTIONS = [
   { value: 'new', label: 'New' },
-  { value: 'confirmed', label: 'Confirmed' },
   { value: 'scheduled', label: 'Scheduled' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'on_the_way', label: 'On The Way' },
+  { value: 'arrived', label: 'Arrived' },
+  { value: 'visit_completed', label: 'Visit Completed' },
   { value: 'follow_up_needed', label: 'Follow-up Needed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'no_show', label: 'No Show' },
 ];
 
+const ARRIVAL_WINDOWS = ['8am – 10am', '10am – 12pm', '12pm – 2pm', '2pm – 4pm', '4pm – 6pm', 'Flexible'];
+
 const emptyForm = {
-  client_id: '', client_name: '', client_phone: '', client_email: '',
-  client_address: '', title: '', service_type: '', scheduled_date: '',
-  scheduled_time: '09:00', end_time: '', description: '', internal_notes: '',
-  assigned_to: '', status: 'new', notify_customer: true, reminder_set: false,
+  customer_id: '', customer_display_name: '', customer_phone: '', customer_email: '',
+  service_address: '', title: '', service_type: '', appointment_date: '',
+  start_time: '09:00', end_time: '', arrival_window: '', description: '',
+  internal_notes: '', notes: '', assigned_worker_id: '', assigned_worker_name: '',
+  status: 'new', notify_customer: true,
 };
 
-export default function ApptFormModal({ open, onOpenChange, editing, clients, onSave }) {
+export default function ApptFormModal({ open, onOpenChange, editing, customers = [], onSave }) {
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
@@ -35,21 +42,21 @@ export default function ApptFormModal({ open, onOpenChange, editing, clients, on
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleClientSelect = (clientId) => {
-    const client = clients.find(c => c.id === clientId);
-    if (client) {
+  const handleCustomerSelect = (customerId) => {
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      const displayName = customer.display_name || `${customer.first_name} ${customer.last_name}`;
+      const address = [customer.service_address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ');
       setForm(f => ({
         ...f,
-        client_id: client.id,
-        client_name: client.full_name,
-        client_phone: client.phone || '',
-        client_email: client.email || '',
-        client_address: [client.address, client.city, client.state, client.zip].filter(Boolean).join(', '),
+        customer_id: customer.id,
+        customer_display_name: displayName,
+        customer_phone: customer.phone || '',
+        customer_email: customer.email || '',
+        service_address: address,
       }));
     }
   };
-
-  const handleSubmit = (openCustomer = false) => onSave(form, openCustomer);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -61,47 +68,51 @@ export default function ApptFormModal({ open, onOpenChange, editing, clients, on
         </DialogHeader>
 
         <div className="space-y-5 pt-1">
-          {/* Customer */}
+
+          {/* Customer Section */}
           <div className="space-y-3">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Customer</p>
             <div className="space-y-1.5">
-              <Label className="text-xs">Select Existing Customer</Label>
-              <Select onValueChange={handleClientSelect} value={form.client_id || ''}>
+              <Label className="text-xs">Select Customer</Label>
+              <Select onValueChange={handleCustomerSelect} value={form.customer_id || ''}>
                 <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Search or choose customer..." />
+                  <SelectValue placeholder="Choose a customer..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map(c => (
-                    <SelectItem key={c.id} value={c.id} className="text-sm">
-                      {c.full_name} {c.phone ? `· ${c.phone}` : ''}
-                    </SelectItem>
-                  ))}
+                  {customers.map(c => {
+                    const name = c.display_name || `${c.first_name} ${c.last_name}`;
+                    return (
+                      <SelectItem key={c.id} value={c.id} className="text-sm">
+                        {name}{c.phone ? ` · ${c.phone}` : ''}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Customer Name *</Label>
-                <Input className="h-8 text-sm" value={form.client_name} onChange={e => set('client_name', e.target.value)} placeholder="Full name" />
+                <Input className="h-8 text-sm" value={form.customer_display_name} onChange={e => set('customer_display_name', e.target.value)} placeholder="Full name" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Phone</Label>
-                <Input className="h-8 text-sm" value={form.client_phone} onChange={e => set('client_phone', e.target.value)} placeholder="(555) 000-0000" />
+                <Input className="h-8 text-sm" value={form.customer_phone} onChange={e => set('customer_phone', e.target.value)} placeholder="(555) 000-0000" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Email</Label>
-                <Input className="h-8 text-sm" value={form.client_email} onChange={e => set('client_email', e.target.value)} placeholder="email@example.com" />
+                <Input className="h-8 text-sm" value={form.customer_email} onChange={e => set('customer_email', e.target.value)} placeholder="email@example.com" />
               </div>
               <div className="space-y-1.5 col-span-2">
-                <Label className="text-xs">Address</Label>
-                <Input className="h-8 text-sm" value={form.client_address} onChange={e => set('client_address', e.target.value)} placeholder="Street, City, State ZIP" />
+                <Label className="text-xs">Service Address</Label>
+                <Input className="h-8 text-sm" value={form.service_address} onChange={e => set('service_address', e.target.value)} placeholder="Street, City, State ZIP" />
               </div>
             </div>
           </div>
 
-          {/* Appointment details */}
+          {/* Appointment Details */}
           <div className="space-y-3">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Appointment</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Appointment Details</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5 col-span-2">
                 <Label className="text-xs">Title</Label>
@@ -110,9 +121,7 @@ export default function ApptFormModal({ open, onOpenChange, editing, clients, on
               <div className="space-y-1.5">
                 <Label className="text-xs">Service Type</Label>
                 <Select value={form.service_type} onValueChange={v => set('service_type', v)}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select type..." />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select type..." /></SelectTrigger>
                   <SelectContent>
                     {SERVICE_TYPES.map(s => <SelectItem key={s} value={s} className="text-sm">{s}</SelectItem>)}
                   </SelectContent>
@@ -121,9 +130,7 @@ export default function ApptFormModal({ open, onOpenChange, editing, clients, on
               <div className="space-y-1.5">
                 <Label className="text-xs">Status</Label>
                 <Select value={form.status} onValueChange={v => set('status', v)}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value} className="text-sm">{o.label}</SelectItem>)}
                   </SelectContent>
@@ -131,19 +138,28 @@ export default function ApptFormModal({ open, onOpenChange, editing, clients, on
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Date *</Label>
-                <Input type="date" className="h-8 text-sm" value={form.scheduled_date} onChange={e => set('scheduled_date', e.target.value)} />
+                <Input type="date" className="h-8 text-sm" value={form.appointment_date} onChange={e => set('appointment_date', e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Assigned To</Label>
-                <Input className="h-8 text-sm" value={form.assigned_to} onChange={e => set('assigned_to', e.target.value)} placeholder="Technician name" />
+                <Label className="text-xs">Arrival Window</Label>
+                <Select value={form.arrival_window} onValueChange={v => set('arrival_window', v)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select window..." /></SelectTrigger>
+                  <SelectContent>
+                    {ARRIVAL_WINDOWS.map(w => <SelectItem key={w} value={w} className="text-sm">{w}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Start Time</Label>
-                <Input type="time" className="h-8 text-sm" value={form.scheduled_time} onChange={e => set('scheduled_time', e.target.value)} />
+                <Input type="time" className="h-8 text-sm" value={form.start_time} onChange={e => set('start_time', e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">End Time</Label>
                 <Input type="time" className="h-8 text-sm" value={form.end_time} onChange={e => set('end_time', e.target.value)} />
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label className="text-xs">Assigned Worker</Label>
+                <Input className="h-8 text-sm" value={form.assigned_worker_name} onChange={e => set('assigned_worker_name', e.target.value)} placeholder="Technician / worker name" />
               </div>
             </div>
           </div>
@@ -151,39 +167,32 @@ export default function ApptFormModal({ open, onOpenChange, editing, clients, on
           {/* Notes */}
           <div className="space-y-3">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Notes</p>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Description / Notes</Label>
-              <Textarea className="text-sm resize-none" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe the work or scope..." rows={2} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Internal Notes</Label>
-              <Textarea className="text-sm resize-none" value={form.internal_notes} onChange={e => set('internal_notes', e.target.value)} placeholder="Team only — not visible to customer..." rows={2} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Description / Customer Notes</Label>
+                <Textarea className="text-sm resize-none" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe the work or scope..." rows={3} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Internal Notes</Label>
+                <Textarea className="text-sm resize-none" value={form.internal_notes} onChange={e => set('internal_notes', e.target.value)} placeholder="Team only — not visible to customer..." rows={3} />
+              </div>
             </div>
           </div>
 
-          {/* Toggles */}
-          <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-              <input type="checkbox" checked={!!form.notify_customer} onChange={e => set('notify_customer', e.target.checked)} className="rounded" />
-              Notify customer
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-              <input type="checkbox" checked={!!form.reminder_set} onChange={e => set('reminder_set', e.target.checked)} className="rounded" />
-              Set reminder
+          {/* Notifications */}
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="notify" checked={!!form.notify_customer} onChange={e => set('notify_customer', e.target.checked)} className="rounded" />
+            <label htmlFor="notify" className="text-sm text-slate-600 cursor-pointer select-none">
+              Notify customer via email
             </label>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => handleSubmit(true)} className="text-xs">
-                Save & Open Customer
-              </Button>
-              <Button size="sm" onClick={() => handleSubmit(false)} className="bg-primary hover:bg-primary/90 text-white text-xs">
-                {editing ? 'Save Changes' : 'Save Appointment'}
-              </Button>
-            </div>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => onSave(form)}>
+              {editing ? 'Save Changes' : 'Save Appointment'}
+            </Button>
           </div>
         </div>
       </DialogContent>

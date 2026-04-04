@@ -3,7 +3,8 @@ import { MapPin, Clock, User, Wrench, ChevronRight } from 'lucide-react';
 import ApptStatusBadge from './ApptStatusBadge';
 
 export default function ApptListRow({ appt, isSelected, onClick }) {
-  const timeDisplay = [appt.scheduled_time, appt.end_time].filter(Boolean).join(' – ');
+  const timeDisplay = [appt.start_time, appt.end_time].filter(Boolean).join(' – ');
+  const dateObj = appt.appointment_date ? new Date(appt.appointment_date + 'T00:00:00') : null;
 
   return (
     <div
@@ -14,17 +15,17 @@ export default function ApptListRow({ appt, isSelected, onClick }) {
       {/* Date block */}
       <div className="flex-shrink-0 w-12 text-center">
         <div className="text-xs font-bold text-slate-500 uppercase leading-none">
-          {appt.scheduled_date ? new Date(appt.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' }) : '—'}
+          {dateObj ? dateObj.toLocaleDateString('en-US', { month: 'short' }) : '—'}
         </div>
         <div className={`text-xl font-extrabold leading-tight ${isSelected ? 'text-primary' : 'text-slate-800'}`}>
-          {appt.scheduled_date ? new Date(appt.scheduled_date + 'T00:00:00').getDate() : '—'}
+          {dateObj ? dateObj.getDate() : '—'}
         </div>
       </div>
 
       {/* Main info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-sm text-slate-900 truncate">{appt.client_name}</span>
+          <span className="font-semibold text-sm text-slate-900 truncate">{appt.customer_display_name}</span>
           <ApptStatusBadge status={appt.status} size="xs" />
         </div>
         {(appt.title || appt.description) && (
@@ -41,14 +42,14 @@ export default function ApptListRow({ appt, isSelected, onClick }) {
               <Wrench className="w-3 h-3" />{appt.service_type}
             </span>
           )}
-          {appt.client_address && (
+          {appt.service_address && (
             <span className="flex items-center gap-1 text-xs text-slate-400 truncate max-w-48">
-              <MapPin className="w-3 h-3 flex-shrink-0" />{appt.client_address}
+              <MapPin className="w-3 h-3 flex-shrink-0" />{appt.service_address}
             </span>
           )}
-          {appt.assigned_to && (
+          {appt.assigned_worker_name && (
             <span className="flex items-center gap-1 text-xs text-slate-400">
-              <User className="w-3 h-3" />{appt.assigned_to}
+              <User className="w-3 h-3" />{appt.assigned_worker_name}
             </span>
           )}
         </div>
