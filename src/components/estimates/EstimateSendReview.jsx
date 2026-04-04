@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link } from 'lucide-react';
+import { X, Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link, Mail } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -96,6 +97,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
   const [sending, setSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
   const [sentError, setSentError] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (!open) return null;
 
@@ -119,7 +121,13 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     logDocument(estimate.id, estimate, 'sent_link', { secure_link: clientLink });
   };
 
+  const handleConfirmSend = () => {
+    if (!recipientEmail) { toast.error('Recipient email is required'); return; }
+    setConfirmOpen(true);
+  };
+
   const handleSend = async () => {
+    setConfirmOpen(false);
     if (!recipientEmail) { toast.error('Recipient email is required'); return; }
     setSending(true);
     setSentError(null);
@@ -222,13 +230,13 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
           <Button
             size="sm"
             className={`text-white gap-1.5 ${sentSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'}`}
-            onClick={handleSend}
+            onClick={sentSuccess ? undefined : handleConfirmSend}
             disabled={sending || sentSuccess}
           >
             {sentSuccess ? (
               <><CheckCircle className="w-3.5 h-3.5" /> Sent</>
             ) : (
-              <><Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Send'}</>
+              <><Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Confirm & Send'}</>
             )}
           </Button>
         </div>
@@ -327,6 +335,52 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         </div>
 
       </div>
+
+      {/* CONFIRM & SEND MODAL */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="w-5 h-5 text-primary" />Confirm & Send Estimate
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <p className="text-sm text-slate-600">
+              You're about to send <span className="font-semibold text-slate-800">Estimate #{estimate?.estimate_number}</span> to:
+            </p>
+            <div className="bg-slate-50 rounded-lg p-3 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <span className="text-sm font-semibold text-slate-800">{recipientEmail}</span>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-3 space-y-1 text-xs text-slate-500">
+              <div className="flex justify-between">
+                <span>Client</span>
+                <span className="font-medium text-slate-700">{estimate?.client_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total</span>
+                <span className="font-medium text-slate-700">${(estimate?.total || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Status after send</span>
+                <span className="font-medium text-primary">Sent</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400">
+              The client will receive a link to view, approve, or decline the estimate.
+            </p>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button className="flex-1 bg-primary hover:bg-primary/90 text-white gap-1.5" onClick={handleSend}>
+              <Send className="w-3.5 h-3.5" /> Send Now
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
