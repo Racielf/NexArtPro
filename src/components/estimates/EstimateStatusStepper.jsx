@@ -10,12 +10,12 @@ import { toast } from 'sonner';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 
 const steps = [
-  { id: 'schedule',  label: 'Schedule',    icon: Calendar },
-  { id: 'omw',       label: 'OMW',         icon: Navigation2 },
-  { id: 'finish',    label: 'Finish',      icon: CheckSquare },
-  { id: 'sent',      label: 'Send',        icon: Send },
-  { id: 'approved',  label: 'Approval',    icon: ThumbsUp },
-  { id: 'converted', label: 'Copy to Job', icon: Copy },
+  { id: 'schedule',  label: 'Schedule',   icon: Calendar },
+  { id: 'omw',       label: 'OMW',        icon: Navigation2 },
+  { id: 'finish',    label: 'Finish',     icon: CheckSquare },
+  { id: 'sent',      label: 'Send',       icon: Send },
+  { id: 'approved',  label: 'Approval',   icon: ThumbsUp },
+  { id: 'converted', label: 'Convert WO', icon: Copy },
 ];
 
 const statusToIdx = {
@@ -176,7 +176,7 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
   const [approvalOpen, setApprovalOpen] = useState(false);
 
   const handleApproveConfirm = async () => {
-    await base44.entities.Estimate.update(estimate.id, { status: 'approved', approved_at: new Date().toISOString() });
+    await base44.entities.Estimate.update(estimate.id, { status: 'approved', approved_at: new Date().toISOString(), approval_type: 'manual' });
     await logComm({ event_type: 'estimate_approved', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Approved`, status: 'delivered' });
     setApprovalOpen(false);
     toast.success('Estimate approved!');
@@ -230,7 +230,11 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
       onOpenSendReview?.(); return;
     }
     if (stepId === 'approved') { setApprovalOpen(true); return; }
-    if (stepId === 'converted') { handleCopyToJob(); return; }
+    if (stepId === 'converted') {
+      const isApproved = ['approved', 'signed'].includes(estimate.status);
+      if (!isApproved) { toast.error('Estimate must be approved before converting to Work Order'); return; }
+      handleCopyToJob(); return;
+    }
   };
 
   return (
@@ -240,28 +244,53 @@ export default function EstimateStatusStepper({ status, estimate, onStatusChange
           const Icon = step.icon;
           const isDone = idx < currentIdx;
           const isActive = idx === currentIdx;
+          const isApproved = ['approved', 'signed', 'converted'].includes(estimate.status);
+          const isConverted = estimate.status === 'converted';
+
+          // Special coloring for Approval step
+          const isApprovalDone = step.id === 'approved' && isApproved;
+          // Convert WO is locked if not approved
+          const isConvertLocked = step.id === 'converted' && !isApproved;
+
+          const circleClass = isApprovalDone
+            ? 'bg-green-500 border-green-500'
+            : isConvertLocked
+              ? 'bg-white border-slate-200'
+              : isDone || isActive
+                ? 'bg-primary border-primary'
+                : 'bg-white border-slate-300';
+
+          const iconClass = isApprovalDone || (!isConvertLocked && (isDone || isActive))
+            ? 'text-white'
+            : isConvertLocked
+              ? 'text-slate-300'
+              : 'text-slate-400';
+
+          const labelClass = isApprovalDone
+            ? 'text-green-600'
+            : isConvertLocked
+              ? 'text-slate-300'
+              : isActive
+                ? 'text-primary'
+                : isDone
+                  ? 'text-slate-600'
+                  : 'text-slate-400';
 
           return (
             <div key={step.id} className="flex items-center">
               <button
                 onClick={() => handleStepClick(step.id)}
-                className="flex flex-col items-center gap-0.5 px-3 transition-opacity cursor-pointer hover:opacity-75"
-                title={`Click to: ${step.label}`}
+                className={`flex flex-col items-center gap-0.5 px-3 transition-opacity cursor-pointer ${isConvertLocked ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-75'}`}
+                title={isConvertLocked ? 'Estimate must be approved first' : `Click to: ${step.label}`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
-                  isDone ? 'bg-primary border-primary' :
-                  isActive ? 'bg-primary border-primary' :
-                  'bg-white border-slate-300'
-                }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${circleClass}`}>
                   {step.id === 'omw' && omwActive ? (
                     <Square className="text-white w-3.5 h-3.5" />
                   ) : (
-                    <Icon className={`w-3.5 h-3.5 ${isDone || isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <Icon className={`w-3.5 h-3.5 ${iconClass}`} />
                   )}
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wide whitespace-nowrap leading-tight ${
-                  isActive ? 'text-primary' : isDone ? 'text-slate-600' : 'text-slate-400'
-                }`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wide whitespace-nowrap leading-tight ${labelClass}`}>
                   {step.id === 'omw' && omwActive ? 'STOP' : step.label.toUpperCase()}
                 </span>
               </button>

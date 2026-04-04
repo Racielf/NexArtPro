@@ -13,9 +13,12 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  if (!estimate || !['approved', 'signed'].includes(estimate.status)) return null;
+  if (!estimate) return null;
+
+  const isApproved = ['approved', 'signed'].includes(estimate.status);
 
   const handleConvert = async () => {
+    if (!isApproved) { toast.error('Estimate must be approved before converting to Work Order'); return; }
     setLoading(true);
     try {
       // Check if already converted
@@ -64,8 +67,9 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
     <Button
       size="sm"
       onClick={handleConvert}
-      disabled={loading}
-      className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+      disabled={loading || !isApproved}
+      title={!isApproved ? 'Estimate must be approved before converting' : 'Convert to Work Order'}
+      className={`gap-1.5 text-white ${isApproved ? 'bg-purple-600 hover:bg-purple-700' : 'bg-slate-300 cursor-not-allowed'}`}
     >
       {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ClipboardList className="w-3.5 h-3.5" />}
       Convert to Work Order
