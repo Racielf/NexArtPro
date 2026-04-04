@@ -17,6 +17,12 @@
     "client_address": {
       "type": "string"
     },
+    "title": {
+      "type": "string"
+    },
+    "service_type": {
+      "type": "string"
+    },
     "scheduled_date": {
       "type": "string",
       "format": "date"
@@ -24,22 +30,43 @@
     "scheduled_time": {
       "type": "string"
     },
+    "end_time": {
+      "type": "string"
+    },
     "description": {
+      "type": "string"
+    },
+    "internal_notes": {
       "type": "string"
     },
     "status": {
       "type": "string",
       "enum": [
+        "new",
+        "confirmed",
         "scheduled",
-        "omw",
+        "on_the_way",
         "in_progress",
         "completed",
-        "cancelled"
+        "cancelled",
+        "no_show",
+        "follow_up_needed"
       ],
-      "default": "scheduled"
+      "default": "new"
     },
     "assigned_to": {
       "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "notify_customer": {
+      "type": "boolean",
+      "default": true
+    },
+    "reminder_set": {
+      "type": "boolean",
+      "default": false
     },
     "omw_start_lat": {
       "type": "number"
@@ -63,6 +90,12 @@
       "type": "string"
     },
     "notes": {
+      "type": "string"
+    },
+    "estimate_id": {
+      "type": "string"
+    },
+    "job_id": {
       "type": "string"
     }
   },
