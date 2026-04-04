@@ -20,6 +20,8 @@ import ClientEstimateView from './pages/ClientEstimateView';
 import WorkOrderDetail from './pages/WorkOrderDetail';
 import Customers from './pages/Customers';
 import ApptTimeTracking from './pages/ApptTimeTracking';
+import Assignments from './pages/Assignments';
+import Workers from './pages/Workers';
 
 
 const AuthenticatedApp = () => {
@@ -58,6 +60,8 @@ const AuthenticatedApp = () => {
         <Route path="/work-order-detail" element={<WorkOrderDetail />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/appt-time-tracking" element={<ApptTimeTracking />} />
+        <Route path="/assignments" element={<Assignments />} />
+        <Route path="/workers" element={<Workers />} />
 
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />

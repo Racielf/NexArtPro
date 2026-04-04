@@ -1,0 +1,52 @@
+{
+  "name": "Worker",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string"
+    },
+    "trade": {
+      "type": "string",
+      "enum": [
+        "electrician",
+        "plumber",
+        "carpenter",
+        "painter",
+        "hvac",
+        "general",
+        "supervisor",
+        "other"
+      ],
+      "default": "general"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "technician",
+        "lead",
+        "supervisor",
+        "subcontractor"
+      ],
+      "default": "technician"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "avatar_url": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "full_name"
+  ]
+}

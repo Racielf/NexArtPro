@@ -11,6 +11,7 @@ import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 import ManualApprovalPanel from '@/components/estimates/ManualApprovalPanel';
+import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrderButton';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -124,6 +125,13 @@ export default function EstimateEditor() {
                 }}
                 onOpenSendReview={() => setShowSendModal(true)}
               />
+            </div>
+          )}
+
+          {/* Convert to Work Order */}
+          {hasClient && (
+            <div className="flex-shrink-0 ml-2">
+              <ConvertToWorkOrderButton estimate={estimate} onConverted={loadEstimate} />
             </div>
           )}
 

@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { X, MapPin, User, DollarSign, CheckCircle, Receipt, Edit2, Save } from 'lucide-react';
+import { X, MapPin, User, DollarSign, CheckCircle, Receipt, Edit2, Save, UserCheck, Clock, History } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
 import CommTimeline from '@/components/shared/CommTimeline';
+import WorkerSelector from '@/components/workorders/WorkerSelector';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 export default function WorkOrderDetail() {
   const navigate = useNavigate();
@@ -20,6 +22,8 @@ export default function WorkOrderDetail() {
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
+  const [showWorkerSelector, setShowWorkerSelector] = useState(false);
+  const [assignments, setAssignments] = useState([]);
 
   useEffect(() => { loadWorkOrder(); }, []);
 
@@ -34,6 +38,8 @@ export default function WorkOrderDetail() {
         const ests = await base44.entities.Estimate.filter({ id: wo.estimate_id });
         if (ests.length) setEstimate(ests[0]);
       }
+      const hist = await base44.entities.JobAssignment.filter({ work_order_id: woId });
+      setAssignments(hist.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
     }
     setLoading(false);
   };
@@ -53,6 +59,40 @@ export default function WorkOrderDetail() {
     setWorkOrder(w => ({ ...w, status: 'completed' }));
     setSaving(false);
     toast.success('Work order completed!');
+  };
+
+  const handleAssignWorker = async (worker) => {
+    setShowWorkerSelector(false);
+    const user = await base44.auth.me();
+    const isReassign = !!workOrder.assigned_worker_id;
+    const now = new Date().toISOString();
+    const update = {
+      status: workOrder.status === 'draft' ? 'assigned' : workOrder.status,
+      assigned_worker_id: worker.id,
+      assigned_worker_name: worker.full_name,
+      assigned_worker_phone: worker.phone || '',
+      assigned_by: isReassign ? workOrder.assigned_by : (user?.full_name || user?.email || 'Admin'),
+      assigned_at: isReassign ? workOrder.assigned_at : now,
+      previous_worker_id: isReassign ? workOrder.assigned_worker_id : null,
+      previous_worker_name: isReassign ? workOrder.assigned_worker_name : null,
+      reassigned_at: isReassign ? now : null,
+      reassigned_by: isReassign ? (user?.full_name || user?.email || 'Admin') : null,
+    };
+    await base44.entities.WorkOrder.update(woId, update);
+    await base44.entities.JobAssignment.create({
+      work_order_id: woId,
+      work_order_number: workOrder.work_order_number,
+      worker_id: worker.id,
+      worker_name: worker.full_name,
+      worker_phone: worker.phone || '',
+      client_name: workOrder.client_name,
+      title: workOrder.title,
+      action: isReassign ? 'reassigned' : 'assigned',
+      assigned_by: user?.full_name || user?.email || 'Admin',
+      previous_worker_name: isReassign ? workOrder.assigned_worker_name : null,
+    });
+    toast.success(`${isReassign ? 'Reassigned' : 'Assigned'} to ${worker.full_name}`);
+    loadWorkOrder();
   };
 
   const handleConvertToInvoice = async () => {
@@ -171,42 +211,85 @@ export default function WorkOrderDetail() {
 
           {/* WORK STATUS */}
           <div className="px-4 py-4 border-b border-slate-100">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Work Status</p>
-            {editing ? (
-              <select
-                value={formData.status || ''}
-                onChange={e => setFormData({ ...formData, status: e.target.value })}
-                className="w-full text-sm border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:border-primary"
-              >
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="invoiced">Invoiced</option>
-              </select>
-            ) : (
-              <div className="flex items-center gap-2">
-                <StatusBadge status={workOrder.status} />
-              </div>
-            )}
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Work Status</p>
+            <select
+              value={formData.status || workOrder.status || ''}
+              onChange={async e => {
+                const newStatus = e.target.value;
+                setFormData(f => ({ ...f, status: newStatus }));
+                const extra = {};
+                if (newStatus === 'in_progress') extra.started_at = new Date().toISOString();
+                if (newStatus === 'completed') extra.completed_at = new Date().toISOString();
+                await base44.entities.WorkOrder.update(woId, { status: newStatus, ...extra });
+                setWorkOrder(w => ({ ...w, status: newStatus, ...extra }));
+                toast.success('Status updated');
+              }}
+              className="w-full text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
+            >
+              {['draft','assigned','scheduled','on_the_way','in_progress','completed','cancelled','invoiced'].map(s => (
+                <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
+              ))}
+            </select>
           </div>
 
           {/* ASSIGNED WORKER */}
           <div className="px-4 py-4 border-b border-slate-100">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Assigned Worker</p>
-            {editing ? (
-              <Input
-                value={formData.assigned_to || ''}
-                onChange={e => setFormData({ ...formData, assigned_to: e.target.value })}
-                placeholder="Technician name"
-                className="h-8 text-sm"
-              />
-            ) : (
-              <div className="flex items-center gap-2 text-sm text-slate-700">
-                <User className="w-3.5 h-3.5" />
-                <span className="font-medium">{workOrder.assigned_to || 'Unassigned'}</span>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Assigned Worker</p>
+              <button onClick={() => setShowWorkerSelector(true)}
+                className="flex items-center gap-1 text-[10px] text-primary font-semibold hover:underline">
+                <UserCheck className="w-3 h-3" />
+                {workOrder.assigned_worker_id ? 'Reassign' : 'Assign'}
+              </button>
+            </div>
+            {workOrder.assigned_worker_name ? (
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                    {workOrder.assigned_worker_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{workOrder.assigned_worker_name}</p>
+                    {workOrder.assigned_worker_phone && <p className="text-xs text-slate-400">{workOrder.assigned_worker_phone}</p>}
+                  </div>
+                </div>
+                {workOrder.assigned_by && (
+                  <p className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {workOrder.reassigned_at
+                      ? `Reassigned by ${workOrder.reassigned_by}`
+                      : `Assigned by ${workOrder.assigned_by}`}
+                  </p>
+                )}
               </div>
+            ) : (
+              <button onClick={() => setShowWorkerSelector(true)}
+                className="flex items-center gap-2 text-sm text-slate-400 italic hover:text-primary transition-colors">
+                <User className="w-3.5 h-3.5" />Click to assign a worker
+              </button>
             )}
           </div>
+
+          {/* ASSIGNMENT HISTORY */}
+          {assignments.length > 0 && (
+            <div className="px-4 py-4 border-b border-slate-100">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1">
+                <History className="w-3 h-3" />Assignment History
+              </p>
+              <div className="space-y-2">
+                {assignments.map((a, i) => (
+                  <div key={a.id || i} className="text-[11px] text-slate-500 leading-snug">
+                    <span className="font-semibold text-slate-700">{a.action === 'reassigned' ? '↻ Reassigned' : '→ Assigned'}</span>
+                    {' to '}<span className="font-medium text-slate-700">{a.worker_name}</span>
+                    {a.previous_worker_name && <span> (from {a.previous_worker_name})</span>}
+                    {a.assigned_by && <span className="text-slate-400"> · by {a.assigned_by}</span>}
+                    <br />
+                    <span className="text-slate-400">{a.created_date ? format(new Date(a.created_date), 'MMM d, h:mm a') : ''}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* SCHEDULED DATE */}
           <div className="px-4 py-4 border-b border-slate-100">
@@ -309,6 +392,13 @@ export default function WorkOrderDetail() {
 
       </div>
 
+    {showWorkerSelector && (
+        <WorkerSelector
+          currentWorkerId={workOrder.assigned_worker_id}
+          onSelect={handleAssignWorker}
+          onCancel={() => setShowWorkerSelector(false)}
+        />
+      )}
     </div>
   );
 }

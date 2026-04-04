@@ -1,0 +1,53 @@
+{
+  "name": "JobAssignment",
+  "type": "object",
+  "properties": {
+    "work_order_id": {
+      "type": "string"
+    },
+    "work_order_number": {
+      "type": "number"
+    },
+    "worker_id": {
+      "type": "string"
+    },
+    "worker_name": {
+      "type": "string"
+    },
+    "worker_phone": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "assigned",
+        "reassigned",
+        "unassigned"
+      ],
+      "default": "assigned"
+    },
+    "assigned_by": {
+      "type": "string"
+    },
+    "previous_worker_name": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "work_order_id",
+    "worker_id"
+  ]
+}

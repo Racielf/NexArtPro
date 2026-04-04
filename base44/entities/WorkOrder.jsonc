@@ -14,6 +14,9 @@
     "client_name": {
       "type": "string"
     },
+    "client_email": {
+      "type": "string"
+    },
     "client_address": {
       "type": "string"
     },
@@ -23,25 +26,67 @@
     "title": {
       "type": "string"
     },
+    "description": {
+      "type": "string"
+    },
     "status": {
       "type": "string",
       "enum": [
-        "pending",
+        "draft",
+        "assigned",
+        "scheduled",
+        "on_the_way",
         "in_progress",
         "completed",
+        "cancelled",
         "invoiced"
       ],
-      "default": "pending"
+      "default": "draft"
     },
-    "assigned_to": {
+    "assigned_worker_id": {
+      "type": "string"
+    },
+    "assigned_worker_name": {
+      "type": "string"
+    },
+    "assigned_worker_phone": {
+      "type": "string"
+    },
+    "assigned_by": {
+      "type": "string"
+    },
+    "assigned_at": {
+      "type": "string"
+    },
+    "previous_worker_id": {
+      "type": "string"
+    },
+    "previous_worker_name": {
+      "type": "string"
+    },
+    "reassigned_at": {
+      "type": "string"
+    },
+    "reassigned_by": {
       "type": "string"
     },
     "scheduled_date": {
       "type": "string",
       "format": "date"
     },
+    "scheduled_time": {
+      "type": "string"
+    },
+    "groups": {
+      "type": "array",
+      "description": "Inherited from estimate groups",
+      "items": {
+        "type": "object"
+      }
+    },
     "line_items": {
       "type": "array",
+      "description": "Legacy line items",
       "items": {
         "type": "object"
       }
@@ -55,7 +100,13 @@
     "notes": {
       "type": "string"
     },
+    "internal_notes": {
+      "type": "string"
+    },
     "completed_at": {
+      "type": "string"
+    },
+    "started_at": {
       "type": "string"
     }
   },

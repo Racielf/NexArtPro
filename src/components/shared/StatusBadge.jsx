@@ -19,6 +19,10 @@ const statusConfig = {
   converted: { label: 'Converted', className: 'bg-purple-100 text-purple-700 border-purple-200' },
   // Work Orders
   pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  assigned: { label: 'Assigned', className: 'bg-blue-100 text-blue-700 border-blue-200' },
+  scheduled: { label: 'Scheduled', className: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  on_the_way: { label: 'On the Way', className: 'bg-orange-100 text-orange-700 border-orange-200' },
+  in_progress: { label: 'In Progress', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
   invoiced: { label: 'Invoiced', className: 'bg-purple-100 text-purple-700 border-purple-200' },
   // Invoices
   paid: { label: 'Paid', className: 'bg-green-100 text-green-700 border-green-200' },

@@ -11,7 +11,9 @@ import {
   Settings,
   Wrench,
   Clock,
-  Timer
+  Timer,
+  UserCheck,
+  HardHat
 } from 'lucide-react';
 
 const navItems = [
@@ -20,6 +22,8 @@ const navItems = [
   { path: '/appointments', label: 'Appointments', icon: Calendar },
   { path: '/estimates', label: 'Estimates', icon: FileText },
   { path: '/work-orders', label: 'Work Orders', icon: ClipboardList },
+  { path: '/assignments', label: 'Assignments', icon: UserCheck },
+  { path: '/workers', label: 'Workers', icon: HardHat },
   { path: '/invoices', label: 'Invoices', icon: Receipt },
   { path: '/time-tracking', label: 'Time Tracking', icon: Clock },
   { path: '/appt-time-tracking', label: 'Appt Tracking', icon: Timer },
