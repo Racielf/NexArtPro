@@ -1,18 +1,18 @@
 import React from 'react';
 
 /**
- * EstimateDocumentConfigured — renders the estimate document respecting visibility toggles.
- * Used by EstimateSendReview for live preview + print/download/send.
+ * EstimateDocumentConfigured — final print-ready / preview document.
+ * Supports grouped line items (estimate.groups) with fallback to flat line_items.
+ * Respects visibility toggles from EstimateSendReview.
  */
 export default function EstimateDocumentConfigured({ estimate, visibility = {} }) {
   if (!estimate) return null;
 
   const v = visibility;
-  const items = estimate.line_items || [];
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
   const fmt = (dateStr) => dateStr
-    ? new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : null;
 
   const expDate = v.expirationDate !== false ? fmt(estimate.expiration_date) : null;
@@ -21,7 +21,7 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
 
   const total = estimate.total || 0;
   const depositPct = estimate.deposit_percent || 0;
-  const depositAmount = depositPct > 0 ? (total * depositPct) / 100 : 0;
+  const depositAmount = estimate.deposit_amount || (total * depositPct / 100);
   const remaining = total - depositAmount;
 
   const statusColors = {
@@ -29,18 +29,30 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
     declined: { bg: '#7f1d1d', color: '#fecaca' },
     sent: { bg: '#1e3a5f', color: '#93c5fd' },
     draft: { bg: '#1e293b', color: '#94a3b8' },
+    converted: { bg: '#14532d', color: '#bbf7d0' },
   };
   const statusStyle = statusColors[estimate.status] || statusColors.draft;
 
-  // Decide whether to show services vs materials columns
-  const showServices = v.services !== false;
-  const showMaterials = v.materials !== false;
-  const visibleItems = items.filter(item => {
-    // simple heuristic: if item has unit_cost it's material, else service
-    const isMaterial = item.unit_cost > 0;
-    if (isMaterial) return showMaterials;
-    return showServices;
-  });
+  // Resolve groups vs legacy flat items
+  const groups = estimate.groups?.length
+    ? estimate.groups
+    : estimate.line_items?.length
+      ? [{ id: 'legacy', name: null, items: estimate.line_items.map(li => ({
+          id: li.id, service_name: li.name || li.service_name || '',
+          description: li.description || '',
+          quantity: li.quantity || 1, unit: li.unit || 'ea',
+          unit_price: li.unit_price || 0,
+          line_total: li.total_price || li.line_total || 0,
+        })) }]
+      : [];
+
+  const showGroups = v.services !== false;
+
+  // Inline styles for reuse
+  const th = { textAlign: 'right', padding: '9px 12px', fontWeight: 600, color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid #e2e8f0', borderTop: '1px solid #e2e8f0' };
+  const thLeft = { ...th, textAlign: 'left' };
+  const td = { padding: '11px 12px', textAlign: 'right', color: '#64748b', fontSize: 13, borderBottom: '1px solid #f1f5f9' };
+  const tdLeft = { ...td, textAlign: 'left' };
 
   return (
     <div
@@ -51,8 +63,6 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
       {/* ── HEADER ── */}
       <div style={{ background: '#0f172a', padding: '36px 52px 30px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-
-          {/* Left: logo + company */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
               {v.businessLogo !== false && (
@@ -64,22 +74,17 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
                 </div>
               )}
               <div>
-                {v.businessName !== false && (
-                  <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>FSM Pro</div>
-                )}
+                {v.businessName !== false && <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>FSM Pro</div>}
                 <div style={{ color: '#64748b', fontSize: 11 }}>Field Service Management</div>
               </div>
             </div>
             {v.businessAddress !== false && (
               <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.8 }}>
-                Portland, OR 97201<br />
-                info@fsmpro.com<br />
-                (503) 555-0100
+                Portland, OR 97201<br />info@fsmpro.com<br />(503) 555-0100
               </div>
             )}
           </div>
 
-          {/* Right: estimate badge */}
           <div style={{ textAlign: 'right' }}>
             <div style={{ color: '#38bdf8', fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>Estimate</div>
             {v.estimateNumber !== false && (
@@ -116,18 +121,8 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
           )}
           {(startDate || endDate) && (
             <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
-              {startDate && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Start Date</div>
-                  <div style={{ color: '#334155', fontSize: 12 }}>{startDate}</div>
-                </div>
-              )}
-              {endDate && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>End Date</div>
-                  <div style={{ color: '#334155', fontSize: 12 }}>{endDate}</div>
-                </div>
-              )}
+              {startDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Start</div><div style={{ color: '#334155', fontSize: 12 }}>{startDate}</div></div>}
+              {endDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>End</div><div style={{ color: '#334155', fontSize: 12 }}>{endDate}</div></div>}
             </div>
           )}
           {v.technicianName !== false && estimate.assigned_to && (
@@ -139,57 +134,81 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
         </div>
       </div>
 
-      {/* ── ESTIMATE MESSAGE ── */}
+      {/* ── CUSTOMER NOTES (top) ── */}
       {v.estimateMessage !== false && estimate.notes && (
         <div style={{ padding: '20px 52px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>Notes</div>
           <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate.notes}</p>
         </div>
       )}
 
-      {/* ── LINE ITEMS ── */}
-      {(showServices || showMaterials) && (
-        <div style={{ padding: '32px 52px 0' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 14 }}>
-            {showServices && showMaterials ? 'Services & Materials' : showServices ? 'Services' : 'Materials'}
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600, color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid #e2e8f0', borderTop: '1px solid #e2e8f0' }}>Description</th>
-                <th style={{ textAlign: 'right', padding: '10px 14px', fontWeight: 600, color: '#64748b', fontSize: 11, textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0', borderTop: '1px solid #e2e8f0', width: 70 }}>Qty</th>
-                <th style={{ textAlign: 'right', padding: '10px 14px', fontWeight: 600, color: '#64748b', fontSize: 11, textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0', borderTop: '1px solid #e2e8f0', width: 110 }}>Unit Price</th>
-                <th style={{ textAlign: 'right', padding: '10px 14px', fontWeight: 600, color: '#64748b', fontSize: 11, textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0', borderTop: '1px solid #e2e8f0', width: 120 }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleItems.map((item, idx) => (
-                <tr key={item.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '13px 14px' }}>
-                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{item.name}</div>
-                    {item.description && <div style={{ color: '#64748b', fontSize: 11, marginTop: 3 }}>{item.description}</div>}
-                  </td>
-                  <td style={{ padding: '13px 14px', textAlign: 'right', color: '#64748b' }}>{item.quantity?.toFixed(0) ?? '—'}</td>
-                  <td style={{ padding: '13px 14px', textAlign: 'right', color: '#64748b' }}>${(item.unit_price || 0).toFixed(2)}</td>
-                  <td style={{ padding: '13px 14px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>${(item.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                </tr>
-              ))}
-              {visibleItems.length === 0 && (
-                <tr>
-                  <td colSpan={4} style={{ padding: '28px 14px', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>No line items</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* ── GROUPS + LINE ITEMS ── */}
+      {showGroups && groups.length > 0 && (
+        <div style={{ padding: '28px 52px 0' }}>
+          {groups.map((group, gi) => {
+            const groupTotal = (group.items || []).reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0);
+            const showGroupHeader = group.name && groups.length > 1;
+            return (
+              <div key={group.id || gi} style={{ marginBottom: gi < groups.length - 1 ? 28 : 8 }}>
+                {showGroupHeader && (
+                  <div style={{ background: '#1e293b', color: 'white', fontWeight: 700, fontSize: 12, padding: '8px 14px', borderRadius: '6px 6px 0 0', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{group.name}</span>
+                    <span style={{ color: '#94a3b8', fontSize: 11 }}>${groupTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={thLeft}>Description</th>
+                      <th style={{ ...th, width: 60 }}>Qty</th>
+                      <th style={{ ...th, width: 60 }}>Unit</th>
+                      <th style={{ ...th, width: 110 }}>Unit Price</th>
+                      <th style={{ ...th, width: 120 }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(group.items || []).length === 0 && (
+                      <tr><td colSpan={5} style={{ ...tdLeft, color: '#94a3b8', fontStyle: 'italic', padding: '20px 12px' }}>No items</td></tr>
+                    )}
+                    {(group.items || []).map((item, idx) => (
+                      <tr key={item.id || idx}>
+                        <td style={tdLeft}>
+                          <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{item.service_name || item.name}</div>
+                          {item.description && <div style={{ color: '#64748b', fontSize: 11, marginTop: 3 }}>{item.description}</div>}
+                        </td>
+                        <td style={td}>{parseFloat(item.quantity) % 1 === 0 ? parseInt(item.quantity) : (item.quantity || 0)}</td>
+                        <td style={td}>{item.unit || 'ea'}</td>
+                        <td style={td}>${(item.unit_price || 0).toFixed(2)}</td>
+                        <td style={{ ...td, fontWeight: 700, color: '#0f172a' }}>${(item.line_total || item.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    ))}
+                    {showGroupHeader && (
+                      <tr style={{ background: '#f8fafc' }}>
+                        <td colSpan={4} style={{ ...tdLeft, fontWeight: 600, color: '#334155', fontSize: 12, padding: '8px 12px', borderBottom: 'none' }}>Subtotal — {group.name}</td>
+                        <td style={{ ...td, fontWeight: 700, color: '#334155', borderBottom: 'none', padding: '8px 12px' }}>${groupTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* ── TOTALS ── */}
-      <div style={{ padding: '12px 52px 32px', display: 'flex', justifyContent: 'flex-end' }}>
-        <div style={{ width: 300 }}>
+      <div style={{ padding: '16px 52px 32px', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ width: 310 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: 13 }}>
             <span>Subtotal</span>
             <span>${(estimate.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
+          {(estimate.discount_amount > 0) && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #e2e8f0', color: '#dc2626', fontSize: 13 }}>
+              <span>Discount{estimate.discount_type === 'percent' ? ` (${estimate.discount_value}%)` : ''}</span>
+              <span>-${(estimate.discount_amount || 0).toFixed(2)}</span>
+            </div>
+          )}
           {(estimate.tax_rate > 0) && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: 13 }}>
               <span>Tax ({estimate.tax_rate}%)</span>
@@ -203,7 +222,7 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
           {depositPct > 0 && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #e2e8f0', color: '#0369a1', fontSize: 13, marginTop: 10 }}>
-                <span style={{ fontWeight: 600 }}>Deposit Required ({depositPct}%)</span>
+                <span style={{ fontWeight: 600 }}>Deposit Due ({depositPct}%)</span>
                 <span style={{ fontWeight: 700 }}>${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', color: '#475569', fontSize: 13 }}>
@@ -215,29 +234,34 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
         </div>
       </div>
 
-      {/* ── NOTES (if not shown as message above) ── */}
-      {v.estimateMessage === false && estimate.notes && (
-        <div style={{ margin: '0 52px', borderTop: '1px solid #e2e8f0', padding: '24px 0 28px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>Notes &amp; Terms</div>
-          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.8, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate.notes}</p>
+      {/* ── TERMS & ADDITIONAL SECTIONS ── */}
+      {[
+        { field: 'exclusions', label: 'Exclusions' },
+        { field: 'payment_terms', label: 'Payment Terms' },
+        { field: 'warranty_terms', label: 'Warranty' },
+        { field: 'legal_terms', label: 'Terms & Conditions' },
+      ].filter(s => estimate[s.field]).map(s => (
+        <div key={s.field} style={{ margin: '0 52px', borderTop: '1px solid #e2e8f0', padding: '20px 0' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>{s.label}</div>
+          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate[s.field]}</p>
         </div>
-      )}
+      ))}
 
       {/* ── SIGNATURE ── */}
       <div style={{ margin: '0 52px', borderTop: '1px solid #e2e8f0', padding: '32px 0 28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56 }}>
         <div>
-          <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: 36, marginBottom: 10 }}></div>
+          <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: 40, marginBottom: 10 }}></div>
           <div style={{ fontSize: 11, color: '#94a3b8' }}>Authorized Signature</div>
         </div>
         <div>
-          <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: 36, marginBottom: 10 }}></div>
+          <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: 40, marginBottom: 10 }}></div>
           <div style={{ fontSize: 11, color: '#94a3b8' }}>Customer Signature &amp; Date</div>
         </div>
       </div>
 
       {/* ── FOOTER ── */}
       <div style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', padding: '14px 52px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>FSM Pro · Portland, OR · info@fsmpro.com</div>
+        <div style={{ fontSize: 11, color: '#94a3b8' }}>FSM Pro · Portland, OR · info@fsmpro.com · (503) 555-0100</div>
         <div style={{ fontSize: 11, color: '#cbd5e1' }}>Estimate #{estimate.estimate_number} · Valid 30 days from date issued</div>
       </div>
 

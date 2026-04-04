@@ -1,11 +1,24 @@
 import React, { useState } from 'react';
-import { X, Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy } from 'lucide-react';
+import { X, Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import EstimateDocumentConfigured from './EstimateDocumentConfigured';
+
+async function logDocument(estimateId, estimate, action, extra = {}) {
+  await base44.entities.DocumentLog.create({
+    estimate_id: estimateId,
+    estimate_number: estimate?.estimate_number,
+    client_name: estimate?.client_name || '',
+    client_email: estimate?.client_email || '',
+    action,
+    total_amount: estimate?.total || 0,
+    status_at_send: estimate?.status || 'draft',
+    ...extra,
+  });
+}
 
 const DEFAULT_VISIBILITY = {
   businessLogo: true,
@@ -90,23 +103,37 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
 
   const clientLink = `${window.location.origin}/client-estimate?id=${estimate?.id}`;
 
-  const handlePrint = () => printEstimate(estimate, visibility);
+  const handlePrint = () => {
+    printEstimate(estimate, visibility);
+    logDocument(estimate.id, estimate, 'printed');
+  };
 
-  const handleDownload = () => downloadEstimate(estimate, visibility);
+  const handleDownload = () => {
+    downloadEstimate(estimate, visibility);
+    logDocument(estimate.id, estimate, 'downloaded');
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(clientLink);
+    toast.success('Secure link copied!');
+    logDocument(estimate.id, estimate, 'sent_link', { secure_link: clientLink });
+  };
 
   const handleSend = async () => {
     if (!recipientEmail) { toast.error('Recipient email is required'); return; }
     setSending(true);
     setSentError(null);
     try {
+      const now = new Date().toISOString();
       await base44.entities.Estimate.update(estimate.id, {
-        status: 'sent',
-        sent_at: new Date().toISOString(),
+      status: 'sent',
+      sent_at: now,
       });
       const fullMessage = `${message}\n\nView & approve your estimate here:\n${clientLink}`;
       try {
-        await base44.integrations.Core.SendEmail({ to: recipientEmail, subject, body: fullMessage });
-        await logComm({
+      await base44.integrations.Core.SendEmail({ to: recipientEmail, subject, body: fullMessage });
+      await logDocument(estimate.id, estimate, 'sent_email', { recipient_email: recipientEmail, subject, secure_link: clientLink });
+      await logComm({
           event_type: 'estimate_sent',
           client_id: estimate.client_id || '',
           client_name: estimate.client_name,
@@ -187,7 +214,10 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
             <Printer className="w-3.5 h-3.5" /> Print
           </Button>
           <Button size="sm" variant="outline" onClick={handleDownload} className="gap-1.5">
-            <Download className="w-3.5 h-3.5" /> Download
+            <Download className="w-3.5 h-3.5" /> PDF
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleCopyLink} className="gap-1.5">
+            <Link className="w-3.5 h-3.5" /> Copy Link
           </Button>
           <Button
             size="sm"
