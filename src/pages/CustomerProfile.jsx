@@ -77,6 +77,8 @@ export default function CustomerProfile() {
       status: 'draft',
       groups: [],
     });
+    // Update local state so button switches to "Open Estimate" immediately
+    setEstimates(prev => [est, ...prev]);
     navigate(`/estimate-editor?id=${est.id}`);
   };
 
@@ -148,9 +150,9 @@ export default function CustomerProfile() {
             <Button size="sm" variant="outline" onClick={handleCreateAppointment}>
               <Calendar className="w-3.5 h-3.5 mr-1.5" />Schedule
             </Button>
-            {latestEstimate ? (
+            {estimates.length > 0 ? (
               <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/5"
-                onClick={() => navigate(`/estimate-editor?id=${latestEstimate.id}`)}>
+                onClick={() => navigate(`/estimate-editor?id=${estimates[0].id}`)}>
                 <FileText className="w-3.5 h-3.5 mr-1.5" />Open Estimate
               </Button>
             ) : (
