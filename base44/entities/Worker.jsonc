@@ -5,6 +5,12 @@
     "full_name": {
       "type": "string"
     },
+    "first_name": {
+      "type": "string"
+    },
+    "last_name": {
+      "type": "string"
+    },
     "worker_type": {
       "type": "string",
       "enum": [
@@ -45,7 +51,25 @@
     "phone": {
       "type": "string"
     },
+    "alternate_phone": {
+      "type": "string"
+    },
     "email": {
+      "type": "string"
+    },
+    "company_name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
       "type": "string"
     },
     "emergency_contact": {
@@ -55,6 +79,14 @@
       "type": "string"
     },
     "hire_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
       "type": "string",
       "format": "date"
     },
@@ -75,10 +107,10 @@
     "avatar_url": {
       "type": "string"
     },
-    "address": {
+    "notes": {
       "type": "string"
     },
-    "notes": {
+    "internal_notes": {
       "type": "string"
     }
   },
