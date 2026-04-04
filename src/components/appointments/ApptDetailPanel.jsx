@@ -33,28 +33,26 @@ export default function ApptDetailPanel({ appt, onClose, onEdit, onStatusChange,
   }, [appt?.id]);
 
   const loadRelated = async () => {
-    const promises = [];
-    // Estimate: by estimate_id on appointment, or by appointment_id on estimate
+    // Fetch estimates: try by direct estimate_id first, then by customer_id
+    let estResults = [];
     if (appt.estimate_id) {
-      promises.push(base44.entities.Estimate.filter({ id: appt.estimate_id }, '-created_date', 1));
-    } else if (appt.customer_id) {
-      promises.push(base44.entities.Estimate.filter({ appointment_id: appt.id }, '-created_date', 1));
-    } else {
-      promises.push(Promise.resolve([]));
+      estResults = await base44.entities.Estimate.filter({ id: appt.estimate_id }, '-created_date', 1);
     }
-    // Work orders linked to appointment's estimate or customer
-    promises.push(appt.customer_id
-      ? base44.entities.WorkOrder.filter({ client_id: appt.customer_id }, '-created_date', 1)
-      : Promise.resolve([])
-    );
-    // Invoices
-    promises.push(appt.customer_id
-      ? base44.entities.Invoice.filter({ client_id: appt.customer_id }, '-created_date', 1)
-      : Promise.resolve([])
-    );
-    const [ests, wos, invs] = await Promise.all(promises);
+    if (estResults.length === 0 && appt.customer_id) {
+      estResults = await base44.entities.Estimate.filter({ client_id: appt.customer_id }, '-created_date', 1);
+    }
+
+    const [wos, invs] = await Promise.all([
+      appt.customer_id
+        ? base44.entities.WorkOrder.filter({ client_id: appt.customer_id }, '-created_date', 1)
+        : Promise.resolve([]),
+      appt.customer_id
+        ? base44.entities.Invoice.filter({ client_id: appt.customer_id }, '-created_date', 1)
+        : Promise.resolve([]),
+    ]);
+
     setRelatedDocs({
-      estimate: ests[0] || null,
+      estimate: estResults[0] || null,
       workOrder: wos[0] || null,
       invoice: invs[0] || null,
     });
