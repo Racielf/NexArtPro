@@ -70,6 +70,24 @@
     "reassigned_by": {
       "type": "string"
     },
+    "performed_by_worker_id": {
+      "type": "string"
+    },
+    "performed_by_worker_name": {
+      "type": "string"
+    },
+    "performed_by_corrected_at": {
+      "type": "string"
+    },
+    "performed_by_corrected_by": {
+      "type": "string"
+    },
+    "completed_by_user": {
+      "type": "string"
+    },
+    "completed_by_user_id": {
+      "type": "string"
+    },
     "scheduled_date": {
       "type": "string",
       "format": "date"
@@ -101,6 +119,9 @@
       "type": "string"
     },
     "internal_notes": {
+      "type": "string"
+    },
+    "admin_correction_notes": {
       "type": "string"
     },
     "completed_at": {
