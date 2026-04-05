@@ -65,6 +65,12 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
     manual_amount: 0,
   });
 
+  // Local state for pay policy
+  const [payPolicy, setPayPolicy] = useState({
+    policy_type: 'employee_unpaid_break',
+    break_paid: false,
+  });
+
   const allItems = (workOrder?.groups || []).flatMap(g => g.items || []);
   const totalHours = calcHours(workOrder?.arrival_time, workOrder?.departure_time);
 
@@ -124,7 +130,28 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
 
   const rawHours = calculateRawHours();
   const adjustedHours = timeTracking.adjusted_hours !== null ? timeTracking.adjusted_hours : rawHours;
-  const payableHours = adjustedHours;
+  
+  // Calculate payable hours based on pay policy
+  const calculatePayableHours = () => {
+    const { policy_type, break_paid } = payPolicy;
+    const breakHours = (timeTracking.break_duration_minutes || 0) / 60;
+    
+    switch (policy_type) {
+      case 'employee_unpaid_break':
+        return Math.max(0, adjustedHours - (break_paid ? 0 : breakHours));
+      case 'employee_paid_break':
+        return adjustedHours;
+      case 'subcontractor':
+      case 'flat_rate':
+        return 0; // No hours used
+      case 'custom':
+        return adjustedHours; // Allow override
+      default:
+        return adjustedHours;
+    }
+  };
+
+  const payableHours = calculatePayableHours();
 
   // Execution cost calculation
   const calculateExecutionCost = () => {
@@ -251,7 +278,8 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
         </SectionBox>
       )}
 
-      {/* Time Tracking */}
+      {/* Time Tracking - Only shown if not flat_rate or subcontractor */}
+      {payPolicy.policy_type !== 'flat_rate' && payPolicy.policy_type !== 'subcontractor' && (
       <SectionBox title="Time Tracking">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
           <div>
@@ -305,6 +333,11 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
             <div style={{ padding: '8px', background: '#e0f2fe', borderRadius: 4, fontSize: 12, fontWeight: 700, color: '#0369a1' }}>
               {payableHours.toFixed(2)} hrs
             </div>
+            {payPolicy.policy_type === 'employee_unpaid_break' && !payPolicy.break_paid && (
+              <div style={{ fontSize: 10, color: '#64748b', marginTop: 4, fontStyle: 'italic' }}>
+                {adjustedHours.toFixed(2)} hrs - {(timeTracking.break_duration_minutes / 60).toFixed(2)} hrs break = {payableHours.toFixed(2)} hrs
+              </div>
+            )}
           </div>
         </div>
         {timeTracking.adjusted_hours !== null && (
@@ -318,9 +351,10 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
             />
           </div>
         )}
-      </SectionBox>
+        </SectionBox>
+        )}
 
-      {/* Execution Cost */}
+        {/* Execution Cost */}
       <SectionBox title="Execution Cost">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
           <div>
@@ -353,9 +387,58 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
               <option value="no_charge">No Charge</option>
             </select>
           </div>
-        </div>
+          </div>
 
-        {/* Dynamic fields based on pay_method */}
+          {/* Pay Policy Section */}
+          <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, padding: 12, marginBottom: 16 }}>
+          <label style={{ fontSize: 10, color: '#92400e', fontWeight: 600, display: 'block', marginBottom: 8, textTransform: 'uppercase' }}>Pay Policy</label>
+
+          <select
+            value={payPolicy.policy_type}
+            onChange={(e) => setPayPolicy({ ...payPolicy, policy_type: e.target.value })}
+            style={{ width: '100%', padding: '8px', border: '1px solid #fbbf24', borderRadius: 4, fontSize: 12, marginBottom: 12 }}
+          >
+            <option value="employee_unpaid_break">Employee (Unpaid Break)</option>
+            <option value="employee_paid_break">Employee (Paid Break)</option>
+            <option value="subcontractor">Subcontractor</option>
+            <option value="flat_rate">Flat Rate</option>
+            <option value="custom">Custom Override</option>
+          </select>
+
+          {/* Break/Lunch toggle - only for employee policies */}
+          {(payPolicy.policy_type === 'employee_unpaid_break' || payPolicy.policy_type === 'employee_paid_break') && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: '#92400e' }}>
+              <input
+                type="checkbox"
+                checked={payPolicy.break_paid}
+                onChange={(e) => setPayPolicy({ ...payPolicy, break_paid: e.target.checked })}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              <span>Pay lunch/break time ({timeTracking.break_duration_minutes} min)</span>
+            </label>
+          )}
+
+          {/* Policy explanation */}
+          <div style={{ marginTop: 12, padding: 8, background: 'rgba(255,255,255,0.5)', borderRadius: 4, fontSize: 11, color: '#92400e', lineHeight: 1.5 }}>
+            {payPolicy.policy_type === 'employee_unpaid_break' && (
+              <span>Break time is <strong>not paid</strong>. Payable hours = adjusted hours - break minutes.</span>
+            )}
+            {payPolicy.policy_type === 'employee_paid_break' && (
+              <span>Break time is <strong>paid</strong>. Payable hours = adjusted hours (includes break).</span>
+            )}
+            {payPolicy.policy_type === 'subcontractor' && (
+              <span>Subcontractor. Hours are ignored, use flat rate or manual amount.</span>
+            )}
+            {payPolicy.policy_type === 'flat_rate' && (
+              <span>Flat rate applied. Hours tracking is not used.</span>
+            )}
+            {payPolicy.policy_type === 'custom' && (
+              <span>Custom override. Payable hours can be manually adjusted.</span>
+            )}
+          </div>
+          </div>
+
+          {/* Dynamic fields based on pay_method */}
         {executionCost.pay_method === 'tracked_time' && (
           <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4, padding: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
