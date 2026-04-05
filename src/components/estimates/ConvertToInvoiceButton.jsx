@@ -15,23 +15,29 @@ export default function ConvertToInvoiceButton({ estimate, onConverted }) {
 
   if (!estimate) return null;
 
-  const isApproved = ['approved', 'signed'].includes(estimate.status);
-
   const handleConvert = async () => {
-    if (!isApproved) { toast.error('Estimate must be approved before converting to Invoice'); return; }
     setLoading(true);
     try {
-      // Check if already converted to invoice
+      // Check if invoice(s) already exist for this estimate
       const existing = await base44.entities.Invoice.filter({ estimate_id: estimate.id });
-      if (existing.length > 0) {
-        toast.error('Already converted to Invoice #' + existing[0].invoice_number);
+      
+      if (existing.length > 1) {
+        toast.error(`Multiple invoices found (${existing.length}). Contact support to resolve.`);
+        setLoading(false);
+        return;
+      }
+      
+      if (existing.length === 1) {
+        toast.info(`Invoice #${existing[0].invoice_number} already created`);
         navigate(`/invoice-detail?id=${existing[0].id}`);
+        setLoading(false);
         return;
       }
 
+      // Create new invoice
       const invoiceNum = Math.floor(Math.random() * 9000) + 1000;
       const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 30); // 30 days from today
+      dueDate.setDate(dueDate.getDate() + 30);
 
       const invoice = await base44.entities.Invoice.create({
         invoice_number: invoiceNum,
@@ -43,7 +49,6 @@ export default function ConvertToInvoiceButton({ estimate, onConverted }) {
         client_phone: estimate.client_phone || '',
         title: estimate.title || `Invoice from Estimate #${estimate.estimate_number}`,
         status: 'draft',
-        // Copy financial data from estimate
         groups: estimate.groups || [],
         line_items: estimate.line_items || [],
         subtotal: estimate.subtotal || 0,
@@ -57,7 +62,7 @@ export default function ConvertToInvoiceButton({ estimate, onConverted }) {
         notes: estimate.notes || '',
       });
 
-      toast.success(`Invoice #${invoiceNum} created from estimate!`);
+      toast.success(`Invoice #${invoiceNum} created successfully`);
       onConverted?.();
       navigate(`/invoice-detail?id=${invoice.id}`);
     } finally {
@@ -69,9 +74,9 @@ export default function ConvertToInvoiceButton({ estimate, onConverted }) {
     <Button
       size="sm"
       onClick={handleConvert}
-      disabled={loading || !isApproved}
-      title={!isApproved ? 'Estimate must be approved before converting' : 'Convert to Invoice'}
-      className={`gap-1.5 text-white ${isApproved ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-300 cursor-not-allowed'}`}
+      disabled={loading || !estimate.client_name}
+      title={!estimate.client_name ? 'Customer required' : 'Convert to Invoice'}
+      className={`gap-1.5 text-white ${estimate.client_name ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-300 cursor-not-allowed'}`}
     >
       {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
       Convert to Invoice

@@ -18,14 +18,21 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
   const isApproved = ['approved', 'signed'].includes(estimate.status);
 
   const handleConvert = async () => {
-    if (!isApproved) { toast.error('Estimate must be approved before converting to Work Order'); return; }
     setLoading(true);
     try {
-      // Check if already converted
+      // Check if work order(s) already exist for this estimate
       const existing = await base44.entities.WorkOrder.filter({ estimate_id: estimate.id });
-      if (existing.length > 0) {
-        toast.error('Already converted to Work Order #' + existing[0].work_order_number);
+      
+      if (existing.length > 1) {
+        toast.error(`Multiple work orders found (${existing.length}). Contact support to resolve.`);
+        setLoading(false);
+        return;
+      }
+      
+      if (existing.length === 1) {
+        toast.info(`Work Order #${existing[0].work_order_number} already created`);
         navigate(`/work-orders/${existing[0].id}`);
+        setLoading(false);
         return;
       }
 
@@ -64,7 +71,7 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
 
       await base44.entities.Estimate.update(estimate.id, { status: 'converted' });
 
-      toast.success(`Work Order #${woNum} created!`);
+      toast.success(`Work Order #${woNum} created successfully`);
       onConverted?.();
       navigate(`/work-orders/${wo.id}`);
     } finally {
@@ -76,9 +83,9 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
     <Button
       size="sm"
       onClick={handleConvert}
-      disabled={loading || !isApproved}
-      title={!isApproved ? 'Estimate must be approved before converting' : 'Convert to Work Order'}
-      className={`gap-1.5 text-white ${isApproved ? 'bg-purple-600 hover:bg-purple-700' : 'bg-slate-300 cursor-not-allowed'}`}
+      disabled={loading || !estimate.client_name}
+      title={!estimate.client_name ? 'Customer required' : 'Convert to Work Order'}
+      className={`gap-1.5 text-white ${estimate.client_name ? 'bg-purple-600 hover:bg-purple-700' : 'bg-slate-300 cursor-not-allowed'}`}
     >
       {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ClipboardList className="w-3.5 h-3.5" />}
       Convert to Work Order
