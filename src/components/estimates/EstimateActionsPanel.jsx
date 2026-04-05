@@ -60,16 +60,16 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const handleSchedule = async () => {
     if (!schedDate) { toast.error('Select a date'); return; }
     const apptData = {
-      client_name: estimate.client_name,
-      client_email: estimate.client_email || '',
-      client_phone: estimate.client_phone || '',
-      client_address: estimate.client_address || '',
-      client_id: estimate.client_id || '',
-      scheduled_date: schedDate,
-      scheduled_time: schedTime,
+      customer_display_name: estimate.client_name,
+      customer_email: estimate.client_email || '',
+      customer_phone: estimate.client_phone || '',
+      service_address: estimate.client_address || '',
+      customer_id: estimate.client_id || '',
+      appointment_date: schedDate,
+      start_time: schedTime,
       description: schedNotes || estimate.title || '',
       status: 'scheduled',
-      assigned_to: estimate.assigned_to || '',
+      estimate_id: estimate.id,
     };
     const appt = await base44.entities.Appointment.create(apptData);
     await base44.entities.Estimate.update(estimate.id, {
