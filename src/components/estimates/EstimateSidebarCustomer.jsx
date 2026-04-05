@@ -187,9 +187,10 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
             )}
           </div>
 
-          {/* Map */}
+          {/* Map - Prominent location display */}
           {address && (
-            <div className="flex flex-col" style={{ minHeight: 180 }}>
+            <div className="flex flex-col border-t border-slate-100 mt-3">
+              {/* Tabs */}
               <div className="flex border-b border-slate-200 bg-slate-50 flex-shrink-0">
                 {['map', 'hybrid'].map(t => (
                   <button key={t} onClick={() => setMapTab(t)}
@@ -198,9 +199,26 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
                   </button>
                 ))}
               </div>
-              <div className="relative flex-1" style={{ minHeight: 160 }}>
-                <iframe title="map" width="100%" height="100%" style={{ border: 0, display: 'block', minHeight: 160 }}
+
+              {/* Map container - larger */}
+              <div className="relative flex-1 bg-slate-100" style={{ minHeight: 240 }}>
+                <iframe title="map" width="100%" height="100%" style={{ border: 0, display: 'block', minHeight: 240 }}
                   src={mapSrc} allowFullScreen />
+              </div>
+
+              {/* Travel status below map */}
+              <div className="bg-white border-t border-slate-100 px-3 py-2 text-xs">
+                {estimate?.status === 'on_my_way' ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                    <span className="font-semibold text-slate-900">
+                      On the way
+                      {estimate?.miles_traveled > 0 ? ` · ${estimate.miles_traveled} mi` : ''}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-slate-400">No active travel</span>
+                )}
               </div>
             </div>
           )}
