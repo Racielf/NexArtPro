@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { Calendar, Navigation2, CheckSquare, Send, ThumbsUp, Square, CheckCircle, XCircle } from 'lucide-react';
+import {
+  Calendar, Navigation2, CheckSquare, Send, ThumbsUp,
+  Square, CheckCircle, XCircle, Clock, MapPin, User,
+  ArrowRight, AlertCircle, Eye, Zap
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,63 +12,177 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 
-const statusToIdx = {
-  draft: 0,
-  scheduled: 1,
-  on_my_way: 2,
-  omw: 2,
-  visit_completed: 3,
-  finished: 3,
-  completed: 3,
-  sent: 4,
-  viewed: 4,
-  changes_requested: 4,
-  approved: 5,
-  signed: 5,
-  declined: 5,
-  converted: 5,
-};
+// ── helpers ──────────────────────────────────────────────────────────────────
+function fmt(isoStr) {
+  if (!isoStr) return null;
+  return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtTime(isoStr) {
+  if (!isoStr) return null;
+  return new Date(isoStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+function fmtDate(dateStr) {
+  if (!dateStr) return null;
+  // dateStr like "2025-04-10"
+  const [y, m, d] = dateStr.split('-');
+  const date = new Date(Number(y), Number(m) - 1, Number(d));
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
-const actions = [
-  { id: 'schedule', label: 'Schedule', description: 'Set appointment date & time', icon: Calendar, color: 'blue' },
-  { id: 'omw',      label: 'On My Way', description: 'Start travel tracking', icon: Navigation2, color: 'orange' },
-  { id: 'finish',   label: 'Finish Visit', description: 'Mark visit as complete', icon: CheckSquare, color: 'green' },
-  { id: 'send',     label: 'Send Estimate', description: 'Email to client for review', icon: Send, color: 'primary' },
-  { id: 'approval', label: 'Approval', description: 'Approve or decline', icon: ThumbsUp, color: 'purple' },
-];
+// ── next best action logic ────────────────────────────────────────────────────
+function getNextAction(estimate, omwActive) {
+  const s = estimate?.status;
+  if (!s || s === 'draft') return { text: 'Schedule a site visit to get started', icon: Calendar, color: 'blue' };
+  if (s === 'scheduled') return { text: 'Head to the client site when ready', icon: Navigation2, color: 'orange' };
+  if (s === 'on_my_way') return { text: 'Stop OMW when you arrive on site', icon: Navigation2, color: 'orange' };
+  if (s === 'visit_completed') {
+    if (!estimate.sent_at) return { text: 'Review & send the estimate to the client', icon: Send, color: 'blue' };
+  }
+  if (s === 'sent' || s === 'viewed' || s === 'changes_requested') {
+    return { text: 'Follow up or manually approve', icon: ThumbsUp, color: 'purple' };
+  }
+  if (s === 'approved' || s === 'signed') return { text: 'Ready to convert to a Work Order', icon: Zap, color: 'green' };
+  if (s === 'declined') return { text: 'Consider revising and re-sending the estimate', icon: AlertCircle, color: 'red' };
+  if (s === 'converted') return { text: 'Work Order has been created', icon: CheckCircle, color: 'green' };
+  return null;
+}
 
-const colorMap = {
-  blue:    { dot: 'bg-blue-500',   text: 'text-blue-600',   bg: 'hover:bg-blue-50',   activeBg: 'bg-blue-50 border-blue-200',   badge: 'bg-blue-100 text-blue-700' },
-  orange:  { dot: 'bg-orange-500', text: 'text-orange-600', bg: 'hover:bg-orange-50', activeBg: 'bg-orange-50 border-orange-200', badge: 'bg-orange-100 text-orange-700' },
-  green:   { dot: 'bg-green-500',  text: 'text-green-600',  bg: 'hover:bg-green-50',  activeBg: 'bg-green-50 border-green-200',  badge: 'bg-green-100 text-green-700' },
-  primary: { dot: 'bg-primary',    text: 'text-primary',    bg: 'hover:bg-blue-50',   activeBg: 'bg-blue-50 border-blue-200',   badge: 'bg-blue-100 text-blue-700' },
-  purple:  { dot: 'bg-purple-500', text: 'text-purple-600', bg: 'hover:bg-purple-50', activeBg: 'bg-purple-50 border-purple-200', badge: 'bg-purple-100 text-purple-700' },
-};
+// ── status summary chip ───────────────────────────────────────────────────────
+function SummaryChip({ label, value, variant }) {
+  const variants = {
+    success: 'bg-green-50 border-green-200 text-green-700',
+    warning: 'bg-amber-50 border-amber-200 text-amber-700',
+    info:    'bg-blue-50 border-blue-200 text-blue-700',
+    neutral: 'bg-slate-50 border-slate-200 text-slate-500',
+    error:   'bg-red-50 border-red-200 text-red-700',
+  };
+  return (
+    <div className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-[10px] font-medium ${variants[variant] || variants.neutral}`}>
+      <span className="text-[10px] text-current opacity-70">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </div>
+  );
+}
 
+// ── smart action card ─────────────────────────────────────────────────────────
+function ActionCard({ icon: Icon, title, subtitle, badge, badgeVariant, ctaLabel, ctaVariant, onClick, isDone, isActive, isError, isRunning, children }) {
+  const badgeColors = {
+    success: 'bg-green-100 text-green-700',
+    warning: 'bg-amber-100 text-amber-700',
+    info:    'bg-blue-100 text-blue-700',
+    error:   'bg-red-100 text-red-700',
+    neutral: 'bg-slate-100 text-slate-500',
+    orange:  'bg-orange-100 text-orange-700',
+    purple:  'bg-purple-100 text-purple-700',
+  };
+  const ctaColors = {
+    primary: 'bg-primary hover:bg-primary/90 text-white',
+    green:   'bg-green-600 hover:bg-green-700 text-white',
+    orange:  'bg-orange-500 hover:bg-orange-600 text-white',
+    red:     'bg-red-500 hover:bg-red-600 text-white',
+    purple:  'bg-purple-600 hover:bg-purple-700 text-white',
+    outline: 'border border-slate-200 hover:bg-slate-50 text-slate-600',
+  };
+
+  let cardBase = 'w-full text-left rounded-xl border transition-all duration-150 overflow-hidden group';
+  if (isRunning)      cardBase += ' bg-orange-50 border-orange-300 shadow-sm';
+  else if (isError)   cardBase += ' bg-red-50 border-red-200';
+  else if (isDone)    cardBase += ' bg-slate-50 border-slate-200';
+  else if (isActive)  cardBase += ' bg-white border-primary/30 shadow-sm ring-1 ring-primary/10';
+  else                cardBase += ' bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm';
+
+  let iconBg = 'bg-slate-100';
+  if (isRunning)     iconBg = 'bg-orange-100';
+  else if (isError)  iconBg = 'bg-red-100';
+  else if (isDone)   iconBg = 'bg-green-50';
+  else if (isActive) iconBg = 'bg-primary/10';
+
+  let iconColor = 'text-slate-400';
+  if (isRunning)     iconColor = 'text-orange-600';
+  else if (isError)  iconColor = 'text-red-500';
+  else if (isDone)   iconColor = 'text-green-500';
+  else if (isActive) iconColor = 'text-primary';
+
+  return (
+    <div className={cardBase}>
+      <div className="px-3 py-2.5">
+        <div className="flex items-start gap-2.5">
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${iconBg}`}>
+            {isDone && !isRunning && !isError
+              ? <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+              : <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className={`text-xs font-semibold leading-tight ${
+                isRunning ? 'text-orange-700' :
+                isError   ? 'text-red-700' :
+                isDone    ? 'text-slate-500' :
+                isActive  ? 'text-slate-800' :
+                'text-slate-700'
+              }`}>{title}</p>
+              {badge && (
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${badgeColors[badgeVariant] || badgeColors.neutral}`}>
+                  {badge}
+                </span>
+              )}
+            </div>
+            <p className={`text-[10px] mt-0.5 leading-snug ${
+              isRunning ? 'text-orange-500' :
+              isError   ? 'text-red-500' :
+              isDone    ? 'text-slate-400' :
+              'text-slate-400'
+            }`}>{subtitle}</p>
+            {children && <div className="mt-1.5">{children}</div>}
+          </div>
+        </div>
+      </div>
+      {ctaLabel && onClick && (
+        <div className="px-3 pb-2.5">
+          <button
+            onClick={onClick}
+            className={`w-full text-[10px] font-semibold py-1.5 px-3 rounded-lg transition-all ${ctaColors[ctaVariant] || ctaColors.primary}`}
+          >
+            {ctaLabel}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── main component ────────────────────────────────────────────────────────────
 export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenSendReview }) {
-  const currentIdx = statusToIdx[estimate?.status] ?? 0;
-
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [finishOpen, setFinishOpen] = useState(false);
+  const [finishOpen,   setFinishOpen]   = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
-  const [omwActive, setOmwActive] = useState(estimate?.status === 'omw' || estimate?.status === 'on_my_way');
-  const [omwMiles, setOmwMiles] = useState(estimate?.miles_traveled || 0);
-  const [omwInterval, setOmwInterval] = useState(null);
+  const [omwActive,    setOmwActive]    = useState(estimate?.status === 'on_my_way');
+  const [omwMiles,     setOmwMiles]     = useState(estimate?.miles_traveled || 0);
+  const [omwInterval,  setOmwInterval]  = useState(null);
+  const [omwStarted,   setOmwStarted]   = useState(null);
 
-  const [schedDate, setSchedDate] = useState(estimate?.scheduled_date || '');
-  const [schedTime, setSchedTime] = useState(estimate?.scheduled_time || '09:00');
-  const [schedNotes, setSchedNotes] = useState('');
-  const [finishNotes, setFinishNotes] = useState('');
+  const [schedDate,     setSchedDate]     = useState(estimate?.scheduled_date || '');
+  const [schedTime,     setSchedTime]     = useState(estimate?.scheduled_time || '09:00');
+  const [schedNotes,    setSchedNotes]    = useState('');
+  const [finishNotes,   setFinishNotes]   = useState('');
   const [declineReason, setDeclineReason] = useState('');
 
-  // --- SCHEDULE ---
+  const s = estimate?.status;
+
+  // ── derived context ──────────────────────────────────────────────────────
+  const hasAppointment  = !!estimate?.appointment_id;
+  const visitDone       = ['visit_completed', 'sent', 'viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
+  const isSent          = !!estimate?.sent_at || ['sent', 'viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
+  const isViewed        = !!estimate?.viewed_at || ['viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
+  const isApproved      = ['approved', 'signed', 'converted'].includes(s);
+  const isDeclined      = s === 'declined';
+
+  // ── SCHEDULE ─────────────────────────────────────────────────────────────
   const handleSchedule = async () => {
     if (!schedDate) { toast.error('Select a date'); return; }
-
     let apptId = estimate.appointment_id;
-
     if (apptId) {
-      // Update existing appointment
       await base44.entities.Appointment.update(apptId, {
         appointment_date: schedDate,
         start_time: schedTime,
@@ -72,7 +190,6 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         status: 'scheduled',
       });
     } else {
-      // Create new appointment
       const appt = await base44.entities.Appointment.create({
         customer_display_name: estimate.client_name,
         customer_email: estimate.client_email || '',
@@ -87,14 +204,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       });
       apptId = appt.id;
     }
-
     await base44.entities.Estimate.update(estimate.id, {
       status: 'scheduled',
       appointment_id: apptId,
       scheduled_date: schedDate,
       scheduled_time: schedTime,
     });
-
     if (estimate.client_email) {
       try {
         await base44.integrations.Core.SendEmail({
@@ -107,12 +222,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         await logCommFailed({ event_type: 'appointment_created', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: apptId, estimate_id: estimate.id, subject: 'Appointment Scheduled' });
       }
     }
-    toast.success(`Appointment ${estimate.appointment_id ? 'updated' : 'scheduled'} for ${schedDate} at ${schedTime}`);
+    toast.success(`Appointment ${estimate.appointment_id ? 'updated' : 'scheduled'}`);
     setScheduleOpen(false);
     onStatusChange('scheduled');
   };
 
-  // --- OMW ---
+  // ── OMW ──────────────────────────────────────────────────────────────────
   const handleOMW = async () => {
     const now = new Date().toISOString();
     await base44.entities.Estimate.update(estimate.id, { status: 'on_my_way', omw_start_time: now });
@@ -129,6 +244,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     });
     setOmwActive(true);
     setOmwMiles(0);
+    setOmwStarted(Date.now());
     const interval = setInterval(() => setOmwMiles(m => parseFloat((m + 0.1).toFixed(1))), 3000);
     setOmwInterval(interval);
     toast.success('OMW started — tracking mileage');
@@ -139,7 +255,6 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     if (omwInterval) clearInterval(omwInterval);
     setOmwInterval(null);
     setOmwActive(false);
-    // Find the running TimeEntry linked to this estimate
     const running = await base44.entities.TimeEntry.filter({ status: 'running' });
     const entry = running.find(e => e.client_name === estimate.client_name && e.project?.includes(String(estimate.estimate_number)));
     if (entry) {
@@ -150,12 +265,11 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         miles_traveled: omwMiles,
       });
     }
-    // Save miles but do NOT change estimate status
     await base44.entities.Estimate.update(estimate.id, { miles_traveled: omwMiles });
-    toast.success(`OMW stopped — ${omwMiles} miles tracked`);
+    toast.success(`OMW stopped — ${omwMiles} mi tracked`);
   };
 
-  // --- FINISH ---
+  // ── FINISH ───────────────────────────────────────────────────────────────
   const handleFinish = async () => {
     const now = new Date().toISOString();
     await base44.entities.Estimate.update(estimate.id, {
@@ -175,7 +289,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     onStatusChange('visit_completed');
   };
 
-  // --- APPROVAL ---
+  // ── APPROVAL ─────────────────────────────────────────────────────────────
   const handleApproveConfirm = async () => {
     await base44.entities.Estimate.update(estimate.id, {
       status: 'approved',
@@ -201,111 +315,171 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     onStatusChange('declined');
   };
 
-  const handleActionClick = (actionId) => {
-    if (actionId === 'schedule') { setScheduleOpen(true); return; }
-    if (actionId === 'omw') { if (omwActive) handleStopOMW(); else handleOMW(); return; }
-    if (actionId === 'finish') { setFinishOpen(true); return; }
-    if (actionId === 'send') {
-      if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
-      onOpenSendReview?.(); return;
-    }
-    if (actionId === 'approval') { setApprovalOpen(true); return; }
-  };
+  // ── next action ───────────────────────────────────────────────────────────
+  const next = getNextAction(estimate, omwActive);
 
-  const getActionState = (actionId) => {
-    const idx = actions.findIndex(a => a.id === actionId);
-    const actionIdx = idx + 1;
-    if (actionId === 'approval' && ['approved', 'signed', 'converted'].includes(estimate?.status)) return 'done';
-    if (actionId === 'approval' && estimate?.status === 'declined') return 'declined';
-    if (actionIdx < currentIdx) return 'done';
-    if (actionIdx === currentIdx) return 'active';
-    return 'idle';
-  };
+  // ── STATUS SUMMARY DATA ────────────────────────────────────────────────────
+  const apptSummaryVariant = hasAppointment ? (visitDone ? 'success' : 'info') : 'neutral';
+  const apptSummaryValue   = hasAppointment
+    ? (visitDone ? 'Completed' : (estimate?.scheduled_date ? fmtDate(estimate.scheduled_date) : 'Scheduled'))
+    : 'Not scheduled';
+
+  const sentVariant = isSent ? (isViewed ? 'info' : 'success') : 'neutral';
+  const sentValue   = isSent ? (isViewed ? 'Viewed' : 'Sent') : 'Not sent';
+
+  const approvalVariant = isApproved ? 'success' : isDeclined ? 'error' : isSent ? 'warning' : 'neutral';
+  const approvalValue   = isApproved ? 'Approved' : isDeclined ? 'Declined' : isSent ? 'Pending' : '—';
+
+  // ── omw elapsed ──────────────────────────────────────────────────────────
+  const elapsedLabel = omwStarted
+    ? (() => {
+        const mins = Math.floor((Date.now() - omwStarted) / 60000);
+        return mins < 1 ? 'just started' : `${mins} min`;
+      })()
+    : null;
 
   return (
-    <div className="w-52 flex-shrink-0 border-r border-slate-200 bg-slate-50 flex flex-col overflow-y-auto">
-      <div className="px-4 pt-4 pb-2">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</p>
+    <div className="w-60 flex-shrink-0 border-r border-slate-200 bg-slate-50/80 flex flex-col overflow-y-auto">
+
+      {/* ── SMART SUMMARY ─────────────────────────────────────────────────── */}
+      <div className="px-3 pt-3 pb-2 space-y-1.5">
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-0.5">Status Overview</p>
+        <SummaryChip label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
+        <SummaryChip label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
+        <SummaryChip label="Sent"        value={sentValue}    variant={sentVariant} />
+        <SummaryChip label="Approval"    value={approvalValue} variant={approvalVariant} />
       </div>
 
-      <div className="px-3 pb-4 space-y-1.5 flex-1">
-        {actions.map((action) => {
-          const Icon = action.icon;
-          const c = colorMap[action.color];
-          const state = getActionState(action.id);
-          const isOmwRunning = action.id === 'omw' && omwActive;
-
-          return (
-            <button
-              key={action.id}
-              onClick={() => handleActionClick(action.id)}
-              className={`w-full text-left rounded-xl border px-3 py-2.5 transition-all group ${
-                state === 'done'
-                  ? 'bg-white border-slate-200 opacity-60'
-                  : state === 'declined'
-                  ? 'bg-red-50 border-red-200'
-                  : isOmwRunning
-                  ? 'bg-orange-50 border-orange-300 shadow-sm'
-                  : state === 'active'
-                  ? `${c.activeBg} shadow-sm`
-                  : `bg-white border-slate-200 ${c.bg}`
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  state === 'done' ? 'bg-slate-100' :
-                  isOmwRunning ? 'bg-orange-100' :
-                  state === 'active' ? `bg-white shadow-sm` :
-                  'bg-slate-100'
-                }`}>
-                  {isOmwRunning
-                    ? <Square className="w-3.5 h-3.5 text-orange-600" />
-                    : state === 'done'
-                    ? <CheckCircle className="w-3.5 h-3.5 text-slate-400" />
-                    : <Icon className={`w-3.5 h-3.5 ${state === 'active' ? c.text : 'text-slate-400 group-hover:' + c.text.replace('text-', 'text-')}`} />
-                  }
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className={`text-xs font-semibold leading-tight ${
-                    state === 'done' ? 'text-slate-400 line-through' :
-                    isOmwRunning ? 'text-orange-700' :
-                    state === 'active' ? c.text :
-                    'text-slate-600'
-                  }`}>
-                    {isOmwRunning ? 'Stop OMW' : action.label}
-                  </p>
-                  {isOmwRunning ? (
-                    <p className="text-[10px] text-orange-500 font-medium">{omwMiles} mi tracked</p>
-                  ) : (
-                    <p className="text-[10px] text-slate-400 leading-tight">{action.description}</p>
-                  )}
-                </div>
-                {state === 'done' && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
-                )}
-                {state === 'declined' && action.id === 'approval' && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Current status badge */}
-      <div className="px-3 pb-4">
-        <div className="rounded-lg bg-white border border-slate-200 px-3 py-2">
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
-          <p className="text-xs font-semibold text-slate-700 capitalize">{estimate?.status?.replace(/_/g, ' ') || 'Draft'}</p>
+      {/* ── NEXT BEST ACTION ──────────────────────────────────────────────── */}
+      {next && (
+        <div className="mx-3 mb-2 rounded-lg bg-white border border-slate-200 px-3 py-2 flex items-start gap-2">
+          <next.icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
+            next.color === 'green'  ? 'text-green-500' :
+            next.color === 'orange' ? 'text-orange-500' :
+            next.color === 'red'    ? 'text-red-500' :
+            next.color === 'purple' ? 'text-purple-500' :
+            'text-primary'
+          }`} />
+          <div>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5">Next step</p>
+            <p className="text-[10px] font-medium text-slate-700 leading-snug">{next.text}</p>
+          </div>
         </div>
+      )}
+
+      {/* divider */}
+      <div className="mx-3 border-t border-slate-200 mb-2" />
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-3.5 mb-1.5">Actions</p>
+
+      {/* ── ACTION CARDS ──────────────────────────────────────────────────── */}
+      <div className="px-3 pb-4 space-y-2 flex-1">
+
+        {/* SCHEDULE */}
+        <ActionCard
+          icon={Calendar}
+          title="Schedule"
+          subtitle={
+            hasAppointment
+              ? `${fmtDate(estimate.scheduled_date) || 'Appointment set'}${estimate.scheduled_time ? ' · ' + estimate.scheduled_time : ''}`
+              : 'No appointment scheduled'
+          }
+          badge={hasAppointment ? (visitDone ? 'Done' : 'Set') : null}
+          badgeVariant={visitDone ? 'success' : 'info'}
+          ctaLabel={hasAppointment ? 'Reschedule' : 'Schedule Now'}
+          ctaVariant={hasAppointment ? 'outline' : 'primary'}
+          onClick={() => { setSchedDate(estimate?.scheduled_date || ''); setSchedTime(estimate?.scheduled_time || '09:00'); setScheduleOpen(true); }}
+          isDone={visitDone}
+          isActive={!hasAppointment && !visitDone}
+        />
+
+        {/* OMW */}
+        <ActionCard
+          icon={omwActive ? Square : Navigation2}
+          title={omwActive ? 'Stop OMW' : 'On My Way'}
+          subtitle={
+            omwActive
+              ? `${omwMiles} mi tracked${elapsedLabel ? ' · ' + elapsedLabel : ''}`
+              : estimate?.miles_traveled > 0
+              ? `${estimate.miles_traveled} mi logged`
+              : 'Travel not started'
+          }
+          badge={omwActive ? 'Live' : estimate?.miles_traveled > 0 ? 'Done' : null}
+          badgeVariant={omwActive ? 'orange' : 'success'}
+          ctaLabel={omwActive ? 'Stop tracking' : 'Start OMW'}
+          ctaVariant={omwActive ? 'orange' : 'outline'}
+          onClick={omwActive ? handleStopOMW : handleOMW}
+          isDone={!omwActive && estimate?.miles_traveled > 0}
+          isActive={omwActive || s === 'scheduled'}
+          isRunning={omwActive}
+        />
+
+        {/* FINISH VISIT */}
+        <ActionCard
+          icon={CheckSquare}
+          title="Finish Visit"
+          subtitle={
+            visitDone
+              ? `Completed${estimate?.completed_time ? ' · ' + fmt(estimate.completed_time) : ''}`
+              : 'Visit still open'
+          }
+          badge={visitDone ? 'Done' : null}
+          badgeVariant="success"
+          ctaLabel={visitDone ? 'Re-open visit' : 'Finish Visit'}
+          ctaVariant={visitDone ? 'outline' : 'green'}
+          onClick={() => setFinishOpen(true)}
+          isDone={visitDone}
+          isActive={hasAppointment && !visitDone && (s === 'on_my_way' || s === 'scheduled')}
+        />
+
+        {/* REVIEW & SEND */}
+        <ActionCard
+          icon={Send}
+          title="Review & Send"
+          subtitle={
+            isViewed   ? `Viewed by client${estimate?.viewed_at ? ' · ' + fmt(estimate.viewed_at) : ''}` :
+            isSent     ? `Sent${estimate?.sent_at ? ' · ' + fmt(estimate.sent_at) : ''}` :
+            'Estimate not sent yet'
+          }
+          badge={isViewed ? 'Viewed' : isSent ? 'Sent' : null}
+          badgeVariant={isViewed ? 'info' : 'success'}
+          ctaLabel={isSent ? 'Resend' : 'Review & Send'}
+          ctaVariant={isSent ? 'outline' : 'primary'}
+          onClick={() => {
+            if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
+            onOpenSendReview?.();
+          }}
+          isDone={isSent}
+          isActive={visitDone && !isSent}
+        />
+
+        {/* APPROVAL */}
+        <ActionCard
+          icon={isApproved ? CheckCircle : isDeclined ? XCircle : ThumbsUp}
+          title="Approval"
+          subtitle={
+            isApproved  ? `Approved${estimate?.approved_at  ? ' · ' + fmt(estimate.approved_at)  : ''}` :
+            isDeclined  ? `Declined${estimate?.declined_at  ? ' · ' + fmt(estimate.declined_at)  : ''}` :
+            isSent      ? 'Waiting for response' :
+            'Not yet sent'
+          }
+          badge={isApproved ? 'Approved' : isDeclined ? 'Declined' : isSent ? 'Pending' : null}
+          badgeVariant={isApproved ? 'success' : isDeclined ? 'error' : 'warning'}
+          ctaLabel={isApproved || isDeclined ? 'Override' : 'Approve / Decline'}
+          ctaVariant={isApproved ? 'outline' : isDeclined ? 'outline' : 'purple'}
+          onClick={() => setApprovalOpen(true)}
+          isDone={isApproved}
+          isActive={isSent && !isApproved && !isDeclined}
+          isError={isDeclined}
+        />
       </div>
 
-      {/* SCHEDULE MODAL */}
+      {/* ── SCHEDULE MODAL ─────────────────────────────────────────────────── */}
       <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />Schedule Appointment
+              <Calendar className="w-5 h-5 text-primary" />
+              {hasAppointment ? 'Reschedule Appointment' : 'Schedule Appointment'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
@@ -333,26 +507,26 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         </DialogContent>
       </Dialog>
 
-      {/* APPROVAL MODAL */}
+      {/* ── APPROVAL MODAL ─────────────────────────────────────────────────── */}
       <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ThumbsUp className="w-5 h-5 text-primary" />Approve or Decline?
+              <ThumbsUp className="w-5 h-5 text-primary" />Approve or Decline
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
-            <div className="bg-slate-50 rounded p-3">
+            <div className="bg-slate-50 rounded-lg p-3">
               <p className="text-xs text-slate-500 font-medium">Estimate #{estimate?.estimate_number}</p>
               <p className="text-sm font-semibold text-slate-800 mt-1">{estimate?.client_name}</p>
               <p className="text-xs text-slate-500 mt-1">Total: ${(estimate?.total || 0).toFixed(2)}</p>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-medium">Reason (required to decline)</label>
+              <label className="text-xs text-slate-500 mb-1 block font-medium">Note (required to decline)</label>
               <Textarea
                 value={declineReason}
                 onChange={e => setDeclineReason(e.target.value)}
-                placeholder="Optional for approval, required for decline..."
+                placeholder="Optional for approval, required to decline..."
                 rows={2}
               />
             </div>
@@ -368,7 +542,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         </DialogContent>
       </Dialog>
 
-      {/* FINISH MODAL */}
+      {/* ── FINISH MODAL ───────────────────────────────────────────────────── */}
       <Dialog open={finishOpen} onOpenChange={setFinishOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
