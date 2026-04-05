@@ -169,6 +169,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const [finishNotes,   setFinishNotes]   = useState('');
   const [declineReason, setDeclineReason] = useState('');
   const [moreActionsOpen, setMoreActionsOpen] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ open: false, loading: false, error: null });
 
   const s = estimate?.status;
 
@@ -315,6 +316,56 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     setDeclineReason('');
     toast.success('Estimate declined');
     onStatusChange('declined');
+  };
+
+  // ── MORE ACTIONS HANDLERS ──────────────────────────────────────────────────
+  const canDelete = () => {
+    // Allow delete if: draft, declined
+    // Block if: approved, signed, converted
+    if (['approved', 'signed', 'converted'].includes(s)) return false;
+    return true;
+  };
+
+  const getDeleteBlockReason = () => {
+    if (s === 'approved') return 'Cannot delete approved estimates';
+    if (s === 'signed') return 'Cannot delete signed estimates';
+    if (s === 'converted') return 'Cannot delete converted estimates. Delete the Work Order instead.';
+    return null;
+  };
+
+  const handleEdit = () => {
+    console.log('Edit estimate:', estimate.id);
+  };
+
+  const handleDuplicate = () => {
+    console.log('Duplicate estimate:', estimate.id);
+  };
+
+  const handleArchive = () => {
+    console.log('Archive estimate:', estimate.id);
+  };
+
+  const handleDelete = () => {
+    const blockReason = getDeleteBlockReason();
+    if (blockReason) {
+      toast.error(blockReason);
+      return;
+    }
+    setDeleteModal({ open: true, loading: false, error: null });
+  };
+
+  const handleConfirmDelete = async () => {
+    setDeleteModal(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      await base44.entities.Estimate.delete(estimate.id);
+      toast.success(`Estimate #${estimate.estimate_number} deleted`);
+      // Navigate back to estimates list
+      setTimeout(() => {
+        window.location.href = '/estimates';
+      }, 500);
+    } catch (err) {
+      setDeleteModal(prev => ({ ...prev, loading: false, error: err.message || 'Failed to delete estimate' }));
+    }
   };
 
   // ── next action ───────────────────────────────────────────────────────────
@@ -571,6 +622,46 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         </DialogContent>
       </Dialog>
 
+      {/* ── DELETE CONFIRM MODAL ───────────────────────────────────────────── */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h2 className="text-base font-bold text-slate-900 mb-2">Delete Estimate?</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Are you sure you want to delete Estimate #{estimate?.estimate_number}? This action cannot be undone.
+            </p>
+            {s === 'sent' && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-700"><strong>Warning:</strong> This estimate has been sent to the client.</p>
+              </div>
+            )}
+            {deleteModal.error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-xs text-red-700">{deleteModal.error}</p>
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteModal({ open: false, loading: false, error: null })}
+                disabled={deleteModal.loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="bg-red-500 hover:bg-red-600 text-white"
+                onClick={handleConfirmDelete}
+                disabled={deleteModal.loading}
+              >
+                {deleteModal.loading ? 'Deleting...' : 'Delete Estimate'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── MORE ACTIONS ──────────────────────────────────────────────────── */}
       <div className="mx-3 mt-3 pt-3 border-t border-slate-200">
         <Collapsible open={moreActionsOpen} onOpenChange={setMoreActionsOpen}>
@@ -604,9 +695,15 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
             </button>
             <button
               onClick={handleDelete}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700 transition-colors text-xs font-medium"
+              disabled={!canDelete()}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors text-xs font-medium ${
+                canDelete()
+                  ? 'bg-white border border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700'
+                  : 'bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+              title={!canDelete() ? getDeleteBlockReason() : 'Delete this estimate'}
             >
-              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+              <Trash2 className="w-3.5 h-3.5" style={{ color: canDelete() ? '#f87171' : '#cbd5e1' }} />
               Delete Estimate
             </button>
           </CollapsibleContent>
