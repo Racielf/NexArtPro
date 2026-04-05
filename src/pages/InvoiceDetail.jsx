@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { X, Send, CheckCircle, Printer, DollarSign, MapPin, Receipt, Clock } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { format } from 'date-fns';
+import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 export default function InvoiceDetail() {
   const navigate = useNavigate();
@@ -240,134 +242,21 @@ export default function InvoiceDetail() {
         </div>
 
         {/* RIGHT PANEL — Invoice document */}
-        <div className="flex-1 overflow-auto p-8 flex justify-center">
-          <div className="w-full max-w-3xl bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-            {/* Invoice header */}
-            <div className="bg-slate-900 px-8 py-6 flex items-start justify-between">
-              <div>
-                <p className="text-white text-2xl font-bold">INVOICE</p>
-                <p className="text-slate-400 text-sm mt-1">#{invoice.invoice_number}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold text-lg">FSM Pro</p>
-                <p className="text-slate-400 text-sm">Field Service Management</p>
-              </div>
-            </div>
-
-            {/* Client + dates */}
-            <div className="px-8 py-6 grid grid-cols-2 gap-6 border-b border-slate-100">
-              <div>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wide mb-2">Bill To</p>
-                <p className="font-bold text-slate-900">{invoice.client_name}</p>
-                {invoice.client_address && <p className="text-sm text-slate-600 mt-1">{invoice.client_address}</p>}
-                {invoice.client_phone && <p className="text-sm text-slate-600">{invoice.client_phone}</p>}
-                {invoice.client_email && <p className="text-sm text-slate-600">{invoice.client_email}</p>}
-              </div>
-              <div className="text-right">
-                <div className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Invoice #</span>
-                    <span className="font-semibold">{invoice.invoice_number}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Date</span>
-                    <span className="font-semibold">{format(new Date(invoice.created_date || Date.now()), 'MMM d, yyyy')}</span>
-                  </div>
-                  {invoice.due_date && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Due</span>
-                      <span className="font-semibold text-orange-600">{invoice.due_date}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Status</span>
-                    <StatusBadge status={invoice.status} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Line items */}
-            <div className="px-8 py-6">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b-2 border-slate-200">
-                    <th className="text-left py-2 font-semibold text-slate-600">Description</th>
-                    <th className="text-right py-2 font-semibold text-slate-600 w-16">Qty</th>
-                    <th className="text-right py-2 font-semibold text-slate-600 w-24">Unit Price</th>
-                    <th className="text-right py-2 font-semibold text-slate-600 w-24">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allItems.length === 0 && (
-                    <tr><td colSpan={4} className="py-6 text-center text-slate-400">No line items</td></tr>
-                  )}
-                  {allItems.map((item, idx) => (
-                    <tr key={idx} className="border-b border-slate-100">
-                      <td className="py-3">
-                        <div className="font-medium text-slate-900">{item.service_name || item.name || '—'}</div>
-                        {item.description && <div className="text-xs text-slate-500 mt-0.5">{item.description}</div>}
-                      </td>
-                      <td className="text-right text-slate-700">{item.quantity || '—'}</td>
-                      <td className="text-right text-slate-700">${(item.unit_price || 0).toFixed(2)}</td>
-                      <td className="text-right font-semibold text-slate-900">
-                        ${(item.line_total || item.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Totals */}
-              <div className="mt-6 flex justify-end">
-                <div className="w-72 space-y-2 text-sm">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">Subtotal</span>
-                    <span className="font-semibold">${(invoice.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  {invoice.discount_amount > 0 && (
-                    <div className="flex justify-between py-1.5 border-b border-slate-100 text-green-700">
-                      <span>Discount</span>
-                      <span>-${(invoice.discount_amount || 0).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {invoice.tax_rate > 0 && (
-                    <div className="flex justify-between py-1.5 border-b border-slate-100">
-                      <span className="text-slate-600">Tax ({invoice.tax_rate}%)</span>
-                      <span className="font-semibold">${(invoice.tax_amount || 0).toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between pt-3 border-t-2 border-slate-300 font-bold text-lg">
-                    <span>Total Due</span>
-                    <span className="text-primary">${(invoice.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  {invoice.status === 'paid' && (
-                    <div className="flex justify-between py-1 text-green-600 font-bold">
-                      <span>✓ PAID</span>
-                      <span>${(invoice.amount_paid || invoice.total || 0).toFixed(2)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Notes / terms */}
-            {(invoice.notes || invoice.payment_terms) && (
-              <div className="px-8 py-6 bg-slate-50 border-t border-slate-100 space-y-4">
-                {invoice.notes && (
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Notes</p>
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{invoice.notes}</p>
-                  </div>
-                )}
-                {invoice.payment_terms && (
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Payment Terms</p>
-                    <p className="text-sm text-slate-700">{invoice.payment_terms}</p>
-                  </div>
-                )}
-              </div>
-            )}
+        <div className="flex-1 overflow-auto p-8 flex justify-center bg-slate-200">
+          <div className="w-full max-w-3xl shadow-xl rounded-sm bg-white">
+            <EstimateTemplateRenderer
+              estimate={invoice}
+              template={invoice.document_config?.template || 'pro'}
+              options={{
+                ...DEFAULT_OPTIONS,
+                showPrices: true,
+                showBreakdown: true,
+                showTerms: true,
+                showSignatures: false,
+                hideInternalNotes: true,
+              }}
+              documentType="invoice"
+            />
           </div>
         </div>
       </div>

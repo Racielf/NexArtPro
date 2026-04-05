@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { X, Printer, Download, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 function calcHours(arrival, departure) {
   if (!arrival || !departure) return null;
@@ -392,6 +394,7 @@ Thank you for your business.
           </div>
         ) : (
           <div className="shadow-2xl rounded-lg overflow-hidden" ref={printRef}>
+            {/* Use renderer for base document, WODocument as fallback for rich sections */}
             <WODocument
               wo={workOrder}
               expenses={expenses}
