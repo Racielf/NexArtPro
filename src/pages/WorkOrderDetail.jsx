@@ -16,6 +16,8 @@ export default function WorkOrderDetail() {
   const [workOrder, setWorkOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [taskStatuses, setTaskStatuses] = useState({});
+  const [execution, setExecution] = useState({ work_summary: '', notes: '', issues_found: '' });
+  const [savingExecution, setSavingExecution] = useState(false);
 
   useEffect(() => { loadWorkOrder(); }, [id]);
 
@@ -25,10 +27,20 @@ export default function WorkOrderDetail() {
     if (list.length) {
       const wo = list[0];
       setWorkOrder(wo);
-      // Load saved task statuses from work order
       setTaskStatuses(wo.task_statuses || {});
+      setExecution({
+        work_summary: wo.work_summary || '',
+        notes: wo.notes || '',
+        issues_found: wo.issues_found || '',
+      });
     }
     setLoading(false);
+  };
+
+  const saveExecution = async () => {
+    setSavingExecution(true);
+    await base44.entities.WorkOrder.update(id, execution);
+    setSavingExecution(false);
   };
 
   const toggleTask = async (itemId) => {
@@ -300,16 +312,43 @@ export default function WorkOrderDetail() {
 
           {/* 2. Work Execution */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <Pencil className="w-4 h-4 text-primary" />
-              <h2 className="text-sm font-bold text-slate-900">Work Execution</h2>
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-bold text-slate-900">Work Execution</h2>
+              </div>
+              <Button size="sm" onClick={saveExecution} disabled={savingExecution} className="gap-1.5">
+                {savingExecution ? 'Saving…' : 'Save'}
+              </Button>
             </div>
-            <div className="px-6 py-5">
-              <textarea
-                className="w-full h-32 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none bg-slate-50"
-                placeholder="Field notes, observations, work performed…"
-                readOnly
-              />
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">What was done</label>
+                <textarea
+                  className="w-full h-28 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  placeholder="Describe the work performed…"
+                  value={execution.work_summary}
+                  onChange={e => setExecution(prev => ({ ...prev, work_summary: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Observations / Notes</label>
+                <textarea
+                  className="w-full h-20 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  placeholder="Any observations or additional notes…"
+                  value={execution.notes}
+                  onChange={e => setExecution(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Issues Found</label>
+                <textarea
+                  className="w-full h-20 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  placeholder="Problems encountered, items needing follow-up…"
+                  value={execution.issues_found}
+                  onChange={e => setExecution(prev => ({ ...prev, issues_found: e.target.value }))}
+                />
+              </div>
             </div>
           </div>
 

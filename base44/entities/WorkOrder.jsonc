@@ -130,6 +130,14 @@
     "started_at": {
       "type": "string"
     },
+    "work_summary": {
+      "type": "string",
+      "description": "Summary of work performed by the worker"
+    },
+    "issues_found": {
+      "type": "string",
+      "description": "Problems or issues found during execution"
+    },
     "task_statuses": {
       "type": "object",
       "description": "Map of item id \u2192 { status: pending|done, completed_at, completed_by_worker_id }"
