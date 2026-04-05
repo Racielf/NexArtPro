@@ -12,7 +12,11 @@ import {
   Wrench,
   Clock,
   UserCheck,
-  HardHat
+  HardHat,
+  CreditCard,
+  TrendingUp,
+  DollarSign,
+  BarChart2
 } from 'lucide-react';
 
 const navItems = [
@@ -25,6 +29,10 @@ const navItems = [
   { path: '/workers', label: 'Workers', icon: HardHat },
   { path: '/invoices', label: 'Invoices', icon: Receipt },
   { path: '/time-tracking', label: 'Time Tracking', icon: Clock },
+  { path: '/payments', label: 'Payments', icon: CreditCard },
+  { path: '/income-expenses', label: 'Income & Expenses', icon: TrendingUp },
+  { path: '/payroll', label: 'Payroll', icon: DollarSign },
+  { path: '/reports', label: 'Reports', icon: BarChart2 },
 ];
 
 export default function Sidebar() {

@@ -23,6 +23,10 @@ import Assignments from './pages/Assignments';
 import Workers from './pages/Workers';
 import InvoiceDetail from './pages/InvoiceDetail';
 import CustomerProfile from './pages/CustomerProfile';
+import Payments from './pages/Payments';
+import IncomeExpenses from './pages/IncomeExpenses';
+import Payroll from './pages/Payroll';
+import Reports from './pages/Reports';
 
 
 const AuthenticatedApp = () => {
@@ -64,6 +68,10 @@ const AuthenticatedApp = () => {
         <Route path="/workers" element={<Workers />} />
         <Route path="/invoice-detail" element={<InvoiceDetail />} />
         <Route path="/customer-profile" element={<CustomerProfile />} />
+        <Route path="/payments" element={<Payments />} />
+        <Route path="/income-expenses" element={<IncomeExpenses />} />
+        <Route path="/payroll" element={<Payroll />} />
+        <Route path="/reports" element={<Reports />} />
 
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />
