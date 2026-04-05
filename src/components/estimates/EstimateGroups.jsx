@@ -72,8 +72,8 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
   return (
     <div className={`border-b border-slate-100 last:border-0 transition-colors ${expanded ? 'bg-blue-50/20' : 'hover:bg-slate-50/60'}`}>
       {/* Main row */}
-      <div className="grid items-center gap-2 px-4 py-2.5"
-        style={{ gridTemplateColumns: '16px 1fr 70px 80px 90px 90px 32px' }}>
+      <div className="grid items-center gap-3 px-6 py-3"
+        style={{ gridTemplateColumns: 'auto 2fr 1fr 1fr 1fr 1fr auto' }}>
         <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing">
           <GripVertical className="w-3.5 h-3.5" />
         </button>
@@ -85,42 +85,42 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
             onChange={e => update('service_name', e.target.value)}
             onFocus={() => setExpanded(true)}
             placeholder="Service name"
-            className="h-7 text-xs font-semibold border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2"
+            className="h-8 text-sm font-semibold border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2"
           />
           {!expanded && item.description && (
-            <p className="text-[11px] text-slate-400 px-2 leading-snug truncate">{item.description}</p>
+            <p className="text-xs text-slate-400 px-2 leading-snug truncate">{item.description}</p>
           )}
         </div>
 
         {/* Qty + Unit stacked */}
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-1">
           <Input type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
-            className="h-6 text-xs text-right border-slate-200 px-1" min={0} />
+            className="h-8 text-sm text-right border-slate-200 px-2" min={0} />
           <select value={item.unit} onChange={e => update('unit', e.target.value)}
-            className="h-6 text-[10px] border border-slate-200 rounded px-1 bg-white text-slate-600 w-full">
+            className="h-8 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600 w-full">
             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
           </select>
         </div>
 
         {/* Unit price */}
         <div className="relative">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
           <Input type="number" step="0.01" value={item.unit_price} onChange={e => update('unit_price', e.target.value)}
-            className="h-7 pl-4 text-xs text-right border-slate-200" min={0} />
+            className="h-8 pl-5 text-sm text-right border-slate-200" min={0} />
         </div>
 
         {/* Unit cost (internal) */}
         {showCost && (
           <div className="relative">
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
             <Input type="number" step="0.01" value={item.unit_cost} onChange={e => update('unit_cost', e.target.value)}
-              className="h-7 pl-4 text-xs text-right border-slate-200 bg-amber-50/50" min={0} />
+              className="h-8 pl-5 text-sm text-right border-slate-200 bg-amber-50/50" min={0} />
           </div>
         )}
         {!showCost && <div />}
 
         {/* Line total */}
-        <div className="text-right text-sm font-bold text-slate-800 pr-1">
+        <div className="text-right text-base font-bold text-slate-900 pr-2">
           ${(item.line_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </div>
 
@@ -133,18 +133,18 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
 
       {/* Expanded detail row */}
       {expanded && (
-        <div className="px-10 pb-3 space-y-1.5">
+        <div className="px-10 pb-4 space-y-2">
           <Input value={item.description} onChange={e => update('description', e.target.value)}
             placeholder="Description (optional)…"
-            className="h-7 text-xs border-slate-200 text-slate-600" />
+            className="h-8 text-sm border-slate-200 text-slate-600" />
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
               <input type="checkbox" checked={item.taxable !== false}
                 onChange={e => update('taxable', e.target.checked)} className="rounded" />
               Taxable
             </label>
             <button onClick={() => setExpanded(false)}
-              className="text-[11px] text-slate-400 hover:text-slate-600">collapse</button>
+              className="text-xs text-slate-400 hover:text-slate-600">collapse</button>
           </div>
         </div>
       )}
@@ -179,32 +179,32 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
   return (
     <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-3">
       {/* Group header */}
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white">
+      <div className="flex items-center gap-3 px-6 py-3 bg-slate-800 text-white">
         <button onClick={() => onUpdate({ ...group, collapsed: !group.collapsed })}
           className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0">
           {group.collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
 
         {editingName ? (
-          <div className="flex items-center gap-1.5 flex-1">
+          <div className="flex items-center gap-2 flex-1">
             <Input autoFocus value={nameVal} onChange={e => setNameVal(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && saveGroupName()}
-              className="h-6 text-xs font-bold bg-white/10 border-white/30 text-white placeholder:text-white/50 flex-1" />
-            <button onClick={saveGroupName} className="p-1 rounded hover:bg-white/20"><Check className="w-3 h-3" /></button>
-            <button onClick={() => setEditingName(false)} className="p-1 rounded hover:bg-white/20"><X className="w-3 h-3" /></button>
+              className="h-8 text-sm font-bold bg-white/10 border-white/30 text-white placeholder:text-white/50 flex-1" />
+            <button onClick={saveGroupName} className="p-1 rounded hover:bg-white/20"><Check className="w-4 h-4" /></button>
+            <button onClick={() => setEditingName(false)} className="p-1 rounded hover:bg-white/20"><X className="w-4 h-4" /></button>
           </div>
         ) : (
           <button onClick={() => setEditingName(true)}
-            className="flex items-center gap-1.5 flex-1 text-left group">
-            <span className="font-bold text-sm tracking-wide">{group.name}</span>
-            <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+            className="flex items-center gap-2 flex-1 text-left group">
+            <span className="font-bold text-base tracking-wide">{group.name}</span>
+            <Pencil className="w-4 h-4 opacity-0 group-hover:opacity-60 transition-opacity" />
           </button>
         )}
 
-        <div className="flex items-center gap-3 ml-auto text-xs font-semibold">
+        <div className="flex items-center gap-4 ml-auto text-sm font-semibold">
           <span className="text-white/70">{group.items?.length || 0} items</span>
           <span className="text-white">${groupSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          {showCost && <span className="text-amber-300 text-[11px]">cost ${groupCost.toFixed(2)}</span>}
+          {showCost && <span className="text-amber-300 text-xs">cost ${groupCost.toFixed(2)}</span>}
           {!isOnly && (
             <button onClick={() => onRemove(group.id)}
               className="p-1 rounded hover:bg-red-500/30 text-white/50 hover:text-white transition-colors ml-1">
@@ -217,11 +217,11 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
       {/* Column headers */}
       {!group.collapsed && (
         <>
-          <div className="grid text-[10px] text-slate-400 font-semibold px-4 py-2 bg-slate-50 border-b border-slate-100"
-            style={{ gridTemplateColumns: '16px 1fr 70px 80px 90px 90px 32px' }}>
+          <div className="grid text-xs text-slate-500 font-semibold px-6 py-2.5 bg-slate-50 border-b border-slate-100"
+            style={{ gridTemplateColumns: 'auto 2fr 1fr 1fr 1fr 1fr auto' }}>
             <div />
             <div>Service</div>
-            <div className="text-right">Qty / Unit</div>
+            <div className="text-right">Qty</div>
             <div className="text-right">Unit Price</div>
             <div className={`text-right ${showCost ? 'text-amber-600' : ''}`}>{showCost ? 'Unit Cost' : ''}</div>
             <div className="text-right">Total</div>
@@ -237,16 +237,16 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
             ))}
           </div>
 
-          <div className="px-4 py-3 flex items-center gap-4 border-t border-slate-100 bg-slate-50/50">
+          <div className="px-6 py-3 flex items-center gap-4 border-t border-slate-100 bg-slate-50/50">
             <button onClick={addItem}
-              className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors">
-              <Plus className="w-3.5 h-3.5" />Add line item
+              className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
+              <Plus className="w-4 h-4" />Add line item
             </button>
-            <button className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors">
-              <BookOpen className="w-3 h-3" />Price book
+            <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
+              <BookOpen className="w-4 h-4" />Price book
             </button>
-            <button className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors">
-              <LayoutTemplate className="w-3 h-3" />Templates
+            <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
+              <LayoutTemplate className="w-4 h-4" />Templates
             </button>
           </div>
         </>
@@ -259,10 +259,10 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
 function NotesSection({ label, placeholder, value, onChange, accent }) {
   return (
     <div>
-      <label className={`text-xs font-semibold block mb-1.5 ${accent ? 'text-amber-700' : 'text-slate-500'}`}>{label}</label>
+      <label className={`text-sm font-semibold block mb-2 ${accent ? 'text-amber-700' : 'text-slate-700'}`}>{label}</label>
       <Textarea value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} rows={3}
-        className={`text-xs resize-none border-slate-200 ${accent ? 'bg-amber-50/30' : ''}`} />
+        className={`text-sm resize-none border-slate-200 ${accent ? 'bg-amber-50/30' : ''}`} />
     </div>
   );
 }
@@ -351,19 +351,19 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
     <div className="w-full space-y-0">
 
       {/* ── ESTIMATE HEADER CARD ── */}
-      <div className="bg-white rounded-lg border border-slate-200 mb-3 px-4 py-3">
+      <div className="bg-white rounded-lg border border-slate-200 mb-4 px-6 py-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">
+            <h2 className="text-2xl font-bold text-slate-900">
               Estimate <span className="text-primary">#{estimate?.estimate_number}</span>
             </h2>
-            {estimate?.title && <p className="text-sm text-slate-500 mt-0.5">{estimate.title}</p>}
+            {estimate?.title && <p className="text-sm text-slate-500 mt-1">{estimate.title}</p>}
           </div>
           <div className="flex items-center gap-5 text-sm flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-xs font-medium">Expires</span>
+              <span className="text-slate-500 text-xs font-medium">Expires</span>
               <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
-                className="h-7 text-xs w-36 border-slate-200" />
+                className="h-8 text-sm w-36 border-slate-200" />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-slate-400 text-xs font-medium">Customer can approve</span>
@@ -394,24 +394,24 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
       </button>
 
       {/* ── TOTALS CARD ── */}
-      <div className="bg-white rounded-lg border border-slate-200 px-4 py-4 mb-3">
+      <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
         <div className="flex gap-8 flex-wrap justify-between">
 
           {/* Left: Internal financials (only when cost visible) */}
           {showCost && (
-            <div className="space-y-2 text-xs min-w-[180px]">
-              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide mb-2">Internal View</p>
+            <div className="space-y-2.5 text-sm min-w-[180px]">
+              <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-3">Internal View</p>
               <div className="flex justify-between gap-6">
-                <span className="text-slate-500">Total Cost</span>
-                <span className="font-semibold text-slate-700">{fmt(totalCost)}</span>
+                <span className="text-slate-600">Total Cost</span>
+                <span className="font-semibold text-slate-800">{fmt(totalCost)}</span>
               </div>
               <div className="flex justify-between gap-6">
-                <span className="text-slate-500">Gross Margin $</span>
+                <span className="text-slate-600">Gross Margin $</span>
                 <span className={`font-semibold ${grossMargin >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmt(grossMargin)}</span>
               </div>
               <div className="flex justify-between gap-6">
-                <span className="text-slate-500">Gross Margin %</span>
-                <span className={`font-bold text-sm ${grossMarginPct >= 30 ? 'text-green-600' : grossMarginPct >= 15 ? 'text-amber-600' : 'text-red-500'}`}>
+                <span className="text-slate-600">Gross Margin %</span>
+                <span className={`font-bold ${grossMarginPct >= 30 ? 'text-green-600' : grossMarginPct >= 15 ? 'text-amber-600' : 'text-red-500'}`}>
                   {grossMarginPct.toFixed(1)}%
                 </span>
               </div>
@@ -419,61 +419,61 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
           )}
 
           {/* Right: Customer-facing totals */}
-          <div className="space-y-2 text-sm ml-auto w-72">
-            <div className="flex justify-between py-1.5">
-              <span className="text-slate-500">Subtotal</span>
+          <div className="space-y-3 text-sm ml-auto w-80">
+            <div className="flex justify-between py-2">
+              <span className="text-slate-600">Subtotal</span>
               <span className="font-semibold text-slate-800">{fmt(subtotal)}</span>
             </div>
 
             {/* Discount */}
-            <div className="flex items-center justify-between gap-3 py-1.5">
-              <span className="text-slate-500">Discount</span>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-slate-600">Discount</span>
               <div className="flex items-center gap-1.5">
                 <select value={discountType} onChange={e => setDiscountType(e.target.value)}
-                  className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white text-slate-600">
+                  className="h-8 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600">
                   <option value="percent">%</option>
                   <option value="fixed">$</option>
                 </select>
                 <Input type="number" value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
-                  className="h-7 w-20 text-right text-xs border-slate-200" min={0} />
+                  className="h-8 w-20 text-right text-sm border-slate-200" min={0} />
               </div>
             </div>
             {discountAmount > 0 && (
-              <div className="flex justify-between text-xs text-slate-400">
+              <div className="flex justify-between text-xs text-slate-500">
                 <span>Discount amount</span>
                 <span className="text-red-500 font-medium">-{fmt(discountAmount)}</span>
               </div>
             )}
 
             {/* Tax */}
-            <div className="flex items-center justify-between gap-3 py-1.5">
-              <span className="text-slate-500">Tax (%)</span>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="text-slate-600">Tax (%)</span>
               <Input type="number" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
-                className="h-7 w-20 text-right text-xs border-slate-200" min={0} max={100} />
+                className="h-8 w-20 text-right text-sm border-slate-200" min={0} max={100} />
             </div>
             {taxAmount > 0 && (
-              <div className="flex justify-between text-xs text-slate-400">
+              <div className="flex justify-between text-xs text-slate-500">
                 <span>Tax ({taxRate}%)</span>
                 <span className="font-medium">{fmt(taxAmount)}</span>
               </div>
             )}
 
             {/* Total */}
-            <div className="flex justify-between pt-3 border-t-2 border-slate-200">
-              <span className="font-bold text-slate-900 text-base">Total</span>
-              <span className="font-bold text-primary text-xl">{fmt(total)}</span>
+            <div className="flex justify-between pt-4 border-t-2 border-slate-300">
+              <span className="font-bold text-slate-900 text-lg">Total</span>
+              <span className="font-bold text-primary text-3xl">{fmt(total)}</span>
             </div>
 
             {/* Deposit */}
-            <div className="flex items-center justify-between gap-3 pt-1.5">
-              <span className="text-slate-500 text-xs">Deposit (%)</span>
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <span className="text-slate-600 text-xs font-medium">Deposit (%)</span>
               <div className="flex items-center gap-1.5">
                 <Input type="number" value={depositPercent} onChange={e => setDepositPercent(parseFloat(e.target.value) || 0)}
-                  className="h-7 w-20 text-right text-xs border-slate-200" min={0} max={100} />
+                  className="h-8 w-20 text-right text-sm border-slate-200" min={0} max={100} />
               </div>
             </div>
             {depositAmount > 0 && (
-              <div className="flex justify-between text-xs text-green-700 font-medium bg-green-50 rounded px-2 py-1">
+              <div className="flex justify-between text-sm text-green-700 font-medium bg-green-50 rounded px-3 py-2">
                 <span>Deposit due</span>
                 <span>{fmt(depositAmount)}</span>
               </div>
@@ -483,8 +483,8 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
       </div>
 
       {/* ── NOTES & TERMS ── */}
-      <div className="bg-white rounded-lg border border-slate-200 px-4 py-4 mb-3">
-        <div className="grid grid-cols-2 gap-5">
+      <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
+        <div className="grid grid-cols-2 gap-6">
           <NotesSection label="Customer Notes" placeholder="Visible to client…" value={notes} onChange={setNotes} />
           <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent />
           <NotesSection label="Exclusions" placeholder="What is NOT included in this estimate…" value={exclusions} onChange={setExclusions} />
@@ -493,13 +493,13 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
 
         {/* Expandable terms */}
         <button onClick={() => setShowTerms(v => !v)}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 mt-4 font-medium transition-colors">
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mt-5 font-medium transition-colors">
           {showTerms ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           {showTerms ? 'Hide' : 'Show'} warranty & legal terms
         </button>
 
         {showTerms && (
-          <div className="grid grid-cols-2 gap-5 mt-4">
+          <div className="grid grid-cols-2 gap-6 mt-5">
             <NotesSection label="Warranty Terms" placeholder="e.g. 1-year labor warranty…" value={warrantyTerms} onChange={setWarrantyTerms} />
             <NotesSection label="Legal Terms" placeholder="Terms and conditions…" value={legalTerms} onChange={setLegalTerms} />
           </div>
