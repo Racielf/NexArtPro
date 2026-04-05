@@ -341,6 +341,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
                 showSignatures: true,
                 hideInternalNotes: true,
               }}
+              documentType="estimate"
             />
           </div>
         </div>

@@ -60,6 +60,7 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
                 showSignatures: true,
                 hideInternalNotes: true,
               }}
+              documentType="estimate"
             />
           </div>
         </div>
