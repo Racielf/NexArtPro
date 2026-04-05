@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calendar, Navigation2, CheckSquare, Send, ThumbsUp,
-  CheckCircle, XCircle, AlertCircle, Zap, Trash2, ChevronDown
+  CheckCircle, XCircle, AlertCircle, Zap, Trash2, ChevronDown, Eye, EyeOff
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -419,11 +419,11 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       {next && (
         <div className="mx-3 mt-3 mb-3 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 flex items-start gap-2">
           <next.icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
-            next.color === 'green'  ? 'text-green-500' :
-            next.color === 'orange' ? 'text-orange-500' :
+            next.color === 'green'  ? 'text-emerald-500' :
+            next.color === 'orange' ? 'text-amber-500' :
             next.color === 'red'    ? 'text-red-500' :
-            next.color === 'purple' ? 'text-purple-500' :
-            'text-primary'
+            next.color === 'purple' ? 'text-violet-500' :
+            'text-blue-500'
           }`} />
           <div>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5">Next step</p>
@@ -436,23 +436,23 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       <div className="border-t border-slate-100 mb-2" />
       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-3.5 mb-2">Other Actions</p>
 
-      {/* ── ACTION CARDS (Compact buttons) ──────────────────────────────────── */}
+      {/* ── ACTION CARDS (Compact buttons with icon colors) ──────────────────────── */}
       <div className="px-2 pb-2 space-y-1 flex-1 flex flex-col gap-1">
         <button onClick={() => { setSchedDate(estimate?.scheduled_date || ''); setSchedTime(estimate?.scheduled_time || '09:00'); setScheduleOpen(true); }}
           className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
-          <Calendar className="w-3.5 h-3.5" />
+          <Calendar className="w-3.5 h-3.5 text-blue-500" />
           Schedule
         </button>
         <button onClick={omwActive ? handleStopOMW : handleOMW}
           className={`flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${
             omwActive ? 'bg-orange-100 hover:bg-orange-200 text-orange-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
           }`}>
-          <Navigation2 className="w-3.5 h-3.5" />
+          <Navigation2 className="w-3.5 h-3.5 text-amber-500" />
           {omwActive ? 'Stop OMW' : 'On My Way'}
         </button>
         <button onClick={() => setFinishOpen(true)}
           className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
-          <CheckSquare className="w-3.5 h-3.5" />
+          <CheckSquare className="w-3.5 h-3.5 text-green-500" />
           Finish Visit
         </button>
         <button onClick={() => {
@@ -460,12 +460,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
             onOpenSendReview?.();
           }}
           className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
-          <Send className="w-3.5 h-3.5" />
+          <Send className="w-3.5 h-3.5 text-indigo-500" />
           Review & Send
         </button>
         <button onClick={() => setApprovalOpen(true)}
           className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
-          <ThumbsUp className="w-3.5 h-3.5" />
+          <ThumbsUp className="w-3.5 h-3.5 text-green-500" />
           Approve/Decline
         </button>
       </div>
@@ -475,7 +475,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
+              <Calendar className="w-5 h-5 text-blue-500" />
               {hasAppointment ? 'Reschedule Appointment' : 'Schedule Appointment'}
             </DialogTitle>
           </DialogHeader>
@@ -509,7 +509,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ThumbsUp className="w-5 h-5 text-primary" />Approve or Decline
+              <ThumbsUp className="w-5 h-5 text-green-500" />Approve or Decline
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
@@ -530,9 +530,9 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
           </div>
           <div className="flex gap-2 pt-1">
             <Button variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50" onClick={handleDeclineConfirm}>
-              <XCircle className="w-3.5 h-3.5 mr-1" />Decline
+              <XCircle className="w-3.5 h-3.5 mr-1 text-red-500" />Decline
             </Button>
-            <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleApproveConfirm}>
+            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleApproveConfirm}>
               <CheckCircle className="w-3.5 h-3.5 mr-1" />Approve
             </Button>
           </div>
@@ -544,7 +544,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckSquare className="w-5 h-5 text-green-600" />Finish Visit
+              <CheckSquare className="w-5 h-5 text-emerald-600" />Finish Visit
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
@@ -554,14 +554,14 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
               <Textarea value={finishNotes} onChange={e => setFinishNotes(e.target.value)} placeholder="What was done on site..." rows={3} />
             </div>
             {omwMiles > 0 && (
-              <div className="text-xs text-green-700 bg-green-50 rounded p-2 flex items-center gap-1.5">
-                <Navigation2 className="w-3.5 h-3.5" />{omwMiles} miles tracked on this visit
+              <div className="text-xs text-emerald-700 bg-emerald-50 rounded p-2 flex items-center gap-1.5">
+                <Navigation2 className="w-3.5 h-3.5 text-amber-500" />{omwMiles} miles tracked on this visit
               </div>
             )}
           </div>
           <div className="flex gap-2 pt-1">
             <Button variant="outline" className="flex-1" onClick={() => setFinishOpen(false)}>Cancel</Button>
-            <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleFinish}>Mark as Finished</Button>
+            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleFinish}>Mark as Finished</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -626,7 +626,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
               }`}
               title={!canDelete() ? getDeleteBlockReason() : 'Delete this estimate'}
             >
-              <Trash2 className="w-3.5 h-3.5" style={{ color: canDelete() ? '#f87171' : '#cbd5e1' }} />
+              <Trash2 className="w-3.5 h-3.5 text-red-500" />
               Delete Estimate
             </button>
           </CollapsibleContent>

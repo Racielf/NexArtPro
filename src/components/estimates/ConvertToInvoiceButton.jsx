@@ -1,0 +1,80 @@
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Button } from '@/components/ui/button';
+import { FileText, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+
+/**
+ * Shows only when estimate is approved or signed.
+ * Converts estimate → Invoice and navigates to the invoice detail page.
+ */
+export default function ConvertToInvoiceButton({ estimate, onConverted }) {
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  if (!estimate) return null;
+
+  const isApproved = ['approved', 'signed'].includes(estimate.status);
+
+  const handleConvert = async () => {
+    if (!isApproved) { toast.error('Estimate must be approved before converting to Invoice'); return; }
+    setLoading(true);
+    try {
+      // Check if already converted to invoice
+      const existing = await base44.entities.Invoice.filter({ estimate_id: estimate.id });
+      if (existing.length > 0) {
+        toast.error('Already converted to Invoice #' + existing[0].invoice_number);
+        navigate(`/invoice-detail?id=${existing[0].id}`);
+        return;
+      }
+
+      const invoiceNum = Math.floor(Math.random() * 9000) + 1000;
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30); // 30 days from today
+
+      const invoice = await base44.entities.Invoice.create({
+        invoice_number: invoiceNum,
+        estimate_id: estimate.id,
+        client_id: estimate.client_id || '',
+        client_name: estimate.client_name,
+        client_email: estimate.client_email || '',
+        client_address: estimate.client_address || '',
+        client_phone: estimate.client_phone || '',
+        title: estimate.title || `Invoice from Estimate #${estimate.estimate_number}`,
+        status: 'draft',
+        // Copy financial data from estimate
+        groups: estimate.groups || [],
+        line_items: estimate.line_items || [],
+        subtotal: estimate.subtotal || 0,
+        discount_type: estimate.discount_type || 'percent',
+        discount_value: estimate.discount_value || 0,
+        discount_amount: estimate.discount_amount || 0,
+        tax_rate: estimate.tax_rate || 0,
+        tax_amount: estimate.tax_amount || 0,
+        total: estimate.total || 0,
+        due_date: dueDate.toISOString().split('T')[0],
+        notes: estimate.notes || '',
+      });
+
+      toast.success(`Invoice #${invoiceNum} created from estimate!`);
+      onConverted?.();
+      navigate(`/invoice-detail?id=${invoice.id}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      size="sm"
+      onClick={handleConvert}
+      disabled={loading || !isApproved}
+      title={!isApproved ? 'Estimate must be approved before converting' : 'Convert to Invoice'}
+      className={`gap-1.5 text-white ${isApproved ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-300 cursor-not-allowed'}`}
+    >
+      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+      Convert to Invoice
+    </Button>
+  );
+}

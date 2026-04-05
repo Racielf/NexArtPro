@@ -11,6 +11,7 @@ import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrderButton';
+import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -132,9 +133,10 @@ export default function EstimateEditor() {
 
           <div className="flex-1" />
 
-          {/* Convert to Work Order */}
+          {/* Convert actions */}
           {hasClient && (
-            <div className="flex-shrink-0 ml-2">
+            <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+              <ConvertToInvoiceButton estimate={estimate} onConverted={loadEstimate} />
               <ConvertToWorkOrderButton estimate={estimate} onConverted={loadEstimate} />
             </div>
           )}
