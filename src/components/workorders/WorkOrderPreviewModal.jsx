@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import WOExtrasSection from './WOExtrasSection';
 
 function calcHours(arrival, departure) {
   if (!arrival || !departure) return null;
@@ -17,7 +18,9 @@ function calcHours(arrival, departure) {
   return `${h}h ${m.toString().padStart(2, '0')}m`;
 }
 
-// ─── The printable document ───────────────────────────────────────────────────
+// ─── Legacy fallback document (kept for backward compat) ─────────────────────
+// NOTA: Reemplazado por EstimateTemplateRenderer + WOExtrasSection.
+// Mantener si algo falla en la composición.
 function WODocument({ wo, expenses, photos, taskStatuses }) {
   const allItems = (wo.groups || []).flatMap(g => g.items || []);
   const totalHours = calcHours(wo.arrival_time, wo.departure_time);
@@ -393,15 +396,34 @@ Thank you for your business.
             <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="shadow-2xl rounded-lg overflow-hidden" ref={printRef}>
-            {/* Use renderer for base document, WODocument as fallback for rich sections */}
-            <WODocument
-              wo={workOrder}
-              expenses={expenses}
-              photos={photos}
-              taskStatuses={taskStatuses}
-            />
-          </div>
+          <>
+            {/* Base document via EstimateTemplateRenderer */}
+            <div className="shadow-2xl rounded-lg overflow-hidden bg-white mb-6" ref={printRef}>
+              <EstimateTemplateRenderer
+                estimate={workOrder}
+                template={workOrder?.document_config?.template || 'pro'}
+                options={{
+                  ...DEFAULT_OPTIONS,
+                  showPrices: false,
+                  showBreakdown: true,
+                  showTerms: false,
+                  showSignatures: false,
+                  hideInternalNotes: true,
+                }}
+                documentType="workorder"
+              />
+            </div>
+
+            {/* Work Order Extras */}
+            <div className="mb-8">
+              <WOExtrasSection
+                workOrder={workOrder}
+                expenses={expenses}
+                photos={photos}
+                taskStatuses={taskStatuses}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>
