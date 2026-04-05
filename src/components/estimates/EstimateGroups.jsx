@@ -348,7 +348,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-0">
+    <div className="w-full space-y-0">
 
       {/* ── ESTIMATE HEADER CARD ── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-4 px-6 py-4">
