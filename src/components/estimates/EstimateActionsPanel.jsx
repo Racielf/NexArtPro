@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calendar, Navigation2, CheckSquare, Send, ThumbsUp,
-  Square, CheckCircle, XCircle, Clock, MapPin, User,
-  ArrowRight, AlertCircle, Eye, Zap, Edit, Copy, Archive, Trash2, ChevronDown
+  CheckCircle, XCircle, AlertCircle, Zap, Trash2, ChevronDown
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -344,18 +343,6 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     return null;
   };
 
-  const handleEdit = () => {
-    console.log('Edit estimate:', estimate.id);
-  };
-
-  const handleDuplicate = () => {
-    console.log('Duplicate estimate:', estimate.id);
-  };
-
-  const handleArchive = () => {
-    console.log('Archive estimate:', estimate.id);
-  };
-
   const handleDelete = () => {
     const blockReason = getDeleteBlockReason();
     if (blockReason) {
@@ -629,27 +616,6 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-2 pb-3 space-y-1.5">
-            <button
-              onClick={handleEdit}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 transition-colors text-xs font-medium"
-            >
-              <Edit className="w-3.5 h-3.5 text-slate-400" />
-              Edit Estimate
-            </button>
-            <button
-              onClick={handleDuplicate}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 transition-colors text-xs font-medium"
-            >
-              <Copy className="w-3.5 h-3.5 text-slate-400" />
-              Duplicate Estimate
-            </button>
-            <button
-              onClick={handleArchive}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 transition-colors text-xs font-medium"
-            >
-              <Archive className="w-3.5 h-3.5 text-slate-400" />
-              Archive Estimate
-            </button>
             <button
               onClick={handleDelete}
               disabled={!canDelete()}
