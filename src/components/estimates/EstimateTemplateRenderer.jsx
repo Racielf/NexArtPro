@@ -180,7 +180,10 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   const lineCols = getLineItemColumns(documentType);
   const hasProjectDates_ = hasProjectDates(startDate, endDate);
 
-  const safeTemplate = ['minimal', 'standard', 'modern', 'executive', 'compact', 'pro'].includes(template) ? template : 'standard';
+  // Normalize template aliases (professional → pro, detailed → pro, standard → standard)
+  const templateMap = { professional: 'pro', detailed: 'pro', standard: 'standard' };
+  const normalizedTemplate = templateMap[template] || template;
+  const safeTemplate = ['minimal', 'standard', 'modern', 'executive', 'compact', 'pro'].includes(normalizedTemplate) ? normalizedTemplate : 'standard';
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER HELPERS (reusable sections)

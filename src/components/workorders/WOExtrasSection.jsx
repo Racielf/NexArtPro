@@ -49,7 +49,7 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
   const afterPhotos = photos.filter(p => p.phase === 'after');
 
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto' }}>
+    <div style={{ maxWidth: 760, margin: '0 auto', fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 13, color: '#1e293b', lineHeight: 1.5 }}>
       {/* Task Checklist */}
       {allItems.length > 0 && (
         <SectionBox title="Task Checklist">

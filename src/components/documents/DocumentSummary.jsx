@@ -47,12 +47,12 @@ export default function DocumentSummary({
       fontSize: 11,
     },
     standard: {
-      padding: '16px 52px 32px',
+      padding: '24px 52px',
       fontSize: 13,
       alignment: 'flex-end',
     },
     modern: {
-      padding: '0 0 30px',
+      padding: '30px 0',
       fontSize: 11,
       alignment: 'flex-end',
     },
@@ -66,7 +66,7 @@ export default function DocumentSummary({
       fontSize: 11,
     },
     pro: {
-      padding: '28px',
+      padding: '32px',
       fontSize: 13,
       alignment: 'flex-start',
     },

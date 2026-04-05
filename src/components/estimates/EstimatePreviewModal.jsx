@@ -51,7 +51,7 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
           <div className="w-full max-w-4xl">
             <EstimateTemplateRenderer
               estimate={estimate}
-              template={estimate?.document_config?.template || 'professional'}
+              template={estimate?.document_config?.template || 'pro'}
               options={{
                 ...DEFAULT_OPTIONS,
                 showPrices: true,

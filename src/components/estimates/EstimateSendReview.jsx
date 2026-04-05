@@ -91,7 +91,7 @@ function ToggleRow({ label, checked, onChange }) {
 
 export default function EstimateSendReview({ estimate, open, onClose, onSent }) {
    const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
-   const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'professional');
+   const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'pro');
    const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
    const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from FSM Pro`);
    const [message, setMessage] = useState(
