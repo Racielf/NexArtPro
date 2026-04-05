@@ -87,5 +87,8 @@ export function EstimateToDocumentMapper(estimate) {
     // Signature
     signer_name: estimate.signer_name || undefined,
     signature_image_base64: estimate.signature_image_base64 || undefined,
+
+    // Computed fields (calculated once, not in renderer)
+    today: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
   };
 }

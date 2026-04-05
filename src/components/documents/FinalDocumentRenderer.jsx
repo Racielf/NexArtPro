@@ -1,14 +1,12 @@
 import React from 'react';
 
 /**
- * FinalDocumentRenderer — Renderiza DocumentData limpio.
- * Layout único, pixel-perfect, sin condicionales de visibilidad.
- * Referencia visual: EstimatePreviewModal.
+ * FinalDocumentRenderer — Renderiza SOLO el DocumentData.
+ * Sin cálculos, sin transformaciones.
+ * Recibe datos ya preparados del mapper.
  */
 export default function FinalDocumentRenderer({ documentData }) {
   if (!documentData) return null;
-
-  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
     <div className="w-full bg-white">
@@ -32,7 +30,7 @@ export default function FinalDocumentRenderer({ documentData }) {
             <div className="px-4 py-2 bg-slate-50 text-xs font-semibold text-slate-500">ESTIMATE</div>
             <div className="px-4 py-2 text-right text-xs font-bold text-slate-900">#{documentData.estimate_number}</div>
             <div className="px-4 py-2 bg-slate-50 text-xs font-semibold text-slate-500 border-t border-slate-100">DATE</div>
-            <div className="px-4 py-2 text-right text-xs text-slate-600 border-t border-slate-100">{today}</div>
+            <div className="px-4 py-2 text-right text-xs text-slate-600 border-t border-slate-100">{documentData.today}</div>
             {documentData.expiration_date && (
               <>
                 <div className="px-4 py-2 bg-slate-50 text-xs font-semibold text-slate-500 border-t border-slate-100">EXPIRES</div>
