@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +22,7 @@ export default function WorkOrderDetail() {
   const [taskStatuses, setTaskStatuses] = useState({});
   const [execution, setExecution] = useState({ work_summary: '', notes: '', issues_found: '' });
   const [savingExecution, setSavingExecution] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => { loadWorkOrder(); }, [id]);
 
@@ -44,6 +46,17 @@ export default function WorkOrderDetail() {
     setSavingExecution(true);
     await base44.entities.WorkOrder.update(id, execution);
     setSavingExecution(false);
+  };
+
+  const markCompleted = async () => {
+    setCompleting(true);
+    await base44.entities.WorkOrder.update(id, {
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+    });
+    setWorkOrder(prev => ({ ...prev, status: 'completed', completed_at: new Date().toISOString() }));
+    setCompleting(false);
+    toast.success('Work order marked as completed!');
   };
 
   const toggleTask = async (itemId) => {
@@ -366,22 +379,45 @@ export default function WorkOrderDetail() {
           <WOExpenses workOrderId={id} workOrderNumber={workOrder.work_order_number} />
 
           {/* 5. Receipts & Photos */}
-          <WOReceipts workOrderId={id} />
+          <WOReceipts
+            workOrderId={id}
+            workOrderNumber={workOrder.work_order_number}
+            clientName={workOrder.client_name}
+          />
 
           {/* ── FOOTER ── */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-4 flex items-center justify-between">
-            <p className="text-sm text-slate-500">
-              {workOrder.status === 'completed'
-                ? 'This work order has been completed.'
-                : 'Mark as completed when all work is done.'}
-            </p>
-            <Button
-              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
-              disabled={workOrder.status === 'completed' || workOrder.status === 'invoiced'}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Mark as Completed
-            </Button>
+          <div className={`rounded-xl border shadow-sm px-6 py-4 flex items-center justify-between ${
+            workOrder.status === 'completed'
+              ? 'bg-green-50 border-green-200'
+              : 'bg-white border-slate-200'
+          }`}>
+            <div>
+              {workOrder.status === 'completed' ? (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">Work Order Completed</p>
+                    {workOrder.completed_at && (
+                      <p className="text-xs text-green-600 mt-0.5">
+                        {new Date(workOrder.completed_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">Mark as completed when all work is done.</p>
+              )}
+            </div>
+            {workOrder.status !== 'completed' && workOrder.status !== 'invoiced' && (
+              <Button
+                className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                onClick={markCompleted}
+                disabled={completing}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {completing ? 'Saving…' : 'Mark as Completed'}
+              </Button>
+            )}
           </div>
 
         </div>
