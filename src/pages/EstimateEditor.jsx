@@ -103,7 +103,7 @@ export default function EstimateEditor() {
   const hasClient = !!estimate.client_name;
 
   return (
-    <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 overflow-hidden">
+    <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50">
 
       {/* ── TOP BAR ── */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
