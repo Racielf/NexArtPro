@@ -55,29 +55,46 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const [schedTime, setSchedTime] = useState(estimate?.scheduled_time || '09:00');
   const [schedNotes, setSchedNotes] = useState('');
   const [finishNotes, setFinishNotes] = useState('');
+  const [declineReason, setDeclineReason] = useState('');
 
   // --- SCHEDULE ---
   const handleSchedule = async () => {
     if (!schedDate) { toast.error('Select a date'); return; }
-    const apptData = {
-      customer_display_name: estimate.client_name,
-      customer_email: estimate.client_email || '',
-      customer_phone: estimate.client_phone || '',
-      service_address: estimate.client_address || '',
-      customer_id: estimate.client_id || '',
-      appointment_date: schedDate,
-      start_time: schedTime,
-      description: schedNotes || estimate.title || '',
-      status: 'scheduled',
-      estimate_id: estimate.id,
-    };
-    const appt = await base44.entities.Appointment.create(apptData);
+
+    let apptId = estimate.appointment_id;
+
+    if (apptId) {
+      // Update existing appointment
+      await base44.entities.Appointment.update(apptId, {
+        appointment_date: schedDate,
+        start_time: schedTime,
+        description: schedNotes || estimate.title || '',
+        status: 'scheduled',
+      });
+    } else {
+      // Create new appointment
+      const appt = await base44.entities.Appointment.create({
+        customer_display_name: estimate.client_name,
+        customer_email: estimate.client_email || '',
+        customer_phone: estimate.client_phone || '',
+        service_address: estimate.client_address || '',
+        customer_id: estimate.client_id || '',
+        appointment_date: schedDate,
+        start_time: schedTime,
+        description: schedNotes || estimate.title || '',
+        status: 'scheduled',
+        estimate_id: estimate.id,
+      });
+      apptId = appt.id;
+    }
+
     await base44.entities.Estimate.update(estimate.id, {
       status: 'scheduled',
-      appointment_id: appt.id,
+      appointment_id: apptId,
       scheduled_date: schedDate,
       scheduled_time: schedTime,
     });
+
     if (estimate.client_email) {
       try {
         await base44.integrations.Core.SendEmail({
@@ -85,12 +102,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
           subject: 'Appointment Scheduled',
           body: `Hi ${estimate.client_name},\n\nYour appointment has been scheduled for ${schedDate} at ${schedTime}.\n\nThank you!`,
         });
-        await logComm({ event_type: 'appointment_created', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: appt.id, estimate_id: estimate.id, subject: 'Appointment Scheduled', preview: `${schedDate} at ${schedTime}` });
+        await logComm({ event_type: 'appointment_created', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: apptId, estimate_id: estimate.id, subject: 'Appointment Scheduled', preview: `${schedDate} at ${schedTime}` });
       } catch {
-        await logCommFailed({ event_type: 'appointment_created', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: appt.id, estimate_id: estimate.id, subject: 'Appointment Scheduled' });
+        await logCommFailed({ event_type: 'appointment_created', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: apptId, estimate_id: estimate.id, subject: 'Appointment Scheduled' });
       }
     }
-    toast.success(`Appointment scheduled for ${schedDate} at ${schedTime}`);
+    toast.success(`Appointment ${estimate.appointment_id ? 'updated' : 'scheduled'} for ${schedDate} at ${schedTime}`);
     setScheduleOpen(false);
     onStatusChange('scheduled');
   };
@@ -122,8 +139,9 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     if (omwInterval) clearInterval(omwInterval);
     setOmwInterval(null);
     setOmwActive(false);
+    // Find the running TimeEntry linked to this estimate
     const running = await base44.entities.TimeEntry.filter({ status: 'running' });
-    const entry = running.find(e => e.client_name === estimate.client_name);
+    const entry = running.find(e => e.client_name === estimate.client_name && e.project?.includes(String(estimate.estimate_number)));
     if (entry) {
       await base44.entities.TimeEntry.update(entry.id, {
         end_time: new Date().toISOString(),
@@ -132,7 +150,8 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         miles_traveled: omwMiles,
       });
     }
-    await base44.entities.Estimate.update(estimate.id, { status: 'on_my_way', miles_traveled: omwMiles });
+    // Save miles but do NOT change estimate status
+    await base44.entities.Estimate.update(estimate.id, { miles_traveled: omwMiles });
     toast.success(`OMW stopped — ${omwMiles} miles tracked`);
   };
 
@@ -146,10 +165,9 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     });
     if (estimate.appointment_id) {
       await base44.entities.Appointment.update(estimate.appointment_id, {
-        status: 'completed',
-        completed_time: now,
+        status: 'visit_completed',
+        completed_at: now,
         notes: finishNotes,
-        miles_traveled: omwMiles || estimate.miles_traveled || 0,
       });
     }
     toast.success('Visit marked as completed');
@@ -159,7 +177,10 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
 
   // --- APPROVAL ---
   const handleApproveConfirm = async () => {
-    await base44.entities.Estimate.update(estimate.id, { status: 'approved', approved_at: new Date().toISOString(), approval_type: 'manual' });
+    await base44.entities.Estimate.update(estimate.id, {
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+    });
     await logComm({ event_type: 'estimate_approved', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Approved`, status: 'delivered' });
     setApprovalOpen(false);
     toast.success('Estimate approved!');
@@ -167,9 +188,15 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   };
 
   const handleDeclineConfirm = async () => {
-    await base44.entities.Estimate.update(estimate.id, { status: 'declined' });
+    if (!declineReason.trim()) { toast.error('Please enter a reason for declining'); return; }
+    await base44.entities.Estimate.update(estimate.id, {
+      status: 'declined',
+      declined_at: new Date().toISOString(),
+      declined_reason: declineReason.trim(),
+    });
     await logComm({ event_type: 'estimate_declined', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Declined`, status: 'delivered' });
     setApprovalOpen(false);
+    setDeclineReason('');
     toast.success('Estimate declined');
     onStatusChange('declined');
   };
@@ -315,11 +342,19 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
-            <p className="text-sm text-slate-600">Set the status of this estimate.</p>
             <div className="bg-slate-50 rounded p-3">
               <p className="text-xs text-slate-500 font-medium">Estimate #{estimate?.estimate_number}</p>
               <p className="text-sm font-semibold text-slate-800 mt-1">{estimate?.client_name}</p>
               <p className="text-xs text-slate-500 mt-1">Total: ${(estimate?.total || 0).toFixed(2)}</p>
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block font-medium">Reason (required to decline)</label>
+              <Textarea
+                value={declineReason}
+                onChange={e => setDeclineReason(e.target.value)}
+                placeholder="Optional for approval, required for decline..."
+                rows={2}
+              />
             </div>
           </div>
           <div className="flex gap-2 pt-1">
