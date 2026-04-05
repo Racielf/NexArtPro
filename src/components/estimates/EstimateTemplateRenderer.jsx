@@ -16,6 +16,20 @@ import React from 'react';
  * - invoice: Shows prices, tax, discount (no deposit)
  * - workorder: Hides all prices, focuses on tasks and execution
  */
+
+// ═══════════════════════════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════
+
+const getLineItemColumns = (documentType) => {
+  if (documentType === 'workorder') {
+    return { description: true, quantity: true, unit: true, price: false, total: false };
+  }
+  return { description: true, quantity: true, unit: true, price: true, total: true };
+};
+
+const hasProjectDates = (startDate, endDate) => Boolean(startDate || endDate);
+
 export default function EstimateTemplateRenderer({ estimate, template = 'professional', options = {}, documentType = 'estimate' }) {
   if (!estimate) return null;
 
@@ -79,10 +93,17 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
 
   const docTypeLabel = isWorkOrder ? 'WORK ORDER' : isInvoice ? 'INVOICE' : 'ESTIMATE';
 
+  // Column configuration for line items
+  const lineCols = getLineItemColumns(documentType);
+  const hasProjectDates_ = hasProjectDates(startDate, endDate);
+
+  // Safe template selector with fallback
+  const safeTemplate = ['minimal', 'compact', 'professional', 'modern', 'executive', 'detailed'].includes(template) ? template : 'professional';
+
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE 1: MINIMAL
   // ═══════════════════════════════════════════════════════════════════════
-  if (template === 'minimal') {
+  if (safeTemplate === 'minimal') {
     return (
       <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#000', padding: '40px', background: 'white', lineHeight: 1.6 }}>
         {/* Header */}
@@ -119,23 +140,21 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #000' }}>
-                      <th style={{ textAlign: 'left', padding: '5px', fontSize: 10 }}>Description</th>
-                      <th style={{ textAlign: 'right', padding: '5px', fontSize: 10 }}>Qty</th>
-                      {showPrices && <>
-                        <th style={{ textAlign: 'right', padding: '5px', fontSize: 10 }}>Price</th>
-                        <th style={{ textAlign: 'right', padding: '5px', fontSize: 10 }}>Total</th>
-                      </>}
+                      {lineCols.description && <th style={{ textAlign: 'left', padding: '5px', fontSize: 10 }}>Description</th>}
+                      {lineCols.quantity && <th style={{ textAlign: 'right', padding: '5px', fontSize: 10 }}>Qty</th>}
+                      {lineCols.unit && <th style={{ textAlign: 'right', padding: '5px', fontSize: 10 }}>Unit</th>}
+                      {lineCols.price && <th style={{ textAlign: 'right', padding: '5px', fontSize: 10 }}>Price</th>}
+                      {lineCols.total && <th style={{ textAlign: 'right', padding: '5px', fontSize: 10 }}>Total</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {(group.items || []).map((item, idx) => (
                       <tr key={item.id || idx} style={{ borderBottom: '1px solid #ddd' }}>
-                        <td style={{ padding: '5px' }}>{item.service_name}</td>
-                        <td style={{ textAlign: 'right', padding: '5px' }}>{item.quantity}</td>
-                        {showPrices && <>
-                          <td style={{ textAlign: 'right', padding: '5px' }}>${(item.unit_price || 0).toFixed(2)}</td>
-                          <td style={{ textAlign: 'right', padding: '5px', fontWeight: 'bold' }}>${(item.line_total || 0).toFixed(2)}</td>
-                        </>}
+                        {lineCols.description && <td style={{ padding: '5px' }}>{item.service_name}</td>}
+                        {lineCols.quantity && <td style={{ textAlign: 'right', padding: '5px' }}>{item.quantity}</td>}
+                        {lineCols.unit && <td style={{ textAlign: 'right', padding: '5px' }}>{item.unit || 'ea'}</td>}
+                        {lineCols.price && <td style={{ textAlign: 'right', padding: '5px' }}>${(item.unit_price || 0).toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ textAlign: 'right', padding: '5px', fontWeight: 'bold' }}>${(item.line_total || 0).toFixed(2)}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -188,7 +207,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE 2: COMPACT
   // ═══════════════════════════════════════════════════════════════════════
-  if (template === 'compact') {
+  if (safeTemplate === 'compact') {
     return (
       <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#222', background: 'white', display: 'flex', minHeight: '100vh' }}>
         {/* Sidebar */}
@@ -255,26 +274,24 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#f0f0f0', borderBottom: '2px solid #999' }}>
-                        <th style={{ textAlign: 'left', padding: '6px', fontSize: 10, fontWeight: 'bold' }}>Description</th>
-                        <th style={{ textAlign: 'center', padding: '6px', fontSize: 10, fontWeight: 'bold', width: 50 }}>Qty</th>
-                        {showPrices && <>
-                          <th style={{ textAlign: 'right', padding: '6px', fontSize: 10, fontWeight: 'bold', width: 70 }}>Price</th>
-                          <th style={{ textAlign: 'right', padding: '6px', fontSize: 10, fontWeight: 'bold', width: 80 }}>Total</th>
-                        </>}
+                        {lineCols.description && <th style={{ textAlign: 'left', padding: '6px', fontSize: 10, fontWeight: 'bold' }}>Description</th>}
+                        {lineCols.quantity && <th style={{ textAlign: 'center', padding: '6px', fontSize: 10, fontWeight: 'bold', width: 50 }}>Qty</th>}
+                        {lineCols.unit && <th style={{ textAlign: 'center', padding: '6px', fontSize: 10, fontWeight: 'bold', width: 40 }}>Unit</th>}
+                        {lineCols.price && <th style={{ textAlign: 'right', padding: '6px', fontSize: 10, fontWeight: 'bold', width: 70 }}>Price</th>}
+                        {lineCols.total && <th style={{ textAlign: 'right', padding: '6px', fontSize: 10, fontWeight: 'bold', width: 80 }}>Total</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {(group.items || []).map((item, idx) => (
                         <tr key={item.id || idx} style={{ borderBottom: '1px solid #ddd' }}>
-                          <td style={{ padding: '6px', fontSize: 11 }}>
+                          {lineCols.description && <td style={{ padding: '6px', fontSize: 11 }}>
                             <div style={{ fontWeight: 'bold' }}>{item.service_name}</div>
                             {item.description && <div style={{ fontSize: 10, color: '#666' }}>{item.description}</div>}
-                          </td>
-                          <td style={{ textAlign: 'center', padding: '6px', fontSize: 11 }}>{item.quantity}</td>
-                          {showPrices && <>
-                            <td style={{ textAlign: 'right', padding: '6px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>
-                            <td style={{ textAlign: 'right', padding: '6px', fontSize: 11, fontWeight: 'bold' }}>${(item.line_total || 0).toFixed(2)}</td>
-                          </>}
+                          </td>}
+                          {lineCols.quantity && <td style={{ textAlign: 'center', padding: '6px', fontSize: 11 }}>{item.quantity}</td>}
+                          {lineCols.unit && <td style={{ textAlign: 'center', padding: '6px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
+                          {lineCols.price && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>}
+                          {lineCols.total && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11, fontWeight: 'bold' }}>${(item.line_total || 0).toFixed(2)}</td>}
                         </tr>
                       ))}
                     </tbody>
@@ -299,7 +316,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE 3: PROFESSIONAL (DEFAULT)
   // ═══════════════════════════════════════════════════════════════════════
-  if (template === 'professional') {
+  if (safeTemplate === 'professional') {
     return (
       <div id="estimate-document" style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: 13, lineHeight: 1.5, background: 'white', color: '#0f172a', minWidth: 640 }}>
         {/* CORPORATE HEADER */}
@@ -351,7 +368,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
           <div style={{ padding: '28px 52px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>Project Details</div>
             {estimate.title && <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14, marginBottom: 10 }}>{estimate.title}</div>}
-            {(startDate || endDate) && (
+            {hasProjectDates_ && (
               <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
                 {startDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Start</div><div style={{ color: '#334155', fontSize: 12 }}>{startDate}</div></div>}
                 {endDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>End</div><div style={{ color: '#334155', fontSize: 12 }}>{endDate}</div></div>}
@@ -396,36 +413,32 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: '#f8fafc' }}>
-                        <th style={thLeft}>Description</th>
-                        <th style={{ ...th, width: 60 }}>Qty</th>
-                        <th style={{ ...th, width: 60 }}>Unit</th>
-                        {showPrices && <>
-                          <th style={{ ...th, width: 110 }}>Unit Price</th>
-                          <th style={{ ...th, width: 120 }}>Amount</th>
-                        </>}
+                        {lineCols.description && <th style={thLeft}>Description</th>}
+                        {lineCols.quantity && <th style={{ ...th, width: 60 }}>Qty</th>}
+                        {lineCols.unit && <th style={{ ...th, width: 60 }}>Unit</th>}
+                        {lineCols.price && <th style={{ ...th, width: 110 }}>Unit Price</th>}
+                        {lineCols.total && <th style={{ ...th, width: 120 }}>Amount</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {(group.items || []).length === 0 && (
-                        <tr><td colSpan={showPrices ? 5 : 3} style={{ ...tdLeft, color: '#94a3b8', fontStyle: 'italic', padding: '20px 12px' }}>No items</td></tr>
+                        <tr><td colSpan={Object.values(lineCols).filter(Boolean).length} style={{ ...tdLeft, color: '#94a3b8', fontStyle: 'italic', padding: '20px 12px' }}>No items</td></tr>
                       )}
                       {(group.items || []).map((item, idx) => (
                         <tr key={item.id || idx}>
-                          <td style={tdLeft}>
+                          {lineCols.description && <td style={tdLeft}>
                             <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{item.service_name || item.name}</div>
                             {item.description && <div style={{ color: '#64748b', fontSize: 11, marginTop: 3 }}>{item.description}</div>}
-                          </td>
-                          <td style={td}>{parseFloat(item.quantity) % 1 === 0 ? parseInt(item.quantity) : (item.quantity || 0)}</td>
-                          <td style={td}>{item.unit || 'ea'}</td>
-                          {showPrices && <>
-                            <td style={td}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>
-                            <td style={{ ...td, fontWeight: 700, color: '#0f172a' }}>${(parseFloat(item.line_total || item.total_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          </>}
+                          </td>}
+                          {lineCols.quantity && <td style={td}>{parseFloat(item.quantity) % 1 === 0 ? parseInt(item.quantity) : (item.quantity || 0)}</td>}
+                          {lineCols.unit && <td style={td}>{item.unit || 'ea'}</td>}
+                          {lineCols.price && <td style={td}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
+                          {lineCols.total && <td style={{ ...td, fontWeight: 700, color: '#0f172a' }}>${(parseFloat(item.line_total || item.total_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
                         </tr>
                       ))}
-                      {showGroupHeader && showPrices && (
+                      {showGroupHeader && lineCols.total && (
                         <tr style={{ background: '#f8fafc' }}>
-                          <td colSpan={4} style={{ ...tdLeft, fontWeight: 600, color: '#334155', fontSize: 12, padding: '8px 12px', borderBottom: 'none' }}>Subtotal — {group.name}</td>
+                          <td colSpan={Object.values(lineCols).filter(Boolean).length - 1} style={{ ...tdLeft, fontWeight: 600, color: '#334155', fontSize: 12, padding: '8px 12px', borderBottom: 'none' }}>Subtotal — {group.name}</td>
                           <td style={{ ...td, fontWeight: 700, color: '#334155', borderBottom: 'none', padding: '8px 12px' }}>${groupTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                         </tr>
                       )}
@@ -516,7 +529,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE 4: MODERN
   // ═══════════════════════════════════════════════════════════════════════
-  if (template === 'modern') {
+  if (safeTemplate === 'modern') {
     const accentColor = '#7c3aed';
     return (
       <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 12, color: '#1f2937', background: 'white', padding: '40px' }}>
@@ -573,26 +586,24 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#f9fafb' }}>
-                      <th style={{ textAlign: 'left', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#6b7280' }}>Description</th>
-                      <th style={{ textAlign: 'center', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#6b7280', width: 60 }}>Qty</th>
-                      {showPrices && <>
-                        <th style={{ textAlign: 'right', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#6b7280', width: 80 }}>Price</th>
-                        <th style={{ textAlign: 'right', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#6b7280', width: 100 }}>Total</th>
-                      </>}
+                      {lineCols.description && <th style={{ textAlign: 'left', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#6b7280' }}>Description</th>}
+                      {lineCols.quantity && <th style={{ textAlign: 'center', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#6b7280', width: 60 }}>Qty</th>}
+                      {lineCols.unit && <th style={{ textAlign: 'center', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#6b7280', width: 40 }}>Unit</th>}
+                      {lineCols.price && <th style={{ textAlign: 'right', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#6b7280', width: 80 }}>Price</th>}
+                      {lineCols.total && <th style={{ textAlign: 'right', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#6b7280', width: 100 }}>Total</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {(group.items || []).map((item, idx) => (
                       <tr key={item.id || idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '10px', fontSize: 12 }}>
+                        {lineCols.description && <td style={{ padding: '10px', fontSize: 12 }}>
                           <div style={{ fontWeight: '600', color: '#111' }}>{item.service_name}</div>
                           {item.description && <div style={{ fontSize: 10, color: '#6b7280', marginTop: 3 }}>{item.description}</div>}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.quantity}</td>
-                        {showPrices && <>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: accentColor }}>${(item.line_total || 0).toFixed(2)}</td>
-                        </>}
+                        </td>}
+                        {lineCols.quantity && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.quantity}</td>}
+                        {lineCols.unit && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
+                        {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: accentColor }}>${(item.line_total || 0).toFixed(2)}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -647,7 +658,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE 5: EXECUTIVE
   // ═══════════════════════════════════════════════════════════════════════
-  if (template === 'executive') {
+  if (safeTemplate === 'executive') {
     return (
       <div style={{ fontFamily: 'Georgia, serif', fontSize: 12, color: '#2d2d2d', background: 'white', padding: '50px' }}>
         {/* Elegant header */}
@@ -716,26 +727,24 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 15 }}>
                   <thead>
                     <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #d4a574' }}>
-                      <th style={{ textAlign: 'left', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#1a1a1a' }}>Service Description</th>
-                      <th style={{ textAlign: 'center', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#1a1a1a', width: 60 }}>Qty</th>
-                      {showPrices && <>
-                        <th style={{ textAlign: 'right', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#1a1a1a', width: 90 }}>Unit Price</th>
-                        <th style={{ textAlign: 'right', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#1a1a1a', width: 100 }}>Amount</th>
-                      </>}
+                      {lineCols.description && <th style={{ textAlign: 'left', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#1a1a1a' }}>Service Description</th>}
+                      {lineCols.quantity && <th style={{ textAlign: 'center', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#1a1a1a', width: 60 }}>Qty</th>}
+                      {lineCols.unit && <th style={{ textAlign: 'center', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#1a1a1a', width: 40 }}>Unit</th>}
+                      {lineCols.price && <th style={{ textAlign: 'right', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#1a1a1a', width: 90 }}>Unit Price</th>}
+                      {lineCols.total && <th style={{ textAlign: 'right', padding: '10px', fontSize: 10, fontWeight: 'bold', color: '#1a1a1a', width: 100 }}>Amount</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {(group.items || []).map((item, idx) => (
                       <tr key={item.id || idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                        <td style={{ padding: '10px', fontSize: 11 }}>
+                        {lineCols.description && <td style={{ padding: '10px', fontSize: 11 }}>
                           <div style={{ fontWeight: 'bold', color: '#1a1a1a' }}>{item.service_name}</div>
                           {item.description && <div style={{ fontSize: 10, color: '#7a7a7a', marginTop: 3 }}>{item.description}</div>}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.quantity}</td>
-                        {showPrices && <>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>
-                          <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: '#d4a574' }}>${(item.line_total || 0).toFixed(2)}</td>
-                        </>}
+                        </td>}
+                        {lineCols.quantity && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.quantity}</td>}
+                        {lineCols.unit && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
+                        {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: '#d4a574' }}>${(item.line_total || 0).toFixed(2)}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -793,7 +802,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE 6: DETAILED
   // ═══════════════════════════════════════════════════════════════════════
-  if (template === 'detailed') {
+  if (safeTemplate === 'detailed') {
     return (
       <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#222', background: 'white', padding: '30px' }}>
         {/* Full header */}
@@ -845,8 +854,12 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
           <div style={{ background: '#f9f9f9', padding: 15, borderLeft: '4px solid #003d99' }}>
             <div style={{ fontWeight: 'bold', color: '#003d99', marginBottom: 8, fontSize: 10, textTransform: 'uppercase' }}>Project Details</div>
             {estimate.title && <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 8 }}>{estimate.title}</div>}
-            {startDate && <div style={{ fontSize: 10, marginBottom: 3 }}><strong>Start:</strong> {startDate}</div>}
-            {endDate && <div style={{ fontSize: 10, marginBottom: 3 }}><strong>End:</strong> {endDate}</div>}
+            {hasProjectDates_ && (
+             <>
+               {startDate && <div style={{ fontSize: 10, marginBottom: 3 }}><strong>Start:</strong> {startDate}</div>}
+               {endDate && <div style={{ fontSize: 10, marginBottom: 3 }}><strong>End:</strong> {endDate}</div>}
+             </>
+            )}
             {estimate.assigned_to && <div style={{ fontSize: 10 }}><strong>Assigned to:</strong> {estimate.assigned_to}</div>}
           </div>
         </div>
@@ -869,28 +882,24 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#e6e6e6' }}>
-                      <th style={{ textAlign: 'left', padding: '8px', fontSize: 10, fontWeight: 'bold' }}>Description</th>
-                      <th style={{ textAlign: 'center', padding: '8px', fontSize: 10, fontWeight: 'bold', width: 50 }}>Qty</th>
-                      <th style={{ textAlign: 'center', padding: '8px', fontSize: 10, fontWeight: 'bold', width: 40 }}>Unit</th>
-                      {showPrices && <>
-                        <th style={{ textAlign: 'right', padding: '8px', fontSize: 10, fontWeight: 'bold', width: 80 }}>Unit Price</th>
-                        <th style={{ textAlign: 'right', padding: '8px', fontSize: 10, fontWeight: 'bold', width: 100 }}>Total</th>
-                      </>}
+                      {lineCols.description && <th style={{ textAlign: 'left', padding: '8px', fontSize: 10, fontWeight: 'bold' }}>Description</th>}
+                      {lineCols.quantity && <th style={{ textAlign: 'center', padding: '8px', fontSize: 10, fontWeight: 'bold', width: 50 }}>Qty</th>}
+                      {lineCols.unit && <th style={{ textAlign: 'center', padding: '8px', fontSize: 10, fontWeight: 'bold', width: 40 }}>Unit</th>}
+                      {lineCols.price && <th style={{ textAlign: 'right', padding: '8px', fontSize: 10, fontWeight: 'bold', width: 80 }}>Unit Price</th>}
+                      {lineCols.total && <th style={{ textAlign: 'right', padding: '8px', fontSize: 10, fontWeight: 'bold', width: 100 }}>Total</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {(group.items || []).map((item, idx) => (
                       <tr key={item.id || idx} style={{ borderBottom: '1px solid #ddd' }}>
-                        <td style={{ padding: '8px', fontSize: 11 }}>
+                        {lineCols.description && <td style={{ padding: '8px', fontSize: 11 }}>
                           <div style={{ fontWeight: 'bold' }}>{item.service_name}</div>
                           {item.description && <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{item.description}</div>}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '8px', fontSize: 11 }}>{item.quantity}</td>
-                        <td style={{ textAlign: 'center', padding: '8px', fontSize: 11 }}>{item.unit || 'ea'}</td>
-                        {showPrices && <>
-                          <td style={{ textAlign: 'right', padding: '8px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>
-                          <td style={{ textAlign: 'right', padding: '8px', fontSize: 11, fontWeight: 'bold' }}>${(item.line_total || 0).toFixed(2)}</td>
-                        </>}
+                        </td>}
+                        {lineCols.quantity && <td style={{ textAlign: 'center', padding: '8px', fontSize: 11 }}>{item.quantity}</td>}
+                        {lineCols.unit && <td style={{ textAlign: 'center', padding: '8px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
+                        {lineCols.price && <td style={{ textAlign: 'right', padding: '8px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ textAlign: 'right', padding: '8px', fontSize: 11, fontWeight: 'bold' }}>${(item.line_total || 0).toFixed(2)}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -984,6 +993,6 @@ export default function EstimateTemplateRenderer({ estimate, template = 'profess
     );
   }
 
-  // Fallback
-  return null;
+  // Fallback — unknown template, use professional
+  return <EstimateTemplateRenderer {...{ estimate, template: 'professional', options, documentType }} />;
 }
