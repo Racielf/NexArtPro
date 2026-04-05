@@ -5,9 +5,12 @@ import { Button } from '@/components/ui/button';
 import {
   ArrowLeft, Pencil, Eye, Printer, Send, CheckCircle2,
   User, Phone, Mail, MapPin, Calendar, Briefcase, Clock,
-  ClipboardList, Package, ImageIcon
+  ClipboardList
 } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
+import WOTimeTracking from '@/components/workorders/WOTimeTracking';
+import WOExpenses from '@/components/workorders/WOExpenses';
+import WOReceipts from '@/components/workorders/WOReceipts';
 
 export default function WorkOrderDetail() {
   const navigate = useNavigate();
@@ -353,50 +356,17 @@ export default function WorkOrderDetail() {
           </div>
 
           {/* 3. Time Tracking */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              <h2 className="text-sm font-bold text-slate-900">Time Tracking</h2>
-            </div>
-            <div className="px-6 py-5">
-              <div className="grid grid-cols-3 gap-4">
-                {['Arrival Time', 'Departure Time', 'Total Hours'].map((label) => (
-                  <div key={label} className="bg-slate-50 rounded-lg border border-slate-100 px-4 py-4 text-center">
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1.5">{label}</p>
-                    <p className="text-2xl font-semibold text-slate-200">—</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <WOTimeTracking
+            workOrderId={id}
+            initialArrival={workOrder.arrival_time}
+            initialDeparture={workOrder.departure_time}
+          />
 
           {/* 4. Materials & Expenses */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <Package className="w-4 h-4 text-primary" />
-              <h2 className="text-sm font-bold text-slate-900">Materials & Expenses</h2>
-            </div>
-            <div className="px-6 py-5">
-              <div className="border border-dashed border-slate-200 rounded-lg py-10 flex flex-col items-center text-slate-400">
-                <Package className="w-6 h-6 mb-2" />
-                <p className="text-sm">No expenses recorded yet</p>
-              </div>
-            </div>
-          </div>
+          <WOExpenses workOrderId={id} workOrderNumber={workOrder.work_order_number} />
 
           {/* 5. Receipts & Photos */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-primary" />
-              <h2 className="text-sm font-bold text-slate-900">Receipts & Photos</h2>
-            </div>
-            <div className="px-6 py-5">
-              <div className="border border-dashed border-slate-200 rounded-lg py-10 flex flex-col items-center text-slate-400">
-                <ImageIcon className="w-6 h-6 mb-2" />
-                <p className="text-sm">No files uploaded yet</p>
-              </div>
-            </div>
-          </div>
+          <WOReceipts workOrderId={id} />
 
           {/* ── FOOTER ── */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-4 flex items-center justify-between">

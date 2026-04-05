@@ -95,6 +95,14 @@
     "scheduled_time": {
       "type": "string"
     },
+    "arrival_time": {
+      "type": "string",
+      "description": "Time worker arrived on site (HH:MM)"
+    },
+    "departure_time": {
+      "type": "string",
+      "description": "Time worker departed site (HH:MM)"
+    },
     "groups": {
       "type": "array",
       "description": "Inherited from estimate groups",
