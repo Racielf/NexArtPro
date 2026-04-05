@@ -9,7 +9,7 @@ import { printEstimate } from '@/lib/estimatePrint';
 export default function EstimatePreviewModal({ estimate, open, onClose, onSend }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden p-0 gap-0">
+      <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden p-0 gap-0 flex flex-col">
         {/* Toolbar */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50 flex-shrink-0">
           <span className="text-sm font-semibold text-slate-700">
@@ -29,8 +29,8 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
             </button>
           </div>
         </div>
-        {/* Document */}
-        <div className="overflow-y-auto bg-slate-200 p-6">
+        {/* Document Scrolleable Container */}
+        <div className="flex-1 overflow-y-auto bg-slate-200 p-6 min-h-0">
           <div className="shadow-xl rounded-sm overflow-hidden">
             <EstimateTemplateRenderer
               estimate={estimate}
