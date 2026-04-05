@@ -2,6 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer, Send } from 'lucide-react';
+import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
 import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
@@ -25,14 +26,14 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] p-0 flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[90vh] p-0 flex flex-col" showCloseButton={false}>
         
         {/* Toolbar */}
         <div className="flex items-center justify-between px-5 py-3 border-b bg-slate-50 flex-shrink-0">
           <DialogTitle className="text-sm font-semibold">
             Estimate #{estimate?.estimate_number} — Preview
           </DialogTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 pr-1">
             <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">
               <Printer className="w-3.5 h-3.5" /> Print / PDF
             </Button>
@@ -41,6 +42,7 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
                 <Send className="w-3.5 h-3.5" /> Send to Client
               </Button>
             )}
+            <DocumentCloseButton onClick={onClose} />
           </div>
         </div>
 

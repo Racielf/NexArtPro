@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link, Mail } from 'lucide-react';
+import { Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link, Mail } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
@@ -210,15 +211,12 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex items-center justify-between px-5 py-3 flex-shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded transition-colors">
-            <X className="w-4 h-4 text-slate-500" />
-          </button>
           <div>
             <p className="text-sm font-bold text-slate-800">Review &amp; Send</p>
             <p className="text-xs text-slate-400">Estimate #{estimate?.estimate_number} · {estimate?.client_name}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 pr-1">
           <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">
             <Printer className="w-3.5 h-3.5" /> Print
           </Button>
@@ -240,8 +238,9 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
               <><Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Confirm & Send'}</>
             )}
           </Button>
-        </div>
-      </div>
+          <DocumentCloseButton onClick={onClose} />
+          </div>
+          </div>
 
       {/* BODY */}
       <div className="flex flex-1 overflow-hidden">
