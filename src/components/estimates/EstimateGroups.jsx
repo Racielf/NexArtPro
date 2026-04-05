@@ -177,7 +177,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-4">
+    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-3">
       {/* Group header */}
       <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white">
         <button onClick={() => onUpdate({ ...group, collapsed: !group.collapsed })}
@@ -351,7 +351,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
     <div className="w-full space-y-0">
 
       {/* ── ESTIMATE HEADER CARD ── */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-4 px-6 py-4">
+      <div className="bg-white rounded-lg border border-slate-200 mb-3 px-4 py-3">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-xl font-bold text-slate-900">
@@ -394,7 +394,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
       </button>
 
       {/* ── TOTALS CARD ── */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-5 mb-4">
+      <div className="bg-white rounded-lg border border-slate-200 px-4 py-4 mb-3">
         <div className="flex gap-8 flex-wrap justify-between">
 
           {/* Left: Internal financials (only when cost visible) */}
@@ -483,7 +483,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
       </div>
 
       {/* ── NOTES & TERMS ── */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-5 mb-4">
+      <div className="bg-white rounded-lg border border-slate-200 px-4 py-4 mb-3">
         <div className="grid grid-cols-2 gap-5">
           <NotesSection label="Customer Notes" placeholder="Visible to client…" value={notes} onChange={setNotes} />
           <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent />

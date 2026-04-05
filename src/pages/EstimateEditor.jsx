@@ -158,7 +158,7 @@ export default function EstimateEditor() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* LEFT SIDEBAR — customer panel */}
-        <div className="w-64 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col">
+        <div className="w-56 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col">
           <EstimateSidebarCustomer
             estimate={estimate}
             onCustomerChange={handleCustomerChange}
@@ -185,7 +185,7 @@ export default function EstimateEditor() {
         )}
 
         {/* RIGHT CANVAS — always shows line items (ready to fill) */}
-        <div className="flex-1 overflow-auto px-6 py-4">
+        <div className="flex-1 overflow-auto px-4 py-3">
           {!hasClient && (
             <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-center gap-2 text-sm text-amber-700">
               <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow (schedule, send, approve).

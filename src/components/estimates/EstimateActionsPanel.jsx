@@ -390,7 +390,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     : null;
 
   return (
-    <div className="w-60 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
+    <div className="w-52 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
 
       {/* ── ESTIMATE SUMMARY (Total, Status) ──────────────────────────────── */}
       <div className="px-3 pt-3 pb-3 border-b border-slate-100">
