@@ -242,6 +242,8 @@ function WODocument({ wo, expenses, photos, taskStatuses }) {
 export default function WorkOrderPreviewModal({ workOrder, taskStatuses, onClose, mode = 'preview' }) {
   const [expenses, setExpenses] = useState([]);
   const [photos, setPhotos] = useState([]);
+  const [linkedEstimate, setLinkedEstimate] = useState(null);
+  const [linkedInvoice, setLinkedInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
@@ -249,12 +251,16 @@ export default function WorkOrderPreviewModal({ workOrder, taskStatuses, onClose
 
   useEffect(() => {
     const load = async () => {
-      const [exp, ph] = await Promise.all([
+      const [exp, ph, est, inv] = await Promise.all([
         base44.entities.WorkOrderExpense.filter({ work_order_id: workOrder.id }),
         base44.entities.ProjectPhoto.filter({ work_order_id: workOrder.id }),
+        workOrder.estimate_id ? base44.entities.Estimate.filter({ id: workOrder.estimate_id }) : Promise.resolve([]),
+        workOrder.invoice_id ? base44.entities.Invoice.filter({ id: workOrder.invoice_id }) : Promise.resolve([]),
       ]);
       setExpenses(exp);
       setPhotos(ph);
+      setLinkedEstimate(est?.[0] || null);
+      setLinkedInvoice(inv?.[0] || null);
       setLoading(false);
     };
     load();
@@ -421,6 +427,8 @@ Thank you for your business.
                 expenses={expenses}
                 photos={photos}
                 taskStatuses={taskStatuses}
+                linkedEstimate={linkedEstimate}
+                linkedInvoice={linkedInvoice}
               />
             </div>
           </>

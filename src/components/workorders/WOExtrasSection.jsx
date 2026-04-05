@@ -39,7 +39,7 @@ const PhotoRow = ({ label, items }) => {
   );
 };
 
-export default function WOExtrasSection({ workOrder, expenses = [], photos = [], taskStatuses = {} }) {
+export default function WOExtrasSection({ workOrder, expenses = [], photos = [], taskStatuses = {}, linkedEstimate = null, linkedInvoice = null }) {
   // Local state for expense management
   const [localExpenses, setLocalExpenses] = useState([]);
   const [newExpense, setNewExpense] = useState({ category: 'materials', description: '', amount: '', quantity: 1 });
@@ -191,6 +191,13 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
   const beforePhotos = photos.filter(p => p.phase === 'before');
   const duringPhotos = photos.filter(p => p.phase === 'during');
   const afterPhotos = photos.filter(p => p.phase === 'after');
+
+  // JOB FINANCIAL ENGINE - FASE 10
+  // Revenue source: invoice > estimate > fallback 0
+  const jobRevenue = linkedInvoice?.total ?? linkedEstimate?.total ?? 0;
+  const jobCost = totalWorkOrderCost;
+  const grossProfit = jobRevenue - jobCost;
+  const profitMargin = jobRevenue > 0 ? ((grossProfit / jobRevenue) * 100) : 0;
 
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', fontFamily: "'Inter', 'Segoe UI', sans-serif", fontSize: 13, color: '#1e293b', lineHeight: 1.5 }}>
@@ -547,6 +554,80 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
           </div>
         )}
       </SectionBox>
+
+      {/* Job Financial Summary - INTERNAL ONLY */}
+      {(jobRevenue > 0 || jobCost > 0) && (
+      <SectionBox title="Job Financial Summary (Internal)">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: 12 }}>
+            <div style={{ fontSize: 10, color: '#166534', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>Job Revenue</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#16a34a' }}>
+              ${jobRevenue.toFixed(2)}
+            </div>
+            {linkedInvoice && <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>From Invoice #{linkedInvoice.invoice_number}</div>}
+            {!linkedInvoice && linkedEstimate && <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>From Estimate (not invoiced yet)</div>}
+            {!linkedInvoice && !linkedEstimate && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' }}>No linked invoice/estimate</div>}
+          </div>
+
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: 12 }}>
+            <div style={{ fontSize: 10, color: '#b45309', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>Work Order Cost</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#dc2626' }}>
+              ${jobCost.toFixed(2)}
+            </div>
+            <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>
+              Execution: ${executionCostTotal.toFixed(2)} + Other: ${otherExpensesTotal.toFixed(2)}
+            </div>
+          </div>
+
+          <div style={{ background: grossProfit >= 0 ? '#f0fdf4' : '#fee2e2', border: `1px solid ${grossProfit >= 0 ? '#86efac' : '#fecaca'}`, borderRadius: 8, padding: 12 }}>
+            <div style={{ fontSize: 10, color: grossProfit >= 0 ? '#166534' : '#991b1b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>
+              Gross Profit
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: grossProfit >= 0 ? '#16a34a' : '#dc2626' }}>
+              ${grossProfit.toFixed(2)}
+            </div>
+            <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>
+              {jobRevenue > 0 ? `${profitMargin.toFixed(1)}% margin` : 'No revenue yet'}
+            </div>
+          </div>
+
+          <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: 12 }}>
+            <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>Profit Margin</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: profitMargin >= 20 ? '#16a34a' : profitMargin >= 0 ? '#ea580c' : '#dc2626' }}>
+              {profitMargin.toFixed(1)}%
+            </div>
+            <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4 }}>
+              {profitMargin >= 30 && '📈 Excellent'}
+              {profitMargin >= 20 && profitMargin < 30 && '👍 Good'}
+              {profitMargin >= 0 && profitMargin < 20 && '⚠️ Tight'}
+              {profitMargin < 0 && '❌ Loss'}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12 }}>
+          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Summary
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <tbody>
+              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                <td style={{ padding: '6px 0', color: '#64748b' }}>Job Revenue</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>${jobRevenue.toFixed(2)}</td>
+              </tr>
+              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                <td style={{ padding: '6px 0', color: '#64748b' }}>Work Order Cost</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>−${jobCost.toFixed(2)}</td>
+              </tr>
+              <tr style={{ borderTop: '2px solid #cbd5e1', background: grossProfit >= 0 ? '#f0fdf4' : '#fee2e2' }}>
+                <td style={{ padding: '8px 0', fontWeight: 700, color: grossProfit >= 0 ? '#166534' : '#991b1b' }}>Gross Profit</td>
+                <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 800, color: grossProfit >= 0 ? '#16a34a' : '#dc2626', fontSize: 13 }}>${grossProfit.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </SectionBox>
+      )}
 
       {/* Expenses */}
       <SectionBox title="Work Order Expenses">
