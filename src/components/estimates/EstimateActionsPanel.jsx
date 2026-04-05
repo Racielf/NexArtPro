@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import {
   Calendar, Navigation2, CheckSquare, Send, ThumbsUp,
   Square, CheckCircle, XCircle, Clock, MapPin, User,
-  ArrowRight, AlertCircle, Eye, Zap
+  ArrowRight, AlertCircle, Eye, Zap, Edit, Copy, Archive, Trash2, ChevronDown
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { logComm, logCommFailed } from '@/lib/commTracking';
@@ -167,6 +168,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const [schedNotes,    setSchedNotes]    = useState('');
   const [finishNotes,   setFinishNotes]   = useState('');
   const [declineReason, setDeclineReason] = useState('');
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false);
 
   const s = estimate?.status;
 
@@ -568,6 +570,48 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── MORE ACTIONS ──────────────────────────────────────────────────── */}
+      <div className="mx-3 mt-3 pt-3 border-t border-slate-200">
+        <Collapsible open={moreActionsOpen} onOpenChange={setMoreActionsOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors group">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">More Actions</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${moreActionsOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 pb-3 space-y-1.5">
+            <button
+              onClick={handleEdit}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 transition-colors text-xs font-medium"
+            >
+              <Edit className="w-3.5 h-3.5 text-slate-400" />
+              Edit Estimate
+            </button>
+            <button
+              onClick={handleDuplicate}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 transition-colors text-xs font-medium"
+            >
+              <Copy className="w-3.5 h-3.5 text-slate-400" />
+              Duplicate Estimate
+            </button>
+            <button
+              onClick={handleArchive}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 transition-colors text-xs font-medium"
+            >
+              <Archive className="w-3.5 h-3.5 text-slate-400" />
+              Archive Estimate
+            </button>
+            <button
+              onClick={handleDelete}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700 transition-colors text-xs font-medium"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+              Delete Estimate
+            </button>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
     </div>
   );
 }
