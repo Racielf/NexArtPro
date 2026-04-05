@@ -44,6 +44,27 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
   const [localExpenses, setLocalExpenses] = useState([]);
   const [newExpense, setNewExpense] = useState({ category: 'materials', description: '', amount: '', quantity: 1 });
 
+  // Local state for time tracking
+  const [timeTracking, setTimeTracking] = useState({
+    work_start_time: workOrder?.arrival_time || '',
+    work_end_time: workOrder?.departure_time || '',
+    break_duration_minutes: 0,
+    adjusted_hours: null,
+    adjustment_reason: '',
+  });
+
+  // Local state for execution cost
+  const [executionCost, setExecutionCost] = useState({
+    executor_type: 'employee',
+    pay_method: 'tracked_time',
+    hourly_rate: 50,
+    flat_amount: 0,
+    unit_label: 'unit',
+    unit_quantity: 1,
+    unit_rate: 0,
+    manual_amount: 0,
+  });
+
   const allItems = (workOrder?.groups || []).flatMap(g => g.items || []);
   const totalHours = calcHours(workOrder?.arrival_time, workOrder?.departure_time);
 
@@ -89,6 +110,56 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
   const handleRemoveExpense = (id) => {
     setLocalExpenses(localExpenses.filter(e => e.id !== id));
   };
+
+  // Time tracking calculations
+  const calculateRawHours = () => {
+    if (!timeTracking.work_start_time || !timeTracking.work_end_time) return 0;
+    const [sh, sm] = timeTracking.work_start_time.split(':').map(Number);
+    const [eh, em] = timeTracking.work_end_time.split(':').map(Number);
+    const totalMinutes = (eh * 60 + em) - (sh * 60 + sm);
+    const breakMinutes = timeTracking.break_duration_minutes || 0;
+    const workMinutes = Math.max(0, totalMinutes - breakMinutes);
+    return workMinutes / 60;
+  };
+
+  const rawHours = calculateRawHours();
+  const adjustedHours = timeTracking.adjusted_hours !== null ? timeTracking.adjusted_hours : rawHours;
+  const payableHours = adjustedHours;
+
+  // Execution cost calculation
+  const calculateExecutionCost = () => {
+    const { executor_type, pay_method } = executionCost;
+    
+    switch (pay_method) {
+      case 'tracked_time':
+        return payableHours * (executionCost.hourly_rate || 0);
+      case 'flat_rate':
+        return parseFloat(executionCost.flat_amount) || 0;
+      case 'manual_amount':
+        return parseFloat(executionCost.manual_amount) || 0;
+      case 'by_unit':
+        return (executionCost.unit_quantity || 0) * (executionCost.unit_rate || 0);
+      case 'no_charge':
+        return 0;
+      default:
+        return 0;
+    }
+  };
+
+  const executionCostTotal = calculateExecutionCost();
+
+  // Updated expense totals (exclude labor to avoid double-counting with execution cost)
+  const categoryTotalsUpdated = Object.keys(EXPENSE_CATEGORIES).reduce((acc, cat) => {
+    if (cat === 'labor') {
+      acc[cat] = 0; // Exclude from manual expenses, use execution cost instead
+    } else {
+      acc[cat] = expensesByCategory[cat].reduce((sum, e) => sum + (e.amount || 0), 0);
+    }
+    return acc;
+  }, {});
+
+  const otherExpensesTotal = Object.values(categoryTotalsUpdated).reduce((s, v) => s + v, 0);
+  const totalWorkOrderCost = executionCostTotal + otherExpensesTotal;
 
   const beforePhotos = photos.filter(p => p.phase === 'before');
   const duringPhotos = photos.filter(p => p.phase === 'during');
@@ -179,6 +250,220 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
           </p>
         </SectionBox>
       )}
+
+      {/* Time Tracking */}
+      <SectionBox title="Time Tracking">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Work Start</label>
+            <input
+              type="time"
+              value={timeTracking.work_start_time}
+              onChange={(e) => setTimeTracking({ ...timeTracking, work_start_time: e.target.value })}
+              style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Work End</label>
+            <input
+              type="time"
+              value={timeTracking.work_end_time}
+              onChange={(e) => setTimeTracking({ ...timeTracking, work_end_time: e.target.value })}
+              style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Break (minutes)</label>
+            <input
+              type="number"
+              min="0"
+              value={timeTracking.break_duration_minutes}
+              onChange={(e) => setTimeTracking({ ...timeTracking, break_duration_minutes: parseInt(e.target.value) || 0 })}
+              style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Raw Hours</label>
+            <div style={{ padding: '8px', background: '#f8fafc', borderRadius: 4, fontSize: 12, fontWeight: 600, color: '#0f172a' }}>
+              {rawHours.toFixed(2)} hrs
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Adjusted Hours (if needed)</label>
+            <input
+              type="number"
+              step="0.25"
+              min="0"
+              value={timeTracking.adjusted_hours !== null ? timeTracking.adjusted_hours : ''}
+              placeholder={rawHours.toFixed(2)}
+              onChange={(e) => setTimeTracking({ ...timeTracking, adjusted_hours: e.target.value ? parseFloat(e.target.value) : null })}
+              style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Payable Hours</label>
+            <div style={{ padding: '8px', background: '#e0f2fe', borderRadius: 4, fontSize: 12, fontWeight: 700, color: '#0369a1' }}>
+              {payableHours.toFixed(2)} hrs
+            </div>
+          </div>
+        </div>
+        {timeTracking.adjusted_hours !== null && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: 4, padding: 12 }}>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Adjustment Reason</label>
+            <textarea
+              value={timeTracking.adjustment_reason}
+              onChange={(e) => setTimeTracking({ ...timeTracking, adjustment_reason: e.target.value })}
+              placeholder="Explain why hours were adjusted..."
+              style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, resize: 'none', height: 60 }}
+            />
+          </div>
+        )}
+      </SectionBox>
+
+      {/* Execution Cost */}
+      <SectionBox title="Execution Cost">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Executor Type</label>
+            <select
+              value={executionCost.executor_type}
+              onChange={(e) => setExecutionCost({ ...executionCost, executor_type: e.target.value })}
+              style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+            >
+              <option value="employee">Employee</option>
+              <option value="subcontractor">Subcontractor</option>
+              <option value="helper">Helper</option>
+              <option value="owner">Owner</option>
+              <option value="crew">Crew</option>
+              <option value="vendor">Vendor</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Pay Method</label>
+            <select
+              value={executionCost.pay_method}
+              onChange={(e) => setExecutionCost({ ...executionCost, pay_method: e.target.value })}
+              style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+            >
+              <option value="tracked_time">Tracked Time</option>
+              <option value="flat_rate">Flat Rate</option>
+              <option value="manual_amount">Manual Amount</option>
+              <option value="by_unit">By Unit</option>
+              <option value="no_charge">No Charge</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Dynamic fields based on pay_method */}
+        {executionCost.pay_method === 'tracked_time' && (
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4, padding: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Hourly Rate</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={executionCost.hourly_rate}
+                  onChange={(e) => setExecutionCost({ ...executionCost, hourly_rate: parseFloat(e.target.value) || 0 })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Execution Total</label>
+                <div style={{ padding: '8px', background: 'white', borderRadius: 4, fontSize: 12, fontWeight: 700, color: '#0369a1' }}>
+                  ${executionCostTotal.toFixed(2)}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+              {payableHours.toFixed(2)} hrs × ${executionCost.hourly_rate.toFixed(2)}/hr
+            </div>
+          </div>
+        )}
+
+        {executionCost.pay_method === 'flat_rate' && (
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4, padding: 12 }}>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Flat Amount</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={executionCost.flat_amount}
+              onChange={(e) => setExecutionCost({ ...executionCost, flat_amount: parseFloat(e.target.value) || 0 })}
+              style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+            />
+            <div style={{ marginTop: 12, padding: '8px', background: 'white', borderRadius: 4, fontSize: 12, fontWeight: 700, color: '#0369a1' }}>
+              Execution Total: ${executionCostTotal.toFixed(2)}
+            </div>
+          </div>
+        )}
+
+        {executionCost.pay_method === 'manual_amount' && (
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4, padding: 12 }}>
+            <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Manual Amount</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={executionCost.manual_amount}
+              onChange={(e) => setExecutionCost({ ...executionCost, manual_amount: parseFloat(e.target.value) || 0 })}
+              style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+            />
+            <div style={{ marginTop: 12, padding: '8px', background: 'white', borderRadius: 4, fontSize: 12, fontWeight: 700, color: '#0369a1' }}>
+              Execution Total: ${executionCostTotal.toFixed(2)}
+            </div>
+          </div>
+        )}
+
+        {executionCost.pay_method === 'by_unit' && (
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4, padding: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Unit Label</label>
+                <input
+                  type="text"
+                  value={executionCost.unit_label}
+                  onChange={(e) => setExecutionCost({ ...executionCost, unit_label: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Quantity</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={executionCost.unit_quantity}
+                  onChange={(e) => setExecutionCost({ ...executionCost, unit_quantity: parseFloat(e.target.value) || 0 })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Rate Per Unit</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={executionCost.unit_rate}
+                  onChange={(e) => setExecutionCost({ ...executionCost, unit_rate: parseFloat(e.target.value) || 0 })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+                />
+              </div>
+            </div>
+            <div style={{ padding: '8px', background: 'white', borderRadius: 4, fontSize: 12, fontWeight: 700, color: '#0369a1' }}>
+              Execution Total: {executionCost.unit_quantity} {executionCost.unit_label} × ${executionCost.unit_rate.toFixed(2)} = ${executionCostTotal.toFixed(2)}
+            </div>
+          </div>
+        )}
+
+        {executionCost.pay_method === 'no_charge' && (
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4, padding: 12, textAlign: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#0369a1' }}>Execution Total: $0.00</span>
+          </div>
+        )}
+      </SectionBox>
 
       {/* Expenses */}
       <SectionBox title="Work Order Expenses">
@@ -331,14 +616,23 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
                 Work Order Cost Summary
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                {Object.entries(EXPENSE_CATEGORIES).map(([key, config]) => (
-                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                    <span style={{ color: '#64748b' }}>{config.label}:</span>
-                    <span style={{ fontWeight: 600, color: config.color }}>
-                      ${categoryTotals[key].toFixed(2)}
-                    </span>
-                  </div>
-                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ color: '#64748b' }}>Execution Cost:</span>
+                  <span style={{ fontWeight: 600, color: '#3b82f6' }}>
+                    ${executionCostTotal.toFixed(2)}
+                  </span>
+                </div>
+                {Object.entries(EXPENSE_CATEGORIES).map(([key, config]) => {
+                  if (key === 'labor' || categoryTotalsUpdated[key] === 0) return null;
+                  return (
+                    <div key={key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: '#64748b' }}>{config.label}:</span>
+                      <span style={{ fontWeight: 600, color: config.color }}>
+                        ${categoryTotalsUpdated[key].toFixed(2)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
               <div style={{
                 borderTop: '2px solid #0ea5e9',
@@ -347,9 +641,9 @@ export default function WOExtrasSection({ workOrder, expenses = [], photos = [],
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Total Cost:</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Total Work Order Cost:</span>
                 <span style={{ fontSize: 18, fontWeight: 800, color: '#0ea5e9' }}>
-                  ${expTotal.toFixed(2)}
+                  ${totalWorkOrderCost.toFixed(2)}
                 </span>
               </div>
             </div>
