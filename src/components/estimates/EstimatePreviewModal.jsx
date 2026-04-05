@@ -2,7 +2,8 @@ import React from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer, Send, X } from 'lucide-react';
-import EstimateDocument from './EstimateDocument';
+import EstimateTemplateRenderer from './EstimateTemplateRenderer';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { printEstimate } from '@/lib/estimatePrint';
 
 export default function EstimatePreviewModal({ estimate, open, onClose, onSend }) {
@@ -31,7 +32,11 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
         {/* Document */}
         <div className="overflow-y-auto bg-slate-200 p-6">
           <div className="shadow-xl rounded-sm overflow-hidden">
-            <EstimateDocument estimate={estimate} />
+            <EstimateTemplateRenderer
+              estimate={estimate}
+              template={estimate?.document_config?.template || 'professional'}
+              options={{ ...DEFAULT_OPTIONS, ...estimate?.document_config?.options }}
+            />
           </div>
         </div>
       </DialogContent>

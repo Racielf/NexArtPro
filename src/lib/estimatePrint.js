@@ -2,11 +2,12 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import EstimateDocumentConfigured from '@/components/estimates/EstimateDocumentConfigured';
+import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 /**
- * Renders EstimateDocumentConfigured into a hidden iframe and triggers window.print().
- * Accepts optional visibility config to match the review screen settings.
+ * Renders EstimateTemplateRenderer into a hidden iframe and triggers window.print().
+ * Uses document_config from estimate for template + options.
  */
 export function printEstimate(estimate, visibility) {
   const iframe = document.createElement('iframe');
@@ -40,7 +41,11 @@ export function printEstimate(estimate, visibility) {
   const root = createRoot(container);
 
   root.render(
-    React.createElement(EstimateDocumentConfigured, { estimate, visibility: visibility || {} })
+    React.createElement(EstimateTemplateRenderer, {
+      estimate,
+      template: estimate?.document_config?.template || 'professional',
+      options: { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options },
+    })
   );
 
   setTimeout(() => {
@@ -55,7 +60,7 @@ export function printEstimate(estimate, visibility) {
 
 /**
  * Generates and downloads a PDF file of the estimate.
- * Accepts optional visibility config to match the review screen settings.
+ * Uses document_config from estimate for template + options.
  */
 export async function downloadEstimate(estimate, visibility) {
   const iframe = document.createElement('iframe');
@@ -89,7 +94,11 @@ export async function downloadEstimate(estimate, visibility) {
   const root = createRoot(container);
 
   root.render(
-    React.createElement(EstimateDocumentConfigured, { estimate, visibility: visibility || {} })
+    React.createElement(EstimateTemplateRenderer, {
+      estimate,
+      template: estimate?.document_config?.template || 'professional',
+      options: { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options },
+    })
   );
 
   setTimeout(async () => {

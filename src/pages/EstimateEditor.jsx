@@ -10,8 +10,11 @@ import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCusto
 import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
+import EstimateTemplateSelector from '@/components/estimates/EstimateTemplateSelector';
+import EstimateDocumentOptions from '@/components/estimates/EstimateDocumentOptions';
 import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrderButton';
 import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -25,6 +28,7 @@ export default function EstimateEditor() {
   const [saving, setSaving] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showDocumentOptions, setShowDocumentOptions] = useState(false);
   const [activeOption, setActiveOption] = useState(0);
   const [options, setOptions] = useState([{ label: 'Option #1' }]);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -49,6 +53,34 @@ export default function EstimateEditor() {
     setSaving(true);
     await base44.entities.Estimate.update(estimateId, updatedEstimate);
     setEstimate(updatedEstimate);
+    setSaving(false);
+  };
+
+  const handleTemplateChange = async (template) => {
+    setSaving(true);
+    const updated = {
+      ...estimate,
+      document_config: {
+        ...(estimate.document_config || {}),
+        template,
+      },
+    };
+    await base44.entities.Estimate.update(estimateId, updated);
+    setEstimate(updated);
+    setSaving(false);
+  };
+
+  const handleDocumentOptionsSave = async (newOptions) => {
+    setSaving(true);
+    const updated = {
+      ...estimate,
+      document_config: {
+        ...(estimate.document_config || {}),
+        options: newOptions,
+      },
+    };
+    await base44.entities.Estimate.update(estimateId, updated);
+    setEstimate(updated);
     setSaving(false);
   };
 
@@ -141,6 +173,17 @@ export default function EstimateEditor() {
             </div>
           )}
 
+          {/* Template + Options (center-right) */}
+          {hasClient && (
+            <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+              <EstimateTemplateSelector
+                currentTemplate={estimate?.document_config?.template || 'professional'}
+                onTemplateChange={handleTemplateChange}
+                onShowOptions={() => setShowDocumentOptions(true)}
+              />
+            </div>
+          )}
+
           {/* Right actions */}
           <div className="flex items-center gap-1 ml-3 flex-shrink-0 border-l border-slate-100 pl-3">
             <button onClick={() => setShowPreviewModal(true)}
@@ -215,6 +258,13 @@ export default function EstimateEditor() {
         open={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
         onSend={() => setShowSendModal(true)}
+      />
+
+      <EstimateDocumentOptions
+        open={showDocumentOptions}
+        onClose={() => setShowDocumentOptions(false)}
+        options={estimate?.document_config?.options || DEFAULT_OPTIONS}
+        onSave={handleDocumentOptionsSave}
       />
 
       {/* Discard new estimate confirmation */}

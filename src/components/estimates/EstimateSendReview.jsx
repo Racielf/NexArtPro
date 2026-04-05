@@ -6,7 +6,8 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { logComm, logCommFailed } from '@/lib/commTracking';
-import EstimateDocumentConfigured from './EstimateDocumentConfigured';
+import EstimateTemplateRenderer from './EstimateTemplateRenderer';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 async function logDocument(estimateId, estimate, action, extra = {}) {
   await base44.entities.DocumentLog.create({
@@ -330,7 +331,18 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         {/* RIGHT — LIVE PREVIEW */}
         <div className="flex-1 overflow-auto p-8 flex justify-center">
           <div className="w-full max-w-3xl shadow-xl rounded-sm overflow-hidden bg-white">
-            <EstimateDocumentConfigured estimate={estimate} visibility={visibility} />
+            <EstimateTemplateRenderer
+              estimate={estimate}
+              template={estimate?.document_config?.template || 'professional'}
+              options={{
+                ...DEFAULT_OPTIONS,
+                showPrices: visibility.materials !== false,
+                showBreakdown: visibility.services !== false,
+                showTerms: true,
+                showSignatures: true,
+                hideInternalNotes: true,
+              }}
+            />
           </div>
         </div>
 

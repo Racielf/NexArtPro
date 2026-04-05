@@ -243,6 +243,44 @@
     "miles_traveled": {
       "type": "number",
       "default": 0
+    },
+    "document_config": {
+      "type": "object",
+      "description": "Document rendering configuration (template + options)",
+      "properties": {
+        "template": {
+          "type": "string",
+          "description": "Template key: minimal, compact, professional, modern, executive, detailed",
+          "default": "professional"
+        },
+        "options": {
+          "type": "object",
+          "description": "Document visibility options",
+          "properties": {
+            "showPrices": {
+              "type": "boolean",
+              "default": true
+            },
+            "showBreakdown": {
+              "type": "boolean",
+              "default": true
+            },
+            "showTerms": {
+              "type": "boolean",
+              "default": true
+            },
+            "showSignatures": {
+              "type": "boolean",
+              "default": true
+            },
+            "hideInternalNotes": {
+              "type": "boolean",
+              "default": true,
+              "description": "CRITICAL: Always true to prevent internal notes from showing to client"
+            }
+          }
+        }
+      }
     }
   },
   "required": [
