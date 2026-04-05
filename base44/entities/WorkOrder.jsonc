@@ -129,6 +129,10 @@
     },
     "started_at": {
       "type": "string"
+    },
+    "task_statuses": {
+      "type": "object",
+      "description": "Map of item id \u2192 { status: pending|done, completed_at, completed_by_worker_id }"
     }
   },
   "required": [
