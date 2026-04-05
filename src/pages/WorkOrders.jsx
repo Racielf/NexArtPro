@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
-import { ClipboardList, Search, Pencil, Trash2, Receipt, CheckCircle, User, MapPin, DollarSign } from 'lucide-react';
+import { ClipboardList, Search, Pencil, Trash2, User, MapPin, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function WorkOrders() {
@@ -36,30 +36,6 @@ export default function WorkOrders() {
     await base44.entities.WorkOrder.update(editing.id, form);
     toast.success('Work order updated');
     setShowForm(false);
-    loadData();
-  };
-
-  const handleComplete = async (wo) => {
-    await base44.entities.WorkOrder.update(wo.id, { status: 'completed', completed_at: new Date().toISOString() });
-    toast.success('Work order completed!');
-    loadData();
-  };
-
-  const handleConvertToInvoice = async (wo) => {
-    const invNum = Math.floor(Math.random() * 9000) + 1000;
-    await base44.entities.Invoice.create({
-      invoice_number: invNum,
-      work_order_id: wo.id,
-      client_name: wo.client_name,
-      client_address: wo.client_address,
-      client_phone: wo.client_phone,
-      line_items: wo.line_items,
-      subtotal: wo.subtotal,
-      total: wo.total,
-      status: 'draft'
-    });
-    await base44.entities.WorkOrder.update(wo.id, { status: 'invoiced' });
-    toast.success('Converted to Invoice!');
     loadData();
   };
 
@@ -122,20 +98,10 @@ export default function WorkOrders() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap justify-end">
+                    <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openEdit(wo)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      {wo.status === 'pending' && (
-                        <Button size="sm" variant="outline" className="border-green-300 text-green-600 hover:bg-green-50" onClick={() => handleComplete(wo)}>
-                          <CheckCircle className="w-3 h-3 mr-1" />Complete
-                        </Button>
-                      )}
-                      {wo.status === 'completed' && (
-                        <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary/5" onClick={() => handleConvertToInvoice(wo)}>
-                          <Receipt className="w-3 h-3 mr-1" />Create Invoice
-                        </Button>
-                      )}
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => handleDelete(wo.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
