@@ -12,6 +12,7 @@ import StatusBadge from '@/components/shared/StatusBadge';
 import WOTimeTracking from '@/components/workorders/WOTimeTracking';
 import WOExpenses from '@/components/workorders/WOExpenses';
 import WOReceipts from '@/components/workorders/WOReceipts';
+import WorkOrderPreviewModal from '@/components/workorders/WorkOrderPreviewModal';
 
 export default function WorkOrderDetail() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export default function WorkOrderDetail() {
   const [execution, setExecution] = useState({ work_summary: '', notes: '', issues_found: '' });
   const [savingExecution, setSavingExecution] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => { loadWorkOrder(); }, [id]);
 
@@ -128,17 +130,14 @@ export default function WorkOrderDetail() {
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button size="sm" variant="outline" className="gap-1.5">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPreview(true)}>
               <Eye className="w-3.5 h-3.5" /> Preview
             </Button>
-            <Button size="sm" variant="outline" className="gap-1.5">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPreview(true)}>
               <Printer className="w-3.5 h-3.5" /> Print
             </Button>
-            <Button size="sm" variant="outline" className="gap-1.5">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPreview(true)}>
               <Send className="w-3.5 h-3.5" /> Send
-            </Button>
-            <Button size="sm" className="gap-1.5">
-              <Pencil className="w-3.5 h-3.5" /> Edit
             </Button>
           </div>
         </div>
@@ -422,6 +421,13 @@ export default function WorkOrderDetail() {
 
         </div>
       </div>
+      {showPreview && (
+        <WorkOrderPreviewModal
+          workOrder={workOrder}
+          taskStatuses={taskStatuses}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }
