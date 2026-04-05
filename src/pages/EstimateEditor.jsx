@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Save } from 'lucide-react';
+import { X, Eye, Save, Trash2 } from 'lucide-react';
 import EstimateStatusStepper from '@/components/estimates/EstimateStatusStepper';
 import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
@@ -17,6 +17,7 @@ export default function EstimateEditor() {
   const navigate = useNavigate();
   const urlParams = new URLSearchParams(window.location.search);
   const estimateId = urlParams.get('id');
+  const isNew = urlParams.get('new') === '1';
 
   const [estimate, setEstimate] = useState(null);
   const [client, setClient] = useState(null);
@@ -26,6 +27,7 @@ export default function EstimateEditor() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [activeOption, setActiveOption] = useState(0);
   const [options, setOptions] = useState([{ label: 'Option #1' }]);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   useEffect(() => { loadEstimate(); }, []);
 
@@ -66,6 +68,23 @@ export default function EstimateEditor() {
     setActiveOption(options.length);
   };
 
+  const handleCancel = () => {
+    // If new and no client set yet, confirm before discarding
+    const isEmpty = !estimate?.client_name && !estimate?.title;
+    if (isNew && isEmpty) {
+      setShowDiscardConfirm(true);
+    } else {
+      navigate('/estimates');
+    }
+  };
+
+  const handleDiscard = async () => {
+    if (estimateId) {
+      await base44.entities.Estimate.delete(estimateId);
+    }
+    navigate('/estimates');
+  };
+
   if (loading) return (
     <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
       <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
@@ -90,10 +109,11 @@ export default function EstimateEditor() {
       <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
         <div className="flex items-center px-4 h-12 gap-2">
 
-          {/* Close */}
-          <button onClick={() => navigate('/estimates')}
-            className="p-1.5 hover:bg-slate-100 rounded-md transition-colors flex-shrink-0">
-            <X className="w-4 h-4 text-slate-500" />
+          {/* Cancel / Close */}
+          <button onClick={handleCancel}
+            className="p-1.5 hover:bg-slate-100 rounded-md transition-colors flex-shrink-0 flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-xs font-medium">
+            <X className="w-4 h-4" />
+            {isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
           </button>
 
           {/* Title */}
@@ -203,6 +223,33 @@ export default function EstimateEditor() {
         onClose={() => setShowPreviewModal(false)}
         onSend={() => setShowSendModal(true)}
       />
+
+      {/* Discard new estimate confirmation */}
+      {showDiscardConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h2 className="text-base font-bold text-slate-900 mb-2">Discard this estimate?</h2>
+            <p className="text-sm text-slate-500 mb-6">
+              This estimate hasn't been saved yet. Cancelling will delete it permanently.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowDiscardConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Keep Editing
+              </button>
+              <button
+                onClick={handleDiscard}
+                className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Discard Estimate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

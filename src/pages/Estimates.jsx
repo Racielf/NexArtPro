@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
-import { FileText, Plus, Pencil, Search } from 'lucide-react';
+import { FileText, Plus, Pencil, Search, X } from 'lucide-react';
 
 export default function Estimates() {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ export default function Estimates() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -32,7 +33,12 @@ export default function Estimates() {
     return Math.max(...list.map(e => e.estimate_number || 0)) + 1;
   };
 
-  const handleNewEstimate = async () => {
+  const handleNewEstimate = () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirmCreate = async () => {
+    setShowConfirm(false);
     setCreating(true);
     const list = await base44.entities.Estimate.list('-created_date');
     const created = await base44.entities.Estimate.create({
@@ -46,7 +52,7 @@ export default function Estimates() {
       total: 0,
     });
     setCreating(false);
-    navigate(`/estimate-editor?id=${created.id}`);
+    navigate(`/estimate-editor?id=${created.id}&new=1`);
   };
 
   const filtered = estimates.filter(e =>
@@ -56,6 +62,32 @@ export default function Estimates() {
 
   return (
     <div className="flex flex-col h-full">
+
+      {/* New Estimate Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <div className="flex items-start justify-between mb-4">
+              <h2 className="text-base font-bold text-slate-900">New Estimate</h2>
+              <button onClick={() => setShowConfirm(false)} className="p-1 hover:bg-slate-100 rounded-md transition-colors">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-6">
+              You're about to create a new estimate. You can cancel at any time without saving.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setShowConfirm(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleConfirmCreate} disabled={creating}>
+                {creating ? 'Creating...' : 'Create Estimate'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         title="Estimates"
         subtitle={`${estimates.length} total`}
