@@ -17,7 +17,7 @@ export default function DocumentCloseButton({ onClick, className = '' }) {
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center justify-center p-2 rounded-lg 
+      className={`inline-flex items-center justify-center p-2.5 rounded-lg 
         bg-transparent text-slate-400 opacity-60
         hover:bg-red-50 hover:text-red-600 hover:opacity-100
         active:bg-red-100 active:text-red-700
@@ -28,7 +28,7 @@ export default function DocumentCloseButton({ onClick, className = '' }) {
       title="Close"
       aria-label="Close"
     >
-      <X className="h-4 w-4" />
+      <X className="h-5 w-5" />
     </button>
   );
 }
