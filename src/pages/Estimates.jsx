@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
-import { FileText, Plus, Pencil, Search, X } from 'lucide-react';
+import { FileText, Plus, Pencil, Search, X, Trash2 } from 'lucide-react';
 
 export default function Estimates() {
   const navigate = useNavigate();
@@ -16,6 +16,7 @@ export default function Estimates() {
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ open: false, estimate: null, canDelete: false });
 
   useEffect(() => {
     loadData();
@@ -60,8 +61,61 @@ export default function Estimates() {
     String(e.estimate_number).includes(search)
   );
 
+  const canDeleteEstimate = (est) => {
+    return est.status === 'draft' || !est.sent_at;
+  };
+
+  const handleDeleteClick = (est) => {
+    const can = canDeleteEstimate(est);
+    setDeleteModal({ open: true, estimate: est, canDelete: can });
+  };
+
+  const handleConfirmDelete = async () => {
+    const est = deleteModal.estimate;
+    if (!est) return;
+    await base44.entities.Estimate.delete(est.id);
+    setEstimates(estimates.filter(e => e.id !== est.id));
+    setDeleteModal({ open: false, estimate: null, canDelete: false });
+    toast.success(`Estimate #${est.estimate_number} deleted`);
+  };
+
   return (
     <div className="flex flex-col h-full">
+
+      {/* Delete Estimate Modal */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h2 className="text-base font-bold text-slate-900 mb-2">Delete Estimate?</h2>
+            {deleteModal.canDelete ? (
+              <>
+                <p className="text-sm text-slate-500 mb-4">
+                  Are you sure you want to delete Estimate #{deleteModal.estimate?.estimate_number}? This action cannot be undone.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={handleConfirmDelete}>
+                    Delete Estimate
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-500 mb-4">
+                  This estimate cannot be deleted. You can archive it instead.
+                </p>
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>
+                    Close
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* New Estimate Confirmation Modal */}
       {showConfirm && (
@@ -157,6 +211,15 @@ export default function Estimates() {
                         onClick={e => { e.stopPropagation(); navigate(`/estimate-editor?id=${est.id}`); }}
                       >
                         <Pencil className="w-3.5 h-3.5" /> Open
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={e => { e.stopPropagation(); handleDeleteClick(est); }}
+                        title={canDeleteEstimate(est) ? 'Delete estimate' : 'Cannot delete'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   </div>
