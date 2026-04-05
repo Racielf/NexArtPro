@@ -392,10 +392,24 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     : null;
 
   return (
-    <div className="w-60 flex-shrink-0 border-r border-slate-200 bg-slate-50/80 flex flex-col overflow-y-auto">
+    <div className="w-60 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto">
 
-      {/* ── SMART SUMMARY ─────────────────────────────────────────────────── */}
-      <div className="px-3 pt-3 pb-2 space-y-1.5">
+      {/* ── ESTIMATE SUMMARY (Total, Status) ──────────────────────────────── */}
+      <div className="px-3 pt-3 pb-3 border-b border-slate-100">
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
+            <span className="text-lg font-bold text-slate-900">${(estimate?.total || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Status</span>
+            <span className="text-xs font-semibold text-slate-700 capitalize">{s || 'Draft'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── STATUS OVERVIEW ─────────────────────────────────────────────────– */}
+      <div className="px-3 pt-3 pb-2 space-y-1.5 border-b border-slate-100">
         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-0.5">Status Overview</p>
         <SummaryChip label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
         <SummaryChip label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
@@ -405,7 +419,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
 
       {/* ── NEXT BEST ACTION ──────────────────────────────────────────────── */}
       {next && (
-        <div className="mx-3 mb-2 rounded-lg bg-white border border-slate-200 px-3 py-2 flex items-start gap-2">
+        <div className="mx-3 mt-3 mb-3 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 flex items-start gap-2">
           <next.icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
             next.color === 'green'  ? 'text-green-500' :
             next.color === 'orange' ? 'text-orange-500' :
@@ -421,109 +435,41 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       )}
 
       {/* divider */}
-      <div className="mx-3 border-t border-slate-200 mb-2" />
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-3.5 mb-1.5">Actions</p>
+      <div className="border-t border-slate-100 mb-2" />
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-3.5 mb-2">Other Actions</p>
 
-      {/* ── ACTION CARDS ──────────────────────────────────────────────────── */}
-      <div className="px-3 pb-4 space-y-2 flex-1">
-
-        {/* SCHEDULE */}
-        <ActionCard
-          icon={Calendar}
-          title="Schedule"
-          subtitle={
-            hasAppointment
-              ? `${fmtDate(estimate.scheduled_date) || 'Appointment set'}${estimate.scheduled_time ? ' · ' + estimate.scheduled_time : ''}`
-              : 'No appointment scheduled'
-          }
-          badge={hasAppointment ? (visitDone ? 'Done' : 'Set') : null}
-          badgeVariant={visitDone ? 'success' : 'info'}
-          ctaLabel={hasAppointment ? 'Reschedule' : 'Schedule Now'}
-          ctaVariant={hasAppointment ? 'outline' : 'primary'}
-          onClick={() => { setSchedDate(estimate?.scheduled_date || ''); setSchedTime(estimate?.scheduled_time || '09:00'); setScheduleOpen(true); }}
-          isDone={visitDone}
-          isActive={!hasAppointment && !visitDone}
-        />
-
-        {/* OMW */}
-        <ActionCard
-          icon={omwActive ? Square : Navigation2}
-          title={omwActive ? 'Stop OMW' : 'On My Way'}
-          subtitle={
-            omwActive
-              ? `${omwMiles} mi tracked${elapsedLabel ? ' · ' + elapsedLabel : ''}`
-              : estimate?.miles_traveled > 0
-              ? `${estimate.miles_traveled} mi logged`
-              : 'Travel not started'
-          }
-          badge={omwActive ? 'Live' : estimate?.miles_traveled > 0 ? 'Done' : null}
-          badgeVariant={omwActive ? 'orange' : 'success'}
-          ctaLabel={omwActive ? 'Stop tracking' : 'Start OMW'}
-          ctaVariant={omwActive ? 'orange' : 'outline'}
-          onClick={omwActive ? handleStopOMW : handleOMW}
-          isDone={!omwActive && estimate?.miles_traveled > 0}
-          isActive={omwActive || s === 'scheduled'}
-          isRunning={omwActive}
-        />
-
-        {/* FINISH VISIT */}
-        <ActionCard
-          icon={CheckSquare}
-          title="Finish Visit"
-          subtitle={
-            visitDone
-              ? `Completed${estimate?.completed_time ? ' · ' + fmt(estimate.completed_time) : ''}`
-              : 'Visit still open'
-          }
-          badge={visitDone ? 'Done' : null}
-          badgeVariant="success"
-          ctaLabel={visitDone ? 'Re-open visit' : 'Finish Visit'}
-          ctaVariant={visitDone ? 'outline' : 'green'}
-          onClick={() => setFinishOpen(true)}
-          isDone={visitDone}
-          isActive={hasAppointment && !visitDone && (s === 'on_my_way' || s === 'scheduled')}
-        />
-
-        {/* REVIEW & SEND */}
-        <ActionCard
-          icon={Send}
-          title="Review & Send"
-          subtitle={
-            isViewed   ? `Viewed by client${estimate?.viewed_at ? ' · ' + fmt(estimate.viewed_at) : ''}` :
-            isSent     ? `Sent${estimate?.sent_at ? ' · ' + fmt(estimate.sent_at) : ''}` :
-            'Estimate not sent yet'
-          }
-          badge={isViewed ? 'Viewed' : isSent ? 'Sent' : null}
-          badgeVariant={isViewed ? 'info' : 'success'}
-          ctaLabel={isSent ? 'Resend' : 'Review & Send'}
-          ctaVariant={isSent ? 'outline' : 'primary'}
-          onClick={() => {
+      {/* ── ACTION CARDS (Compact buttons) ──────────────────────────────────── */}
+      <div className="px-2 pb-2 space-y-1 flex-1 flex flex-col gap-1">
+        <button onClick={() => { setSchedDate(estimate?.scheduled_date || ''); setSchedTime(estimate?.scheduled_time || '09:00'); setScheduleOpen(true); }}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
+          <Calendar className="w-3.5 h-3.5" />
+          Schedule
+        </button>
+        <button onClick={omwActive ? handleStopOMW : handleOMW}
+          className={`flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${
+            omwActive ? 'bg-orange-100 hover:bg-orange-200 text-orange-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+          }`}>
+          <Navigation2 className="w-3.5 h-3.5" />
+          {omwActive ? 'Stop OMW' : 'On My Way'}
+        </button>
+        <button onClick={() => setFinishOpen(true)}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
+          <CheckSquare className="w-3.5 h-3.5" />
+          Finish Visit
+        </button>
+        <button onClick={() => {
             if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
             onOpenSendReview?.();
           }}
-          isDone={isSent}
-          isActive={visitDone && !isSent}
-        />
-
-        {/* APPROVAL */}
-        <ActionCard
-          icon={isApproved ? CheckCircle : isDeclined ? XCircle : ThumbsUp}
-          title="Approval"
-          subtitle={
-            isApproved  ? `Approved${estimate?.approved_at  ? ' · ' + fmt(estimate.approved_at)  : ''}` :
-            isDeclined  ? `Declined${estimate?.declined_at  ? ' · ' + fmt(estimate.declined_at)  : ''}` :
-            isSent      ? 'Waiting for response' :
-            'Not yet sent'
-          }
-          badge={isApproved ? 'Approved' : isDeclined ? 'Declined' : isSent ? 'Pending' : null}
-          badgeVariant={isApproved ? 'success' : isDeclined ? 'error' : 'warning'}
-          ctaLabel={isApproved || isDeclined ? 'Override' : 'Approve / Decline'}
-          ctaVariant={isApproved ? 'outline' : isDeclined ? 'outline' : 'purple'}
-          onClick={() => setApprovalOpen(true)}
-          isDone={isApproved}
-          isActive={isSent && !isApproved && !isDeclined}
-          isError={isDeclined}
-        />
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
+          <Send className="w-3.5 h-3.5" />
+          Review & Send
+        </button>
+        <button onClick={() => setApprovalOpen(true)}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
+          <ThumbsUp className="w-3.5 h-3.5" />
+          Approve/Decline
+        </button>
       </div>
 
       {/* ── SCHEDULE MODAL ─────────────────────────────────────────────────── */}
