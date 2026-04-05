@@ -3,8 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { X, Eye, Save, Trash2 } from 'lucide-react';
-import EstimateStatusStepper from '@/components/estimates/EstimateStatusStepper';
 import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
+import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
 import CommTimeline from '@/components/shared/CommTimeline';
@@ -133,21 +133,6 @@ export default function EstimateEditor() {
 
           <div className="flex-1" />
 
-          {/* Workflow stepper */}
-          {hasClient && (
-            <div className="flex items-center flex-shrink-0 border-l border-slate-100 pl-4 ml-2">
-              <EstimateStatusStepper
-                status={estimate.status}
-                estimate={estimate}
-                onStatusChange={(newStatus) => {
-                  setEstimate(e => ({ ...e, status: newStatus }));
-                  loadEstimate();
-                }}
-                onOpenSendReview={() => setShowSendModal(true)}
-              />
-            </div>
-          )}
-
           {/* Convert to Work Order */}
           {hasClient && (
             <div className="flex-shrink-0 ml-2">
@@ -173,7 +158,7 @@ export default function EstimateEditor() {
       {/* ── MAIN 2-PANEL LAYOUT ── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* LEFT SIDEBAR — always shown, customer panel always editable */}
+        {/* LEFT SIDEBAR — customer panel */}
         <div className="w-64 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col">
           <EstimateSidebarCustomer
             estimate={estimate}
@@ -192,6 +177,18 @@ export default function EstimateEditor() {
             </div>
           )}
         </div>
+
+        {/* ACTIONS PANEL — only when client is set */}
+        {hasClient && (
+          <EstimateActionsPanel
+            estimate={estimate}
+            onStatusChange={(newStatus) => {
+              setEstimate(e => ({ ...e, status: newStatus }));
+              loadEstimate();
+            }}
+            onOpenSendReview={() => setShowSendModal(true)}
+          />
+        )}
 
         {/* RIGHT CANVAS — always shows line items (ready to fill) */}
         <div className="flex-1 overflow-auto p-6">
