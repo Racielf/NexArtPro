@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar, Navigation2, CheckSquare, Send, ThumbsUp,
   Square, CheckCircle, XCircle, Clock, MapPin, User,
@@ -172,6 +172,17 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const [deleteModal, setDeleteModal] = useState({ open: false, loading: false, error: null });
 
   const s = estimate?.status;
+
+  // ── Sync OMW state when estimate status changes ────────────────────────────
+  useEffect(() => {
+    if (s !== 'on_my_way' && omwActive) {
+      // Status changed away from on_my_way — stop the tracking
+      if (omwInterval) clearInterval(omwInterval);
+      setOmwInterval(null);
+      setOmwActive(false);
+      setOmwStarted(null);
+    }
+  }, [s]);
 
   // ── derived context ──────────────────────────────────────────────────────
   const hasAppointment  = !!estimate?.appointment_id;
