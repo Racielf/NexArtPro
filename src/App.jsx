@@ -19,7 +19,6 @@ import TimeTracking from './pages/TimeTracking';
 import ClientEstimateView from './pages/ClientEstimateView';
 import WorkOrderDetail from './pages/WorkOrderDetail';
 import Customers from './pages/Customers';
-import ApptTimeTracking from './pages/ApptTimeTracking';
 import Assignments from './pages/Assignments';
 import Workers from './pages/Workers';
 import InvoiceDetail from './pages/InvoiceDetail';
@@ -61,7 +60,6 @@ const AuthenticatedApp = () => {
         <Route path="/time-tracking" element={<TimeTracking />} />
         <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
         <Route path="/customers" element={<Customers />} />
-        <Route path="/appt-time-tracking" element={<ApptTimeTracking />} />
         <Route path="/assignments" element={<Assignments />} />
         <Route path="/workers" element={<Workers />} />
         <Route path="/invoice-detail" element={<InvoiceDetail />} />

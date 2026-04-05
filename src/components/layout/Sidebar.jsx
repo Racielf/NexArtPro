@@ -11,7 +11,6 @@ import {
   Settings,
   Wrench,
   Clock,
-  Timer,
   UserCheck,
   HardHat
 } from 'lucide-react';
@@ -26,7 +25,6 @@ const navItems = [
   { path: '/workers', label: 'Workers', icon: HardHat },
   { path: '/invoices', label: 'Invoices', icon: Receipt },
   { path: '/time-tracking', label: 'Time Tracking', icon: Clock },
-  { path: '/appt-time-tracking', label: 'Appt Tracking', icon: Timer },
 ];
 
 export default function Sidebar() {
