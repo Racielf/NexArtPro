@@ -157,7 +157,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [finishOpen,   setFinishOpen]   = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
-  const [omwActive,    setOmwActive]    = useState(estimate?.status === 'on_my_way');
+  const [omwActive,    setOmwActive]    = useState(false);
   const [omwMiles,     setOmwMiles]     = useState(estimate?.miles_traveled || 0);
   const [omwInterval,  setOmwInterval]  = useState(null);
   const [omwStarted,   setOmwStarted]   = useState(null);
@@ -172,16 +172,16 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
 
   const s = estimate?.status;
 
-  // ── Sync OMW state when estimate status changes ────────────────────────────
+  // ── Stop OMW if backend status changed away (e.g., manual update, timeout) ──
   useEffect(() => {
     if (s !== 'on_my_way' && omwActive) {
-      // Status changed away from on_my_way — stop the tracking
+      // Status changed away from on_my_way — stop the tracking (user moved to next state)
       if (omwInterval) clearInterval(omwInterval);
       setOmwInterval(null);
       setOmwActive(false);
       setOmwStarted(null);
     }
-  }, [s]);
+  }, [s, omwActive, omwInterval]);
 
   // ── derived context ──────────────────────────────────────────────────────
   const hasAppointment  = !!estimate?.appointment_id;
