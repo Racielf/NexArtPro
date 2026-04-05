@@ -7,6 +7,8 @@ const statusConfig = {
   omw: { label: 'On My Way', className: 'bg-orange-100 text-orange-700 border-orange-200' },
   in_progress: { label: 'In Progress', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
   completed: { label: 'Completed', className: 'bg-green-100 text-green-700 border-green-200' },
+  visit_completed: { label: 'Visit Completed', className: 'bg-teal-100 text-teal-700 border-teal-200' },
+  on_my_way: { label: 'On My Way', className: 'bg-orange-100 text-orange-700 border-orange-200' },
   cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-gray-600 border-gray-200' },
   // Estimates
   draft: { label: 'Draft', className: 'bg-gray-100 text-gray-600 border-gray-200' },

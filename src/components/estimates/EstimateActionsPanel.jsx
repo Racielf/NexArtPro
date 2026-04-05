@@ -13,6 +13,7 @@ const statusToIdx = {
   scheduled: 1,
   on_my_way: 2,
   omw: 2,
+  visit_completed: 3,
   finished: 3,
   completed: 3,
   sent: 4,
@@ -139,7 +140,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const handleFinish = async () => {
     const now = new Date().toISOString();
     await base44.entities.Estimate.update(estimate.id, {
-      status: 'finished',
+      status: 'visit_completed',
       completed_time: now,
       notes: finishNotes ? (estimate.notes ? estimate.notes + '\n\n' + finishNotes : finishNotes) : estimate.notes,
     });
@@ -153,7 +154,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     }
     toast.success('Visit marked as completed');
     setFinishOpen(false);
-    onStatusChange('finished');
+    onStatusChange('visit_completed');
   };
 
   // --- APPROVAL ---

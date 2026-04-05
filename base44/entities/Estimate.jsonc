@@ -30,6 +30,9 @@
       "type": "string",
       "enum": [
         "draft",
+        "scheduled",
+        "on_my_way",
+        "visit_completed",
         "sent",
         "viewed",
         "changes_requested",
@@ -223,6 +226,23 @@
     },
     "signature_image_base64": {
       "type": "string"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "scheduled_time": {
+      "type": "string"
+    },
+    "omw_start_time": {
+      "type": "string"
+    },
+    "completed_time": {
+      "type": "string"
+    },
+    "miles_traveled": {
+      "type": "number",
+      "default": 0
     }
   },
   "required": [
