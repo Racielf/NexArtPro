@@ -33,7 +33,7 @@ const emptyForm = {
   status: 'new', notify_customer: true,
 };
 
-export default function ApptFormModal({ open, onOpenChange, editing, customers = [], onSave }) {
+export default function ApptFormModal({ open, onOpenChange, editing, customers = [], workers = [], onSave }) {
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
@@ -159,7 +159,33 @@ export default function ApptFormModal({ open, onOpenChange, editing, customers =
               </div>
               <div className="space-y-1.5 col-span-2">
                 <Label className="text-xs">Assigned Worker</Label>
-                <Input className="h-8 text-sm" value={form.assigned_worker_name} onChange={e => set('assigned_worker_name', e.target.value)} placeholder="Technician / worker name" />
+                <Select
+                  value={form.assigned_worker_id || ''}
+                  onValueChange={v => {
+                    if (v === '__none__') {
+                      set('assigned_worker_id', '');
+                      set('assigned_worker_name', '');
+                    } else {
+                      const w = workers.find(w => w.id === v);
+                      if (w) {
+                        set('assigned_worker_id', w.id);
+                        set('assigned_worker_name', w.full_name);
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Select a worker..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__" className="text-sm text-slate-400">— No worker assigned —</SelectItem>
+                    {workers.map(w => (
+                      <SelectItem key={w.id} value={w.id} className="text-sm">
+                        {w.full_name}{w.trade ? ` · ${w.trade}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ const defaultFilters = { search: '', status: 'all', dateRange: 'all', assignedTo
 export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -27,12 +28,14 @@ export default function Appointments() {
 
   const loadData = async () => {
     setLoading(true);
-    const [appts, custs] = await Promise.all([
+    const [appts, custs, ws] = await Promise.all([
       base44.entities.Appointment.list('-appointment_date'),
       base44.entities.Customer.list('-created_date'),
+      base44.entities.Worker.filter({ active: true }),
     ]);
     setAppointments(appts);
     setCustomers(custs);
+    setWorkers(ws);
     setLoading(false);
   };
 
@@ -68,13 +71,43 @@ export default function Appointments() {
       return;
     }
     let saved;
+    const user = await base44.auth.me();
     if (editing) {
       await base44.entities.Appointment.update(editing.id, form);
       saved = { ...editing, ...form };
       toast.success('Appointment updated');
+      // If worker changed, log the assignment
+      if (form.assigned_worker_id && form.assigned_worker_id !== editing.assigned_worker_id) {
+        await base44.entities.JobAssignment.create({
+          work_order_id: editing.id,
+          work_order_number: editing.id,
+          worker_id: form.assigned_worker_id,
+          worker_name: form.assigned_worker_name,
+          client_name: form.customer_display_name,
+          title: form.title || 'Appointment',
+          scheduled_date: form.appointment_date || '',
+          action: editing.assigned_worker_id ? 'reassigned' : 'assigned',
+          assigned_by: user?.full_name || user?.email || 'Admin',
+          previous_worker_name: editing.assigned_worker_name || null,
+        });
+      }
     } else {
       saved = await base44.entities.Appointment.create(form);
       toast.success('Appointment created');
+      // Log assignment if worker was selected
+      if (form.assigned_worker_id) {
+        await base44.entities.JobAssignment.create({
+          work_order_id: saved.id,
+          work_order_number: saved.id,
+          worker_id: form.assigned_worker_id,
+          worker_name: form.assigned_worker_name,
+          client_name: form.customer_display_name,
+          title: form.title || 'Appointment',
+          scheduled_date: form.appointment_date || '',
+          action: 'assigned',
+          assigned_by: user?.full_name || user?.email || 'Admin',
+        });
+      }
       if (form.notify_customer && form.customer_email) {
         try {
           await base44.integrations.Core.SendEmail({
@@ -259,6 +292,7 @@ export default function Appointments() {
         onOpenChange={v => { setShowForm(v); if (!v) setEditing(null); }}
         editing={editing}
         customers={customers}
+        workers={workers}
         onSave={handleSave}
       />
     </div>
