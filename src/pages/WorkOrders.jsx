@@ -10,8 +10,10 @@ import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { ClipboardList, Search, Pencil, Trash2, Receipt, CheckCircle, User, MapPin, DollarSign } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function WorkOrders() {
+  const navigate = useNavigate();
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -94,7 +96,7 @@ export default function WorkOrders() {
         ) : (
           <div className="space-y-3">
             {filtered.map(wo => (
-              <Card key={wo.id} className="hover:shadow-md transition-shadow">
+              <Card key={wo.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/work-orders/${wo.id}`)}>
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex-1">

@@ -59,7 +59,7 @@ const AuthenticatedApp = () => {
         <Route path="/send-estimate" element={<SendEstimate />} />
         <Route path="/estimate-editor" element={<EstimateEditor />} />
         <Route path="/time-tracking" element={<TimeTracking />} />
-        <Route path="/work-order-detail" element={<WorkOrderDetail />} />
+        <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/appt-time-tracking" element={<ApptTimeTracking />} />
         <Route path="/assignments" element={<Assignments />} />
