@@ -19,20 +19,39 @@ import {
   BarChart2
 } from 'lucide-react';
 
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/customers', label: 'Customers', icon: UserSquare },
-  { path: '/appointments', label: 'Appointments', icon: Calendar },
-  { path: '/estimates', label: 'Estimates', icon: FileText },
-  { path: '/work-orders', label: 'Work Orders', icon: ClipboardList },
-  { path: '/assignments', label: 'Assignments', icon: UserCheck },
-  { path: '/workers', label: 'Workers', icon: HardHat },
-  { path: '/invoices', label: 'Invoices', icon: Receipt },
-  { path: '/time-tracking', label: 'Time Tracking', icon: Clock },
-  { path: '/payments', label: 'Payments', icon: CreditCard },
-  { path: '/income-expenses', label: 'Income & Expenses', icon: TrendingUp },
-  { path: '/payroll', label: 'Payroll', icon: DollarSign },
-  { path: '/reports', label: 'Reports', icon: BarChart2 },
+const navGroups = [
+  {
+    items: [
+      { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+    ]
+  },
+  {
+    label: 'Operations',
+    items: [
+      { path: '/customers', label: 'Customers', icon: UserSquare },
+      { path: '/appointments', label: 'Appointments', icon: Calendar },
+      { path: '/estimates', label: 'Estimates', icon: FileText },
+    ]
+  },
+  {
+    label: 'Execution',
+    items: [
+      { path: '/work-orders', label: 'Work Orders', icon: ClipboardList },
+      { path: '/assignments', label: 'Assignments', icon: UserCheck },
+      { path: '/workers', label: 'Workers', icon: HardHat },
+      { path: '/time-tracking', label: 'Time Tracking', icon: Clock },
+    ]
+  },
+  {
+    label: 'Finance',
+    items: [
+      { path: '/invoices', label: 'Invoices', icon: Receipt },
+      { path: '/payments', label: 'Payments', icon: CreditCard },
+      { path: '/income-expenses', label: 'Income & Expenses', icon: TrendingUp },
+      { path: '/payroll', label: 'Payroll', icon: DollarSign },
+      { path: '/reports', label: 'Reports', icon: BarChart2 },
+    ]
+  },
 ];
 
 export default function Sidebar() {
@@ -54,25 +73,34 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3 space-y-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-primary text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+        {navGroups.map((group, gi) => (
+          <div key={gi}>
+            {group.label && (
+              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest px-3 mb-1">{group.label}</p>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-primary text-white'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="p-3 border-t border-gray-700">
