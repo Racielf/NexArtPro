@@ -243,7 +243,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
           </div>
 
       {/* BODY */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
 
         {/* LEFT PANEL */}
         <div className="w-[300px] flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
@@ -328,7 +328,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         </div>
 
         {/* RIGHT — LIVE PREVIEW */}
-        <div className="flex-1 overflow-auto p-8 flex justify-center">
+        <div className="flex-1 overflow-y-auto p-8 flex justify-center min-h-0">
           <div className="w-full max-w-3xl shadow-xl rounded-sm overflow-hidden bg-white">
             <EstimateTemplateRenderer
               estimate={estimate}
