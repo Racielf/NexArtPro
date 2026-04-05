@@ -1,7 +1,7 @@
 import React from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer, Send, X } from 'lucide-react';
+import { Printer, Send } from 'lucide-react';
 import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { printEstimate } from '@/lib/estimatePrint';
@@ -24,9 +24,6 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
                 <Send className="w-3.5 h-3.5" /> Send to Client
               </Button>
             )}
-            <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded transition-colors">
-              <X className="w-4 h-4 text-slate-500" />
-            </button>
           </div>
         </div>
         {/* Document Scrolleable Container */}
