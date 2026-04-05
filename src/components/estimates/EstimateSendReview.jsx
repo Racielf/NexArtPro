@@ -329,7 +329,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
 
         {/* RIGHT — LIVE PREVIEW */}
         <div className="flex-1 overflow-y-auto p-8 flex justify-center min-h-0">
-          <div className="w-full max-w-3xl shadow-xl rounded-sm overflow-hidden bg-white">
+          <div className="w-full max-w-3xl shadow-xl rounded-sm bg-white">
             <EstimateTemplateRenderer
               estimate={estimate}
               template={estimate?.document_config?.template || 'professional'}
