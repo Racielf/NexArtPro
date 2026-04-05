@@ -90,16 +90,17 @@ function ToggleRow({ label, checked, onChange }) {
 }
 
 export default function EstimateSendReview({ estimate, open, onClose, onSent }) {
-  const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
-  const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
-  const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from FSM Pro`);
-  const [message, setMessage] = useState(
-    `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`
-  );
-  const [sending, setSending] = useState(false);
-  const [sentSuccess, setSentSuccess] = useState(false);
-  const [sentError, setSentError] = useState(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+   const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
+   const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'professional');
+   const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
+   const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from FSM Pro`);
+   const [message, setMessage] = useState(
+     `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`
+   );
+   const [sending, setSending] = useState(false);
+   const [sentSuccess, setSentSuccess] = useState(false);
+   const [sentError, setSentError] = useState(null);
+   const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (!open) return null;
 
@@ -248,18 +249,43 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         {/* LEFT PANEL */}
         <div className="w-[300px] flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
 
-          {/* LAYOUT */}
+          {/* LAYOUT - TEMPLATE SELECTOR */}
           <SectionAccordion title="Layout" icon={<Eye className="w-3.5 h-3.5" />}>
-            <p className="text-xs text-slate-400 mb-2">Professional document template</p>
-            <div className="border-2 border-primary rounded-lg p-2.5 flex items-center gap-2 bg-primary/5">
-              <div className="w-8 h-10 bg-slate-800 rounded flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-slate-800">Classic</p>
-                <p className="text-[11px] text-slate-400">Dark header, clean layout</p>
-              </div>
-              <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-white" />
-              </div>
+            <p className="text-xs text-slate-400 mb-3">Select document template</p>
+            <div className="space-y-2">
+              {[
+                { id: 'minimal', name: 'Minimal', desc: 'Clean & simple' },
+                { id: 'compact', name: 'Compact', desc: 'Sidebar layout' },
+                { id: 'professional', name: 'Professional', desc: 'Corporate style' },
+                { id: 'modern', name: 'Modern', desc: 'Contemporary' },
+                { id: 'executive', name: 'Executive', desc: 'Premium elegant' },
+                { id: 'detailed', name: 'Detailed', desc: 'Comprehensive' },
+              ].map(template => (
+                <button
+                  key={template.id}
+                  onClick={() => setCurrentTemplate(template.id)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                    currentTemplate === template.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded ${
+                    currentTemplate === template.id ? 'bg-primary' : 'bg-slate-200'
+                  } flex-shrink-0`} />
+                  <div className="text-left flex-1 min-w-0">
+                    <p className={`text-xs font-semibold ${currentTemplate === template.id ? 'text-primary' : 'text-slate-800'}`}>
+                      {template.name}
+                    </p>
+                    <p className="text-[11px] text-slate-400">{template.desc}</p>
+                  </div>
+                  {currentTemplate === template.id && (
+                    <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    </div>
+                  )}
+                </button>
+              ))}
             </div>
           </SectionAccordion>
 
@@ -332,7 +358,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
           <div className="w-full max-w-3xl shadow-xl rounded-sm bg-white">
             <EstimateTemplateRenderer
               estimate={estimate}
-              template={estimate?.document_config?.template || 'professional'}
+              template={currentTemplate}
               options={{
                 ...DEFAULT_OPTIONS,
                 showPrices: visibility.materials !== false,
