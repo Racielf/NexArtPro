@@ -8,6 +8,7 @@ import {
   AlertCircle, CheckCircle2, ArrowRight, Plus, ChevronRight
 } from 'lucide-react';
 import { format } from 'date-fns';
+import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
 
 const WORKFLOW_STEPS = [
   { label: 'Customer', link: '/customers' },
@@ -211,6 +212,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── NOTIFICATIONS ── */}
+      <NotificationsPanel />
 
       {/* ── LISTS ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
