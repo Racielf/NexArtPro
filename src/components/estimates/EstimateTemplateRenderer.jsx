@@ -1,4 +1,7 @@
 import React from 'react';
+import DocumentHeader from '../documents/DocumentHeader';
+import DocumentFooter from '../documents/DocumentFooter';
+import DocumentSummary from '../documents/DocumentSummary';
 
 /**
  * EstimateTemplateRenderer — Universal document renderer with 6 distinct templates
@@ -186,10 +189,16 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   const renderMinimalTemplate = () => (
     <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#000', padding: '40px', background: 'white', lineHeight: 1.6 }}>
       {/* Header */}
-      <div style={{ marginBottom: 30 }}>
-        <div style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 2 }}>{docTypeLabel}</div>
-        <div style={{ fontSize: 14, color: '#666' }}>#{estimate.estimate_number}</div>
-      </div>
+      <DocumentHeader
+        estimate={estimate}
+        documentType={documentType}
+        today={today}
+        expDate={expDate}
+        statusStyle={statusStyle}
+        showStatus={false}
+        variant="minimal"
+        style={{ marginBottom: 30 }}
+      />
 
       {/* Bill To */}
       <div style={{ marginBottom: 20 }}>
@@ -244,41 +253,28 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       )}
 
       {/* Totals */}
-      {showPrices && (
-        <div style={{ marginTop: 20, paddingTop: 10, borderTop: '1px solid #000' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-            <span>Subtotal:</span>
-            <span>${(estimate.subtotal || 0).toFixed(2)}</span>
-          </div>
-          {estimate.discount_amount > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-              <span>Discount:</span>
-              <span>-${(estimate.discount_amount || 0).toFixed(2)}</span>
-            </div>
-          )}
-          {estimate.tax_rate > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-              <span>Tax:</span>
-              <span>${(estimate.tax_amount || 0).toFixed(2)}</span>
-            </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 13, marginTop: 10 }}>
-            <span>TOTAL:</span>
-            <span>${total.toFixed(2)}</span>
-          </div>
-          {isEstimate && depositPct > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 10 }}>
-              <span>Deposit Due:</span>
-              <span>${depositAmount.toFixed(2)}</span>
-            </div>
-          )}
-        </div>
-      )}
+      <DocumentSummary
+        estimate={estimate}
+        documentType={documentType}
+        showPrices={showPrices}
+        total={total}
+        subtotal={estimate.subtotal || 0}
+        depositPct={depositPct}
+        depositAmount={depositAmount}
+        remaining={remaining}
+        isEstimate={isEstimate}
+        variant="minimal"
+        style={{ marginTop: 20, paddingTop: 10, borderTop: '1px solid #000' }}
+      />
 
       {/* Footer */}
-      <div style={{ marginTop: 40, paddingTop: 10, borderTop: '1px solid #ddd', fontSize: 9, color: '#666' }}>
-        FSM Pro · License #2024-FSM-01
-      </div>
+      <DocumentFooter
+        today={today}
+        companyName="FSM Pro"
+        licenseNumber="#2024-FSM-01"
+        variant="minimal"
+        style={{ marginTop: 40, paddingTop: 10, borderTop: '1px solid #ddd' }}
+      />
     </div>
   );
 
@@ -305,19 +301,16 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
             </div>
           </div>
 
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ color: '#38bdf8', fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>{docTypeLabel}</div>
-            <div style={{ color: 'white', fontSize: 32, fontWeight: 800, letterSpacing: '-0.5px', marginBottom: 8 }}>#{estimate.estimate_number || '—'}</div>
-            <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.9 }}>
-              Date: {today}<br />
-              {expDate && <>Expires: {expDate}<br /></>}
-            </div>
-            {estimate.status && (
-              <div style={{ display: 'inline-block', marginTop: 8, padding: '3px 12px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', background: statusStyle.bg, color: statusStyle.color }}>
-                {estimate.status}
-              </div>
-            )}
-          </div>
+          <DocumentHeader
+            estimate={estimate}
+            documentType={documentType}
+            today={today}
+            expDate={expDate}
+            statusStyle={statusStyle}
+            showStatus={true}
+            variant="standard"
+            style={{ textAlign: 'right', color: 'white' }}
+          />
         </div>
       </div>
 
@@ -416,44 +409,18 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       )}
 
       {/* TOTALS */}
-      {showPrices && (
-        <div style={{ padding: '16px 52px 32px', display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ width: 310 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: 13 }}>
-              <span>Subtotal</span>
-              <span>${(estimate.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            </div>
-            {(estimate.discount_amount > 0) && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #e2e8f0', color: '#dc2626', fontSize: 13 }}>
-                <span>Discount{estimate.discount_type === 'percent' ? ` (${estimate.discount_value}%)` : ''}</span>
-                <span>-${(estimate.discount_amount || 0).toFixed(2)}</span>
-              </div>
-            )}
-            {(estimate.tax_rate > 0) && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: 13 }}>
-                <span>Tax ({estimate.tax_rate}%)</span>
-                <span>${(estimate.tax_amount || 0).toFixed(2)}</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 16px', marginTop: 6, background: '#0f172a', borderRadius: 8, color: 'white' }}>
-              <span style={{ fontWeight: 700, fontSize: 15 }}>Total</span>
-              <span style={{ fontWeight: 800, fontSize: 19 }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            </div>
-            {isEstimate && depositPct > 0 && (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #e2e8f0', color: '#0369a1', fontSize: 13, marginTop: 10 }}>
-                  <span style={{ fontWeight: 600 }}>Deposit Due ({depositPct}%)</span>
-                  <span style={{ fontWeight: 700 }}>${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', color: '#475569', fontSize: 13 }}>
-                  <span>Remaining Balance</span>
-                  <span style={{ fontWeight: 600 }}>${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      <DocumentSummary
+        estimate={estimate}
+        documentType={documentType}
+        showPrices={showPrices}
+        total={total}
+        subtotal={estimate.subtotal || 0}
+        depositPct={depositPct}
+        depositAmount={depositAmount}
+        remaining={remaining}
+        isEstimate={isEstimate}
+        variant="standard"
+      />
 
       {/* TERMS */}
       {opts.showTerms && [
@@ -483,10 +450,15 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       )}
 
       {/* FOOTER */}
-      <div style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', padding: '10px 52px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '8pt', color: '#94a3b8' }}>
-        <div>FSM Pro · License #2024-FSM-01</div>
-        <div>Page · Confidential</div>
-      </div>
+      <DocumentFooter
+        today={today}
+        companyName="FSM Pro"
+        licenseNumber="#2024-FSM-01"
+        variant="standard"
+        showDate={false}
+        showCompany={true}
+        showLicense={true}
+      />
     </div>
   );
 
@@ -496,12 +468,16 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 12, color: '#1f2937', background: 'white', padding: '40px' }}>
         {/* Header */}
         <div style={{ marginBottom: 30, paddingBottom: 20, borderBottom: `4px solid ${accentColor}` }}>
-          <div style={{ fontSize: 14, fontWeight: 'bold', color: accentColor, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 5 }}>{docTypeLabel}</div>
-          <div style={{ fontSize: 32, fontWeight: 'bold', color: '#111', marginBottom: 10 }}>#{estimate.estimate_number}</div>
-          <div style={{ display: 'flex', gap: 30, color: '#666', fontSize: 11 }}>
-            <div>Date: {today}</div>
-            {expDate && <div>Expires: {expDate}</div>}
-          </div>
+          <DocumentHeader
+            estimate={estimate}
+            documentType={documentType}
+            today={today}
+            expDate={expDate}
+            statusStyle={statusStyle}
+            showStatus={false}
+            variant="modern"
+            style={{ color: '#111' }}
+          />
         </div>
 
         {/* Two-column */}
@@ -576,43 +552,31 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         )}
 
         {/* Totals */}
-        {showPrices && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 30 }}>
-            <div style={{ width: 280 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 11, color: '#6b7280', borderBottom: '1px solid #e5e7eb' }}>
-                <span>Subtotal:</span>
-                <span>${(estimate.subtotal || 0).toFixed(2)}</span>
-              </div>
-              {estimate.tax_rate > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 11, color: '#6b7280', borderBottom: '1px solid #e5e7eb' }}>
-                  <span>Tax ({estimate.tax_rate}%):</span>
-                  <span>${(estimate.tax_amount || 0).toFixed(2)}</span>
-                </div>
-              )}
-              {estimate.discount_amount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 11, color: '#059669', borderBottom: '1px solid #e5e7eb' }}>
-                  <span>Discount:</span>
-                  <span>-${(estimate.discount_amount || 0).toFixed(2)}</span>
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 8px', fontSize: 13, fontWeight: 'bold', color: accentColor, background: '#f3f4f6', borderRadius: 4, marginTop: 8 }}>
-                <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
-              {isEstimate && depositPct > 0 && (
-                <div style={{ marginTop: 10, padding: '10px', background: '#f0f9ff', borderRadius: 4, fontSize: 10 }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Deposit Due ({depositPct}%)</div>
-                  <div style={{ fontWeight: 'bold', color: accentColor }}>${depositAmount.toFixed(2)}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <DocumentSummary
+          estimate={estimate}
+          documentType={documentType}
+          showPrices={showPrices}
+          total={total}
+          subtotal={estimate.subtotal || 0}
+          depositPct={depositPct}
+          depositAmount={depositAmount}
+          remaining={remaining}
+          isEstimate={isEstimate}
+          variant="modern"
+          style={{ marginBottom: 30 }}
+        />
 
         {/* Footer */}
-        <div style={{ borderTop: `2px solid ${accentColor}`, paddingTop: 20, marginTop: 20, fontSize: 10, color: '#6b7280', textAlign: 'center' }}>
-          FSM Pro · {today}
-        </div>
+        <DocumentFooter
+          today={today}
+          companyName="FSM Pro"
+          licenseNumber=""
+          variant="modern"
+          showDate={true}
+          showCompany={true}
+          showLicense={false}
+          style={{ borderTop: `2px solid ${accentColor}`, paddingTop: 20, marginTop: 20, textAlign: 'center' }}
+        />
       </div>
     );
   };
@@ -625,10 +589,16 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
           <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 5 }}>FSM Pro</div>
           <div style={{ fontSize: 11, color: '#7a7a7a', letterSpacing: 2, textTransform: 'uppercase' }}>Professional Services</div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 14, fontWeight: 'bold', color: '#d4a574', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 }}>{docTypeLabel}</div>
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1a1a1a' }}>#{estimate.estimate_number}</div>
-        </div>
+        <DocumentHeader
+          estimate={estimate}
+          documentType={documentType}
+          today={null}
+          expDate={null}
+          statusStyle={statusStyle}
+          showStatus={false}
+          variant="executive"
+          style={{ textAlign: 'right' }}
+        />
       </div>
 
       {/* Client & Details */}
@@ -715,46 +685,31 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       )}
 
       {/* Totals */}
-      {showPrices && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 40 }}>
-          <div style={{ width: 280 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 11, borderBottom: '1px solid #d4a574' }}>
-              <span>Subtotal:</span>
-              <span>${(estimate.subtotal || 0).toFixed(2)}</span>
-            </div>
-            {estimate.discount_amount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 11, color: '#d4a574', borderBottom: '1px solid #d4a574' }}>
-                <span>Discount:</span>
-                <span>-${(estimate.discount_amount || 0).toFixed(2)}</span>
-              </div>
-            )}
-            {estimate.tax_rate > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 11, borderBottom: '1px solid #d4a574' }}>
-                <span>Tax:</span>
-                <span>${(estimate.tax_amount || 0).toFixed(2)}</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', fontSize: 14, fontWeight: 'bold', color: '#d4a574' }}>
-              <span>TOTAL AMOUNT:</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-            {isEstimate && depositPct > 0 && (
-              <div style={{ marginTop: 15, paddingTop: 15, borderTop: '1px solid #d4a574', fontSize: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <span>Deposit ({depositPct}%):</span>
-                  <span style={{ fontWeight: 'bold' }}>${depositAmount.toFixed(2)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <DocumentSummary
+        estimate={estimate}
+        documentType={documentType}
+        showPrices={showPrices}
+        total={total}
+        subtotal={estimate.subtotal || 0}
+        depositPct={depositPct}
+        depositAmount={depositAmount}
+        remaining={remaining}
+        isEstimate={isEstimate}
+        variant="executive"
+        style={{ marginBottom: 40 }}
+      />
 
       {/* Footer */}
-      <div style={{ paddingTop: 20, borderTop: '2px solid #d4a574', textAlign: 'center', fontSize: 10, color: '#7a7a7a', marginTop: 40 }}>
-        <div>Portland, OR · info@fsmpro.com · (503) 555-0100</div>
-        <div style={{ marginTop: 8 }}>{today}</div>
-      </div>
+      <DocumentFooter
+        today={today}
+        companyName="FSM Pro"
+        licenseNumber=""
+        variant="executive"
+        showDate={true}
+        showCompany={false}
+        showLicense={false}
+        style={{ paddingTop: 20, borderTop: '2px solid #d4a574', textAlign: 'center', marginTop: 40 }}
+      />
     </div>
   );
 
@@ -762,8 +717,15 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
     <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#222', background: 'white', display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
       <div style={{ width: '35%', background: '#f0f0f0', padding: '30px', borderRight: '1px solid #ddd' }}>
-        <div style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 3 }}>{docTypeLabel}</div>
-        <div style={{ fontSize: 20, fontWeight: 'bold', color: '#0066cc', marginBottom: 20 }}>#{estimate.estimate_number}</div>
+        <DocumentHeader
+          estimate={estimate}
+          documentType={documentType}
+          today={null}
+          expDate={null}
+          statusStyle={statusStyle}
+          showStatus={false}
+          variant="compact"
+        />
 
         <div style={{ fontSize: 10, fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginBottom: 8 }}>Bill To</div>
         <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{estimate.client_name}</div>
@@ -779,25 +741,22 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
           </div>
         )}
 
-        {showPrices && (
-          <div style={{ background: 'white', padding: '12px', borderRadius: 4, marginTop: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 'bold', color: '#666', marginBottom: 8 }}>SUMMARY</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11 }}>
-              <span>Subtotal:</span>
-              <span>${(estimate.subtotal || 0).toFixed(2)}</span>
-            </div>
-            {estimate.tax_rate > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 11 }}>
-                <span>Tax:</span>
-                <span>${(estimate.tax_amount || 0).toFixed(2)}</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 12, borderTop: '1px solid #ddd', paddingTop: 5, marginTop: 5 }}>
-              <span>Total:</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-          </div>
-        )}
+        <div style={{ background: 'white', padding: '12px', borderRadius: 4, marginTop: 20 }}>
+          <div style={{ fontSize: 10, fontWeight: 'bold', color: '#666', marginBottom: 8 }}>SUMMARY</div>
+          <DocumentSummary
+            estimate={estimate}
+            documentType={documentType}
+            showPrices={showPrices}
+            total={total}
+            subtotal={estimate.subtotal || 0}
+            depositPct={depositPct}
+            depositAmount={depositAmount}
+            remaining={remaining}
+            isEstimate={isEstimate}
+            variant="compact"
+            style={{}}
+          />
+        </div>
 
         {estimate.status && (
           <div style={{ marginTop: 20, padding: '8px', background: statusStyle.bg, color: statusStyle.color, borderRadius: 4, textAlign: 'center', fontSize: 10, fontWeight: 'bold' }}>
@@ -879,11 +838,16 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
               <div style={{ fontSize: 12, color: '#94a3b8' }}>Professional Services</div>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#38bdf8', marginBottom: 6 }}>{docTypeLabel}</div>
-            <div style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>#{estimate.estimate_number}</div>
-            <div style={{ fontSize: 12, color: '#cbd5e1' }}>{today}</div>
-          </div>
+          <DocumentHeader
+            estimate={estimate}
+            documentType={documentType}
+            today={today}
+            expDate={null}
+            statusStyle={statusStyle}
+            showStatus={false}
+            variant="pro"
+            style={{ textAlign: 'right', color: 'white' }}
+          />
         </div>
       </div>
 
@@ -956,48 +920,34 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       )}
 
       {/* SUMMARY CARD */}
-      {showPrices && (
-        <div style={{ background: 'white', padding: '28px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 32, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>Financial Summary</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>
-            <span>Subtotal</span>
-            <span>${(estimate.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          </div>
-          {estimate.discount_amount > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f1f5f9', color: '#dc2626' }}>
-              <span>Discount</span>
-              <span>-${(estimate.discount_amount || 0).toFixed(2)}</span>
-            </div>
-          )}
-          {estimate.tax_rate > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>
-              <span>Tax ({estimate.tax_rate}%)</span>
-              <span>${(estimate.tax_amount || 0).toFixed(2)}</span>
-            </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', marginTop: 8, fontSize: 15, fontWeight: 800, color: '#0f172a', borderTop: '2px solid #38bdf8' }}>
-            <span>Total</span>
-            <span>${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          </div>
-          {isEstimate && depositPct > 0 && (
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: '#0369a1', marginBottom: 6 }}>
-                <span>Deposit Due ({depositPct}%)</span>
-                <span>${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#475569' }}>
-                <span>Remaining Balance</span>
-                <span>${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <div style={{ background: 'white', padding: '28px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 32, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>Financial Summary</div>
+        <DocumentSummary
+          estimate={estimate}
+          documentType={documentType}
+          showPrices={showPrices}
+          total={total}
+          subtotal={estimate.subtotal || 0}
+          depositPct={depositPct}
+          depositAmount={depositAmount}
+          remaining={remaining}
+          isEstimate={isEstimate}
+          variant="pro"
+          style={{}}
+        />
+      </div>
 
       {/* FOOTER */}
-      <div style={{ background: 'white', padding: '20px 28px', borderRadius: 12, border: '1px solid #e2e8f0', textAlign: 'center', fontSize: '9pt', color: '#94a3b8' }}>
-        FSM Pro · License #2024-FSM-01 · {today}
-      </div>
+      <DocumentFooter
+        today={today}
+        companyName="FSM Pro"
+        licenseNumber="#2024-FSM-01"
+        variant="pro"
+        showDate={true}
+        showCompany={true}
+        showLicense={true}
+        style={{ background: 'white', padding: '20px 28px', borderRadius: 12, border: '1px solid #e2e8f0', textAlign: 'center' }}
+      />
     </div>
   );
 
