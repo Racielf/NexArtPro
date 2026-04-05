@@ -78,7 +78,7 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
   );
 
   return (
-    <div className="flex flex-col h-full text-sm bg-white">
+    <div className="flex flex-col h-full text-sm bg-white overflow-y-auto min-h-0">
 
       {/* HEADER */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-slate-50">
