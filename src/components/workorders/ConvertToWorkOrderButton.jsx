@@ -44,7 +44,15 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
         title: estimate.title || `Work Order from Estimate #${estimate.estimate_number}`,
         description: estimate.notes || '',
         status: 'draft',
-        groups: estimate.groups || [],
+        // Copy services — groups (structured) AND line_items (flat) from the estimate
+        groups: (estimate.groups || []).map(g => ({
+          ...g,
+          items: (g.items || []).map(item => ({
+            ...item,
+            // Ensure each item has a stable id for task tracking
+            id: item.id || item.service_name || String(Math.random()),
+          })),
+        })),
         line_items: estimate.line_items || [],
         subtotal: estimate.subtotal || 0,
         total: estimate.total || 0,

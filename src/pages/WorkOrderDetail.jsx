@@ -88,7 +88,16 @@ export default function WorkOrderDetail() {
     </div>
   );
 
-  const allItems = (workOrder.groups || []).flatMap(g => g.items || []);
+  // Build items list: from groups first, then fall back to flat line_items
+  const groupItems = (workOrder.groups || []).flatMap(g => g.items || []);
+  const flatItems = (workOrder.line_items || []).map(li => ({
+    id: li.id || li.service_name,
+    service_name: li.service_name || li.name || li.description,
+    description: li.description,
+    quantity: li.quantity,
+    unit_price: li.unit_price,
+  }));
+  const allItems = groupItems.length > 0 ? groupItems : flatItems;
 
   return (
     <div className="min-h-screen bg-[#f0f2f5]">
