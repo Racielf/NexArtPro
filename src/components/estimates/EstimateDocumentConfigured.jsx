@@ -178,8 +178,8 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
                         </td>
                         <td style={td}>{parseFloat(item.quantity) % 1 === 0 ? parseInt(item.quantity) : (item.quantity || 0)}</td>
                         <td style={td}>{item.unit || 'ea'}</td>
-                        <td style={td}>${(item.unit_price || 0).toFixed(2)}</td>
-                        <td style={{ ...td, fontWeight: 700, color: '#0f172a' }}>${(item.line_total || item.total_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td style={td}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>
+                        <td style={{ ...td, fontWeight: 700, color: '#0f172a' }}>${(parseFloat(item.line_total || item.total_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       </tr>
                     ))}
                     {showGroupHeader && (
