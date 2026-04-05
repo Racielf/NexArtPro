@@ -25,7 +25,7 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
       const existing = await base44.entities.WorkOrder.filter({ estimate_id: estimate.id });
       if (existing.length > 0) {
         toast.error('Already converted to Work Order #' + existing[0].work_order_number);
-        navigate(`/work-order-detail?id=${existing[0].id}`);
+        navigate(`/work-orders/${existing[0].id}`);
         return;
       }
 
@@ -58,7 +58,7 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
 
       toast.success(`Work Order #${woNum} created!`);
       onConverted?.();
-      navigate(`/work-order-detail?id=${wo.id}`);
+      navigate(`/work-orders/${wo.id}`);
     } finally {
       setLoading(false);
     }
