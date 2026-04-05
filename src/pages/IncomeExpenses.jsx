@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { TrendingUp, TrendingDown, Plus, Search, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Search, DollarSign, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import BankAccounts from '@/components/finance/BankAccounts';
 
 const EXPENSE_CATEGORIES = ['materials', 'fuel', 'tools', 'subcontractors', 'payroll', 'office/admin', 'miscellaneous'];
 const INCOME_CATEGORIES = ['service', 'parts', 'deposit', 'other'];
@@ -15,6 +16,7 @@ const TYPE_COLORS = {
 
 export default function IncomeExpenses() {
   const [activeTab, setActiveTab] = useState('income');
+  const [mainTab, setMainTab] = useState('transactions');
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [filterMethod, setFilterMethod] = useState('All Methods');
@@ -76,7 +78,33 @@ export default function IncomeExpenses() {
           </div>
         </div>
 
-        {/* Tabs + Filters */}
+        {/* Main Tabs */}
+        <div className="flex border-b border-slate-200 bg-white rounded-t-xl border border-b-0 border-slate-200">
+          {[
+            { id: 'transactions', label: 'Income & Expenses' },
+            { id: 'bank', label: '🏦 Bank Accounts' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setMainTab(tab.id)}
+              className={`px-6 py-3.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                mainTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {mainTab === 'bank' && (
+          <div className="bg-white rounded-b-xl border border-slate-200 border-t-0 p-5">
+            <BankAccounts />
+          </div>
+        )}
+
+        {mainTab === 'transactions' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
           <div className="flex border-b border-slate-200">
             {['income', 'expenses'].map(tab => (
@@ -150,6 +178,7 @@ export default function IncomeExpenses() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );
