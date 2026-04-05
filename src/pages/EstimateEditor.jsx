@@ -244,6 +244,17 @@ export default function EstimateEditor() {
         </div>
       </div>
 
+      {/* ── MODALS (in functional order) ── */}
+
+      {/* Preview: Quick document view (triggered from toolbar) */}
+      <EstimatePreviewModal
+        estimate={estimate}
+        open={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        onSend={() => setShowSendModal(true)}
+      />
+
+      {/* Send & Review: Full screen workflow (from actions panel) */}
       {showSendModal && (
         <EstimateSendReview
           estimate={estimate}
@@ -253,13 +264,7 @@ export default function EstimateEditor() {
         />
       )}
 
-      <EstimatePreviewModal
-        estimate={estimate}
-        open={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        onSend={() => setShowSendModal(true)}
-      />
-
+      {/* Document Options: Configure template rendering */}
       <EstimateDocumentOptions
         open={showDocumentOptions}
         onClose={() => setShowDocumentOptions(false)}
