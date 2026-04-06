@@ -11,6 +11,7 @@ import {
   Pencil, Check, X, Eye, EyeOff, BookOpen, LayoutTemplate
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
+import PriceDisciplineGuard from '@/components/estimates/internal/PriceDisciplineGuard';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -24,6 +25,7 @@ const emptyItem = () => ({
   unit: 'ea',
   unit_price: 0,
   unit_cost: 0,
+  book_price: 0,
   line_total: 0,
   taxable: true,
 });
@@ -85,18 +87,21 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
             value={item.service_name}
             onChange={v => update('service_name', v)}
             onSelect={picked => {
-              setExpanded(true);
-              const updated = {
-                ...item,
-                service_name: picked.name,
-                description:  item.description || picked.description || '',
-                unit:         picked.unit || item.unit,
-                unit_price:   picked.unit_price ?? item.unit_price,
-                unit_cost:    picked.unit_cost  ?? item.unit_cost,
-                line_total:   (parseFloat(item.quantity) || 1) * (picked.unit_price ?? item.unit_price),
-              };
-              onUpdate(updated);
-            }}
+                setExpanded(true);
+                const pickedPrice = picked.unit_price ?? item.unit_price;
+                const updated = {
+                  ...item,
+                  service_name: picked.name,
+                  description:  item.description || picked.description || '',
+                  unit:         picked.unit || item.unit,
+                  unit_price:   pickedPrice,
+                  unit_cost:    picked.unit_cost  ?? item.unit_cost,
+                  // book_price: capture standard price from price book for discipline tracking
+                  book_price:   picked._from_picker ? pickedPrice : (item.book_price || 0),
+                  line_total:   (parseFloat(item.quantity) || 1) * pickedPrice,
+                };
+                onUpdate(updated);
+              }}
             placeholder="Service name"
             className="h-8 w-full text-sm font-semibold border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-1 focus:ring-primary/30 transition"
           />
@@ -405,6 +410,9 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
         className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary border-2 border-dashed border-slate-200 hover:border-primary/40 rounded-xl w-full py-3 justify-center transition-colors mb-4">
         <Plus className="w-4 h-4" />Add work group
       </button>
+
+      {/* ── PRICE DISCIPLINE GUARD (internal only — never in PDF/preview/send) ── */}
+      <PriceDisciplineGuard groups={groups} minVarianceThreshold={-0.20} />
 
       {/* ── TOTALS CARD ── */}
       <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
