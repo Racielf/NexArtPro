@@ -30,7 +30,9 @@ export default function EstimateTemplateSelector({
         </button>
 
         {menuOpen && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+            <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-20">
             {templates.map(t => (
               <button
                 key={t.value}
@@ -47,6 +49,7 @@ export default function EstimateTemplateSelector({
               </button>
             ))}
           </div>
+          </>
         )}
       </div>
 
