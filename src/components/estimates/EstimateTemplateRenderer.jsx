@@ -267,8 +267,8 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                       )}
                       {lineCols.quantity && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11 }}>{item.quantity}</td>}
                       {lineCols.unit && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
-                      {lineCols.price && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>}
-                      {lineCols.total && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11, fontWeight: 'bold' }}>${(item.line_total || 0).toFixed(2)}</td>}
+                      {lineCols.price && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
+                      {lineCols.total && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11, fontWeight: 'bold' }}>${(parseFloat(item.line_total) || 0).toFixed(2)}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -622,7 +622,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                         </td>}
                         {lineCols.quantity && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.quantity}</td>}
                         {lineCols.unit && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
-                        {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>}
+                        {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
                         {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: accentColor }}>${(item.line_total || 0).toFixed(2)}</td>}
                       </tr>
                     ))}
@@ -755,8 +755,8 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                       </td>}
                       {lineCols.quantity && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.quantity}</td>}
                       {lineCols.unit && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
-                      {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>}
-                      {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: '#d4a574' }}>${(item.line_total || 0).toFixed(2)}</td>}
+                      {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
+                      {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: '#d4a574' }}>${(parseFloat(item.line_total) || 0).toFixed(2)}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -881,8 +881,8 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                         </td>}
                         {lineCols.quantity && <td style={{ textAlign: 'center', padding: '6px', fontSize: 11 }}>{item.quantity}</td>}
                         {lineCols.unit && <td style={{ textAlign: 'center', padding: '6px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
-                        {lineCols.price && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11 }}>${(item.unit_price || 0).toFixed(2)}</td>}
-                        {lineCols.total && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11, fontWeight: 'bold' }}>${(item.line_total || 0).toFixed(2)}</td>}
+                        {lineCols.price && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11, fontWeight: 'bold' }}>${(parseFloat(item.line_total) || 0).toFixed(2)}</td>}
                       </tr>
                     ))}
                   </tbody>
