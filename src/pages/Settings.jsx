@@ -219,7 +219,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="h-full bg-slate-50 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-8 py-5 flex-shrink-0">
         <h1 className="text-xl font-bold text-slate-900">Settings</h1>
@@ -234,7 +234,7 @@ export default function Settings() {
         </div>
 
         {/* Main Panel */}
-        <div className="flex-1 overflow-y-auto px-10 py-8 max-w-3xl">
+        <div className="flex-1 min-h-0 overflow-y-auto px-10 py-8 pb-16">
           {panels[activeSection]}
         </div>
       </div>
