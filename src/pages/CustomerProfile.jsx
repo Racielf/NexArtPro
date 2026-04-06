@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import CustomerFormModal from '@/components/customers/CustomerFormModal';
 import {
   ArrowLeft, Phone, Mail, MapPin, Building2, Home, HardHat,
   Calendar, FileText, ClipboardList, Receipt, Plus, Pencil,
@@ -34,6 +35,7 @@ export default function CustomerProfile() {
   const [activeTab, setActiveTab] = useState('overview');
   const [editingNote, setEditingNote] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => { if (customerId) loadAll(); }, [customerId]);
 
@@ -160,7 +162,7 @@ export default function CustomerProfile() {
                 <Plus className="w-3.5 h-3.5 mr-1.5" />Create Estimate
               </Button>
             )}
-            <button onClick={() => navigate(`/customers?edit=${customerId}`)}
+            <button onClick={() => setShowEditModal(true)}
               className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
               <Pencil className="w-4 h-4 text-slate-400" />
             </button>
@@ -496,6 +498,16 @@ export default function CustomerProfile() {
           </div>
         </div>
       </div>
+
+      <CustomerFormModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        customer={customer}
+        onSaved={(updated) => {
+          setCustomer(c => ({ ...c, ...updated }));
+          setNoteText(updated.internal_notes || noteText);
+        }}
+      />
     </div>
   );
 }
