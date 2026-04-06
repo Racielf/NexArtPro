@@ -3,7 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { X, Eye, Save, Trash2 } from 'lucide-react';
-import EstimateOptionTabs from '@/components/estimates/EstimateOptionTabs';
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
@@ -29,8 +28,6 @@ export default function EstimateEditor() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDocumentOptions, setShowDocumentOptions] = useState(false);
-  const [activeOption, setActiveOption] = useState(0);
-  const [options, setOptions] = useState([{ label: 'Option #1' }]);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   useEffect(() => { loadEstimate(); }, []);
@@ -95,20 +92,6 @@ export default function EstimateEditor() {
     if (customerData.client_name) toast.success('Customer saved');
   };
 
-  const handleAddOption = () => {
-    setOptions(prev => [...prev, { label: `Option #${prev.length + 1}` }]);
-    setActiveOption(options.length);
-  };
-
-  const handleRenameOption = (idx, newLabel) => {
-    setOptions(prev => prev.map((o, i) => i === idx ? { ...o, label: newLabel } : o));
-  };
-
-  const handleDeleteOption = (idx) => {
-    setOptions(prev => prev.filter((_, i) => i !== idx));
-    setActiveOption(prev => (prev >= idx && prev > 0 ? prev - 1 : 0));
-  };
-
   const handleCancel = () => {
     // If new and no client set yet, confirm before discarding
     const isEmpty = !estimate?.client_name && !estimate?.title;
@@ -161,18 +144,6 @@ export default function EstimateEditor() {
           <span className="font-bold text-slate-900 text-sm whitespace-nowrap flex-shrink-0">
             {hasClient ? `Estimate #${estimate.estimate_number} · ${estimate.client_name}` : `New Estimate #${estimate.estimate_number}`}
           </span>
-
-          {/* Option tabs */}
-          <div className="flex items-stretch h-full flex-shrink-0">
-            <EstimateOptionTabs
-              activeOption={activeOption}
-              options={options}
-              onSelectOption={setActiveOption}
-              onAddOption={handleAddOption}
-              onRenameOption={handleRenameOption}
-              onDeleteOption={handleDeleteOption}
-            />
-          </div>
 
           <div className="flex-1" />
 
