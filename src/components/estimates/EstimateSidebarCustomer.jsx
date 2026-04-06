@@ -10,9 +10,12 @@ import {
   Search, UserPlus, Check, X
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import CustomerFormModal from '@/components/customers/CustomerFormModal';
 
 export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) {
   const [editing, setEditing] = useState(!estimate?.client_name);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [linkedCustomer, setLinkedCustomer] = useState(null);
   const [form, setForm] = useState({
     client_name: estimate?.client_name || '',
     client_email: estimate?.client_email || '',
@@ -28,6 +31,17 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
   useEffect(() => {
     base44.entities.Client.list('-created_date', 50).then(setClients).catch(() => {});
   }, []);
+
+  // Load linked Customer entity when client_id changes
+  useEffect(() => {
+    if (estimate?.client_id) {
+      base44.entities.Customer.filter({ id: estimate.client_id }).then(res => {
+        setLinkedCustomer(res[0] || null);
+      }).catch(() => {});
+    } else {
+      setLinkedCustomer(null);
+    }
+  }, [estimate?.client_id]);
 
   // Sync if estimate changes externally
   useEffect(() => {
@@ -88,8 +102,16 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
             className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition-colors" title="Search existing">
             <Search className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => { setEditing(v => !v); setShowSearch(false); }}
-            className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition-colors" title="Edit / Add manually">
+          <button
+            onClick={() => {
+              if (estimate?.client_id && linkedCustomer) {
+                setShowCustomerModal(true);
+              } else {
+                setEditing(v => !v);
+                setShowSearch(false);
+              }
+            }}
+            className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition-colors" title="Edit contact">
             <Pencil className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -263,6 +285,26 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
           ))}
         </div>
       )}
+
+      {/* Customer edit modal (only when linked to a Customer record) */}
+      <CustomerFormModal
+        open={showCustomerModal}
+        onOpenChange={setShowCustomerModal}
+        customer={linkedCustomer}
+        onSaved={(updated) => {
+          setLinkedCustomer(updated);
+          // Sync the visible form fields with updated customer data
+          const addr = [updated.service_address, updated.city, updated.state, updated.zip].filter(Boolean).join(', ');
+          const updatedFields = {
+            client_name: updated.display_name || `${updated.first_name} ${updated.last_name}`,
+            client_email: updated.email || '',
+            client_phone: updated.phone || '',
+            client_address: addr || form.client_address,
+          };
+          setForm(f => ({ ...f, ...updatedFields }));
+          onCustomerChange({ ...updatedFields, client_id: updated.id }, updated);
+        }}
+      />
     </div>
   );
 }
