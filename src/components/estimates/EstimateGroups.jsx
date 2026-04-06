@@ -281,7 +281,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
             <div>Service</div>
             <div className="text-center">Qty / Unit</div>
             <div className="text-right text-slate-600">Price</div>
-            <div className="text-right text-slate-400">Book ref</div>
+            <div className="text-right text-slate-400 text-[9px]">Book<br/>ref</div>
             <div className={`text-right ${showCost ? 'text-amber-600' : ''}`}>{showCost ? 'Cost' : ''}</div>
             <div className="text-right">Total</div>
             <div />
