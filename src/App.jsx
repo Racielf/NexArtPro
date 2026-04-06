@@ -27,6 +27,7 @@ import Payments from './pages/Payments';
 import IncomeExpenses from './pages/IncomeExpenses';
 import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 
 
 const AuthenticatedApp = () => {
@@ -72,6 +73,7 @@ const AuthenticatedApp = () => {
         <Route path="/income-expenses" element={<IncomeExpenses />} />
         <Route path="/payroll" element={<Payroll />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/settings" element={<Settings />} />
 
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />
