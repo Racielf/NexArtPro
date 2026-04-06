@@ -147,15 +147,16 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           );
         })()}
 
-        {/* Unit cost (internal) */}
-        {showCost && (
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
-            <Input type="number" step="0.01" value={item.unit_cost} onChange={e => update('unit_cost', e.target.value)}
-              className="h-8 pl-5 text-sm text-right border-slate-200 bg-amber-50/50" min={0} />
-          </div>
-        )}
-        {!showCost && <div />}
+        {/* Unit cost (internal) — only rendered when showCost, placeholder div keeps grid aligned */}
+        <div>
+          {showCost && (
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+              <Input type="number" step="0.01" value={item.unit_cost} onChange={e => update('unit_cost', e.target.value)}
+                className="h-8 pl-5 text-sm text-right border-slate-200 bg-amber-50/50" min={0} />
+            </div>
+          )}
+        </div>
 
         {/* Line total */}
         <div className="text-right text-base font-bold text-slate-900 pr-2">
