@@ -74,10 +74,12 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
 
   return (
     <div className={`border-b border-slate-100 last:border-0 transition-colors ${expanded ? 'bg-blue-50/20' : 'hover:bg-slate-50/60'}`}>
-      {/* Main row */}
-      <div className="grid items-center gap-3 px-6 py-3"
-        style={{ gridTemplateColumns: 'auto 2fr 1fr 1fr 1fr 1fr 1fr auto' }}>
-        <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing">
+      {/* Main row — grid: grip | service(2fr) | qty+unit(90px) | price(110px) | book(80px) | [cost] | total(100px) | remove */}
+      <div className="grid items-center gap-2 px-4 py-2.5"
+        style={{ gridTemplateColumns: '20px 2fr 90px 110px 80px 1fr 100px 28px' }}>
+
+        {/* Grip */}
+        <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing flex justify-center">
           <GripVertical className="w-3.5 h-3.5" />
         </button>
 
@@ -89,7 +91,6 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
             onSelect={picked => {
                 setExpanded(true);
                 const pickedPrice = picked.unit_price ?? item.unit_price;
-                // book_price = reference price from price book (always set when picker is used)
                 const bookPrice = picked.unit_price != null ? picked.unit_price : (item.book_price || 0);
                 const updated = {
                   ...item,
@@ -111,76 +112,79 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           )}
         </div>
 
-        {/* Qty + Unit stacked */}
-        <div className="flex flex-col gap-1">
-          <Input type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
-            className="h-8 text-sm text-right border-slate-200 px-2" min={0} />
+        {/* Qty + Unit — inline, compact */}
+        <div className="flex items-center gap-1">
+          <Input
+            type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
+            className="h-8 text-sm text-center border-slate-200 px-1 w-10 flex-shrink-0" min={0}
+          />
           <select value={item.unit} onChange={e => update('unit', e.target.value)}
-            className="h-8 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600 w-full">
+            className="h-8 text-[11px] border border-slate-200 rounded px-1 bg-white text-slate-500 flex-1 min-w-0">
             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
           </select>
         </div>
 
-        {/* Price (real) — editable + visual alert vs book_price */}
+        {/* Price — primary editable field + variance badge */}
         {(() => {
           const book = parseFloat(item.book_price) || 0;
           const real = parseFloat(item.unit_price) || 0;
           const diff = real - book;
-          const isLow  = book > 0 && diff < 0;
-          const isHigh = book > 0 && diff > 0;
-          const isOk   = book > 0 && diff === 0;
+          const isLow  = book > 0 && diff < -0.001;
+          const isHigh = book > 0 && diff > 0.001;
+          const isOk   = book > 0 && !isLow && !isHigh;
           return (
             <div className="flex flex-col gap-0.5">
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
                 <Input
                   type="number" step="0.01" value={item.unit_price}
                   onChange={e => update('unit_price', e.target.value)}
-                  className={`h-8 pl-5 text-sm text-right border-slate-200 ${isLow ? 'border-red-300 bg-red-50/40' : ''}`}
+                  className={`h-8 pl-4 text-sm text-right font-semibold border-slate-200 ${isLow ? 'border-red-300 bg-red-50/50 text-red-700' : 'text-slate-900'}`}
                   min={0}
                 />
               </div>
               {book > 0 && (
-                <span className={`text-[10px] font-semibold text-right leading-none ${isLow ? 'text-red-500' : isHigh ? 'text-green-600' : 'text-green-500'}`}>
-                  {isLow  && `↓ -$${Math.abs(diff).toFixed(2)} vs book`}
-                  {isHigh && `↑ +$${Math.abs(diff).toFixed(2)} vs book`}
-                  {isOk   && '✓ at book price'}
+                <span className={`text-[9px] font-bold text-right leading-none tracking-tight ${isLow ? 'text-red-500' : isHigh ? 'text-emerald-600' : 'text-emerald-500'}`}>
+                  {isLow  ? `↓ -$${Math.abs(diff).toFixed(2)} vs book` : ''}
+                  {isHigh ? `↑ +$${Math.abs(diff).toFixed(2)} vs book` : ''}
+                  {isOk   ? '✓ at book' : ''}
                 </span>
               )}
             </div>
           );
         })()}
 
-        {/* Book Price — read-only reference */}
+        {/* Book Price — secondary reference, visually muted */}
         {(() => {
           const book = parseFloat(item.book_price) || 0;
-          if (book === 0) return <div className="text-right text-xs text-slate-300">—</div>;
+          if (book === 0) return <div className="text-right text-xs text-slate-200">—</div>;
           return (
-            <div className="text-right">
-              <span className="text-xs font-medium text-slate-400" title="Standard price from price book">${book.toFixed(2)}</span>
+            <div className="text-right leading-tight">
+              <div className="text-[10px] text-slate-400 font-medium">${book.toFixed(2)}</div>
+              <div className="text-[9px] text-slate-300 leading-none">book ref</div>
             </div>
           );
         })()}
 
-        {/* Unit cost (internal) — placeholder div always keeps grid aligned */}
+        {/* Unit cost (internal only) — placeholder keeps grid */}
         <div>
           {showCost && (
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
               <Input type="number" step="0.01" value={item.unit_cost} onChange={e => update('unit_cost', e.target.value)}
-                className="h-8 pl-5 text-sm text-right border-slate-200 bg-amber-50/50" min={0} />
+                className="h-8 pl-4 text-sm text-right border-slate-200 bg-amber-50/60" min={0} />
             </div>
           )}
         </div>
 
         {/* Line total */}
-        <div className="text-right text-base font-bold text-slate-900 pr-2">
+        <div className="text-right font-bold text-slate-900 text-sm tabular-nums">
           ${(item.line_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
         </div>
 
         {/* Remove */}
         <button onClick={() => onRemove(item.id)}
-          className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+          className="flex justify-center p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
           <X className="w-3 h-3" />
         </button>
       </div>
@@ -271,14 +275,14 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
       {/* Column headers */}
       {!group.collapsed && (
         <>
-          <div className="grid text-xs text-slate-500 font-semibold px-6 py-2.5 bg-slate-50 border-b border-slate-100"
-            style={{ gridTemplateColumns: 'auto 2fr 1fr 1fr 1fr 1fr 1fr auto' }}>
+          <div className="grid text-[10px] text-slate-400 font-semibold uppercase tracking-wide px-4 py-2 bg-slate-50 border-b border-slate-100"
+            style={{ gridTemplateColumns: '20px 2fr 90px 110px 80px 1fr 100px 28px' }}>
             <div />
             <div>Service</div>
-            <div className="text-right">Qty</div>
-            <div className="text-right">Price</div>
-            <div className="text-right text-violet-500">Book Price</div>
-            <div className={`text-right ${showCost ? 'text-amber-600' : ''}`}>{showCost ? 'Unit Cost' : ''}</div>
+            <div className="text-center">Qty / Unit</div>
+            <div className="text-right text-slate-600">Price</div>
+            <div className="text-right text-slate-400">Book ref</div>
+            <div className={`text-right ${showCost ? 'text-amber-600' : ''}`}>{showCost ? 'Cost' : ''}</div>
             <div className="text-right">Total</div>
             <div />
           </div>
