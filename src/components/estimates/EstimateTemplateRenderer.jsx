@@ -903,135 +903,240 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
     </div>
   );
 
-  const renderProTemplate = () => (
-    <div style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: 13, lineHeight: 1.5, background: '#f8fafc', color: '#0f172a', minWidth: 640, padding: '44px' }}>
-      {/* CARD HEADER */}
-      <div style={{ background: '#0f172a', padding: '40px', borderRadius: 12, color: 'white', marginBottom: 32, boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 56, height: 56, background: '#1e293b', borderRadius: 14, border: '2px solid #38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg viewBox="0 0 40 40" width="32" height="32" fill="none">
-                <path d="M8 28L20 12L32 28" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+  const renderProTemplate = () => {
+    const PRO_ACCENT = '#1e40af';
+    const PRO_ACCENT_LIGHT = '#dbeafe';
+    const PRO_DARK = '#0f172a';
+
+    const card = (extra = {}) => ({
+      background: 'white',
+      borderRadius: 10,
+      border: '1px solid #e2e8f0',
+      boxShadow: '0 2px 8px rgba(15,23,42,0.07)',
+      overflow: 'hidden',
+      ...extra,
+    });
+
+    const label = { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8', marginBottom: 6 };
+
+    return (
+      <div style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: 13, lineHeight: 1.55, background: '#f1f5f9', color: PRO_DARK, minWidth: 680, padding: '40px' }}>
+
+        {/* ══ HEADER CARD ══ */}
+        <div style={{ ...card(), background: PRO_DARK, color: 'white', padding: '32px 36px', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+
+            {/* LEFT — Logo + Company */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {/* Logo placeholder */}
+              <div style={{ width: 52, height: 52, background: '#1e293b', borderRadius: 12, border: '2px solid #38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg viewBox="0 0 40 40" width="30" height="30" fill="none">
+                  <path d="M8 28L20 12L32 28" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1 }}>FSM Pro</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Professional Services · Portland, OR</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>info@fsmpro.com · (503) 555-0100</div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px' }}>FSM Pro</div>
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>Professional Services</div>
+
+            {/* RIGHT — Document title + number + date */}
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px', color: 'white', lineHeight: 1 }}>{docTypeLabel}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#38bdf8', marginTop: 6 }}>#{estimate.estimate_number || estimate.invoice_number || '—'}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{today}</div>
+              {expDate && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Expires: {expDate}</div>}
+              {estimate.status && (
+                <div style={{ display: 'inline-block', marginTop: 8, padding: '3px 10px', borderRadius: 20, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}>
+                  {estimate.status.replace('_', ' ')}
+                </div>
+              )}
             </div>
           </div>
-          <DocumentHeader
-            estimate={estimate}
-            documentType={documentType}
-            today={today}
-            expDate={null}
-            statusStyle={statusStyle}
-            showStatus={false}
-            variant="pro"
-            style={{ textAlign: 'right', color: 'white' }}
-          />
         </div>
-      </div>
 
-      {/* CONTENT CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
-        <div style={{ background: 'white', padding: '28px', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>Bill To</div>
-          <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 8 }}>{estimate.client_name}</div>
-          <div style={{ color: '#475569', fontSize: 12, lineHeight: 1.8 }}>
-            {estimate.client_address && <div>{estimate.client_address}</div>}
-            {estimate.client_email && <div style={{ marginTop: 4 }}>✉ {estimate.client_email}</div>}
-            {estimate.client_phone && <div>📞 {estimate.client_phone}</div>}
+        {/* ══ CLIENT + PROJECT DETAILS ══ */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+          {/* Prepared For */}
+          <div style={{ ...card(), padding: '22px 24px' }}>
+            <div style={label}>Prepared For</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: PRO_DARK, marginBottom: 6 }}>{estimate.client_name}</div>
+            <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.75 }}>
+              {estimate.client_address && <div>{estimate.client_address}</div>}
+              {estimate.client_email && <div>✉ {estimate.client_email}</div>}
+              {estimate.client_phone && <div>📞 {estimate.client_phone}</div>}
+            </div>
+          </div>
+
+          {/* Project info + optional dates */}
+          <div style={{ ...card(), padding: '22px 24px' }}>
+            <div style={label}>Project Details</div>
+            {estimate.title && <div style={{ fontWeight: 700, fontSize: 14, color: PRO_DARK, marginBottom: 10 }}>{estimate.title}</div>}
+            {opts.showProjectDates && (startDate || endDate) && (
+              <div style={{ display: 'flex', gap: 20, marginTop: estimate.title ? 4 : 0 }}>
+                {startDate && (
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: 3 }}>Start Date</div>
+                    <div style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{startDate}</div>
+                  </div>
+                )}
+                {endDate && (
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: 3 }}>Completion</div>
+                    <div style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{endDate}</div>
+                  </div>
+                )}
+              </div>
+            )}
+            {!estimate.title && !opts.showProjectDates && (
+              <div style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No project details specified</div>
+            )}
           </div>
         </div>
 
-        <div style={{ background: 'white', padding: '28px', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>Project Details</div>
-          {estimate.title && <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14, marginBottom: 12 }}>{estimate.title}</div>}
-          {hasProjectDates_ && (
-            <div style={{ display: 'flex', gap: 16 }}>
-              {startDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>Start</div><div style={{ color: '#334155', fontSize: 12 }}>{startDate}</div></div>}
-              {endDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>End</div><div style={{ color: '#334155', fontSize: 12 }}>{endDate}</div></div>}
+        {/* ══ SERVICES TABLE CARD ══ */}
+        {opts.showBreakdown && groups.length > 0 && (
+          <div style={{ ...card(), marginBottom: 24 }}>
+            {groups.map((group, gi) => {
+              const groupTotal = (group.items || []).reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0);
+              return (
+                <div key={group.id || gi}>
+                  {/* Group header bar */}
+                  {group.name && (
+                    <div style={{ background: PRO_DARK, color: 'white', padding: '10px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{group.name}</span>
+                      {lineCols.total && <span style={{ fontSize: 12, color: '#94a3b8' }}>${groupTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>}
+                    </div>
+                  )}
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                        {lineCols.description && <th style={{ textAlign: 'left', padding: '11px 24px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Description</th>}
+                        {lineCols.quantity && <th style={{ textAlign: 'center', padding: '11px 12px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 60 }}>Qty</th>}
+                        {lineCols.unit && <th style={{ textAlign: 'center', padding: '11px 12px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 60 }}>Unit</th>}
+                        {lineCols.price && <th style={{ textAlign: 'right', padding: '11px 20px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 110 }}>Unit Price</th>}
+                        {lineCols.total && <th style={{ textAlign: 'right', padding: '11px 24px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 120 }}>Total</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(group.items || []).map((item, idx) => (
+                        <tr key={item.id || idx} style={{ background: idx % 2 === 0 ? 'white' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                          {lineCols.description && (
+                            <td style={{ padding: '13px 24px' }}>
+                              <div style={{ fontWeight: 600, color: PRO_DARK, fontSize: 13 }}>{item.service_name || item.name}</div>
+                              {item.description && <div style={{ color: '#64748b', fontSize: 11, marginTop: 3, lineHeight: 1.5 }}>{item.description}</div>}
+                            </td>
+                          )}
+                          {lineCols.quantity && <td style={{ textAlign: 'center', padding: '13px 12px', color: '#475569', fontSize: 13 }}>{item.quantity}</td>}
+                          {lineCols.unit && <td style={{ textAlign: 'center', padding: '13px 12px', color: '#475569', fontSize: 12 }}>{item.unit || 'ea'}</td>}
+                          {lineCols.price && <td style={{ textAlign: 'right', padding: '13px 20px', color: '#475569', fontSize: 13 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
+                          {lineCols.total && <td style={{ textAlign: 'right', padding: '13px 24px', color: PRO_DARK, fontSize: 13, fontWeight: 700 }}>${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ══ TOTALS + DEPOSIT ══ */}
+        {showPrices && (
+          <div style={{ display: 'grid', gridTemplateColumns: isEstimate && depositPct > 0 && opts.showDeposit ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 24 }}>
+
+            {/* Resumen financiero */}
+            <div style={{ ...card(), padding: '22px 24px' }}>
+              <div style={label}>Financial Summary</div>
+              {[
+                { show: true, l: 'Subtotal', v: estimate.subtotal || 0 },
+                { show: (estimate.discount_amount || 0) > 0, l: 'Discount', v: -(estimate.discount_amount || 0), color: '#dc2626' },
+                { show: (estimate.tax_rate || 0) > 0, l: `Tax (${estimate.tax_rate}%)`, v: estimate.tax_amount || 0 },
+                { show: true, l: 'TOTAL', v: total, bold: true, big: true },
+              ].filter(r => r.show).map((row, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: row.bold ? `2px solid ${PRO_ACCENT_LIGHT}` : '1px solid #f1f5f9', fontSize: row.big ? 16 : 13, fontWeight: row.bold ? 800 : 400, color: row.color || (row.bold ? PRO_DARK : '#475569') }}>
+                  <span>{row.l}</span>
+                  <span>${Math.abs(row.v).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* NOTES CARD */}
-      {estimate.notes && (
-        <div style={{ background: 'white', padding: '28px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 32, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>Notes</div>
-          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate.notes}</p>
-        </div>
-      )}
+            {/* Depósito (solo si aplica y está habilitado) */}
+            {isEstimate && depositPct > 0 && opts.showDeposit && (
+              <div style={{ ...card(), padding: '22px 24px', background: PRO_ACCENT_LIGHT, border: `1.5px solid ${PRO_ACCENT}` }}>
+                <div style={{ ...label, color: PRO_ACCENT }}>Payment Schedule</div>
+                <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${PRO_ACCENT}30` }}>
+                  <div style={{ fontSize: 11, color: PRO_ACCENT, marginBottom: 4, fontWeight: 600 }}>Deposit to Start Work</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: PRO_ACCENT, lineHeight: 1 }}>${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                  <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 3 }}>{depositPct}% of total</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: '#334155', marginBottom: 3, fontWeight: 600 }}>Remaining Upon Completion</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: PRO_DARK }}>${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* LINE ITEMS CARD */}
-      {opts.showBreakdown && groups.length > 0 && (
-        <div style={{ background: 'white', padding: '28px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 32, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          {groups.map((group, gi) => (
-            <div key={group.id || gi}>
-              {group.name && <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 14, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid #38bdf8' }}>{group.name}</div>}
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    {lineCols.description && <th style={{ textAlign: 'left', padding: '12px 0', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0' }}>Description</th>}
-                    {lineCols.quantity && <th style={{ textAlign: 'center', padding: '12px 0', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', width: 70 }}>Qty</th>}
-                    {lineCols.unit && <th style={{ textAlign: 'center', padding: '12px 0', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', width: 70 }}>Unit</th>}
-                    {lineCols.price && <th style={{ textAlign: 'right', padding: '12px 0', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', width: 100 }}>Price</th>}
-                    {lineCols.total && <th style={{ textAlign: 'right', padding: '12px 0', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', width: 120 }}>Total</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(group.items || []).map((item, idx) => (
-                    <tr key={item.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      {lineCols.description && <td style={{ padding: '14px 0' }}>
-                        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{item.service_name || item.name}</div>
-                        {item.description && <div style={{ color: '#64748b', fontSize: 11, marginTop: 3 }}>{item.description}</div>}
-                      </td>}
-                      {lineCols.quantity && <td style={{ textAlign: 'center', padding: '14px 0', color: '#64748b', fontSize: 13 }}>{item.quantity}</td>}
-                      {lineCols.unit && <td style={{ textAlign: 'center', padding: '14px 0', color: '#64748b', fontSize: 13 }}>{item.unit || 'ea'}</td>}
-                      {lineCols.price && <td style={{ textAlign: 'right', padding: '14px 0', color: '#64748b', fontSize: 13 }}>${(item.unit_price || 0).toFixed(2)}</td>}
-                      {lineCols.total && <td style={{ textAlign: 'right', padding: '14px 0', color: '#0f172a', fontSize: 13, fontWeight: 700 }}>${(item.line_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* ══ TERMS ══ */}
+        {opts.showTerms && [
+          { field: 'exclusions', label: 'Exclusions' },
+          { field: 'payment_terms', label: 'Payment Terms' },
+          { field: 'warranty_terms', label: 'Warranty' },
+          { field: 'legal_terms', label: 'Terms & Conditions' },
+        ].filter(s => estimate[s.field]).length > 0 && (
+          <div style={{ ...card(), padding: '22px 24px', marginBottom: 24 }}>
+            {[
+              { field: 'exclusions', label: 'Exclusions' },
+              { field: 'payment_terms', label: 'Payment Terms' },
+              { field: 'warranty_terms', label: 'Warranty' },
+              { field: 'legal_terms', label: 'Terms & Conditions' },
+            ].filter(s => estimate[s.field]).map((s, i, arr) => (
+              <div key={s.field} style={{ paddingBottom: i < arr.length - 1 ? 14 : 0, marginBottom: i < arr.length - 1 ? 14 : 0, borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                <div style={label}>{s.label}</div>
+                <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate[s.field]}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ══ NOTES FOR CLIENT — al final ══ */}
+        {estimate.notes && (
+          <div style={{ ...card(), padding: '22px 24px', marginBottom: 24, borderLeft: `4px solid ${PRO_ACCENT}` }}>
+            <div style={label}>Notes for Client</div>
+            <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate.notes}</p>
+          </div>
+        )}
+
+        {/* ══ SIGNATURES ══ */}
+        {opts.showSignatures && !isWorkOrder && (
+          <div style={{ ...card(), padding: '28px 36px', marginBottom: 24 }}>
+            <div style={label}>Authorization & Signatures</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, marginTop: 8 }}>
+              {[{ title: 'Contractor Signature', sub: 'FSM Pro · Authorized Representative' }, { title: 'Client Signature & Date', sub: estimate.client_name || 'Client' }].map((sig, i) => (
+                <div key={i}>
+                  <div style={{ height: 52, borderBottom: `2px solid ${PRO_DARK}`, marginBottom: 8 }} />
+                  <div style={{ fontSize: 11, fontWeight: 600, color: PRO_DARK }}>{sig.title}</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{sig.sub}</div>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+        )}
+
+        {/* ══ FOOTER — en cada "página" (sutil, 8pt) ══ */}
+        <div style={{ textAlign: 'center', padding: '14px 0 0', borderTop: '1px solid #e2e8f0', opacity: 0.35 }}>
+          <div style={{ fontSize: 8, color: '#475569', letterSpacing: '0.06em' }}>
+            FSM Pro &nbsp;·&nbsp; Portland, OR 97201 &nbsp;·&nbsp; License #2024-FSM-01 &nbsp;·&nbsp; {today}
+          </div>
         </div>
-      )}
 
-      {/* SUMMARY CARD */}
-      <div style={{ background: 'white', padding: '28px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 32, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>Financial Summary</div>
-        <DocumentSummary
-          estimate={estimate}
-          documentType={documentType}
-          showPrices={showPrices}
-          total={total}
-          subtotal={estimate.subtotal || 0}
-          depositPct={depositPct}
-          depositAmount={depositAmount}
-          remaining={remaining}
-          isEstimate={isEstimate}
-          variant="pro"
-          style={{}}
-        />
       </div>
-
-      {/* FOOTER */}
-      <DocumentFooter
-        today={today}
-        companyName="FSM Pro"
-        licenseNumber="#2024-FSM-01"
-        variant="pro"
-        showDate={true}
-        showCompany={true}
-        showLicense={true}
-        style={{ background: 'white', padding: '20px 28px', borderRadius: 12, border: '1px solid #e2e8f0', textAlign: 'center' }}
-      />
-    </div>
-  );
+    );
+  };
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER SELECTION
