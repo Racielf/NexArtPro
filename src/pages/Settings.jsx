@@ -6,6 +6,7 @@ import SettingsRow from '@/components/settings/SettingsRow';
 import SettingsToggle from '@/components/settings/SettingsToggle';
 import { Plus, Search } from 'lucide-react';
 import ServicesCatalogSection from '@/components/settings/services/ServicesCatalogSection';
+import PriceBookSection from '@/components/settings/pricebook/PriceBookSection';
 
 // ─── Shared input styles ──────────────────────────────────────────────────────
 const inputCls = 'w-64 text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';
@@ -92,21 +93,8 @@ function ServicesPanel() {
 
 function PriceBookPanel() {
   return (
-    <SettingsSection title="Price Book" description="Standardized prices generated from your services and estimates.">
-      <div className="flex justify-end mb-3">
-        <button className="flex items-center gap-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 transition rounded-lg px-4 py-2">
-          <Plus className="w-3.5 h-3.5" /> Add Price
-        </button>
-      </div>
-      <SettingsCard>
-        <div className="px-5 py-12 text-center">
-          <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">📖</span>
-          </div>
-          <p className="text-sm font-semibold text-slate-600 mb-1">Price Book is empty</p>
-          <p className="text-xs text-slate-400">Prices will be generated from services and estimates</p>
-        </div>
-      </SettingsCard>
+    <SettingsSection title="Price Book" description="Standardized pricing connected to your service catalog.">
+      <PriceBookSection />
     </SettingsSection>
   );
 }

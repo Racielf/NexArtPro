@@ -1,0 +1,156 @@
+import React, { useState, useMemo } from 'react';
+import { Plus, Search } from 'lucide-react';
+import { PRICE_BOOK_SEED } from './priceBookSeed';
+import { SERVICES_SEED, CATEGORIES } from '@/components/settings/services/servicesSeed';
+import PriceBookTable from './PriceBookTable';
+import PriceBookForm from './PriceBookForm';
+
+const FILTERS = ['All', 'Active', 'Inactive', 'Needs Review', 'Priced', 'Unpriced'];
+
+function genId() {
+  return `pb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+// Resolve service_id by matching _service_name_ref against the seed catalog
+function resolveSeeds(seed, services) {
+  return seed.map(entry => {
+    if (entry.service_id || !entry._service_name_ref) return entry;
+    const matched = services.find(s => s.name === entry._service_name_ref);
+    return { ...entry, service_id: matched?.id || null };
+  });
+}
+
+export default function PriceBookSection() {
+  const services = SERVICES_SEED; // Service catalog reference (read-only here)
+
+  const [entries, setEntries] = useState(() => resolveSeeds(PRICE_BOOK_SEED, services));
+  const [search, setSearch]   = useState('');
+  const [filter, setFilter]   = useState('All');
+  const [catFilter, setCatFilter] = useState('All');
+  const [showForm, setShowForm]   = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
+
+  // ── Filtered list ──────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return entries.filter(e => {
+      if (filter === 'Active'       && !e.is_active)   return false;
+      if (filter === 'Inactive'     && e.is_active)    return false;
+      if (filter === 'Needs Review' && !e.needs_review) return false;
+      const unpriced = e.base_price === null || e.base_price === undefined || e.base_price === '';
+      if (filter === 'Priced'   &&  unpriced) return false;
+      if (filter === 'Unpriced' && !unpriced) return false;
+      if (catFilter !== 'All' && e.category !== catFilter) return false;
+      if (q) {
+        const inName  = e.display_name?.toLowerCase().includes(q);
+        const inCat   = e.category?.toLowerCase().includes(q);
+        const inUnit  = e.unit?.toLowerCase().includes(q);
+        const inNotes = e.notes?.toLowerCase().includes(q);
+        if (!inName && !inCat && !inUnit && !inNotes) return false;
+      }
+      return true;
+    });
+  }, [entries, search, filter, catFilter]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const openNew  = () => { setEditingEntry(null); setShowForm(true); };
+  const openEdit = (e) => { setEditingEntry(e); setShowForm(true); };
+  const closeForm = () => { setShowForm(false); setEditingEntry(null); };
+
+  const handleSave = (form) => {
+    if (editingEntry) {
+      setEntries(prev => prev.map(e => e.id === form.id ? { ...form } : e));
+    } else {
+      setEntries(prev => [...prev, { ...form, id: genId(), source: 'manual' }]);
+    }
+    closeForm();
+  };
+
+  const toggleActive = (id) => setEntries(prev => prev.map(e => e.id === id ? { ...e, is_active: !e.is_active } : e));
+  const toggleReview = (id) => setEntries(prev => prev.map(e => e.id === id ? { ...e, needs_review: !e.needs_review } : e));
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const total    = entries.length;
+  const priced   = entries.filter(e => e.base_price !== null && e.base_price !== '' && e.base_price !== undefined).length;
+  const unpriced = total - priced;
+  const reviewing = entries.filter(e => e.needs_review).length;
+
+  return (
+    <div>
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-3 mb-5">
+        {[
+          { label: 'Total Entries',  value: total,     color: 'text-slate-800' },
+          { label: 'Priced',         value: priced,    color: 'text-green-600' },
+          { label: 'Unpriced',       value: unpriced,  color: 'text-slate-400' },
+          { label: 'Needs Review',   value: reviewing, color: 'text-amber-500' },
+        ].map(s => (
+          <div key={s.label} className="bg-white border border-slate-100 rounded-xl px-4 py-3 shadow-sm">
+            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        {/* Search */}
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+          <input
+            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition"
+            placeholder="Search by service, category, unit, notes…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Status filter pills */}
+        <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 flex-wrap">
+          {FILTERS.map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
+                filter === f ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}>
+              {f}
+            </button>
+          ))}
+        </div>
+
+        {/* Category dropdown */}
+        <select
+          className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-600 focus:outline-none focus:border-blue-400 transition"
+          value={catFilter}
+          onChange={e => setCatFilter(e.target.value)}
+        >
+          <option value="All">All Categories</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        {/* Add button */}
+        <button onClick={openNew}
+          className="flex items-center gap-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 transition rounded-xl px-4 py-2 flex-shrink-0">
+          <Plus className="w-3.5 h-3.5" /> Add Price
+        </button>
+      </div>
+
+      {/* Table */}
+      <PriceBookTable
+        entries={filtered}
+        onEdit={openEdit}
+        onToggleActive={toggleActive}
+        onToggleReview={toggleReview}
+      />
+
+      {/* Form Modal */}
+      {showForm && (
+        <PriceBookForm
+          entry={editingEntry}
+          services={services}
+          onSave={handleSave}
+          onClose={closeForm}
+        />
+      )}
+    </div>
+  );
+}
