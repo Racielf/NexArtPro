@@ -40,6 +40,8 @@ export default function EstimateDocumentOptions({
           {[
             { key: 'showPrices', label: 'Show prices & totals', desc: 'Display line totals and amount' },
             { key: 'showBreakdown', label: 'Show service breakdown', desc: 'Display itemized services' },
+            { key: 'showDeposit', label: 'Show deposit & balance', desc: 'Show deposit required and remaining balance' },
+            { key: 'showProjectDates', label: 'Show project dates', desc: 'Show start and end dates on the document' },
             { key: 'showTerms', label: 'Show terms & conditions', desc: 'Include payment, warranty, legal terms' },
             { key: 'showSignatures', label: 'Show signature blocks', desc: 'Include signature lines for approval' },
           ].map(({ key, label, desc }) => (

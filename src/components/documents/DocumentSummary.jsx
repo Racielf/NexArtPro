@@ -24,6 +24,7 @@ export default function DocumentSummary({
   estimate,
   documentType = 'estimate',
   showPrices = true,
+  showDeposit = true,
   total = 0,
   subtotal = 0,
   depositPct = 0,
@@ -99,7 +100,7 @@ export default function DocumentSummary({
       isBold: true,
       fontSize: 15,
     },
-    ...(isEstimate && depositPct > 0
+    ...(isEstimate && depositPct > 0 && showDeposit
       ? [
         {
           label: `Deposit Due (${depositPct}%)`,

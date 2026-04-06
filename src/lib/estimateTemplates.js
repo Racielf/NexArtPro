@@ -47,7 +47,9 @@ export const DEFAULT_OPTIONS = {
   showBreakdown: true,
   showTerms: true,
   showSignatures: true,
-  hideInternalNotes: true, // CRITICAL: Never show internal notes to client
+  showProjectDates: true,       // Show project start/end dates
+  showDeposit: true,            // Show deposit & remaining balance section
+  hideInternalNotes: true,      // CRITICAL: Never show internal notes to client
 };
 
 /**
