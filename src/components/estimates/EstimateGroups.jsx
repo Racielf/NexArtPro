@@ -346,7 +346,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
       return [{ id: uid(), name: 'General', collapsed: false, items: estimate.line_items.map(li => ({
         id: uid(), service_name: li.name || '', description: li.description || '',
         quantity: li.quantity || 1, unit: 'ea', unit_price: li.unit_price || 0,
-        unit_cost: li.unit_cost || 0, line_total: li.total_price || 0, taxable: true,
+        unit_cost: li.unit_cost || 0, book_price: li.book_price || 0, line_total: li.total_price || 0, taxable: true,
       })) }];
     }
     return DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] }));
@@ -376,7 +376,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
         items: estimate.line_items.map(li => ({
           id: uid(), service_name: li.name || '', description: li.description || '',
           quantity: li.quantity || 1, unit: 'ea', unit_price: li.unit_price || 0,
-          unit_cost: li.unit_cost || 0, line_total: li.total_price || 0, taxable: true,
+          unit_cost: li.unit_cost || 0, book_price: li.book_price || 0, line_total: li.total_price || 0, taxable: true,
         }))
       }] : DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] })));
     setTaxRate(estimate.tax_rate || 0);
