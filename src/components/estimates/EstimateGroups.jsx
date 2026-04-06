@@ -120,11 +120,29 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           </select>
         </div>
 
-        {/* Unit price */}
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
-          <Input type="number" step="0.01" value={item.unit_price} onChange={e => update('unit_price', e.target.value)}
-            className="h-8 pl-5 text-sm text-right border-slate-200" min={0} />
+        {/* Unit price — Smart Price Cell (book_price diff shown internally) */}
+        <div className="flex flex-col gap-0.5">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+            <Input type="number" step="0.01" value={item.unit_price} onChange={e => update('unit_price', e.target.value)}
+              className="h-8 pl-5 text-sm text-right border-slate-200" min={0} />
+          </div>
+          {(() => {
+            const book = parseFloat(item.book_price) || 0;
+            const real = parseFloat(item.unit_price) || 0;
+            const diff = real - book;
+            if (book === 0) return null;
+            const isLow = diff < 0;
+            const isOk  = diff === 0;
+            return (
+              <span
+                title={`Book price: $${book.toFixed(2)}`}
+                className={`text-[10px] font-medium text-right pr-1 ${isLow ? 'text-red-500' : 'text-green-600'}`}
+              >
+                {isLow ? '🔴' : '🟢'} {diff > 0 ? '+' : ''}{diff.toFixed(2)}
+              </span>
+            );
+          })()}
         </div>
 
         {/* Unit cost (internal) */}
