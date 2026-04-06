@@ -124,7 +124,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           </select>
         </div>
 
-        {/* Price — primary editable field + variance badge */}
+        {/* Price — primary editable field + variance badge (green intensity increases with markup) */}
         {(() => {
           const book = parseFloat(item.book_price) || 0;
           const real = parseFloat(item.unit_price) || 0;
@@ -132,6 +132,18 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           const isLow  = book > 0 && diff < -0.001;
           const isHigh = book > 0 && diff > 0.001;
           const isOk   = book > 0 && !isLow && !isHigh;
+          
+          // Dynamic green intensity based on markup percentage
+          let greenColor = 'text-emerald-500';
+          if (isHigh && book > 0) {
+            const markupPct = (diff / book) * 100;
+            if (markupPct >= 20) greenColor = 'text-emerald-900';
+            else if (markupPct >= 15) greenColor = 'text-emerald-800';
+            else if (markupPct >= 10) greenColor = 'text-emerald-700';
+            else if (markupPct >= 5) greenColor = 'text-emerald-600';
+            else greenColor = 'text-emerald-500';
+          }
+          
           return (
             <div className="flex flex-col gap-0.5">
               <div className="relative">
@@ -144,7 +156,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
                 />
               </div>
               {book > 0 && (
-                <span className={`text-[9px] font-bold text-right leading-none tracking-tight ${isLow ? 'text-red-500' : isHigh ? 'text-emerald-600' : 'text-emerald-500'}`}>
+                <span className={`text-[9px] font-bold text-right leading-none tracking-tight ${isLow ? 'text-red-500' : greenColor}`}>
                   {isLow  ? `↓ -$${Math.abs(diff).toFixed(2)} vs book` : ''}
                   {isHigh ? `↑ +$${Math.abs(diff).toFixed(2)} vs book` : ''}
                   {isOk   ? '✓ at book' : ''}
