@@ -87,33 +87,12 @@ export default function EstimateOptionTabs({ activeOption, options, onSelectOpti
       ))}
 
       {/* Add option button */}
-      <div className="relative">
-        <button
-          onClick={() => setShowAddMenu(v => !v)}
-          className="flex items-center gap-1 px-4 py-2.5 text-sm font-semibold text-slate-400 hover:text-primary border-b-2 border-transparent hover:border-primary/30 transition-colors"
-        >
-          Add option
-        </button>
-        {showAddMenu && (
-          <>
-            <div className="fixed inset-0 z-30" onClick={() => setShowAddMenu(false)} />
-            <div className="absolute top-full left-0 z-40 mt-1 w-44 bg-white rounded-lg shadow-xl border border-slate-200 py-1">
-              <button
-                onClick={() => { onAddOption(); setShowAddMenu(false); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                <Plus className="w-4 h-4" />New option
-              </button>
-              <button
-                onClick={() => setShowAddMenu(false)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                <FileText className="w-4 h-4" />Select from templates
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      <button
+        onClick={onAddOption}
+        className="flex items-center gap-1 px-4 py-2.5 text-sm font-semibold text-slate-400 hover:text-primary border-b-2 border-transparent hover:border-primary/30 transition-colors"
+      >
+        <Plus className="w-3.5 h-3.5" />Add option
+      </button>
     </div>
   );
 }
