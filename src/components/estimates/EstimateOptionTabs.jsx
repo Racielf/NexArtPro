@@ -1,34 +1,59 @@
-import React, { useState } from 'react';
-import { Plus, MoreHorizontal, Pencil, Copy, FileText, Ban, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Check } from 'lucide-react';
 
-export default function EstimateOptionTabs({ activeOption, options, onSelectOption, onAddOption }) {
+export default function EstimateOptionTabs({ activeOption, options, onSelectOption, onAddOption, onRenameOption, onDeleteOption }) {
   const [showMenu, setShowMenu] = useState(null);
-  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [renamingIdx, setRenamingIdx] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef(null);
 
-  const menuItems = [
-    { icon: Pencil, label: 'Rename' },
-    { icon: FileText, label: 'Save as template' },
-    { icon: Copy, label: 'Copy to new option' },
-    { icon: FileText, label: 'Copy to new estimate' },
-    { icon: Ban, label: 'Cancel Option #1', danger: false },
-    { icon: Trash2, label: 'Delete Option #1', danger: true },
-  ];
+  useEffect(() => {
+    if (renamingIdx !== null) renameInputRef.current?.focus();
+  }, [renamingIdx]);
+
+  const startRename = (idx) => {
+    setRenameValue(options[idx].label);
+    setRenamingIdx(idx);
+    setShowMenu(null);
+  };
+
+  const commitRename = (idx) => {
+    const val = renameValue.trim();
+    if (val && onRenameOption) onRenameOption(idx, val);
+    setRenamingIdx(null);
+  };
 
   return (
     <div className="flex items-center gap-0 relative">
       {options.map((opt, idx) => (
         <div key={idx} className="relative flex items-center">
-          <button
-            onClick={() => onSelectOption(idx)}
-            className={`flex items-center gap-1 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
-              activeOption === idx
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            {opt.label}
-          </button>
-          {activeOption === idx && (
+          {renamingIdx === idx ? (
+            <div className="flex items-center gap-1 px-2 py-1.5">
+              <input
+                ref={renameInputRef}
+                value={renameValue}
+                onChange={e => setRenameValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') commitRename(idx); if (e.key === 'Escape') setRenamingIdx(null); }}
+                className="text-sm font-semibold border border-primary rounded px-2 py-0.5 w-28 focus:outline-none"
+              />
+              <button onClick={() => commitRename(idx)} className="p-0.5 text-primary hover:text-primary/80">
+                <Check className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => onSelectOption(idx)}
+              className={`flex items-center gap-1 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                activeOption === idx
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {opt.label}
+            </button>
+          )}
+
+          {activeOption === idx && renamingIdx !== idx && (
             <button
               onClick={e => { e.stopPropagation(); setShowMenu(showMenu === idx ? null : idx); }}
               className="p-1 ml-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
@@ -36,20 +61,25 @@ export default function EstimateOptionTabs({ activeOption, options, onSelectOpti
               <MoreHorizontal className="w-4 h-4" />
             </button>
           )}
+
           {showMenu === idx && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setShowMenu(null)} />
-              <div className="absolute top-full left-0 z-40 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 py-1">
-                {menuItems.map(({ icon: Icon, label, danger }) => (
+              <div className="absolute top-full left-0 z-40 mt-1 w-44 bg-white rounded-lg shadow-xl border border-slate-200 py-1">
+                <button
+                  onClick={() => startRename(idx)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <Pencil className="w-4 h-4 flex-shrink-0" />Rename
+                </button>
+                {options.length > 1 && (
                   <button
-                    key={label}
-                    onClick={() => setShowMenu(null)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-slate-50 transition-colors text-left ${danger ? 'text-red-500 hover:bg-red-50' : 'text-slate-700'}`}
+                    onClick={() => { onDeleteOption?.(idx); setShowMenu(null); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors text-left"
                   >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    {label}
+                    <Trash2 className="w-4 h-4 flex-shrink-0" />Delete option
                   </button>
-                ))}
+                )}
               </div>
             </>
           )}

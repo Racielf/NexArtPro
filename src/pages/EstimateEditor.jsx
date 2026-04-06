@@ -100,6 +100,15 @@ export default function EstimateEditor() {
     setActiveOption(options.length);
   };
 
+  const handleRenameOption = (idx, newLabel) => {
+    setOptions(prev => prev.map((o, i) => i === idx ? { ...o, label: newLabel } : o));
+  };
+
+  const handleDeleteOption = (idx) => {
+    setOptions(prev => prev.filter((_, i) => i !== idx));
+    setActiveOption(prev => (prev >= idx && prev > 0 ? prev - 1 : 0));
+  };
+
   const handleCancel = () => {
     // If new and no client set yet, confirm before discarding
     const isEmpty = !estimate?.client_name && !estimate?.title;
@@ -160,6 +169,8 @@ export default function EstimateEditor() {
               options={options}
               onSelectOption={setActiveOption}
               onAddOption={handleAddOption}
+              onRenameOption={handleRenameOption}
+              onDeleteOption={handleDeleteOption}
             />
           </div>
 
