@@ -130,16 +130,17 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           {(() => {
             const book = parseFloat(item.book_price) || 0;
             const real = parseFloat(item.unit_price) || 0;
+            if (book === 0) return (
+              <span className="text-[10px] text-slate-300 text-right pr-1" title="No book price reference">— no ref</span>
+            );
             const diff = real - book;
-            if (book === 0) return null;
             const isLow = diff < 0;
-            const isOk  = diff === 0;
             return (
               <span
                 title={`Book price: $${book.toFixed(2)}`}
-                className={`text-[10px] font-medium text-right pr-1 ${isLow ? 'text-red-500' : 'text-green-600'}`}
+                className={`text-[10px] font-semibold text-right pr-1 ${isLow ? 'text-red-500' : 'text-green-600'}`}
               >
-                {isLow ? '🔴' : '🟢'} {diff > 0 ? '+' : ''}{diff.toFixed(2)}
+                {isLow ? '▼' : '▲'} {diff > 0 ? '+' : ''}${Math.abs(diff).toFixed(2)} vs book
               </span>
             );
           })()}
