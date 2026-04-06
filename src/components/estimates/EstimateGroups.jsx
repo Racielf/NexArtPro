@@ -133,15 +133,16 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           const isHigh = book > 0 && diff > 0.001;
           const isOk   = book > 0 && !isLow && !isHigh;
           
-          // Dynamic green intensity based on markup percentage
-          let greenColor = 'text-emerald-500';
-          if (isHigh && book > 0) {
+          // Dynamic green intensity based on markup percentage — always calculate
+          let greenColor = 'text-slate-400';
+          if (book > 0) {
             const markupPct = (diff / book) * 100;
             if (markupPct >= 20) greenColor = 'text-emerald-900';
             else if (markupPct >= 15) greenColor = 'text-emerald-800';
             else if (markupPct >= 10) greenColor = 'text-emerald-700';
             else if (markupPct >= 5) greenColor = 'text-emerald-600';
-            else greenColor = 'text-emerald-500';
+            else if (markupPct > 0) greenColor = 'text-emerald-500';
+            else greenColor = 'text-slate-400';
           }
           
           return (
