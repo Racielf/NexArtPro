@@ -10,6 +10,7 @@ import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
   Pencil, Check, X, Eye, EyeOff, BookOpen, LayoutTemplate
 } from 'lucide-react';
+import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -78,14 +79,26 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           <GripVertical className="w-3.5 h-3.5" />
         </button>
 
-        {/* Service name */}
+        {/* Service name — Smart Picker */}
         <div>
-          <Input
+          <SmartServicePicker
             value={item.service_name}
-            onChange={e => update('service_name', e.target.value)}
-            onFocus={() => setExpanded(true)}
+            onChange={v => update('service_name', v)}
+            onSelect={picked => {
+              setExpanded(true);
+              const updated = {
+                ...item,
+                service_name: picked.name,
+                description:  item.description || picked.description || '',
+                unit:         picked.unit || item.unit,
+                unit_price:   picked.unit_price ?? item.unit_price,
+                unit_cost:    picked.unit_cost  ?? item.unit_cost,
+                line_total:   (parseFloat(item.quantity) || 1) * (picked.unit_price ?? item.unit_price),
+              };
+              onUpdate(updated);
+            }}
             placeholder="Service name"
-            className="h-8 text-sm font-semibold border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2"
+            className="h-8 w-full text-sm font-semibold border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-1 focus:ring-primary/30 transition"
           />
           {!expanded && item.description && (
             <p className="text-xs text-slate-400 px-2 leading-snug truncate">{item.description}</p>
