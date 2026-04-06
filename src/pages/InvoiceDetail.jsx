@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { X, Send, CheckCircle, Printer, DollarSign, MapPin, Receipt, Clock } from 'lucide-react';
+import { X, Send, CheckCircle, Printer, DollarSign, MapPin, Receipt, Clock, FileCheck } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { format } from 'date-fns';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import PaymentReceiptPreviewModal from '@/components/payments/PaymentReceiptPreviewModal';
+import { buildReceipt } from '@/components/payments/paymentReceiptUtils';
 
 export default function InvoiceDetail() {
   const navigate = useNavigate();
@@ -21,6 +23,7 @@ export default function InvoiceDetail() {
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [receiptModal, setReceiptModal] = useState(false);
 
   useEffect(() => { loadInvoice(); }, []);
 
@@ -116,6 +119,12 @@ export default function InvoiceDetail() {
     </div>
   );
 
+  const receipt = invoice ? buildReceipt(invoice, {
+    payment_method: invoice.payment_method || 'cash',
+    previous_balance: invoice.total,
+    amount_paid: invoice.amount_paid || invoice.total || 0,
+  }) : null;
+
   if (!invoice) return (
     <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
       <div className="text-center">
@@ -128,6 +137,10 @@ export default function InvoiceDetail() {
   const allItems = invoice.groups?.flatMap(g => g.items || []) || invoice.line_items || [];
 
   return (
+    <>
+    {receiptModal && receipt && (
+      <PaymentReceiptPreviewModal receipt={receipt} onClose={() => setReceiptModal(false)} />
+    )}
     <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 overflow-hidden">
       {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex items-center justify-between px-5 py-3 flex-shrink-0 shadow-sm">
@@ -148,6 +161,11 @@ export default function InvoiceDetail() {
           <Button size="sm" variant="outline" onClick={handlePrint}>
             <Printer className="w-3.5 h-3.5 mr-1" />Print
           </Button>
+          {(invoice.status === 'paid' || (invoice.amount_paid > 0)) && (
+            <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 gap-1.5" onClick={() => setReceiptModal(true)}>
+              <FileCheck className="w-3.5 h-3.5" />View Receipt
+            </Button>
+          )}
           {invoice.status === 'draft' && (
             <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50" onClick={handleSend} disabled={saving}>
               <Send className="w-3.5 h-3.5 mr-1" />Send
@@ -261,5 +279,6 @@ export default function InvoiceDetail() {
         </div>
       </div>
     </div>
+    </>
   );
 }
