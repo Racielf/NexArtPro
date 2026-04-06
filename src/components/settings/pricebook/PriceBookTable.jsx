@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pencil, AlertCircle } from 'lucide-react';
 import { UNITS } from '@/components/settings/services/servicesSeed';
+import { getMarketReference, getPriceIndicator } from './marketUtils';
 
 const CATEGORY_COLORS = {
   'Painting':               'bg-blue-50 text-blue-600',
@@ -37,7 +38,7 @@ function fmt(val) {
   return `$${parseFloat(val).toFixed(2)}`;
 }
 
-export default function PriceBookTable({ entries, onEdit, onToggleActive, onToggleReview }) {
+export default function PriceBookTable({ entries, onEdit, onToggleActive, onToggleReview, showMarket = true }) {
   if (entries.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm px-6 py-14 text-center">
@@ -60,6 +61,8 @@ export default function PriceBookTable({ entries, onEdit, onToggleActive, onTogg
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide hidden md:table-cell">Unit</th>
             <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Base Price</th>
             <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide hidden lg:table-cell">Est. Cost</th>
+            {showMarket && <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide hidden xl:table-cell">Mkt Avg</th>}
+            {showMarket && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide hidden xl:table-cell">Range / vs. Market</th>}
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide hidden lg:table-cell">Source</th>
             <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
             <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide hidden md:table-cell">Review</th>
@@ -71,6 +74,8 @@ export default function PriceBookTable({ entries, onEdit, onToggleActive, onTogg
             const catCls = CATEGORY_COLORS[e.category] || 'bg-slate-100 text-slate-500';
             const src = SOURCE_LABELS[e.source] || SOURCE_LABELS.manual;
             const isUnpriced = e.base_price === null || e.base_price === undefined || e.base_price === '';
+            const marketRef = showMarket ? getMarketReference(e) : null;
+            const indicator = showMarket && !isUnpriced ? getPriceIndicator(e.base_price, marketRef) : null;
             return (
               <tr key={e.id} className={`group transition-colors hover:bg-slate-50/60 ${!e.is_active ? 'opacity-45' : ''}`}>
                 <td className="px-5 py-3.5">
@@ -88,6 +93,28 @@ export default function PriceBookTable({ entries, onEdit, onToggleActive, onTogg
                   {isUnpriced ? <span className="text-slate-300 font-normal">—</span> : `$${parseFloat(e.base_price).toFixed(2)}`}
                 </td>
                 <td className="px-4 py-3.5 text-right text-slate-500 hidden lg:table-cell">{fmt(e.estimated_cost)}</td>
+                {showMarket && (
+                  <td className="px-4 py-3.5 text-right hidden xl:table-cell">
+                    {marketRef
+                      ? <span className="text-slate-600 font-medium">${marketRef.avg.toFixed(2)}</span>
+                      : <span className="text-slate-200">—</span>}
+                  </td>
+                )}
+                {showMarket && (
+                  <td className="px-4 py-3.5 hidden xl:table-cell">
+                    {marketRef ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-slate-400">${marketRef.low}–${marketRef.high}</span>
+                        {indicator && (
+                          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full w-fit ${indicator.badgeCls}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${indicator.dotCls}`} />
+                            {indicator.label}
+                          </span>
+                        )}
+                      </div>
+                    ) : <span className="text-slate-200 text-xs">No data</span>}
+                  </td>
+                )}
                 <td className="px-4 py-3.5 hidden lg:table-cell">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${src.cls}`}>{src.label}</span>
                 </td>

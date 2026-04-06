@@ -29,6 +29,7 @@ export default function PriceBookSection() {
   const [catFilter, setCatFilter] = useState('All');
   const [showForm, setShowForm]   = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [showMarket, setShowMarket] = useState(true);
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -127,6 +128,20 @@ export default function PriceBookSection() {
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
 
+        {/* Market toggle */}
+        <button
+          onClick={() => setShowMarket(v => !v)}
+          className={`flex items-center gap-2 text-xs font-medium rounded-xl px-3 py-2 border transition flex-shrink-0 ${
+            showMarket
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'
+          }`}
+          title="Toggle Oregon market reference columns"
+        >
+          <span className={`w-2 h-2 rounded-full ${showMarket ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+          Market Ref
+        </button>
+
         {/* Add button */}
         <button onClick={openNew}
           className="flex items-center gap-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 transition rounded-xl px-4 py-2 flex-shrink-0">
@@ -140,6 +155,7 @@ export default function PriceBookSection() {
         onEdit={openEdit}
         onToggleActive={toggleActive}
         onToggleReview={toggleReview}
+        showMarket={showMarket}
       />
 
       {/* Form Modal */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { SERVICES_SEED, UNITS, CATEGORIES } from '@/components/settings/services/servicesSeed';
+import { getMarketReference, getPriceIndicator, formatDiff } from './marketUtils';
 
 const inputCls = 'w-full text-sm border border-slate-200 rounded-lg px-3 py-2 text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';
 const labelCls = 'block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5';
@@ -59,6 +60,11 @@ export default function PriceBookForm({ entry, services, onSave, onClose }) {
   const bp = parseFloat(form.base_price) || 0;
   const ec = parseFloat(form.estimated_cost) || 0;
   const margin = bp > 0 && ec > 0 ? (((bp - ec) / bp) * 100).toFixed(1) : null;
+
+  // Market reference (read-only)
+  const marketRef = getMarketReference(form);
+  const indicator = bp > 0 ? getPriceIndicator(bp, marketRef) : null;
+  const diff      = bp > 0 && marketRef ? formatDiff(bp, marketRef.avg) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
@@ -145,6 +151,44 @@ export default function PriceBookForm({ entry, services, onSave, onClose }) {
           {margin !== null && (
             <div className={`text-xs rounded-lg px-3 py-2 font-medium ${parseFloat(margin) >= 20 ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
               Gross margin: {margin}% &nbsp;(${(bp - ec).toFixed(2)} per {form.unit || 'unit'})
+            </div>
+          )}
+
+          {/* Market Reference Block */}
+          {marketRef && (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Market Reference (Oregon 2026)</p>
+                {indicator && (
+                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full ${indicator.badgeCls}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${indicator.dotCls}`} />
+                    {indicator.label}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Low</p>
+                  <p className="text-sm font-semibold text-slate-700">${marketRef.low}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Avg</p>
+                  <p className="text-sm font-bold text-slate-800">${marketRef.avg}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">High</p>
+                  <p className="text-sm font-semibold text-slate-700">${marketRef.high}</p>
+                </div>
+              </div>
+              {bp > 0 && diff && (
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs text-slate-500">
+                  <span>Your price vs. market avg:</span>
+                  <span className={`font-semibold ${indicator?.status === 'below' ? 'text-emerald-600' : indicator?.status === 'above' ? 'text-rose-600' : 'text-amber-600'}`}>
+                    {diff}
+                  </span>
+                </div>
+              )}
+              <p className="text-[10px] text-slate-300 pt-0.5">Reference only — your prices are never changed automatically</p>
             </div>
           )}
 
