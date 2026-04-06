@@ -162,10 +162,7 @@ export default function CustomerProfile() {
                 <Plus className="w-3.5 h-3.5 mr-1.5" />Create Estimate
               </Button>
             )}
-            <button onClick={() => setShowEditModal(true)}
-              className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-              <Pencil className="w-4 h-4 text-slate-400" />
-            </button>
+
           </div>
         </div>
       </div>
@@ -179,7 +176,12 @@ export default function CustomerProfile() {
 
             {/* Contact */}
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Contact</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Contact</p>
+                <button onClick={() => setShowEditModal(true)} className="p-1 hover:bg-slate-100 rounded transition-colors">
+                  <Pencil className="w-3 h-3 text-slate-400" />
+                </button>
+              </div>
               <div className="space-y-2">
                 {customer.phone && (
                   <a href={`tel:${customer.phone}`} className="flex items-center gap-2 text-xs text-slate-600 hover:text-primary">
