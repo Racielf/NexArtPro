@@ -89,15 +89,16 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
             onSelect={picked => {
                 setExpanded(true);
                 const pickedPrice = picked.unit_price ?? item.unit_price;
+                // book_price = reference price from price book (always set when picker is used)
+                const bookPrice = picked.unit_price != null ? picked.unit_price : (item.book_price || 0);
                 const updated = {
                   ...item,
                   service_name: picked.name,
                   description:  item.description || picked.description || '',
                   unit:         picked.unit || item.unit,
                   unit_price:   pickedPrice,
-                  unit_cost:    picked.unit_cost  ?? item.unit_cost,
-                  // book_price: capture standard price from price book for discipline tracking
-                  book_price:   picked._from_picker ? pickedPrice : (item.book_price || 0),
+                  unit_cost:    picked.unit_cost ?? item.unit_cost,
+                  book_price:   bookPrice,
                   line_total:   (parseFloat(item.quantity) || 1) * pickedPrice,
                 };
                 onUpdate(updated);
@@ -120,34 +121,48 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           </select>
         </div>
 
-        {/* Unit price */}
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
-          <Input type="number" step="0.01" value={item.unit_price} onChange={e => update('unit_price', e.target.value)}
-            className="h-8 pl-5 text-sm text-right border-slate-200" min={0} />
-        </div>
-
-        {/* Book Price — read-only reference column */}
+        {/* Price (real) — editable + visual alert vs book_price */}
         {(() => {
           const book = parseFloat(item.book_price) || 0;
           const real = parseFloat(item.unit_price) || 0;
           const diff = real - book;
-          const isLow = diff < 0;
-          const isOk = diff === 0;
-          if (book === 0) return (
-            <div className="text-right text-xs text-slate-300 pr-1">—</div>
-          );
+          const isLow  = book > 0 && diff < 0;
+          const isHigh = book > 0 && diff > 0;
+          const isOk   = book > 0 && diff === 0;
           return (
-            <div className="text-right pr-1">
-              <div className="text-xs font-semibold text-slate-500">${book.toFixed(2)}</div>
-              <div className={`text-[10px] font-semibold ${isLow ? 'text-red-500' : isOk ? 'text-slate-400' : 'text-green-600'}`}>
-                {isLow ? '▼' : '▲'} {diff > 0 ? '+' : ''}${Math.abs(diff).toFixed(2)}
+            <div className="flex flex-col gap-0.5">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+                <Input
+                  type="number" step="0.01" value={item.unit_price}
+                  onChange={e => update('unit_price', e.target.value)}
+                  className={`h-8 pl-5 text-sm text-right border-slate-200 ${isLow ? 'border-red-300 bg-red-50/40' : ''}`}
+                  min={0}
+                />
               </div>
+              {book > 0 && (
+                <span className={`text-[10px] font-semibold text-right leading-none ${isLow ? 'text-red-500' : isHigh ? 'text-green-600' : 'text-green-500'}`}>
+                  {isLow  && `↓ -$${Math.abs(diff).toFixed(2)} vs book`}
+                  {isHigh && `↑ +$${Math.abs(diff).toFixed(2)} vs book`}
+                  {isOk   && '✓ at book price'}
+                </span>
+              )}
             </div>
           );
         })()}
 
-        {/* Unit cost (internal) — only rendered when showCost, placeholder div keeps grid aligned */}
+        {/* Book Price — read-only reference */}
+        {(() => {
+          const book = parseFloat(item.book_price) || 0;
+          if (book === 0) return <div className="text-right text-xs text-slate-300">—</div>;
+          return (
+            <div className="text-right">
+              <span className="text-xs font-medium text-slate-400" title="Standard price from price book">${book.toFixed(2)}</span>
+            </div>
+          );
+        })()}
+
+        {/* Unit cost (internal) — placeholder div always keeps grid aligned */}
         <div>
           {showCost && (
             <div className="relative">
