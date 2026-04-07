@@ -11,6 +11,7 @@ import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, Chevro
 
 export default function Invoices() {
   const navigate = useNavigate();
+  const branding = useCompanyBranding();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -37,6 +38,8 @@ export default function Invoices() {
   };
 
   const handlePrint = (inv) => {
+    // Use company branding from context
+    const companyName = branding.companyName;
     const content = `
       <html><head><title>Invoice #${inv.invoice_number}</title>
       <style>
@@ -49,7 +52,7 @@ export default function Invoices() {
       </style></head><body>
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div><h1>INVOICE</h1><p style="color:#666;font-size:20px">#${inv.invoice_number}</p></div>
-        <div style="text-align:right"><strong style="color:#1a56db;font-size:20px">R.C Art Construction LLC</strong></div>
+        <div style="text-align:right"><strong style="color:#1a56db;font-size:20px">\${companyName}</strong></div>
       </div>
       <div class="grid">
         <div style="background:#f9fafb;padding:16px;border-radius:8px">
