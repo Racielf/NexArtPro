@@ -29,6 +29,7 @@ const navGroups = [
   {
     label: 'Operations',
     items: [
+      { path: '/leads', label: 'Leads', icon: Users },
       { path: '/customers', label: 'Customers', icon: UserSquare },
       { path: '/appointments', label: 'Appointments', icon: Calendar },
       { path: '/estimates', label: 'Estimates', icon: FileText },

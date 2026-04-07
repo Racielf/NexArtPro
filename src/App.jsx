@@ -8,6 +8,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AppLayout from './components/layout/AppLayout';
 import PublicHome from './pages/PublicHome';
 import Dashboard from './pages/Dashboard';
+import Leads from './pages/Leads';
 import Clients from './pages/Clients';
 import Appointments from './pages/Appointments';
 import Estimates from './pages/Estimates';
@@ -57,6 +58,7 @@ const AuthenticatedApp = () => {
       <Route path="/home" element={<PublicHome />} />
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/leads" element={<Leads />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/estimates" element={<Estimates />} />
