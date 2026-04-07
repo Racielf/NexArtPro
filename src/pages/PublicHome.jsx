@@ -134,17 +134,20 @@ export default function PublicHome() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div 
+      className="min-h-screen bg-white flex flex-col"
+      style={{
+        backgroundImage: 'url(https://media.base44.com/images/public/69cc888bb34befdf803a06b0/09739ac11_image.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
       <PublicHeader />
 
       {/* HERO SECTION - Professional Construction Design */}
       <section 
-        className="relative py-32 px-6 overflow-hidden min-h-screen flex items-center"
-        style={{
-          backgroundImage: 'url(https://media.base44.com/images/public/69cc888bb34befdf803a06b0/09739ac11_image.png)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
+        className="relative py-32 px-6 flex-1 flex items-center overflow-hidden"
       >
         {/* Dark Overlay */}
         <div className="absolute inset-0 bg-black/55" />
@@ -344,7 +347,7 @@ export default function PublicHome() {
       </section>
 
       {/* SERVICES SECTION - Link to dedicated Services page */}
-      <section className="py-24 px-6 bg-white border-t border-slate-200">
+      <section className="hidden py-24 px-6 bg-white border-t border-slate-200">
         <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-slate-900 mb-6">Our Services</h2>
           <p className="text-lg text-slate-600 mb-10">Explore our full range of professional construction services</p>
@@ -356,7 +359,7 @@ export default function PublicHome() {
       </section>
 
       {/* TRUST SECTION */}
-      <section className="py-24 px-6 bg-slate-50">
+      <section className="hidden py-24 px-6 bg-slate-50">
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
             <div className="flex flex-col">
@@ -392,7 +395,7 @@ export default function PublicHome() {
       </section>
 
       {/* MULTI-STEP FORM SECTION */}
-      <section id="estimate-form" className="py-24 px-6 bg-white">
+      <section id="estimate-form" className="hidden py-24 px-6 bg-white">
         <div className="max-w-2xl mx-auto">
           {!success ? (
             <>
@@ -758,7 +761,7 @@ export default function PublicHome() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="bg-white text-slate-900 py-24 px-6 border-t border-slate-200">
+      <section className="hidden bg-white text-slate-900 py-24 px-6 border-t border-slate-200">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-6">Let's Get Started</h2>
           <p className="text-lg text-slate-600 mb-12">
