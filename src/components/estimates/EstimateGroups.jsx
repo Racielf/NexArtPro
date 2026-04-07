@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceDisciplineGuard from '@/components/estimates/internal/PriceDisciplineGuard';
+import { calculateLineTotal, calculateVariance, runEstimateEngine } from '@/lib/estimateEngine';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -32,31 +33,7 @@ const emptyItem = () => ({
 
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box', 'gal'];
 
-// ─── Totals Calculator ────────────────────────────────────────────────────────
-function calcTotals(groups, taxRate, discountType, discountValue, depositPercent) {
-  let subtotal = 0;
-  let totalCost = 0;
-  groups.forEach(g => {
-    (g.items || []).forEach(it => {
-      subtotal += parseFloat(it.line_total) || 0;
-      totalCost += (parseFloat(it.unit_cost) || 0) * (parseFloat(it.quantity) || 0);
-    });
-  });
-  const discountAmount = discountType === 'percent'
-    ? subtotal * ((parseFloat(discountValue) || 0) / 100)
-    : parseFloat(discountValue) || 0;
-  const afterDiscount = subtotal - discountAmount;
-  const taxableBase = groups.reduce((acc, g) => {
-    (g.items || []).forEach(it => { if (it.taxable !== false) acc += parseFloat(it.line_total) || 0; });
-    return acc;
-  }, 0);
-  const taxAmount = (taxableBase - discountAmount) * ((parseFloat(taxRate) || 0) / 100);
-  const total = afterDiscount + taxAmount;
-  const depositAmount = total * ((parseFloat(depositPercent) || 0) / 100);
-  const grossMargin = total - totalCost;
-  const grossMarginPct = total > 0 ? (grossMargin / total) * 100 : 0;
-  return { subtotal, discountAmount, taxAmount, total, depositAmount, totalCost, grossMargin, grossMarginPct };
-}
+// calcTotals is now delegated to estimateEngine.js (Decimal.js-backed pure functions)
 
 // ─── Single Line Item Row ──────────────────────────────────────────────────────
 function LineItemRow({ item, onUpdate, onRemove, showCost }) {
@@ -64,11 +41,11 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
 
   const update = (field, value) => {
     const updated = { ...item, [field]: value };
-    if (field === 'quantity' || field === 'unit_price') {
-      const qty = parseFloat(field === 'quantity' ? value : updated.quantity) || 0;
-      const price = parseFloat(field === 'unit_price' ? value : updated.unit_price) || 0;
-      updated.line_total = qty * price;
-    }
+    // Always recalculate line_total using the decimal engine to avoid float errors
+    updated.line_total = calculateLineTotal(
+      field === 'quantity'   ? value : updated.quantity,
+      field === 'unit_price' ? value : updated.unit_price
+    );
     onUpdate(updated);
   };
 
