@@ -46,6 +46,11 @@
     },
     "internal_notes": {
       "type": "string"
+    },
+    "company_id": {
+      "type": "string",
+      "description": "Company identifier for multi-tenant support",
+      "default": "rc-art"
     }
   },
   "required": [
