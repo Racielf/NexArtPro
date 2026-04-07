@@ -57,7 +57,7 @@ export default function PublicHome() {
   const isStepValid = () => {
     switch (currentStep) {
       case 1: return formData.service;
-      case 2: return formData.details && formData.size && formData.timeline;
+      case 2: return formData.details && formData.timeline;
       case 3: return formData.address && formData.city && formData.zip;
       case 4: return formData.name && formData.phone && formData.email;
       case 5: return formData.budget && formData.propertyType;
@@ -196,24 +196,24 @@ export default function PublicHome() {
           {!success ? (
             <>
               {/* Header */}
-              <div className="text-center mb-10">
-                <h2 className="text-4xl font-bold text-slate-900 mb-3">Free Estimate</h2>
-                <p className="text-slate-600 text-sm">No commitment • Takes less than 2 minutes</p>
+              <div className="text-center mb-12">
+                <h2 className="text-4xl font-bold text-slate-900 mb-2">Free Estimate</h2>
+                <p className="text-slate-600 text-sm">✓ No commitment  •  ✓ Takes less than 2 minutes  •  ✓ Free estimate</p>
               </div>
 
               {/* Progress Bar */}
               <div className="mb-12">
-                <div className="flex justify-between mb-3">
+                <div className="flex justify-between mb-4 gap-1">
                   {[1, 2, 3, 4, 5, 6].map((step) => (
                     <div
                       key={step}
-                      className={`h-2 flex-1 rounded-full mx-1 transition-colors ${
+                      className={`h-1.5 flex-1 rounded-full transition-colors ${
                         step <= currentStep ? 'bg-slate-900' : 'bg-slate-200'
                       }`}
                     />
                   ))}
                 </div>
-                <p className="text-xs text-slate-500 text-center">Step {currentStep} of 6</p>
+                <p className="text-xs text-slate-500 text-center font-medium">Step {currentStep} of 6</p>
               </div>
 
               {/* Form Content */}
@@ -223,23 +223,24 @@ export default function PublicHome() {
                   <div className="space-y-6">
                     <div>
                       {selectedServiceFromUrl && (
-                        <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-sm text-blue-700 font-medium">
-                            ✓ Selected Service: <strong>{formData.service}</strong>
+                        <div className="mb-6 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <p className="text-sm text-emerald-700 font-medium">
+                            ✓ Selected: <strong>{formData.service}</strong>
                           </p>
                         </div>
                       )}
-                      <h3 className="text-2xl font-bold text-slate-900 mb-6">What type of project?</h3>
-                      <div className="grid grid-cols-1 gap-3">
+                      <h3 className="text-2xl font-bold text-slate-900 mb-1">What type of project?</h3>
+                      <p className="text-sm text-slate-500 mb-6">Select the service that best fits your needs</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {SERVICES_LIST.map((svc) => (
                           <button
                             key={svc.id}
                             type="button"
                             onClick={() => handleSelectChange('service', svc.name)}
-                            className={`p-4 rounded-lg border-2 font-semibold transition text-left ${
+                            className={`p-4 rounded-lg border-2 font-semibold transition text-left h-full ${
                               formData.service === svc.name
-                                ? 'border-slate-900 bg-slate-900 text-white'
-                                : 'border-slate-200 bg-white text-slate-900 hover:border-slate-300'
+                                ? 'border-slate-900 bg-slate-900 text-white shadow-md'
+                                : 'border-slate-200 bg-white text-slate-900 hover:border-blue-400 hover:shadow-sm'
                             }`}
                           >
                             {svc.name}
@@ -254,8 +255,9 @@ export default function PublicHome() {
                 {currentStep === 2 && (
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-2xl font-bold text-slate-900 mb-6">Tell us about your project</h3>
-                      <div className="space-y-4">
+                      <h3 className="text-2xl font-bold text-slate-900 mb-1">Tell us about your project</h3>
+                      <p className="text-sm text-slate-500 mb-6">Help us understand your scope and timeline</p>
+                      <div className="space-y-6">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">Project Description *</label>
                           <textarea
@@ -264,42 +266,25 @@ export default function PublicHome() {
                             onChange={handleInputChange}
                             rows={3}
                             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-none"
-                            placeholder="Describe what you want to accomplish..."
+                            placeholder="e.g., Replace kitchen cabinets, new countertops, and flooring..."
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-3">Approximate Size</label>
-                          <div className="space-y-2">
-                            {['Under 500 sq ft', '500 - 1,500 sq ft', '1,500 - 3,000 sq ft', 'Over 3,000 sq ft'].map((size) => (
-                              <label key={size} className="flex items-center gap-3 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="size"
-                                  value={size}
-                                  checked={formData.size === size}
-                                  onChange={handleInputChange}
-                                  className="w-4 h-4 accent-slate-900"
-                                />
-                                <span className="text-sm text-slate-700">{size}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-3">Timeline *</label>
-                          <div className="space-y-2">
-                            {['ASAP', '1–2 weeks', '1 month+'].map((time) => (
-                              <label key={time} className="flex items-center gap-3 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="timeline"
-                                  value={time}
-                                  checked={formData.timeline === time}
-                                  onChange={handleInputChange}
-                                  className="w-4 h-4 accent-slate-900"
-                                />
-                                <span className="text-sm text-slate-700">{time}</span>
-                              </label>
+                          <label className="block text-sm font-medium text-slate-700 mb-3">When do you want to start? *</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {['ASAP', '1–2 weeks', 'Flexible'].map((time) => (
+                              <button
+                                key={time}
+                                type="button"
+                                onClick={() => handleSelectChange('timeline', time)}
+                                className={`p-3 rounded-lg border-2 font-semibold transition text-center ${
+                                  formData.timeline === time
+                                    ? 'border-slate-900 bg-slate-900 text-white shadow-md'
+                                    : 'border-slate-200 bg-white text-slate-900 hover:border-blue-400'
+                                }`}
+                              >
+                                {time}
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -312,7 +297,8 @@ export default function PublicHome() {
                 {currentStep === 3 && (
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-2xl font-bold text-slate-900 mb-6">Where is your project?</h3>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-1">Where is your project?</h3>
+                      <p className="text-sm text-slate-500 mb-6">We currently serve the Portland area and surrounding regions</p>
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">Street Address *</label>
@@ -358,7 +344,8 @@ export default function PublicHome() {
                 {currentStep === 4 && (
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-2xl font-bold text-slate-900 mb-6">How can we reach you?</h3>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-1">How can we reach you?</h3>
+                      <p className="text-sm text-slate-500 mb-6">We'll contact you within 24 hours with a free estimate</p>
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
@@ -379,7 +366,7 @@ export default function PublicHome() {
                             value={formData.phone}
                             onChange={handleInputChange}
                             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-                            placeholder="(555) 123-4567"
+                            placeholder="(503) 555-0100"
                           />
                         </div>
                         <div>
@@ -390,7 +377,7 @@ export default function PublicHome() {
                             value={formData.email}
                             onChange={handleInputChange}
                             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-                            placeholder="john@example.com"
+                            placeholder="you@example.com"
                           />
                         </div>
                       </div>
@@ -402,41 +389,44 @@ export default function PublicHome() {
                 {currentStep === 5 && (
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-2xl font-bold text-slate-900 mb-6">Almost done!</h3>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-1">Almost done!</h3>
+                      <p className="text-sm text-slate-500 mb-6">Help us tailor the estimate to your needs</p>
                       <div className="space-y-6">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-3">Budget Range *</label>
-                          <div className="space-y-2">
+                          <div className="grid grid-cols-1 gap-2">
                             {['Under $5,000', '$5,000 - $15,000', 'Over $15,000'].map((budget) => (
-                              <label key={budget} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition">
-                                <input
-                                  type="radio"
-                                  name="budget"
-                                  value={budget}
-                                  checked={formData.budget === budget}
-                                  onChange={handleInputChange}
-                                  className="w-4 h-4 accent-slate-900"
-                                />
-                                <span className="text-sm font-medium text-slate-700">{budget}</span>
-                              </label>
+                              <button
+                                key={budget}
+                                type="button"
+                                onClick={() => handleSelectChange('budget', budget)}
+                                className={`p-3 rounded-lg border-2 font-semibold text-left transition ${
+                                  formData.budget === budget
+                                    ? 'border-slate-900 bg-slate-900 text-white shadow-md'
+                                    : 'border-slate-200 bg-white text-slate-900 hover:border-blue-400'
+                                }`}
+                              >
+                                {budget}
+                              </button>
                             ))}
                           </div>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-3">Property Type *</label>
-                          <div className="space-y-2">
+                          <div className="grid grid-cols-1 gap-2">
                             {['Residential', 'Rental', 'Commercial'].map((type) => (
-                              <label key={type} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition">
-                                <input
-                                  type="radio"
-                                  name="propertyType"
-                                  value={type}
-                                  checked={formData.propertyType === type}
-                                  onChange={handleInputChange}
-                                  className="w-4 h-4 accent-slate-900"
-                                />
-                                <span className="text-sm font-medium text-slate-700">{type}</span>
-                              </label>
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => handleSelectChange('propertyType', type)}
+                                className={`p-3 rounded-lg border-2 font-semibold text-left transition ${
+                                  formData.propertyType === type
+                                    ? 'border-slate-900 bg-slate-900 text-white shadow-md'
+                                    : 'border-slate-200 bg-white text-slate-900 hover:border-blue-400'
+                                }`}
+                              >
+                                {type}
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -449,26 +439,35 @@ export default function PublicHome() {
                 {currentStep === 6 && (
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-2xl font-bold text-slate-900 mb-6">Ready to submit?</h3>
-                      <div className="bg-slate-50 rounded-lg p-6 space-y-4 mb-6">
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Service:</span>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-1">Review your estimate request</h3>
+                      <p className="text-sm text-slate-500 mb-6">Please review the information below before submitting</p>
+                      <div className="bg-slate-50 rounded-lg p-6 space-y-3 mb-6 border border-slate-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-600 font-medium">Service:</span>
                           <span className="font-semibold text-slate-900">{formData.service}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Location:</span>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-600 font-medium">Location:</span>
                           <span className="font-semibold text-slate-900">{formData.city}, {formData.zip}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Contact:</span>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-600 font-medium">Contact:</span>
                           <span className="font-semibold text-slate-900">{formData.name}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Timeline:</span>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-600 font-medium">Timeline:</span>
                           <span className="font-semibold text-slate-900">{formData.timeline}</span>
                         </div>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-600 font-medium">Budget:</span>
+                          <span className="font-semibold text-slate-900">{formData.budget}</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-500 text-center">We'll contact you within 24 hours with a free estimate</p>
+                      <p className="text-xs text-slate-500 text-center">✓ No commitment  •  ✓ We'll contact you within 24 hours</p>
                     </div>
                   </div>
                 )}
@@ -480,18 +479,18 @@ export default function PublicHome() {
                 )}
 
                 {/* Navigation Buttons */}
-                <div className="flex gap-4 pt-6">
+                <div className="flex gap-3 pt-8">
                   <button
                     type="button"
                     onClick={prevStep}
                     disabled={currentStep === 1}
-                    className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition ${
+                    className={`px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition ${
                       currentStep === 1
                         ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                         : 'bg-slate-200 text-slate-900 hover:bg-slate-300'
                     }`}
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4" />
                     Back
                   </button>
                   {currentStep < 6 ? (
@@ -501,21 +500,21 @@ export default function PublicHome() {
                       disabled={!isStepValid()}
                       className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition ${
                         isStepValid()
-                          ? 'bg-slate-900 text-white hover:bg-blue-600'
+                          ? 'bg-slate-900 text-white hover:bg-blue-600 shadow-md'
                           : 'bg-slate-300 text-slate-500 cursor-not-allowed'
                       }`}
                     >
                       Next
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   ) : (
                     <button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 py-3 bg-slate-900 hover:bg-blue-600 disabled:bg-slate-400 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+                      className="flex-1 py-3 bg-slate-900 hover:bg-blue-600 disabled:bg-slate-400 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2 shadow-md"
                     >
                       {loading ? 'Submitting...' : 'Request Free Estimate'}
-                      <ArrowRight className="w-5 h-5" />
+                      <ArrowRight className="w-4 h-4" />
                     </button>
                   )}
                 </div>
