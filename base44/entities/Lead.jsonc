@@ -1,0 +1,60 @@
+{
+  "name": "Lead",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Full name of the lead"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email address"
+    },
+    "address": {
+      "type": "string",
+      "description": "Project address"
+    },
+    "service": {
+      "type": "string",
+      "enum": [
+        "Painting",
+        "Kitchen Remodeling",
+        "Bathroom Remodeling",
+        "Drywall",
+        "Flooring"
+      ],
+      "description": "Service type"
+    },
+    "details": {
+      "type": "string",
+      "description": "Project details"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "converted",
+        "declined"
+      ],
+      "default": "new",
+      "description": "Lead status"
+    },
+    "source": {
+      "type": "string",
+      "default": "website",
+      "description": "Lead source (website)"
+    }
+  },
+  "required": [
+    "name",
+    "phone",
+    "email",
+    "address",
+    "service"
+  ]
+}

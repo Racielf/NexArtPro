@@ -20,17 +20,42 @@ export default function PublicHome() {
     service: '',
     details: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Form structure ready for backend integration
-    console.log('Form submitted:', formData);
-    // TODO: Connect to backend API
+    setLoading(true);
+    setError('');
+    setSuccess(false);
+
+    try {
+      const response = await fetch('/api/submitContactForm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to submit form');
+      }
+
+      setSuccess(true);
+      setFormData({ name: '', phone: '', email: '', address: '', service: '', details: '' });
+      setTimeout(() => setSuccess(false), 5000);
+    } catch (err) {
+      setError(err.message || 'An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -100,6 +125,18 @@ export default function PublicHome() {
             <h2 className="text-4xl font-bold text-slate-900 mb-3">Get Your Free Estimate</h2>
             <p className="text-lg text-slate-600">Fill out the form below and we'll contact you within 24 hours</p>
           </div>
+
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-700 font-medium">✓ Estimate request submitted successfully! We'll contact you within 24 hours.</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 font-medium">✗ {error}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5 bg-slate-50 p-8 rounded-xl border border-slate-200">
             {/* Name & Phone - Grid */}
@@ -191,10 +228,11 @@ export default function PublicHome() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-400 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
             >
-              Get Your Free Estimate
-              <ArrowRight className="w-5 h-5" />
+              {loading ? 'Submitting...' : 'Get Your Free Estimate'}
+              {!loading && <ArrowRight className="w-5 h-5" />}
             </button>
 
             <p className="text-xs text-slate-500 text-center">
