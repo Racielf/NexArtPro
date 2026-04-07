@@ -534,46 +534,86 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
       <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
         <div className="flex gap-8 flex-wrap justify-between">
 
-          {/* Left: Internal financials (only when cost visible) */}
-          {showCost && (
-            <div className="space-y-2.5 text-sm min-w-[200px]">
-              <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-3">Internal Audit View</p>
-              <div className="flex justify-between gap-6">
-                <span className="text-slate-600">Total Cost</span>
-                <span className="font-semibold text-slate-800">{fmt(totalCost)}</span>
+          {/* ── INTERNAL AUDIT VIEW — admin only, never in PDF/Preview/Send ── */}
+          {showCost && (() => {
+            // Color logic: >40% = healthy, 25–39.99% = warning, <25% = danger
+            const healthColor =
+              grossMarginPct > 40  ? { text: '#10b981', bg: 'rgba(16,185,129,0.07)',  border: 'rgba(16,185,129,0.18)' } :
+              grossMarginPct >= 25 ? { text: '#f59e0b', bg: 'rgba(245,158,11,0.07)',  border: 'rgba(245,158,11,0.18)' } :
+                                     { text: '#ef4444', bg: 'rgba(239,68,68,0.07)',   border: 'rgba(239,68,68,0.18)'  };
+
+            const AuditCard = ({ label, value, color, bg, border, sub }) => (
+              <div style={{
+                background: bg || 'rgba(241,245,249,0.7)',
+                border: `1px solid ${border || '#e2e8f0'}`,
+                borderRadius: 12,
+                padding: '12px 16px',
+                minWidth: 120,
+                flex: 1,
+              }}>
+                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: 4 }}>
+                  {label}
+                </p>
+                <p style={{ fontSize: 18, fontWeight: 700, color: color || '#1e293b', lineHeight: 1.2 }}>
+                  {value}
+                </p>
+                {sub && <p style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>{sub}</p>}
               </div>
-              <div className="flex justify-between gap-6">
-                <span className="text-slate-600">Gross Margin $</span>
-                <span className={`font-semibold ${grossMargin >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmt(grossMargin)}</span>
-              </div>
-              <div className="flex justify-between gap-6">
-                <span className="text-slate-600">Gross Margin %</span>
-                <span className={`font-bold ${grossMarginPct >= 30 ? 'text-green-600' : grossMarginPct >= 15 ? 'text-amber-600' : 'text-red-500'}`}>
-                  {grossMarginPct.toFixed(1)}%
-                </span>
-              </div>
-              {totalBookValue > 0 && (
-                <div className="pt-2 border-t border-amber-200 space-y-1.5">
-                  <div className="flex justify-between gap-6">
-                    <span className="text-slate-500 text-xs">Book Value Total</span>
-                    <span className="text-slate-500 text-xs font-medium">{fmt(totalBookValue)}</span>
-                  </div>
-                  <div className="flex justify-between gap-6">
-                    <span className="text-slate-500 text-xs">vs Book Price</span>
-                    <span className={`font-semibold text-xs ${totalVariance >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {totalVariance >= 0 ? '+' : ''}{fmt(totalVariance)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between gap-6">
-                    <span className="text-slate-500 text-xs">Book Margin %</span>
-                    <span className={`font-bold text-xs ${marginPercentage >= 15 ? 'text-emerald-600' : marginPercentage >= 0 ? 'text-amber-600' : 'text-red-500'}`}>
-                      {marginPercentage >= 0 ? '+' : ''}{marginPercentage.toFixed(1)}%
-                    </span>
-                  </div>
+            );
+
+            return (
+              <div style={{ minWidth: 200 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#d97706', marginBottom: 10 }}>
+                  🔒 Internal Audit View
+                </p>
+                {/* 3-card grid */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <AuditCard
+                    label="Total Cost"
+                    value={fmt(totalCost)}
+                  />
+                  <AuditCard
+                    label="Gross Margin"
+                    value={fmt(grossMargin)}
+                    color={healthColor.text}
+                    bg={healthColor.bg}
+                    border={healthColor.border}
+                  />
+                  <AuditCard
+                    label="Margin %"
+                    value={`${grossMarginPct.toFixed(1)}%`}
+                    color={healthColor.text}
+                    bg={healthColor.bg}
+                    border={healthColor.border}
+                    sub={grossMarginPct > 40 ? '✓ Healthy' : grossMarginPct >= 25 ? '⚠ Review' : '✗ Low margin'}
+                  />
                 </div>
-              )}
-            </div>
-          )}
+                {/* Book reference row (only when book data exists) */}
+                {totalBookValue > 0 && (
+                  <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(241,245,249,0.9)', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Book Value</p>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>{fmt(totalBookValue)}</p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>vs Book</p>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: totalVariance >= 0 ? '#10b981' : '#ef4444' }}>
+                          {totalVariance >= 0 ? '+' : ''}{fmt(totalVariance)}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Book Margin</p>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: marginPercentage >= 15 ? '#10b981' : marginPercentage >= 0 ? '#f59e0b' : '#ef4444' }}>
+                          {marginPercentage >= 0 ? '+' : ''}{marginPercentage.toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Right: Customer-facing totals */}
           <div className="space-y-3 text-sm ml-auto w-80">
