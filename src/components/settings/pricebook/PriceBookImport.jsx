@@ -5,8 +5,26 @@
  * INTERNAL ONLY — never affects client-facing documents.
  */
 import React, { useState, useRef } from 'react';
-import { Upload, CheckCircle2, AlertCircle, FileText, X } from 'lucide-react';
+import { Upload, CheckCircle2, AlertCircle, FileText, X, Download } from 'lucide-react';
 import { parsePriceBookCSV } from '@/utils/csvParser';
+
+const TEMPLATE_CSV = `id,service_name,uom,book_price,category,location_base
+101,Instalacion de Drywall (Standard),SQFT,2.75,Interiores,Oregon
+102,Pintura Interior (2 capas),SQFT,3.50,Acabados,Oregon
+201,Mano de Obra General Carpinteria,HR,55.00,Labor,Oregon
+202,Instalacion de Techo (Roofing Comp),SQ,450.00,Exteriores,Oregon
+301,Demolicion de Estructura Residencial,SQFT,1.25,Demolicion,Oregon
+302,Limpieza de Obra Post-Construccion,GL,250.00,Limpieza,Oregon`;
+
+function downloadTemplate() {
+  const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'oregon_price_book_template.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function PriceBookImport({ onImport }) {
   const [loading, setLoading]   = useState(false);
@@ -87,10 +105,19 @@ export default function PriceBookImport({ onImport }) {
         </div>
       )}
 
-      {/* Template hint */}
-      <div className="flex items-center gap-1.5 mt-3">
-        <FileText className="w-3 h-3 text-slate-300" />
-        <span className="text-[10px] text-slate-400">Formato: <code>service_name,book_price,category,uom,notes</code></span>
+      {/* Template download */}
+      <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center gap-1.5">
+          <FileText className="w-3 h-3 text-slate-300" />
+          <span className="text-[10px] text-slate-400">Columnas: <code>id, service_name, uom, book_price, category, location_base</code></span>
+        </div>
+        <button
+          onClick={downloadTemplate}
+          className="flex items-center gap-1.5 text-[10px] font-semibold text-blue-500 hover:text-blue-700 transition"
+        >
+          <Download className="w-3 h-3" />
+          Descargar plantilla CSV
+        </button>
       </div>
     </div>
   );

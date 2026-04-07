@@ -32,6 +32,8 @@ export function parsePriceBookCSV(file) {
           }
           obj[h] = val;
         });
+        // Normalize: accept both 'uom' and 'unit' as the unit column
+        if (!obj.uom && obj.unit) obj.uom = obj.unit;
         if (obj.service_name) result.push(obj);
       }
 
