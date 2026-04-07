@@ -241,18 +241,6 @@ export default function PublicHome() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">What do you need? *</label>
-                      <textarea
-                        name="details"
-                        value={heroFormData.details || ''}
-                        onChange={e => setHeroFormData(p => ({ ...p, details: e.target.value }))}
-                        rows={2}
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent resize-none"
-                        placeholder="Describe your project..."
-                      />
-                    </div>
-
-                    <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Service *</label>
                       <div className="relative">
                         <input
@@ -282,6 +270,18 @@ export default function PublicHome() {
                           </div>
                         )}
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">What do you need? *</label>
+                      <textarea
+                        name="details"
+                        value={heroFormData.details || ''}
+                        onChange={e => setHeroFormData(p => ({ ...p, details: e.target.value }))}
+                        rows={4}
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent resize-none"
+                        placeholder="Describe your project..."
+                      />
                     </div>
 
                     {heroError && (
