@@ -36,17 +36,8 @@ export default function PublicHome() {
     setSuccess(false);
 
     try {
-      const response = await fetch('/api/submitContactForm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to submit form');
-      }
+      const { base44 } = await import('@/api/base44Client');
+      const response = await base44.functions.invoke('submitContactForm', formData);
 
       setSuccess(true);
       setFormData({ name: '', phone: '', email: '', address: '', service: '', details: '' });
