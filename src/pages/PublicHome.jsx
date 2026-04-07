@@ -139,177 +139,202 @@ export default function PublicHome() {
 
       {/* HERO SECTION - Professional Construction Design */}
       <section 
-        className="relative py-20 px-6 overflow-hidden"
+        className="relative py-32 px-6 overflow-hidden min-h-screen flex items-center"
         style={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1541123603104-802565a7fce3?w=1600&h=800&fit=crop)',
+          backgroundImage: 'url(https://images.unsplash.com/photo-1541123603104-802565a7fce3?w=1600&h=900&fit=crop)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
       >
         {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-black/55" />
         
-        <div className="relative max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="relative max-w-7xl mx-auto w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             
-            {/* Left: Headline + CTA */}
+            {/* Left: Headline + Trust Badges + CTAs */}
             <div className="text-white">
-              <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-                Transform Your Space
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-cta-orange/20 border border-cta-orange/50 rounded-lg mb-6">
+                <div className="w-2 h-2 bg-cta-orange rounded-full"></div>
+                <span className="text-xs font-bold text-cta-orange uppercase tracking-wider">BUILT ON QUALITY, BACKED BY TRUST</span>
+              </div>
+
+              <h1 className="text-6xl lg:text-7xl font-black mb-6 leading-tight">
+                Building Spaces,<br />
+                <span className="text-cta-orange">Building Trust.</span>
               </h1>
-              <p className="text-lg text-slate-100 mb-10 leading-relaxed max-w-xl">
-                Professional construction and remodeling services. Licensed, insured, and committed to excellence.
+              
+              <p className="text-lg text-slate-100 mb-8 leading-relaxed max-w-lg">
+                Expert construction and remodeling services designed to bring your vision to life.
               </p>
-              <div className="flex flex-wrap gap-4">
+
+              {/* Trust Badges */}
+              <div className="flex flex-wrap gap-6 mb-10">
+                <div className="flex items-center gap-2">
+                  <Check className="w-5 h-5 text-cta-orange" />
+                  <span className="text-sm font-medium text-slate-200">Licensed & Insured</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-5 h-5 text-cta-orange" />
+                  <span className="text-sm font-medium text-slate-200">Quality Craftsmanship</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-5 h-5 text-cta-orange" />
+                  <span className="text-sm font-medium text-slate-200">On-Time, On-Budget</span>
+                </div>
+              </div>
+
+              {/* Left CTAs */}
+              <div className="flex flex-wrap gap-3">
                 <button 
                   onClick={() => document.querySelector('[data-hero-form]')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-cta-orange hover:bg-orange-600 text-white font-semibold rounded-lg transition shadow-lg"
+                  className="inline-flex items-center gap-2 px-8 py-3.5 bg-cta-orange hover:bg-orange-600 text-white font-bold rounded-lg transition shadow-xl"
                 >
-                  Get Free Estimate
+                  <span>📋</span>
+                  GET A FREE ESTIMATE
                   <ArrowRight className="w-5 h-5" />
                 </button>
+                <a 
+                  href="tel:+15039361234"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 border-2 border-cta-orange/60 hover:border-cta-orange text-white font-semibold rounded-lg transition"
+                >
+                  <span>📞</span>
+                  (503) 936-1234
+                </a>
               </div>
             </div>
 
             {/* Right: Floating Card Form */}
             <div className="relative" data-hero-form>
-              <div className="bg-white rounded-2xl shadow-2xl p-8">
-                <h2 className="text-2xl font-bold text-slate-900 mb-1">Free Estimate</h2>
-                <p className="text-sm text-slate-500 mb-6">No commitment • Takes 2 minutes</p>
+              <div className="bg-white rounded-3xl shadow-2xl p-10">
+                <h2 className="text-3xl font-black text-slate-900 mb-2 text-center">GET A FREE ESTIMATE</h2>
+                <p className="text-sm text-slate-600 mb-8 text-center">Tell us about your project and we'll get back to you with a free, no-obligation estimate.</p>
 
                 {heroSuccess ? (
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Check className="w-6 h-6 text-green-600" />
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Check className="w-8 h-8 text-green-600" />
                     </div>
-                    <p className="text-sm font-semibold text-slate-900">Request received!</p>
-                    <p className="text-xs text-slate-500 mt-1">We'll contact you within 24 hours</p>
+                    <p className="text-lg font-bold text-slate-900">Request Received!</p>
+                    <p className="text-sm text-slate-600 mt-2">We'll contact you within 24 hours</p>
                   </div>
                 ) : (
-                  <form onSubmit={handleHeroSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Name *</label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={heroFormData.name}
-                        onChange={handleHeroFormChange}
-                        required
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
-                        placeholder="Your name"
-                      />
-                    </div>
-
+                  <form onSubmit={handleHeroSubmit} className="space-y-5">
+                    {/* Row 1: Name + Phone */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Phone *</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-2">Full Name</label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={heroFormData.name}
+                          onChange={handleHeroFormChange}
+                          required
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
+                          placeholder="First & Last Name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-2">Phone Number</label>
                         <input
                           type="tel"
                           name="phone"
                           value={heroFormData.phone}
                           onChange={handleHeroFormChange}
                           required
-                          className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
-                          placeholder="(503) 555-0100"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Email *</label>
-                        <input
-                          type="email"
-                          name="email"
-                          value={heroFormData.email}
-                          onChange={handleHeroFormChange}
-                          required
-                          className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
-                          placeholder="you@example.com"
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
+                          placeholder="(503) 000-0000"
                         />
                       </div>
                     </div>
 
+                    {/* Row 2: Email */}
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Address *</label>
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Email Address</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={heroFormData.email}
+                        onChange={handleHeroFormChange}
+                        required
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
+                        placeholder="you@example.com"
+                      />
+                    </div>
+
+                    {/* Row 3: Address */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Project Address</label>
                       <input
                         type="text"
                         name="address"
                         value={heroFormData.address}
                         onChange={handleHeroFormChange}
                         required
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
-                        placeholder="123 Main Street"
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
+                        placeholder="Enter your project address"
                       />
                     </div>
 
+                    {/* Row 4: Service Pills */}
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Service *</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          name="service"
-                          value={heroFormData.service}
-                          onChange={e => setHeroFormData(p => ({ ...p, service: e.target.value }))}
-                          required
-                          className="w-full px-3 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
-                          placeholder="Search services..."
-                          autoComplete="off"
-                        />
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                        {heroFormData.service && (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                            {SERVICES_LIST.filter(svc => 
-                              svc.name.toLowerCase().includes(heroFormData.service.toLowerCase())
-                            ).length > 0 ? (
-                              SERVICES_LIST.filter(svc => 
-                                svc.name.toLowerCase().includes(heroFormData.service.toLowerCase())
-                              ).map(svc => (
-                                <button
-                                  key={svc.id}
-                                  type="button"
-                                  onClick={() => setHeroFormData(p => ({ ...p, service: svc.name }))}
-                                  className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition border-b border-slate-100 last:border-b-0"
-                                >
-                                  <div className="font-medium">{svc.name}</div>
-                                  <div className="text-xs text-slate-500">{svc.description}</div>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="px-3 py-4 text-center text-sm text-slate-500">
-                                No services found
-                              </div>
-                            )}
-                          </div>
-                        )}
+                      <label className="block text-xs font-bold text-slate-700 mb-3">Service Needed</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { id: 'bathroom', name: 'Bathroom Remodeling', icon: '🚿' },
+                          { id: 'kitchen', name: 'Kitchen Remodeling', icon: '🍳' },
+                          { id: 'painting', name: 'Painting', icon: '🎨' },
+                          { id: 'drywall', name: 'Drywall', icon: '🏗️' },
+                          { id: 'flooring', name: 'Flooring', icon: '📐' },
+                          { id: 'other', name: 'Other', icon: '⋯' },
+                        ].map(svc => (
+                          <button
+                            key={svc.id}
+                            type="button"
+                            onClick={() => setHeroFormData(p => ({ ...p, service: svc.name }))}
+                            className={`px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+                              heroFormData.service === svc.name
+                                ? 'bg-cta-orange text-white border-2 border-cta-orange shadow-md'
+                                : 'bg-slate-100 text-slate-700 border-2 border-slate-200 hover:border-cta-orange hover:bg-orange-50'
+                            }`}
+                          >
+                            <span>{svc.icon}</span>
+                            {svc.name}
+                          </button>
+                        ))}
                       </div>
                     </div>
 
+                    {/* Row 5: Project Details */}
                     <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">What do you need? *</label>
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Project Details</label>
                       <textarea
                         name="details"
                         value={heroFormData.details || ''}
                         onChange={e => setHeroFormData(p => ({ ...p, details: e.target.value }))}
                         rows={4}
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent resize-none"
-                        placeholder="Describe your project..."
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent resize-none"
+                        placeholder="Tell us about your project..."
                       />
                     </div>
 
                     {heroError && (
                       <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-red-700 text-xs">{heroError}</p>
+                        <p className="text-red-700 text-xs font-medium">{heroError}</p>
                       </div>
                     )}
 
                     <button
                       type="submit"
                       disabled={heroLoading || !heroFormData.service || !heroFormData.name || !heroFormData.phone || !heroFormData.email || !heroFormData.address}
-                      className="w-full py-3 bg-cta-orange hover:bg-orange-600 disabled:bg-slate-300 text-white font-semibold rounded-lg transition text-sm flex items-center justify-center gap-2"
+                      className="w-full py-3.5 bg-cta-orange hover:bg-orange-600 disabled:bg-slate-400 text-white font-bold rounded-lg transition text-base flex items-center justify-center gap-2 shadow-lg"
                     >
-                      {heroLoading ? 'Submitting...' : 'Get Free Estimate'}
-                      <ArrowRight className="w-4 h-4" />
+                      <span>→</span>
+                      SUBMIT REQUEST
                     </button>
 
-                    <p className="text-xs text-slate-400 text-center">Licensed • Insured • Fast response</p>
+                    <p className="text-xs text-slate-500 text-center">🔒 Your information is safe with us. We respect your privacy.</p>
                   </form>
                 )}
               </div>
