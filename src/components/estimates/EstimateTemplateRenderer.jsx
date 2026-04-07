@@ -2,6 +2,7 @@ import React from 'react';
 import DocumentHeader from '../documents/DocumentHeader';
 import DocumentFooter from '../documents/DocumentFooter';
 import DocumentSummary from '../documents/DocumentSummary';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 /**
  * EstimateTemplateRenderer — Universal document renderer with 6 distinct templates
@@ -197,13 +198,13 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       {/* ── HEADER: Logo + Company + Document info ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, paddingBottom: 16, borderBottom: '2px solid #222' }}>
         {/* Company / Logo left */}
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 'bold', color: '#111', marginBottom: 4 }}>FSM Pro</div>
-          <div style={{ fontSize: 10, color: '#555', lineHeight: 1.7 }}>
-            Portland, OR 97201<br />
-            info@fsmpro.com &nbsp;·&nbsp; (503) 555-0100
-          </div>
-        </div>
+         <div>
+           <div style={{ fontSize: 20, fontWeight: 'bold', color: '#111', marginBottom: 4 }}>{appConfig.company.name}</div>
+           <div style={{ fontSize: 10, color: '#555', lineHeight: 1.7 }}>
+             {appConfig.company.address}<br />
+             {appConfig.company.email} &nbsp;·&nbsp; {appConfig.company.phone}
+           </div>
+         </div>
         {/* Document number + date right */}
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 16, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{docTypeLabel}</div>
@@ -344,7 +345,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
 
       {/* ── FOOTER ── */}
       <div style={{ marginTop: 32, paddingTop: 10, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#aaa' }}>
-        <span>FSM Pro · Portland, OR</span>
+        <span>{appConfig.company.name} · {appConfig.company.city}</span>
         <span>{today}</span>
       </div>
     </div>
@@ -364,13 +365,13 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                 </svg>
               </div>
               <div>
-                <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>FSM Pro</div>
-                <div style={{ color: '#64748b', fontSize: 11 }}>Field Service Management</div>
+                 <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>{appConfig.company.name}</div>
+                 <div style={{ color: '#64748b', fontSize: 11 }}>{appConfig.company.tagline}</div>
+               </div>
               </div>
-            </div>
-            <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.8 }}>
-              Portland, OR 97201<br />info@fsmpro.com<br />(503) 555-0100
-            </div>
+              <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.8 }}>
+               {appConfig.company.address}<br />{appConfig.company.email}<br />{appConfig.company.phone}
+              </div>
           </div>
 
           <DocumentHeader
@@ -534,8 +535,8 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       {/* FOOTER */}
       <DocumentFooter
         today={today}
-        companyName="FSM Pro"
-        licenseNumber="#2024-FSM-01"
+        companyName={appConfig.company.name}
+        licenseNumber={appConfig.company.license}
         variant="standard"
         showDate={false}
         showCompany={true}
@@ -651,7 +652,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         {/* Footer */}
         <DocumentFooter
           today={today}
-          companyName="FSM Pro"
+          companyName={appConfig.company.name}
           licenseNumber=""
           variant="modern"
           showDate={true}
@@ -668,8 +669,8 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40, paddingBottom: 30, borderBottom: '2px solid #d4a574' }}>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 5 }}>FSM Pro</div>
-          <div style={{ fontSize: 11, color: '#7a7a7a', letterSpacing: 2, textTransform: 'uppercase' }}>Professional Services</div>
+          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 5 }}>{appConfig.company.name}</div>
+          <div style={{ fontSize: 11, color: '#7a7a7a', letterSpacing: 2, textTransform: 'uppercase' }}>{appConfig.company.tagline}</div>
         </div>
         <DocumentHeader
           estimate={estimate}
@@ -784,7 +785,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       {/* Footer */}
       <DocumentFooter
         today={today}
-        companyName="FSM Pro"
+        companyName={appConfig.company.name}
         licenseNumber=""
         variant="executive"
         showDate={true}
@@ -936,10 +937,10 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                 </svg>
               </div>
               <div>
-                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1 }}>FSM Pro</div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Professional Services · Portland, OR</div>
-                <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>info@fsmpro.com · (503) 555-0100</div>
-              </div>
+                 <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1 }}>{appConfig.company.name}</div>
+                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{appConfig.company.tagline} · {appConfig.company.city}</div>
+                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>{appConfig.company.email} · {appConfig.company.phone}</div>
+               </div>
             </div>
 
             {/* RIGHT — Document title + number + date */}
@@ -1116,7 +1117,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
           <div style={{ ...card(), padding: '28px 36px', marginBottom: 24 }}>
             <div style={label}>Authorization & Signatures</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, marginTop: 8 }}>
-              {[{ title: 'Contractor Signature', sub: 'FSM Pro · Authorized Representative' }, { title: 'Client Signature & Date', sub: estimate.client_name || 'Client' }].map((sig, i) => (
+              {[{ title: 'Contractor Signature', sub: `${appConfig.company.name} · Authorized Representative` }, { title: 'Client Signature & Date', sub: estimate.client_name || 'Client' }].map((sig, i) => (
                 <div key={i}>
                   <div style={{ height: 52, borderBottom: `2px solid ${PRO_DARK}`, marginBottom: 8 }} />
                   <div style={{ fontSize: 11, fontWeight: 600, color: PRO_DARK }}>{sig.title}</div>
@@ -1130,7 +1131,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         {/* ══ FOOTER — en cada "página" (sutil, 8pt) ══ */}
         <div style={{ textAlign: 'center', padding: '14px 0 0', borderTop: '1px solid #e2e8f0', opacity: 0.35 }}>
           <div style={{ fontSize: 8, color: '#475569', letterSpacing: '0.06em' }}>
-            FSM Pro &nbsp;·&nbsp; Portland, OR 97201 &nbsp;·&nbsp; License #2024-FSM-01 &nbsp;·&nbsp; {today}
+            {appConfig.company.name} &nbsp;·&nbsp; {appConfig.company.address} &nbsp;·&nbsp; License {appConfig.company.license} &nbsp;·&nbsp; {today}
           </div>
         </div>
 
