@@ -49,7 +49,7 @@ export default function Invoices() {
       </style></head><body>
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div><h1>INVOICE</h1><p style="color:#666;font-size:20px">#${inv.invoice_number}</p></div>
-        <div style="text-align:right"><strong style="color:#1a56db;font-size:20px">FSM Pro</strong></div>
+        <div style="text-align:right"><strong style="color:#1a56db;font-size:20px">R.C Art Construction LLC</strong></div>
       </div>
       <div class="grid">
         <div style="background:#f9fafb;padding:16px;border-radius:8px">
@@ -84,6 +84,7 @@ export default function Invoices() {
         ${inv.status === 'paid' ? `<p style="color:green;font-weight:bold">✓ PAID</p>` : ''}
       </div>
       ${inv.notes ? `<div style="margin-top:30px;border-top:1px solid #eee;padding-top:20px"><p style="color:#888;font-size:11px;font-weight:bold">NOTES</p><p>${inv.notes}</p></div>` : ''}
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;text-align:center"><p style="color:#999;font-size:10px">Generated with NexArt Pro</p></div>
       </body></html>`;
     const w = window.open('', '_blank');
     w.document.write(content);

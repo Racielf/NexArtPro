@@ -66,8 +66,8 @@ export default function Sidebar() {
             <Wrench className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="text-white font-bold text-sm">FSM Pro</p>
-            <p className="text-gray-400 text-xs">Field Service</p>
+            <p className="text-white font-bold text-sm">NexArt Pro</p>
+            <p className="text-gray-400 text-xs">R.C Art Construction</p>
           </div>
         </div>
       </div>
