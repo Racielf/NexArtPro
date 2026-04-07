@@ -101,7 +101,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
 
-        {/* Price — primary editable field + variance badge (green intensity increases with markup) */}
+        {/* Price — primary editable field + variance badge + smart price suggestions */}
         {(() => {
           const book = parseFloat(item.book_price) || 0;
           const real = parseFloat(item.unit_price) || 0;
@@ -109,8 +109,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           const isLow  = book > 0 && diff < -0.001;
           const isHigh = book > 0 && diff > 0.001;
           const isOk   = book > 0 && !isLow && !isHigh;
-          
-          // Dynamic green intensity based on markup percentage — always calculate
+
           let greenColor = 'text-slate-400';
           if (book > 0) {
             const markupPct = (diff / book) * 100;
@@ -121,7 +120,15 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
             else if (markupPct > 0) greenColor = 'text-emerald-500';
             else greenColor = 'text-slate-400';
           }
-          
+
+          // Smart price suggestions (admin-only, only when book_price exists)
+          const MARGINS = [0.10, 0.20, 0.30];
+          const suggested = MARGINS.map(m => ({
+            label: `+${m * 100}%`,
+            price: parseFloat((book * (1 + m)).toFixed(2)),
+            margin: m,
+          }));
+
           return (
             <div className="flex flex-col gap-0.5">
               <div className="relative">
@@ -139,6 +146,26 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
                   {isHigh ? `↑ +$${Math.abs(diff).toFixed(2)} vs book` : ''}
                   {isOk   ? '✓ at book' : ''}
                 </span>
+              )}
+              {/* ── Smart Price Suggestions — ADMIN ONLY, never in PDF/client doc ── */}
+              {book > 0 && (
+                <div className="flex gap-0.5 mt-0.5">
+                  {suggested.map(s => (
+                    <button
+                      key={s.margin}
+                      type="button"
+                      onClick={() => update('unit_price', s.price)}
+                      title={`Set to $${s.price} (${s.label} over book)`}
+                      className={`text-[9px] px-1 py-0.5 rounded border transition-colors leading-none font-semibold
+                        ${real === s.price
+                          ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                          : 'bg-white border-slate-200 text-slate-400 hover:border-primary/40 hover:text-primary'
+                        }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           );
