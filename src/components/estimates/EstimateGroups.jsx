@@ -3,7 +3,7 @@
  * Each group = a work category (e.g. Demolition, Plumbing, Flooring).
  * Auto-saves with debounce on every change.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceDisciplineGuard from '@/components/estimates/internal/PriceDisciplineGuard';
+import PriceAuditLog from '@/components/estimates/internal/PriceAuditLog';
+import { usePriceAuditLog } from '@/hooks/usePriceAuditLog';
 import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -36,8 +38,10 @@ const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'r
 // calcTotals is now delegated to estimateEngine.js (Decimal.js-backed pure functions)
 
 // ─── Single Line Item Row ──────────────────────────────────────────────────────
-function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false }) {
+function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange }) {
   const [expanded, setExpanded] = useState(!item.service_name);
+  // Track "committed" values for onBlur diffing (price + cost only)
+  const committedRef = React.useRef({ unit_price: item.unit_price, unit_cost: item.unit_cost });
 
   const update = (field, value) => {
     const updated = { ...item, [field]: value };
@@ -47,6 +51,16 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false }) {
       field === 'unit_price' ? value : updated.unit_price
     );
     onUpdate(updated);
+  };
+
+  // Called on onBlur of price/cost — logs only if value actually changed
+  const handlePriceBlur = (field) => {
+    const oldValue = committedRef.current[field];
+    const newValue = item[field];
+    if (onLogChange) {
+      onLogChange({ item, field, oldValue, newValue });
+    }
+    committedRef.current[field] = newValue;
   };
 
   return (
@@ -140,6 +154,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false }) {
                 <Input
                   type="number" step="0.01" value={item.unit_price}
                   onChange={e => update('unit_price', e.target.value)}
+                  onBlur={() => handlePriceBlur('unit_price')}
                   className={`h-8 pl-4 pr-7 text-sm text-right font-semibold border-slate-200 ${
                     negMeta.status === 'critical' ? 'border-red-400 bg-red-50/60 text-red-700' :
                     isLow ? 'border-red-300 bg-red-50/50 text-red-700' : 'text-slate-900'
@@ -274,6 +289,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false }) {
             <div className="relative">
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
               <Input type="number" step="0.01" value={item.unit_cost} onChange={e => update('unit_cost', e.target.value)}
+                onBlur={() => handlePriceBlur('unit_cost')}
                 className="h-8 pl-4 text-sm text-right border-slate-200 bg-amber-50/60" min={0} />
             </div>
           )}
@@ -320,7 +336,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false }) {
 }
 
 // ─── Work Group ────────────────────────────────────────────────────────────────
-function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds = new Set() }) {
+function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds = new Set(), onLogChange }) {
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(group.name);
 
@@ -402,7 +418,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
               <div className="py-6 text-center text-slate-300 text-xs">No items yet — click below to add</div>
             )}
             {group.items.map(item => (
-              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} />
+              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} />
             ))}
           </div>
 
@@ -465,6 +481,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
   const [showTerms, setShowTerms] = useState(false);
   const [approvalMode, setApprovalMode] = useState('one');
   const [fixedItemIds, setFixedItemIds] = useState(new Set()); // tracks recently auto-adjusted items
+  const { priceLog, addLog, clearLog } = usePriceAuditLog();
 
   // Sync when estimate id changes
   useEffect(() => {
@@ -607,7 +624,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
       {/* ── GROUPS ── */}
       {groups.map(group => (
         <WorkGroup key={group.id} group={group} onUpdate={updateGroup} onRemove={removeGroup}
-          showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} />
+          showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} onLogChange={addLog} />
       ))}
 
       {/* Add group button */}
@@ -842,6 +859,9 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
           </div>
         )}
       </div>
+
+      {/* ── INTERNAL PRICE AUDIT LOG — session-only, never in PDF/preview/send ── */}
+      <PriceAuditLog entries={priceLog} onClear={clearLog} />
 
     </div>
   );
