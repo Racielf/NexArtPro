@@ -47,6 +47,28 @@ export const PRICE_BOOK_SEED = [
   entry('Popcorn Ceiling Removal',    'Drywall',   'sqft',      2.00,  0.45,  null,  'OR avg · scrape, sand, patch'),
   entry('Water Damage Drywall Repair','Drywall',   'sqft',      5.00,  1.75,  null,  'OR avg · remove, replace, re-texture'),
 
+  // ── Drywall & Acabados — Oregon 2026 (20 servicios especializados) ────────
+  entry('Hanging Drywall 1/2" (Standard)',             'Drywall', 'sqft',      1.85,  0.50,  null,  'DW-01 · OR 2026 · standard interior walls'),
+  entry('Hanging Drywall 5/8" (Fire-rated/Ceilings)', 'Drywall', 'sqft',      2.25,  0.65,  null,  'DW-02 · OR 2026 · fire-rated, ceilings, garage'),
+  entry('Moisture Resistant Drywall (Green Board)',    'Drywall', 'sqft',      2.50,  0.75,  null,  'DW-03 · OR 2026 · bathrooms, laundry, high humidity'),
+  entry('Tape & Finish - Level 3 (Standard)',          'Drywall', 'sqft',      1.45,  0.40,  null,  'DW-04 · OR 2026 · standard finish, texture-ready'),
+  entry('Tape & Finish - Level 4 (Smooth Wall)',       'Drywall', 'sqft',      2.10,  0.60,  null,  'DW-05 · OR 2026 · flat paint or light texture'),
+  entry('Tape & Finish - Level 5 (Premium)',           'Drywall', 'sqft',      3.50,  1.10,  null,  'DW-06 · OR 2026 · high-end, gloss paint ready'),
+  entry('Patch Repair - Small (Up to 12"x12")',        'Drywall', 'each',      125,   35,    null,  'DW-07 · OR 2026 · small hole, blend texture'),
+  entry('Patch Repair - Medium (Up to 4\'x4\')',       'Drywall', 'each',      275,   75,    null,  'DW-08 · OR 2026 · medium section, California patch'),
+  entry('Ceiling Texture - Orange Peel (Spray)',       'Drywall', 'sqft',      0.95,  0.25,  null,  'DW-09 · OR 2026 · spray texture, match existing'),
+  entry('Ceiling Texture - Knockdown',                 'Drywall', 'sqft',      1.35,  0.35,  null,  'DW-10 · OR 2026 · hand or spray knockdown'),
+  entry('Texture Removal (Popcorn Scraping)',          'Drywall', 'sqft',      2.80,  0.65,  null,  'DW-11 · OR 2026 · scrape, sand, prep for repaint'),
+  entry('Skim Coat over Existing Texture',             'Drywall', 'sqft',      2.45,  0.70,  null,  'DW-12 · OR 2026 · smooth out existing texture'),
+  entry('Corner Bead Installation (Metal/Vinyl)',      'Drywall', 'linear_ft', 3.75,  1.00,  null,  'DW-13 · OR 2026 · standard 90° corner bead'),
+  entry('Bullnose Corner Installation',                'Drywall', 'linear_ft', 4.50,  1.25,  null,  'DW-14 · OR 2026 · rounded/bullnose corner profile'),
+  entry('Sound Dampening Drywall (QuietRock)',         'Drywall', 'sqft',      6.50,  2.80,  null,  'DW-15 · OR 2026 · specialty acoustic drywall'),
+  entry('Mold/Water Damage Cut-out & Replace',         'Drywall', 'sqft',      8.50,  3.20,  null,  'DW-16 · OR 2026 · remediation, includes disposal'),
+  entry('Sanding & Priming (Ready for Paint)',         'Drywall', 'sqft',      0.65,  0.18,  null,  'DW-17 · OR 2026 · final sand + prime coat'),
+  entry('High Ceiling Surcharge (Over 10ft)',          'Drywall', 'each',      185,   null,  15,    'DW-18 · OR 2026 · 15% surcharge, per job application'),
+  entry('Reveal/Shadow Line Detail (Architectural)',   'Drywall', 'linear_ft', 12.00, 3.50,  null,  'DW-19 · OR 2026 · precision reveal/shadow trim'),
+  entry('Daily Minimum / Service Call Fee',            'Drywall', 'each',      185,   null,  null,  'DW-20 · OR 2026 · minimum job charge, Portland area'),
+
   // ── Flooring ──────────────────────────────────────────────────────────────
   entry('LVP Installation',           'Flooring',  'sqft',      5.50,  1.50,  null,  'OR avg · includes underlayment'),
   entry('Laminate Flooring Installation','Flooring','sqft',     4.50,  1.20,  null,  'OR avg · includes underlayment + transitions'),
