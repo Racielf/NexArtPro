@@ -378,18 +378,20 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
     setLegalTerms(estimate.legal_terms || '');
   }, [estimate?.id]);
 
-  // Debounced auto-save
+  // Debounced auto-save — engine recalculates all line_totals via Decimal.js before saving
   useEffect(() => {
     const t = setTimeout(() => {
-      const { subtotal, discountAmount, taxAmount, total, depositAmount, totalCost, grossMargin, grossMarginPct } =
-        calcTotals(groups, taxRate, discountType, discountValue, depositPercent);
+      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
       onSave({
-        ...estimate, groups, tax_rate: taxRate, discount_type: discountType, discount_value: discountValue,
-        discount_amount: discountAmount, deposit_percent: depositPercent, deposit_amount: depositAmount,
+        ...estimate,
+        groups: result.groups,
+        tax_rate: taxRate, discount_type: discountType, discount_value: discountValue,
+        discount_amount: result.discountAmount,
+        deposit_percent: depositPercent, deposit_amount: result.depositAmount,
         expiration_date: expirationDate, notes, internal_notes: internalNotes, exclusions,
         warranty_terms: warrantyTerms, payment_terms: paymentTerms, legal_terms: legalTerms,
-        subtotal, tax_amount: taxAmount, total, total_cost: totalCost, gross_margin: grossMargin,
-        gross_margin_pct: grossMarginPct,
+        subtotal: result.subtotal, tax_amount: result.taxAmount, total: result.total,
+        total_cost: result.totalCost, gross_margin: result.grossMargin, gross_margin_pct: result.grossMarginPct,
       });
     }, 800);
     return () => clearTimeout(t);
@@ -399,8 +401,8 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
   const addGroup = () => setGroups(prev => [...prev, { id: uid(), name: 'New Group', collapsed: false, items: [] }]);
 
-  const { subtotal, discountAmount, taxAmount, total, depositAmount, totalCost, grossMargin, grossMarginPct } =
-    calcTotals(groups, taxRate, discountType, discountValue, depositPercent);
+  const { subtotal, discountAmount, taxAmount, total, depositAmount, totalCost, grossMargin, grossMarginPct, totalVariance } =
+    runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
@@ -459,8 +461,8 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
 
           {/* Left: Internal financials (only when cost visible) */}
           {showCost && (
-            <div className="space-y-2.5 text-sm min-w-[180px]">
-              <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-3">Internal View</p>
+            <div className="space-y-2.5 text-sm min-w-[200px]">
+              <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-3">Internal Audit View</p>
               <div className="flex justify-between gap-6">
                 <span className="text-slate-600">Total Cost</span>
                 <span className="font-semibold text-slate-800">{fmt(totalCost)}</span>
@@ -475,6 +477,14 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
                   {grossMarginPct.toFixed(1)}%
                 </span>
               </div>
+              {totalVariance !== 0 && (
+                <div className="flex justify-between gap-6 pt-2 border-t border-amber-200">
+                  <span className="text-slate-500 text-xs">vs Book Price</span>
+                  <span className={`font-semibold text-xs ${totalVariance >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {totalVariance >= 0 ? '+' : ''}{fmt(totalVariance)}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
