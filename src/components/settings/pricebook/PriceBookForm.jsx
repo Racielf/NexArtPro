@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Lock } from 'lucide-react';
 import { SERVICES_SEED, UNITS, CATEGORIES } from '@/components/settings/services/servicesSeed';
 import { getMarketReference, getPriceIndicator, formatDiff } from './marketUtils';
 
@@ -55,6 +55,17 @@ export default function PriceBookForm({ entry, services, onSave, onClose }) {
       markup:         form.markup        !== '' ? parseFloat(form.markup)        : null,
     });
   };
+
+  // Audit originals — only present if previously imported or saved
+  const hasOriginals = entry && (
+    entry._original_display_name !== undefined ||
+    entry._original_base_price   !== undefined
+  );
+  const originalChanged = hasOriginals && (
+    form.display_name !== entry._original_display_name ||
+    String(form.base_price) !== String(entry._original_base_price) ||
+    form.notes !== entry._original_notes
+  );
 
   // Computed margin preview
   const bp = parseFloat(form.base_price) || 0;
@@ -199,6 +210,46 @@ export default function PriceBookForm({ entry, services, onSave, onClose }) {
               onChange={e => set('notes', e.target.value)}
               placeholder="Scope notes, exclusions, conditions…" />
           </div>
+
+          {/* ── Audit Reference (internal only) ── */}
+          {hasOriginals && (
+            <div className="rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3 space-y-2">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Lock className="w-3 h-3 text-amber-500" />
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Referencia Original (Auditoría Interna)</p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <div>
+                  <span className="text-slate-400 font-medium">Nombre original:</span>
+                  <p className="text-slate-600 font-semibold truncate">{entry._original_display_name || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Precio original:</span>
+                  <p className="text-slate-600 font-semibold">
+                    {entry._original_base_price != null ? `$${parseFloat(entry._original_base_price).toFixed(2)}` : '—'}
+                  </p>
+                </div>
+                {entry._original_unit && (
+                  <div>
+                    <span className="text-slate-400 font-medium">UOM original:</span>
+                    <p className="text-slate-600 font-semibold">{entry._original_unit}</p>
+                  </div>
+                )}
+                {entry._original_notes && (
+                  <div className="col-span-2">
+                    <span className="text-slate-400 font-medium">Notas originales:</span>
+                    <p className="text-slate-500 italic leading-snug">{entry._original_notes}</p>
+                  </div>
+                )}
+              </div>
+              {originalChanged && (
+                <div className="pt-2 border-t border-amber-200 text-[10px] text-amber-700 font-medium">
+                  ⚠ Este registro ha sido modificado desde su valor original importado.
+                </div>
+              )}
+              <p className="text-[10px] text-slate-300">Solo visible para administradores — no se muestra en documentos al cliente.</p>
+            </div>
+          )}
 
           {/* Toggles */}
           <div className="flex gap-6 pt-1">

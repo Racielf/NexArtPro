@@ -13,13 +13,18 @@ function entry(serviceName, category, unit, base_price, estimated_cost = null, m
     display_name: serviceName,
     category,
     unit,
-    base_price,          // Oregon 2024-2025 market reference — READ ONLY (book_price)
-    estimated_cost,      // Internal cost basis for margin calc
+    base_price,
+    estimated_cost,
     markup,
     notes,
     is_active: true,
     needs_review: false,
     source: 'seed',
+    // ── Immutable audit originals (set once at seed creation, never overwritten) ──
+    _original_display_name: serviceName,
+    _original_base_price:   base_price,
+    _original_notes:        notes,
+    _original_unit:         unit,
   };
 }
 

@@ -63,7 +63,16 @@ export default function PriceBookSection() {
     if (editingEntry) {
       setEntries(prev => prev.map(e => e.id === form.id ? { ...form } : e));
     } else {
-      setEntries(prev => [...prev, { ...form, id: genId(), source: 'manual' }]);
+      // Preserve original values as audit reference on first creation
+      setEntries(prev => [...prev, {
+        ...form,
+        id: genId(),
+        source: 'manual',
+        _original_display_name: form.display_name,
+        _original_base_price:   form.base_price,
+        _original_notes:        form.notes,
+        _original_unit:         form.unit,
+      }]);
     }
     closeForm();
   };
@@ -93,21 +102,29 @@ export default function PriceBookSection() {
           };
           updated++;
         } else {
-          // New entry
+          // New entry — snapshot original values as immutable audit reference
+          const bpVal = row.book_price ?? null;
+          const notesVal = row.notes || '';
+          const uomVal = row.uom || 'each';
           next.push({
             id: genId(),
             display_name: name,
             _service_name_ref: name,
             service_id: null,
             category: row.category || 'Misc',
-            unit: row.uom || 'each',
-            base_price: row.book_price ?? null,
+            unit: uomVal,
+            base_price: bpVal,
             estimated_cost: row.estimated_cost || null,
             markup: null,
-            notes: row.notes || '',
+            notes: notesVal,
             is_active: true,
             needs_review: true,
             source: 'csv_import',
+            // ── Audit originals (immutable, never overwritten after creation) ──
+            _original_display_name: name,
+            _original_base_price:   bpVal,
+            _original_notes:        notesVal,
+            _original_unit:         uomVal,
           });
           added++;
         }
