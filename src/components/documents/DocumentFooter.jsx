@@ -17,10 +17,12 @@ import React from 'react';
  *   showLicense (boolean) - Mostrar licencia (default: true)
  *   showDate (boolean) - Mostrar fecha (default: false)
  */
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+
 export default function DocumentFooter({
   today = '',
-  companyName = 'FSM Pro',
-  licenseNumber = '#2024-FSM-01',
+  companyName = appConfig.company.name,
+  licenseNumber = appConfig.company.license,
   variant = 'standard',
   style = {},
   className = '',
