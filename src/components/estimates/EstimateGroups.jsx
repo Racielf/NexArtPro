@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceDisciplineGuard from '@/components/estimates/internal/PriceDisciplineGuard';
-import { calculateLineTotal, calculateVariance, runEstimateEngine } from '@/lib/estimateEngine';
+import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceFromCost } from '@/lib/estimateEngine';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -103,9 +103,11 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
 
         {/* Price — primary editable field + variance badge + smart price suggestions */}
         {(() => {
-          const book = parseFloat(item.book_price) || 0;
-          const real = parseFloat(item.unit_price) || 0;
-          const diff = real - book;
+          const book         = parseFloat(item.book_price) || 0;
+          const real         = parseFloat(item.unit_price) || 0;
+          const cost         = parseFloat(item.unit_cost)  || 0;
+          const autoSuggest  = suggestPriceFromCost(cost, 0.30);
+          const diff         = real - book;
           const isAtBook = book > 0 && Math.abs(diff) < 0.01;
           const isLow  = book > 0 && diff < -0.001;
           const isHigh = book > 0 && diff > 0.001;
@@ -132,15 +134,35 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
 
           return (
             <div className="flex flex-col gap-0.5">
-              <div className="relative">
+              <div className="relative flex items-center gap-1">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
                 <Input
                   type="number" step="0.01" value={item.unit_price}
                   onChange={e => update('unit_price', e.target.value)}
-                  className={`h-8 pl-4 text-sm text-right font-semibold border-slate-200 ${isLow ? 'border-red-300 bg-red-50/50 text-red-700' : 'text-slate-900'}`}
+                  className={`h-8 pl-4 pr-7 text-sm text-right font-semibold border-slate-200 ${isLow ? 'border-red-300 bg-red-50/50 text-red-700' : 'text-slate-900'}`}
                   min={0}
                 />
+                {/* ⚡ Auto-price button — internal only, never in PDF */}
+                {autoSuggest > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => update('unit_price', autoSuggest)}
+                    title={`Set suggested price at 30% margin: $${autoSuggest.toFixed(2)}`}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-[11px] leading-none hover:text-amber-500 text-slate-300 transition-colors"
+                  >
+                    ⚡
+                  </button>
+                )}
               </div>
+              {/* Suggested price hint */}
+              {autoSuggest > 0 && (
+                <span className={`text-[9px] font-semibold leading-none ${real < autoSuggest ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  {real < autoSuggest
+                    ? `Suggested (30%): $${autoSuggest.toFixed(2)}`
+                    : 'Above target margin'}
+                </span>
+              )}
+              
               {book > 0 && (() => {
                 const pct = (diff / book) * 100;
                 const isDanger  = pct < -15;

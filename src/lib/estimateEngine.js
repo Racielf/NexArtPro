@@ -110,6 +110,23 @@ export function calculateDeposit(grandTotal, depositPercent) {
   return toMoney(D(grandTotal).times(D(depositPercent).dividedBy(100)));
 }
 
+/**
+ * suggestPriceFromCost(unitCost, targetMargin)
+ * Returns the minimum sell price to achieve targetMargin (0–1).
+ * Formula: price = cost / (1 - margin)
+ * Guards against division by zero and invalid inputs.
+ * @param {number} unitCost - Internal cost per unit
+ * @param {number} targetMargin - Decimal margin (e.g. 0.30 for 30%)
+ * @returns {number} Suggested sell price rounded to 2 decimals, or 0 if invalid
+ */
+export function suggestPriceFromCost(unitCost, targetMargin = 0.30) {
+  const cost   = D(unitCost);
+  const margin = D(targetMargin);
+  if (cost.isZero() || cost.isNegative()) return 0;
+  if (margin.gte(1) || margin.isNegative()) return 0;
+  return toMoney(cost.dividedBy(new Decimal(1).minus(margin)));
+}
+
 // ─── Aggregate Engine (full estimate) ─────────────────────────────────────────
 
 /**
