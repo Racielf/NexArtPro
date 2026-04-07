@@ -33,8 +33,27 @@ import Settings from './pages/Settings';
 import ProfitabilityDashboard from './pages/ProfitabilityDashboard';
 
 
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    window.location.href = '/login';
+    return null;
+  }
+
+  return children;
+};
+
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated } = useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
@@ -55,9 +74,9 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
-      <Route path="/home" element={<PublicHome />} />
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<Dashboard />} />
+      <Route path="/" element={<PublicHome />} />
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/appointments" element={<Appointments />} />
