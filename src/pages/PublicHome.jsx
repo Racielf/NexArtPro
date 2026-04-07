@@ -284,14 +284,7 @@ export default function PublicHome() {
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-3">Service Needed</label>
                       <div className="flex flex-wrap gap-2">
-                        {[
-                          { id: 'bathroom', name: 'Bathroom Remodeling', icon: '🚿' },
-                          { id: 'kitchen', name: 'Kitchen Remodeling', icon: '🍳' },
-                          { id: 'painting', name: 'Painting', icon: '🎨' },
-                          { id: 'drywall', name: 'Drywall', icon: '🏗️' },
-                          { id: 'flooring', name: 'Flooring', icon: '📐' },
-                          { id: 'other', name: 'Other', icon: '⋯' },
-                        ].map(svc => (
+                        {SERVICES_LIST.map(svc => (
                           <button
                             key={svc.id}
                             type="button"
@@ -302,8 +295,8 @@ export default function PublicHome() {
                                 : 'bg-slate-100 text-slate-700 border-2 border-slate-200 hover:border-cta-orange hover:bg-orange-50'
                             }`}
                           >
-                            <span>{svc.icon}</span>
                             {svc.name}
+                            <ArrowRight className="w-3 h-3" />
                           </button>
                         ))}
                       </div>
