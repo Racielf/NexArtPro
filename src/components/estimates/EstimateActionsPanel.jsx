@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { logComm, logCommFailed } from '@/lib/commTracking';
+import MarginGuardModal from '@/components/estimates/internal/MarginGuardModal';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function fmt(isoStr) {
@@ -153,10 +154,14 @@ function ActionCard({ icon: Icon, title, subtitle, badge, badgeVariant, ctaLabel
 }
 
 // ── main component ────────────────────────────────────────────────────────────
+const MIN_SAFE_MARGIN = 15; // percent
+
 export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenSendReview }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [finishOpen,   setFinishOpen]   = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
+  const [marginGuardOpen, setMarginGuardOpen] = useState(false);
+  const [currentUser,  setCurrentUser]  = useState(null);
   const [omwActive,    setOmwActive]    = useState(false);
   const [omwMiles,     setOmwMiles]     = useState(estimate?.miles_traveled || 0);
   const [omwInterval,  setOmwInterval]  = useState(null);
@@ -171,6 +176,11 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const [deleteModal, setDeleteModal] = useState({ open: false, loading: false, error: null });
 
   const s = estimate?.status;
+
+  // ── Load current user for role check ─────────────────────────────────────
+  useEffect(() => {
+    base44.auth.me().then(u => setCurrentUser(u)).catch(() => {});
+  }, []);
 
   // ── Stop OMW if backend status changed away (e.g., manual update, timeout) ──
   useEffect(() => {
@@ -457,12 +467,30 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         </button>
         <button onClick={() => {
             if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
-            onOpenSendReview?.();
+            const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
+            if (!isNaN(marginPct) && marginPct < MIN_SAFE_MARGIN) {
+              setMarginGuardOpen(true);
+            } else {
+              onOpenSendReview?.();
+            }
           }}
           className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
           <Send className="w-3.5 h-3.5 text-indigo-500" />
           Review & Send
         </button>
+        {/* Inline margin warning — visible only when margin < 15% */}
+        {(() => {
+          const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? null);
+          if (isNaN(marginPct) || marginPct === null || marginPct >= MIN_SAFE_MARGIN) return null;
+          return (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 border border-red-200">
+              <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />
+              <span className="text-[9px] font-semibold text-red-600">
+                Margin {marginPct.toFixed(1)}% — below 15% minimum
+              </span>
+            </div>
+          );
+        })()}
         <button onClick={() => setApprovalOpen(true)}
           className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
           <ThumbsUp className="w-3.5 h-3.5 text-green-500" />
@@ -605,6 +633,15 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
           </div>
         </div>
       )}
+
+      {/* ── MARGIN GUARD MODAL — internal only, never in PDF/preview/send ── */}
+      <MarginGuardModal
+        open={marginGuardOpen}
+        onClose={() => setMarginGuardOpen(false)}
+        onContinue={() => { setMarginGuardOpen(false); onOpenSendReview?.(); }}
+        marginPct={estimate?.gross_margin_pct ?? estimate?.gross_margin_percent}
+        isAdmin={currentUser?.role === 'admin'}
+      />
 
       {/* ── MORE ACTIONS ──────────────────────────────────────────────────── */}
       <div className="mx-3 mt-3 pt-3 border-t border-slate-200">
