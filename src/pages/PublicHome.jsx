@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import { SERVICES_LIST, getServiceName } from '@/lib/services';
 import PublicHeader from '@/components/layout/PublicHeader';
@@ -249,24 +249,34 @@ export default function PublicHome() {
                           value={heroFormData.service}
                           onChange={e => setHeroFormData(p => ({ ...p, service: e.target.value }))}
                           required
-                          className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
+                          className="w-full px-3 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
                           placeholder="Search services..."
                           autoComplete="off"
                         />
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                         {heroFormData.service && (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-md z-10 max-h-40 overflow-y-auto">
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
                             {SERVICES_LIST.filter(svc => 
                               svc.name.toLowerCase().includes(heroFormData.service.toLowerCase())
-                            ).map(svc => (
-                              <button
-                                key={svc.id}
-                                type="button"
-                                onClick={() => setHeroFormData(p => ({ ...p, service: svc.name }))}
-                                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition border-b border-slate-100 last:border-b-0"
-                              >
-                                {svc.name}
-                              </button>
-                            ))}
+                            ).length > 0 ? (
+                              SERVICES_LIST.filter(svc => 
+                                svc.name.toLowerCase().includes(heroFormData.service.toLowerCase())
+                              ).map(svc => (
+                                <button
+                                  key={svc.id}
+                                  type="button"
+                                  onClick={() => setHeroFormData(p => ({ ...p, service: svc.name }))}
+                                  className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition border-b border-slate-100 last:border-b-0"
+                                >
+                                  <div className="font-medium">{svc.name}</div>
+                                  <div className="text-xs text-slate-500">{svc.description}</div>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-3 py-4 text-center text-sm text-slate-500">
+                                No services found
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
