@@ -26,6 +26,18 @@ export default function PublicHome() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  
+  // Hero quick form state
+  const [heroFormData, setHeroFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+    service: '',
+  });
+  const [heroLoading, setHeroLoading] = useState(false);
+  const [heroSuccess, setHeroSuccess] = useState(false);
+  const [heroError, setHeroError] = useState('');
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -88,28 +100,188 @@ export default function PublicHome() {
     }
   };
 
+  const handleHeroFormChange = (e) => {
+    const { name, value } = e.target;
+    setHeroFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleHeroSubmit = async (e) => {
+    e.preventDefault();
+    setHeroLoading(true);
+    setHeroError('');
+    setHeroSuccess(false);
+
+    try {
+      const { base44 } = await import('@/api/base44Client');
+      await base44.functions.invoke('submitContactForm', {
+        ...heroFormData,
+        details: '',
+        timeline: 'ASAP',
+        city: '',
+        zip: '',
+        budget: '',
+        propertyType: 'Residential',
+      });
+
+      setHeroSuccess(true);
+      setHeroFormData({ name: '', phone: '', email: '', address: '', service: '' });
+      setTimeout(() => setHeroSuccess(false), 5000);
+    } catch (err) {
+      setHeroError(err.message || 'An error occurred. Please try again.');
+    } finally {
+      setHeroLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <PublicHeader />
 
-      {/* HERO SECTION */}
-      <section className="bg-white text-slate-900 py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="max-w-2xl">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-              Quality Construction Services in Oregon
-            </h1>
-            <p className="text-lg text-slate-600 mb-12 leading-relaxed">
-              Expert craftsmanship. Licensed & insured. Your project deserves the best.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <a href="#estimate-form" className="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 hover:bg-blue-600 text-white font-semibold rounded-lg transition">
-                Get a Free Estimate
-                <ArrowRight className="w-5 h-5" />
-              </a>
-              <Link to="/login" className="inline-flex items-center gap-2 px-8 py-4 border-2 border-slate-900 text-slate-900 hover:bg-slate-50 font-semibold rounded-lg transition">
-                Team Access
-              </Link>
+      {/* HERO SECTION - Professional Construction Design */}
+      <section 
+        className="relative py-20 px-6 overflow-hidden"
+        style={{
+          backgroundImage: 'url(https://images.unsplash.com/photo-1541123603104-802565a7fce3?w=1600&h=800&fit=crop)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-black/60" />
+        
+        <div className="relative max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            
+            {/* Left: Headline + CTA */}
+            <div className="text-white">
+              <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+                Transform Your Space
+              </h1>
+              <p className="text-lg text-slate-100 mb-10 leading-relaxed max-w-xl">
+                Professional construction and remodeling services. Licensed, insured, and committed to excellence.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <button 
+                  onClick={() => document.querySelector('[data-hero-form]')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-cta-orange hover:bg-orange-600 text-white font-semibold rounded-lg transition shadow-lg"
+                >
+                  Get Free Estimate
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+                <Link to="/login" className="inline-flex items-center gap-2 px-8 py-4 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-lg transition backdrop-blur border border-white/30">
+                  Team Access
+                </Link>
+              </div>
+            </div>
+
+            {/* Right: Floating Card Form */}
+            <div className="relative" data-hero-form>
+              <div className="bg-white rounded-2xl shadow-2xl p-8">
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Free Estimate</h2>
+                <p className="text-sm text-slate-500 mb-6">No commitment • Takes 2 minutes</p>
+
+                {heroSuccess ? (
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Check className="w-6 h-6 text-green-600" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-900">Request received!</p>
+                    <p className="text-xs text-slate-500 mt-1">We'll contact you within 24 hours</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleHeroSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Service *</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {SERVICES_LIST.slice(0, 4).map(svc => (
+                          <button
+                            key={svc.id}
+                            type="button"
+                            onClick={() => setHeroFormData(p => ({ ...p, service: svc.name }))}
+                            className={`text-xs py-2 px-2 rounded font-medium transition border ${
+                              heroFormData.service === svc.name
+                                ? 'bg-slate-900 text-white border-slate-900'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            {svc.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Name *</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={heroFormData.name}
+                        onChange={handleHeroFormChange}
+                        required
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
+                        placeholder="Your name"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Phone *</label>
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={heroFormData.phone}
+                          onChange={handleHeroFormChange}
+                          required
+                          className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
+                          placeholder="(503) 555-0100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Email *</label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={heroFormData.email}
+                          onChange={handleHeroFormChange}
+                          required
+                          className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
+                          placeholder="you@example.com"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase">Address *</label>
+                      <input
+                        type="text"
+                        name="address"
+                        value={heroFormData.address}
+                        onChange={handleHeroFormChange}
+                        required
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent"
+                        placeholder="123 Main Street"
+                      />
+                    </div>
+
+                    {heroError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-red-700 text-xs">{heroError}</p>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={heroLoading || !heroFormData.service || !heroFormData.name || !heroFormData.phone || !heroFormData.email || !heroFormData.address}
+                      className="w-full py-3 bg-cta-orange hover:bg-orange-600 disabled:bg-slate-300 text-white font-semibold rounded-lg transition text-sm flex items-center justify-center gap-2"
+                    >
+                      {heroLoading ? 'Submitting...' : 'Get Free Estimate'}
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+
+                    <p className="text-xs text-slate-400 text-center">Licensed • Insured • Fast response</p>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
         </div>
