@@ -10,6 +10,7 @@ import { logComm, logCommFailed } from '@/lib/commTracking';
 import { logSend } from '@/lib/estimateAuditLog';
 import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 async function logDocument(estimateId, estimate, action, extra = {}) {
   await base44.entities.DocumentLog.create({
@@ -94,7 +95,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
    const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
    const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'pro');
    const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
-   const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from FSM Pro`);
+   const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from ${appConfig.appName}`);
    const [message, setMessage] = useState(
      `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`
    );

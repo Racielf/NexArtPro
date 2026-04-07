@@ -1,4 +1,5 @@
 import React from 'react';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 /**
  * FinalDocumentRenderer — Renderiza SOLO el DocumentData.
@@ -20,9 +21,9 @@ export default function FinalDocumentRenderer({ documentData }) {
               <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <div className="font-bold text-slate-900 text-lg">R.C Art Construction LLC</div>
-          <div className="text-slate-400 text-xs">Professional Art Services</div>
-          <div className="text-slate-400 text-xs mt-1">Portland, OR · info@rcartconstruction.com</div>
+          <div className="font-bold text-slate-900 text-lg">{appConfig.company.name}</div>
+          <div className="text-slate-400 text-xs">{appConfig.company.tagline}</div>
+          <div className="text-slate-400 text-xs mt-1">{appConfig.company.city} · {appConfig.company.email}</div>
         </div>
 
         <div className="border border-slate-200 rounded-xl overflow-hidden text-sm">
@@ -162,8 +163,8 @@ export default function FinalDocumentRenderer({ documentData }) {
 
       {/* Footer */}
       <div className="px-8 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-        <span>R.C Art Construction LLC · Portland, OR · info@rcartconstruction.com</span>
-        <span>Generated with NexArt Pro</span>
+        <span>{appConfig.company.name} · {appConfig.company.city} · {appConfig.company.email}</span>
+        <span>Generated with {appConfig.appName}</span>
       </div>
 
       {/* Signature */}

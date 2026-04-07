@@ -11,6 +11,7 @@ import ClientSignaturePad from '@/components/estimates/ClientSignaturePad';
 import ClientChangesRequest from '@/components/estimates/ClientChangesRequest';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 export default function ClientEstimateView() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -198,7 +199,7 @@ export default function ClientEstimateView() {
               <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <span className="text-sm font-bold text-slate-700">FSM Pro</span>
+          <span className="text-sm font-bold text-slate-700">{appConfig.appName}</span>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs">
@@ -300,7 +301,7 @@ export default function ClientEstimateView() {
           )}
 
         <p className="text-center text-[10px] text-slate-400 pb-6 print:hidden">
-          This estimate was issued by FSM Pro. Questions? Contact us at info@fsmpro.com
+          This estimate was issued by {appConfig.appName}. Questions? Contact us at {appConfig.company.email}
         </p>
       </div>
 

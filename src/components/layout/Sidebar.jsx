@@ -18,6 +18,7 @@ import {
   DollarSign,
   BarChart2
 } from 'lucide-react';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 const navGroups = [
   {
@@ -66,8 +67,8 @@ export default function Sidebar() {
             <Wrench className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="text-white font-bold text-sm">NexArt Pro</p>
-            <p className="text-gray-400 text-xs">R.C Art Construction</p>
+            <p className="text-white font-bold text-sm">{appConfig.appName}</p>
+            <p className="text-gray-400 text-xs">{appConfig.company.displayName}</p>
           </div>
         </div>
       </div>
