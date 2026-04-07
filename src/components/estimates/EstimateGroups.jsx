@@ -378,20 +378,40 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
     setLegalTerms(estimate.legal_terms || '');
   }, [estimate?.id]);
 
-  // Debounced auto-save — engine recalculates all line_totals via Decimal.js before saving
+  // Debounced auto-save — engine recalculates all line_totals via Decimal.js before saving.
+  // SECURITY: Internal audit fields (totalBookValue, totalVariance, marginPercentage) are
+  // intentionally excluded from the persisted payload — they live only in admin memory state.
   useEffect(() => {
     const t = setTimeout(() => {
       const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
+
+      // ── Public fields only — never expose internal audit data to the document payload ──
       onSave({
         ...estimate,
         groups: result.groups,
-        tax_rate: taxRate, discount_type: discountType, discount_value: discountValue,
+        // Financial inputs
+        tax_rate: taxRate,
+        discount_type: discountType,
+        discount_value: discountValue,
+        deposit_percent: depositPercent,
+        expiration_date: expirationDate,
+        notes,
+        internal_notes: internalNotes,
+        exclusions,
+        warranty_terms: warrantyTerms,
+        payment_terms: paymentTerms,
+        legal_terms: legalTerms,
+        // Computed customer-facing totals
+        subtotal: result.subtotal,
         discount_amount: result.discountAmount,
-        deposit_percent: depositPercent, deposit_amount: result.depositAmount,
-        expiration_date: expirationDate, notes, internal_notes: internalNotes, exclusions,
-        warranty_terms: warrantyTerms, payment_terms: paymentTerms, legal_terms: legalTerms,
-        subtotal: result.subtotal, tax_amount: result.taxAmount, total: result.total,
-        total_cost: result.totalCost, gross_margin: result.grossMargin, gross_margin_pct: result.grossMarginPct,
+        tax_amount: result.taxAmount,
+        total: result.total,
+        deposit_amount: result.depositAmount,
+        // Computed internal totals (cost/margin — stored for admin reports, never shown to client)
+        total_cost: result.totalCost,
+        gross_margin: result.grossMargin,
+        gross_margin_pct: result.grossMarginPct,
+        // ⛔ EXCLUDED: totalBookValue, totalVariance, marginPercentage — admin-only, not persisted
       });
     }, 800);
     return () => clearTimeout(t);
@@ -401,7 +421,11 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
   const addGroup = () => setGroups(prev => [...prev, { id: uid(), name: 'New Group', collapsed: false, items: [] }]);
 
-  const { subtotal, discountAmount, taxAmount, total, depositAmount, totalCost, grossMargin, grossMarginPct, totalVariance } =
+  // Live reactive calculation — admin sees real-time margin vs book price.
+  // Internal fields (totalBookValue, totalVariance, marginPercentage) stay in component memory only.
+  const { subtotal, discountAmount, taxAmount, total, depositAmount,
+          totalCost, grossMargin, grossMarginPct,
+          totalVariance, totalBookValue, marginPercentage } =
     runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -477,12 +501,24 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
                   {grossMarginPct.toFixed(1)}%
                 </span>
               </div>
-              {totalVariance !== 0 && (
-                <div className="flex justify-between gap-6 pt-2 border-t border-amber-200">
-                  <span className="text-slate-500 text-xs">vs Book Price</span>
-                  <span className={`font-semibold text-xs ${totalVariance >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {totalVariance >= 0 ? '+' : ''}{fmt(totalVariance)}
-                  </span>
+              {totalBookValue > 0 && (
+                <div className="pt-2 border-t border-amber-200 space-y-1.5">
+                  <div className="flex justify-between gap-6">
+                    <span className="text-slate-500 text-xs">Book Value Total</span>
+                    <span className="text-slate-500 text-xs font-medium">{fmt(totalBookValue)}</span>
+                  </div>
+                  <div className="flex justify-between gap-6">
+                    <span className="text-slate-500 text-xs">vs Book Price</span>
+                    <span className={`font-semibold text-xs ${totalVariance >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {totalVariance >= 0 ? '+' : ''}{fmt(totalVariance)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-6">
+                    <span className="text-slate-500 text-xs">Book Margin %</span>
+                    <span className={`font-bold text-xs ${marginPercentage >= 15 ? 'text-emerald-600' : marginPercentage >= 0 ? 'text-amber-600' : 'text-red-500'}`}>
+                      {marginPercentage >= 0 ? '+' : ''}{marginPercentage.toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
