@@ -25,6 +25,9 @@ export default function EstimateEditor() {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
   const [showSendModal, setShowSendModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDocumentOptions, setShowDocumentOptions] = useState(false);
@@ -51,6 +54,19 @@ export default function EstimateEditor() {
     await base44.entities.Estimate.update(estimateId, updatedEstimate);
     setEstimate(updatedEstimate);
     setSaving(false);
+
+    // ── LOW_MARGIN_ALERT: fire event-driven backend alert (non-admin only) ──
+    const marginPct = parseFloat(updatedEstimate?.gross_margin_pct ?? updatedEstimate?.gross_margin_percent ?? 100);
+    const isAdmin   = currentUser?.role === 'admin';
+    if (!isNaN(marginPct) && marginPct < 25 && !isAdmin && estimateId) {
+      // Fire-and-forget — never blocks the save flow
+      base44.functions.invoke('lowMarginAlert', {
+        estimate_id:     estimateId,
+        estimate_number: updatedEstimate.estimate_number,
+        client_name:     updatedEstimate.client_name,
+        margin_pct:      marginPct,
+      }).catch(err => console.warn('[lowMarginAlert] Notification failed (non-blocking):', err?.message));
+    }
   };
 
   const handleTemplateChange = async (template) => {
