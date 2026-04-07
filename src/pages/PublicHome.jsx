@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Home, Paintbrush, Wrench, Wind, Layers } from 'lucide-react';
+import { ArrowRight, Check, Home, Paintbrush, Wrench, Wind, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 const services = [
@@ -12,13 +12,20 @@ const services = [
 ];
 
 export default function PublicHome() {
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
+    service: '',
+    details: '',
+    size: '',
+    timeline: '',
+    address: '',
+    city: '',
+    zip: '',
     name: '',
     phone: '',
     email: '',
-    address: '',
-    service: '',
-    details: '',
+    budget: '',
+    propertyType: '',
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -27,6 +34,30 @@ export default function PublicHome() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const nextStep = () => {
+    if (currentStep < 6) setCurrentStep(currentStep + 1);
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
+
+  const isStepValid = () => {
+    switch (currentStep) {
+      case 1: return formData.service;
+      case 2: return formData.details && formData.size && formData.timeline;
+      case 3: return formData.address && formData.city && formData.zip;
+      case 4: return formData.name && formData.phone && formData.email;
+      case 5: return formData.budget && formData.propertyType;
+      case 6: return true;
+      default: return false;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -149,127 +180,364 @@ export default function PublicHome() {
         </div>
       </section>
 
-      {/* LEAD FORM SECTION */}
-      <section id="estimate-form" className="py-20 px-6 bg-white">
+      {/* MULTI-STEP FORM SECTION */}
+      <section id="estimate-form" className="py-24 px-6 bg-white">
         <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-slate-900 mb-3">Get Your Free Estimate</h2>
-            <p className="text-lg text-slate-600">Fill out the form below and we'll contact you within 24 hours</p>
-          </div>
-
-          {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-700 font-medium">✓ Estimate request submitted successfully! We'll contact you within 24 hours.</p>
-            </div>
-          )}
-
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 font-medium">✗ {error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5 bg-slate-50 p-8 rounded-xl border border-slate-200">
-            {/* Name & Phone - Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="John Smith"
-                />
+          {!success ? (
+            <>
+              {/* Header */}
+              <div className="text-center mb-10">
+                <h2 className="text-4xl font-bold text-slate-900 mb-3">Free Estimate</h2>
+                <p className="text-slate-600 text-sm">No commitment • Takes less than 2 minutes</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Phone *</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="(555) 123-4567"
-                />
-              </div>
-            </div>
 
-            {/* Email & Address - Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="john@example.com"
-                />
+              {/* Progress Bar */}
+              <div className="mb-12">
+                <div className="flex justify-between mb-3">
+                  {[1, 2, 3, 4, 5, 6].map((step) => (
+                    <div
+                      key={step}
+                      className={`h-2 flex-1 rounded-full mx-1 transition-colors ${
+                        step <= currentStep ? 'bg-slate-900' : 'bg-slate-200'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 text-center">Step {currentStep} of 6</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Address *</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="123 Main St, City, State"
-                />
-              </div>
-            </div>
 
-            {/* Service Selection */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Service Needed *</label>
-              <select
-                name="service"
-                value={formData.service}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              {/* Form Content */}
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* STEP 1: Project Type */}
+                {currentStep === 1 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6">What type of project?</h3>
+                      <div className="grid grid-cols-1 gap-3">
+                        {services.map((svc) => (
+                          <button
+                            key={svc.name}
+                            type="button"
+                            onClick={() => handleSelectChange('service', svc.name)}
+                            className={`p-4 rounded-lg border-2 font-semibold transition text-left flex items-center gap-3 ${
+                              formData.service === svc.name
+                                ? 'border-slate-900 bg-slate-900 text-white'
+                                : 'border-slate-200 bg-white text-slate-900 hover:border-slate-300'
+                            }`}
+                          >
+                            <svc.icon className="w-6 h-6 flex-shrink-0" />
+                            {svc.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: Project Details */}
+                {currentStep === 2 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6">Tell us about your project</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Project Description *</label>
+                          <textarea
+                            name="details"
+                            value={formData.details}
+                            onChange={handleInputChange}
+                            rows={3}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent resize-none"
+                            placeholder="Describe what you want to accomplish..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-3">Approximate Size</label>
+                          <div className="space-y-2">
+                            {['Under 500 sq ft', '500 - 1,500 sq ft', '1,500 - 3,000 sq ft', 'Over 3,000 sq ft'].map((size) => (
+                              <label key={size} className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="size"
+                                  value={size}
+                                  checked={formData.size === size}
+                                  onChange={handleInputChange}
+                                  className="w-4 h-4 accent-slate-900"
+                                />
+                                <span className="text-sm text-slate-700">{size}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-3">Timeline *</label>
+                          <div className="space-y-2">
+                            {['ASAP', '1–2 weeks', '1 month+'].map((time) => (
+                              <label key={time} className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="timeline"
+                                  value={time}
+                                  checked={formData.timeline === time}
+                                  onChange={handleInputChange}
+                                  className="w-4 h-4 accent-slate-900"
+                                />
+                                <span className="text-sm text-slate-700">{time}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3: Location */}
+                {currentStep === 3 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6">Where is your project?</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Street Address *</label>
+                          <input
+                            type="text"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                            placeholder="123 Main Street"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">City *</label>
+                            <input
+                              type="text"
+                              name="city"
+                              value={formData.city}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                              placeholder="Portland"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">ZIP Code *</label>
+                            <input
+                              type="text"
+                              name="zip"
+                              value={formData.zip}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                              placeholder="97201"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 4: Contact Info */}
+                {currentStep === 4 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6">How can we reach you?</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
+                          <input
+                            type="text"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                            placeholder="John Smith"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number *</label>
+                          <input
+                            type="tel"
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                            placeholder="(555) 123-4567"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Email Address *</label>
+                          <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                            placeholder="john@example.com"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 5: Budget & Property */}
+                {currentStep === 5 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6">Almost done!</h3>
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-3">Budget Range *</label>
+                          <div className="space-y-2">
+                            {['Under $5,000', '$5,000 - $15,000', 'Over $15,000'].map((budget) => (
+                              <label key={budget} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition">
+                                <input
+                                  type="radio"
+                                  name="budget"
+                                  value={budget}
+                                  checked={formData.budget === budget}
+                                  onChange={handleInputChange}
+                                  className="w-4 h-4 accent-slate-900"
+                                />
+                                <span className="text-sm font-medium text-slate-700">{budget}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-3">Property Type *</label>
+                          <div className="space-y-2">
+                            {['Residential', 'Rental', 'Commercial'].map((type) => (
+                              <label key={type} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition">
+                                <input
+                                  type="radio"
+                                  name="propertyType"
+                                  value={type}
+                                  checked={formData.propertyType === type}
+                                  onChange={handleInputChange}
+                                  className="w-4 h-4 accent-slate-900"
+                                />
+                                <span className="text-sm font-medium text-slate-700">{type}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 6: Review & Submit */}
+                {currentStep === 6 && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-6">Ready to submit?</h3>
+                      <div className="bg-slate-50 rounded-lg p-6 space-y-4 mb-6">
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Service:</span>
+                          <span className="font-semibold text-slate-900">{formData.service}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Location:</span>
+                          <span className="font-semibold text-slate-900">{formData.city}, {formData.zip}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Contact:</span>
+                          <span className="font-semibold text-slate-900">{formData.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Timeline:</span>
+                          <span className="font-semibold text-slate-900">{formData.timeline}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 text-center">We'll contact you within 24 hours with a free estimate</p>
+                    </div>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700 text-sm">{error}</p>
+                  </div>
+                )}
+
+                {/* Navigation Buttons */}
+                <div className="flex gap-4 pt-6">
+                  <button
+                    type="button"
+                    onClick={prevStep}
+                    disabled={currentStep === 1}
+                    className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition ${
+                      currentStep === 1
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-slate-200 text-slate-900 hover:bg-slate-300'
+                    }`}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                    Back
+                  </button>
+                  {currentStep < 6 ? (
+                    <button
+                      type="button"
+                      onClick={nextStep}
+                      disabled={!isStepValid()}
+                      className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition ${
+                        isStepValid()
+                          ? 'bg-slate-900 text-white hover:bg-blue-600'
+                          : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Next
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 py-3 bg-slate-900 hover:bg-blue-600 disabled:bg-slate-400 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+                    >
+                      {loading ? 'Submitting...' : 'Request Free Estimate'}
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </form>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Check className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-3">Thank You!</h3>
+              <p className="text-slate-600 mb-2">Your estimate request has been submitted successfully.</p>
+              <p className="text-sm text-slate-500">We'll contact you within 24 hours to discuss your project.</p>
+              <button
+                onClick={() => {
+                  setSuccess(false);
+                  setCurrentStep(1);
+                  setFormData({
+                    service: '',
+                    details: '',
+                    size: '',
+                    timeline: '',
+                    address: '',
+                    city: '',
+                    zip: '',
+                    name: '',
+                    phone: '',
+                    email: '',
+                    budget: '',
+                    propertyType: '',
+                  });
+                }}
+                className="mt-8 px-6 py-3 bg-slate-900 hover:bg-blue-600 text-white font-semibold rounded-lg transition"
               >
-                <option value="">Select a service...</option>
-                {services.map((svc) => (
-                  <option key={svc.name} value={svc.name}>{svc.name}</option>
-                ))}
-              </select>
+                Submit Another Estimate
+              </button>
             </div>
-
-            {/* Project Details */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Project Details</label>
-              <textarea
-                name="details"
-                value={formData.details}
-                onChange={handleInputChange}
-                rows={4}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                placeholder="Tell us about your project..."
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-slate-400 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
-            >
-              {loading ? 'Submitting...' : 'Get Your Free Estimate'}
-              {!loading && <ArrowRight className="w-5 h-5" />}
-            </button>
-
-            <p className="text-xs text-slate-500 text-center">
-              We'll contact you within 24 hours to discuss your project
-            </p>
-          </form>
+          )}
         </div>
       </section>
 
