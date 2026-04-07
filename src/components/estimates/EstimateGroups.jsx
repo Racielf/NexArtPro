@@ -609,13 +609,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
               <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
                 className="h-8 text-sm w-36 border-slate-200" />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-xs font-medium">Customer can approve</span>
-              <button onClick={() => setApprovalMode(m => m === 'one' ? 'multiple' : 'one')}
-                className="text-xs text-primary font-semibold hover:underline">
-                {approvalMode === 'one' ? 'One option' : 'Multiple options'}
-              </button>
-            </div>
+
             <button onClick={() => setShowCost(v => !v)}
               className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors ${showCost ? 'bg-amber-100 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
               {showCost ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
