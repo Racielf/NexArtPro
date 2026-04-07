@@ -15,6 +15,8 @@ import PriceDisciplineGuard from '@/components/estimates/internal/PriceDisciplin
 import PriceAuditLog from '@/components/estimates/internal/PriceAuditLog';
 import { usePriceAuditLog } from '@/hooks/usePriceAuditLog';
 import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
+import { logChange } from '@/lib/estimateAuditLog';
+import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -54,11 +56,13 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   };
 
   // Called on onBlur of price/cost — logs only if value actually changed
-  const handlePriceBlur = (field) => {
+  const handlePriceBlur = async (field) => {
     const oldValue = committedRef.current[field];
     const newValue = item[field];
-    if (onLogChange) {
-      onLogChange({ item, field, oldValue, newValue });
+    if (oldValue !== newValue) {
+      if (onLogChange) {
+        onLogChange({ item, field, oldValue, newValue });
+      }
     }
     committedRef.current[field] = newValue;
   };
@@ -862,6 +866,9 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
 
       {/* ── INTERNAL PRICE AUDIT LOG — session-only, never in PDF/preview/send ── */}
       <PriceAuditLog entries={priceLog} onClear={clearLog} />
+
+      {/* ── INTERNAL AUDIT HISTORY — persistent audit trail from EstimateVersionHistory ── */}
+      {estimate?.id && <EstimateAuditHistory estimateId={estimate.id} />}
 
     </div>
   );

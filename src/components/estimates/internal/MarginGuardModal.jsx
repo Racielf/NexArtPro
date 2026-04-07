@@ -15,25 +15,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertTriangle, ShieldAlert, Lock, CheckCircle2, KeyRound } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { logApproval } from '@/lib/estimateAuditLog';
 
 // PIN is stored as an app-level setting — fetched from a known estimate field or env.
 // Default fallback PIN for demo purposes only (replace with Settings entity in production).
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_APPROVAL_PIN || '1234';
 
-async function logApprovalAudit({ user, marginPct, estimateId, estimateNumber }) {
-  try {
-    await base44.entities.EstimateVersionHistory.create({
-      estimate_id: estimateId,
-      estimate_number: estimateNumber,
-      version: 0, // audit-only entry, not a versioning event
-      archived_reason: 'manual_override',
-      changes_note: `Manual margin approval. Margin: ${parseFloat(marginPct).toFixed(1)}%. Approved by: ${user?.email || user?.full_name || 'admin'}.`,
-      archived_by: user?.email || user?.full_name || 'admin',
-    });
-  } catch {
-    // Audit failure is non-blocking — the send continues regardless
-    console.warn('[MarginGuard] Audit log failed (non-blocking)');
-  }
+async function handleApprovalLog({ user, marginPct, estimateId, estimateNumber }) {
+  // Use centralized audit logger
+  await logApproval({
+    estimate_id: estimateId,
+    estimate_number: estimateNumber,
+    user,
+    marginPct,
+  });
 }
 
 export default function MarginGuardModal({ open, onClose, onContinue, marginPct, isAdmin, currentUser, estimate }) {
@@ -62,7 +57,7 @@ export default function MarginGuardModal({ open, onClose, onContinue, marginPct,
     setApproved(true);
 
     // Log audit event
-    await logApprovalAudit({
+    await handleApprovalLog({
       user: currentUser,
       marginPct,
       estimateId: estimate?.id,
@@ -105,12 +100,12 @@ export default function MarginGuardModal({ open, onClose, onContinue, marginPct,
 
         {/* Non-admin: blocked */}
         {!isAdmin && (
-          <div className="flex items-center gap-3 rounded-lg bg-slate-50 border border-slate-200 px-4 py-3">
-            <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <div className="flex items-center gap-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+            <Lock className="w-4 h-4 text-red-500 flex-shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-slate-700">Admin approval required</p>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                Contact your administrator to approve and send this estimate.
+              <p className="text-xs font-semibold text-red-700">⛔ Admin approval required</p>
+              <p className="text-[11px] text-red-600 mt-0.5 leading-snug">
+                Employees cannot approve estimates below 25% margin. Contact an administrator.
               </p>
             </div>
           </div>

@@ -7,6 +7,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { logComm, logCommFailed } from '@/lib/commTracking';
+import { logSend } from '@/lib/estimateAuditLog';
 import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
@@ -144,6 +145,16 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       try {
       await base44.integrations.Core.SendEmail({ to: recipientEmail, subject, body: fullMessage });
       await logDocument(estimate.id, estimate, 'sent_email', { recipient_email: recipientEmail, subject, secure_link: clientLink });
+      // ── Audit log: estimate sent ──
+      const currentUser = await base44.auth.me().catch(() => null);
+      if (currentUser) {
+        await logSend({
+          estimate_id: estimate.id,
+          estimate_number: estimate.estimate_number,
+          user: currentUser,
+          client_email: recipientEmail,
+        }).catch(err => console.warn('[audit] send log failed:', err?.message));
+      }
       await logComm({
           event_type: 'estimate_sent',
           client_id: estimate.client_id || '',
