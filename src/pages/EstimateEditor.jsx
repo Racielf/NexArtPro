@@ -51,7 +51,7 @@ export default function EstimateEditor() {
 
   const handleSave = async (updatedEstimate) => {
     setSaving(true);
-    await base44.entities.Estimate.update(estimateId, updatedEstimate);
+    await base44.entities.Estimate.update(estimateId, { ...updatedEstimate, updated_by: 'Admin' });
     setEstimate(updatedEstimate);
     setSaving(false);
 
@@ -78,7 +78,7 @@ export default function EstimateEditor() {
         template,
       },
     };
-    await base44.entities.Estimate.update(estimateId, updated);
+    await base44.entities.Estimate.update(estimateId, { ...updated, updated_by: 'Admin' });
     setEstimate(updated);
     setSaving(false);
   };
@@ -92,7 +92,7 @@ export default function EstimateEditor() {
         options: newOptions,
       },
     };
-    await base44.entities.Estimate.update(estimateId, updated);
+    await base44.entities.Estimate.update(estimateId, { ...updated, updated_by: 'Admin' });
     setEstimate(updated);
     setSaving(false);
   };
@@ -101,7 +101,7 @@ export default function EstimateEditor() {
   const handleCustomerChange = async (customerData, clientRecord) => {
     setSaving(true);
     const updated = { ...estimate, ...customerData };
-    await base44.entities.Estimate.update(estimateId, updated);
+    await base44.entities.Estimate.update(estimateId, { ...updated, updated_by: 'Admin' });
     setEstimate(updated);
     if (clientRecord) setClient(clientRecord);
     setSaving(false);

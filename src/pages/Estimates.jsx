@@ -51,6 +51,8 @@ export default function Estimates() {
       subtotal: 0,
       tax_amount: 0,
       total: 0,
+      created_by: 'Admin',
+      updated_by: 'Admin',
     });
     setCreating(false);
     navigate(`/estimate-editor?id=${created.id}&new=1`);

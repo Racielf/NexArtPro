@@ -58,6 +58,14 @@
     "assigned_to": {
       "type": "string"
     },
+    "created_by": {
+      "type": "string",
+      "description": "Email or name of user who created the estimate"
+    },
+    "updated_by": {
+      "type": "string",
+      "description": "Email or name of user who last updated the estimate"
+    },
     "groups": {
       "type": "array",
       "description": "Work groups, each containing line items",
