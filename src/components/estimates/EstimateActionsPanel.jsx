@@ -194,6 +194,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   }, [s, omwActive, omwInterval]);
 
   // ── derived context ──────────────────────────────────────────────────────
+  const role = currentUser?.role || 'employee';
   const hasAppointment  = !!estimate?.appointment_id;
   const visitDone       = ['visit_completed', 'sent', 'viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
   const isSent          = !!estimate?.sent_at || ['sent', 'viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
@@ -640,7 +641,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         onClose={() => setMarginGuardOpen(false)}
         onContinue={() => { setMarginGuardOpen(false); onOpenSendReview?.(); }}
         marginPct={estimate?.gross_margin_pct ?? estimate?.gross_margin_percent}
-        isAdmin={currentUser?.role === 'admin'}
+        isAdmin={role === 'admin'}
         currentUser={currentUser}
         estimate={estimate}
       />
