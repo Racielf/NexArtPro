@@ -92,11 +92,15 @@ export default function PublicHome() {
                 <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <span className="text-lg font-bold text-slate-900">{appConfig.company.name}</span>
+            <Link to="/" className="text-lg font-bold text-slate-900">{appConfig.company.name}</Link>
           </div>
-          <Link to="/login" className="px-5 py-2 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-lg transition">
-            Team Access
-          </Link>
+          <nav className="flex items-center gap-8">
+            <Link to="/services" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Services</Link>
+            <Link to="/gallery" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Gallery</Link>
+            <Link to="/about" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">About</Link>
+            <Link to="/contact" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Contact</Link>
+            <Link to="/login" className="px-5 py-2 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-lg transition">Team Access</Link>
+          </nav>
         </div>
       </header>
 
