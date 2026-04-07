@@ -36,7 +36,7 @@ const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'r
 // calcTotals is now delegated to estimateEngine.js (Decimal.js-backed pure functions)
 
 // ─── Single Line Item Row ──────────────────────────────────────────────────────
-function LineItemRow({ item, onUpdate, onRemove, showCost }) {
+function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false }) {
   const [expanded, setExpanded] = useState(!item.service_name);
 
   const update = (field, value) => {
@@ -50,7 +50,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
   };
 
   return (
-    <div className={`border-b border-slate-100 last:border-0 transition-colors ${expanded ? 'bg-blue-50/20' : 'hover:bg-slate-50/60'}`}>
+    <div className={`border-b border-slate-100 last:border-0 transition-colors ${isFixed ? 'bg-emerald-50/60 ring-1 ring-inset ring-emerald-300' : expanded ? 'bg-blue-50/20' : 'hover:bg-slate-50/60'}`}>
       {/* Main row — grid: grip | service(2fr) | qty(55px) | unit(80px) | price(110px) | book(80px) | [cost] | total(110px) | remove */}
       <div className="grid items-center gap-2 px-4 py-2.5"
         style={{ gridTemplateColumns: '20px 2fr 55px 80px 110px 80px 1fr 110px 28px' }}>
@@ -320,7 +320,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
 }
 
 // ─── Work Group ────────────────────────────────────────────────────────────────
-function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
+function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds = new Set() }) {
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(group.name);
 
@@ -402,7 +402,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
               <div className="py-6 text-center text-slate-300 text-xs">No items yet — click below to add</div>
             )}
             {group.items.map(item => (
-              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} />
+              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} />
             ))}
           </div>
 
@@ -464,6 +464,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
   const [showCost, setShowCost] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [approvalMode, setApprovalMode] = useState('one');
+  const [fixedItemIds, setFixedItemIds] = useState(new Set()); // tracks recently auto-adjusted items
 
   // Sync when estimate id changes
   useEffect(() => {
@@ -533,6 +534,33 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
   const addGroup = () => setGroups(prev => [...prev, { id: uid(), name: 'New Group', collapsed: false, items: [] }]);
 
+  // ── Fix Low Margin Items — internal only, never persisted as a flag to client ──
+  const handleFixLowMargin = () => {
+    const confirmed = window.confirm('Only items below 30% margin will be adjusted. Continue?');
+    if (!confirmed) return;
+
+    const adjustedIds = new Set();
+    setGroups(prev => prev.map(group => ({
+      ...group,
+      items: (group.items || []).map(item => {
+        const cost  = parseFloat(item.unit_cost)  || 0;
+        const price = parseFloat(item.unit_price) || 0;
+        if (cost <= 0) return item; // no cost data — skip
+        const meta = getNegotiationMeta(cost, price);
+        if (meta.status === 'healthy') return item; // margin >= 30% — skip
+        // Adjust to 30% margin: price = cost / (1 - 0.30)
+        const newPrice = parseFloat((cost / 0.70).toFixed(2));
+        adjustedIds.add(item.id);
+        const newLineTotal = parseFloat(((parseFloat(item.quantity) || 1) * newPrice).toFixed(2));
+        return { ...item, unit_price: newPrice, line_total: newLineTotal, _autoAdjusted: true };
+      }),
+    })));
+
+    setFixedItemIds(adjustedIds);
+    // Clear highlight after 4 seconds
+    setTimeout(() => setFixedItemIds(new Set()), 4000);
+  };
+
   // Live reactive calculation — admin sees real-time margin vs book price.
   // Internal fields (totalBookValue, totalVariance, marginPercentage) stay in component memory only.
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
@@ -579,7 +607,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
       {/* ── GROUPS ── */}
       {groups.map(group => (
         <WorkGroup key={group.id} group={group} onUpdate={updateGroup} onRemove={removeGroup}
-          showCost={showCost} isOnly={groups.length === 1} />
+          showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} />
       ))}
 
       {/* Add group button */}
@@ -683,6 +711,23 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
                     sub={marginState === 'healthy' ? '✓ Healthy' : marginState === 'warning' ? '⚠ Below target' : '✗ Low margin'}
                   />
                 </div>
+                {/* ── Fix Low Margin button — internal only ── */}
+                <button
+                  type="button"
+                  onClick={handleFixLowMargin}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    marginTop: 10, padding: '6px 12px', borderRadius: 8,
+                    fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)',
+                    color: '#4f46e5', transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; }}
+                >
+                  🛡️ Fix Low Margin Items
+                </button>
+
                 {/* Book reference row (only when book data exists) */}
                 {totalBookValue > 0 && (
                   <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(241,245,249,0.9)', borderRadius: 8, border: '1px solid #e2e8f0' }}>
