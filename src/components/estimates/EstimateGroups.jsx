@@ -140,13 +140,25 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
                   min={0}
                 />
               </div>
-              {book > 0 && (
-                <span className={`text-[9px] font-bold text-right leading-none tracking-tight ${isLow ? 'text-red-500' : greenColor}`}>
-                  {isLow  ? `↓ -$${Math.abs(diff).toFixed(2)} vs book` : ''}
-                  {isHigh ? `↑ +$${Math.abs(diff).toFixed(2)} vs book` : ''}
-                  {isOk   ? '✓ at book' : ''}
-                </span>
-              )}
+              {book > 0 && (() => {
+                const pct = (diff / book) * 100;
+                const isDanger  = pct < -15;
+                const isWarning = pct < 0 && pct >= -15;
+                const isGreen   = pct >= 0;
+                const dotColor  = isDanger ? 'bg-red-500 shadow-red-400' : isWarning ? 'bg-amber-400 shadow-amber-300' : 'bg-emerald-500 shadow-emerald-300';
+                const textColor = isDanger ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-emerald-600';
+                const bgColor   = isDanger ? 'bg-red-50 border-red-200' : isWarning ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200';
+                const label     = isDanger  ? `Critical ${pct.toFixed(1)}%`
+                                : isWarning ? `−${Math.abs(pct).toFixed(1)}% disc`
+                                : isGreen && diff > 0 ? `+${pct.toFixed(1)}%`
+                                : '✓ at book';
+                return (
+                  <span className={`inline-flex items-center gap-1 text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${bgColor} ${textColor}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 shadow-sm ${dotColor}`} />
+                    {label}
+                  </span>
+                );
+              })()}
               {/* ── Smart Price Suggestions — ADMIN ONLY, never in PDF/client doc ── */}
               {book > 0 && (
                 <div className="flex gap-0.5 mt-0.5">
