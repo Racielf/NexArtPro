@@ -30,7 +30,7 @@ const emptyItem = () => ({
   taxable: true,
 });
 
-const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal'];
+const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box', 'gal'];
 
 // ─── Totals Calculator ────────────────────────────────────────────────────────
 function calcTotals(groups, taxRate, discountType, discountValue, depositPercent) {
@@ -74,9 +74,9 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
 
   return (
     <div className={`border-b border-slate-100 last:border-0 transition-colors ${expanded ? 'bg-blue-50/20' : 'hover:bg-slate-50/60'}`}>
-      {/* Main row — grid: grip | service(2fr) | qty+unit(90px) | price(110px) | book(80px) | [cost] | total(100px) | remove */}
+      {/* Main row — grid: grip | service(2fr) | qty(55px) | unit(80px) | price(110px) | book(80px) | [cost] | total(110px) | remove */}
       <div className="grid items-center gap-2 px-4 py-2.5"
-        style={{ gridTemplateColumns: '20px 2fr 90px 110px 80px 1fr 100px 28px' }}>
+        style={{ gridTemplateColumns: '20px 2fr 55px 80px 110px 80px 1fr 110px 28px' }}>
 
         {/* Grip */}
         <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing flex justify-center">
@@ -112,17 +112,17 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           )}
         </div>
 
-        {/* Qty + Unit — inline, compact */}
-        <div className="flex items-center gap-1">
-          <Input
-            type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
-            className="h-8 text-sm text-center border-slate-200 px-1 w-10 flex-shrink-0" min={0}
-          />
-          <select value={item.unit} onChange={e => update('unit', e.target.value)}
-            className="h-8 text-[11px] border border-slate-200 rounded px-1 bg-white text-slate-500 flex-1 min-w-0">
-            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-        </div>
+        {/* Qty — standalone, prominent */}
+        <Input
+          type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
+          className="h-8 text-sm text-center border-slate-200 font-semibold px-1 w-full" min={0}
+        />
+
+        {/* Unit of Measure — standalone, readable */}
+        <select value={item.unit} onChange={e => update('unit', e.target.value)}
+          className="h-8 text-[11px] border border-slate-200 rounded px-1.5 bg-white text-slate-600 w-full font-medium">
+          {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
 
         {/* Price — primary editable field + variance badge (green intensity increases with markup) */}
         {(() => {
@@ -190,9 +190,16 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           )}
         </div>
 
-        {/* Line total */}
-        <div className="text-right font-bold text-slate-900 text-sm tabular-nums">
-          ${(item.line_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        {/* Line total — shows formula for transparency */}
+        <div className="text-right">
+          <div className="font-bold text-slate-900 text-sm tabular-nums">
+            ${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          {(parseFloat(item.quantity) > 0 && parseFloat(item.unit_price) > 0) && (
+            <div className="text-[9px] text-slate-400 leading-none mt-0.5 tabular-nums">
+              {parseFloat(item.quantity) % 1 === 0 ? parseInt(item.quantity) : parseFloat(item.quantity).toFixed(2)} {item.unit} × ${parseFloat(item.unit_price).toFixed(2)}
+            </div>
+          )}
         </div>
 
         {/* Remove */}
@@ -289,14 +296,15 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly }) {
       {!group.collapsed && (
         <>
           <div className="grid text-[10px] text-slate-400 font-semibold uppercase tracking-wide px-4 py-2 bg-slate-50 border-b border-slate-100"
-            style={{ gridTemplateColumns: '20px 2fr 90px 110px 80px 1fr 100px 28px' }}>
+            style={{ gridTemplateColumns: '20px 2fr 55px 80px 110px 80px 1fr 110px 28px' }}>
             <div />
             <div>Service</div>
-            <div className="text-center">Qty / Unit</div>
-            <div className="text-right text-slate-600">Price</div>
+            <div className="text-center text-slate-500">Qty</div>
+            <div className="text-center text-slate-500">UOM</div>
+            <div className="text-right text-slate-600">Unit Price</div>
             <div className="text-right text-slate-400 text-[9px]">Book<br/>ref</div>
             <div className={`text-right ${showCost ? 'text-amber-600' : ''}`}>{showCost ? 'Cost' : ''}</div>
-            <div className="text-right">Total</div>
+            <div className="text-right">Line Total</div>
             <div />
           </div>
 
