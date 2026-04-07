@@ -13,13 +13,11 @@ export default function PublicHeader() {
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-          <div className="w-10 h-10 bg-white/90 rounded-lg flex items-center justify-center">
-            <svg viewBox="0 0 40 40" className="w-6 h-6" fill="none">
-              <path d="M8 28L20 12L32 28" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M15 28V22H25V28" stroke="#1a56db" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <span className="text-lg font-bold text-white drop-shadow-md">{appConfig.company.name}</span>
+          <img 
+            src="https://media.base44.com/images/public/69cc888bb34befdf803a06b0/93e30ea2b_LogomodernodeconstruccionRCART.png" 
+            alt="R.C ART Construction" 
+            className="h-12"
+          />
         </Link>
 
         {/* Navigation */}
