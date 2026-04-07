@@ -168,9 +168,6 @@ export default function PublicHome() {
                   Get Free Estimate
                   <ArrowRight className="w-5 h-5" />
                 </button>
-                <Link to="/login" className="inline-flex items-center gap-2 px-8 py-4 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-lg transition backdrop-blur border border-white/30">
-                  Team Access
-                </Link>
               </div>
             </div>
 
