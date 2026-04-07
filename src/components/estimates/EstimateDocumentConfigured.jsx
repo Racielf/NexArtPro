@@ -74,13 +74,13 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
                 </div>
               )}
               <div>
-                {v.businessName !== false && <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>FSM Pro</div>}
-                <div style={{ color: '#64748b', fontSize: 11 }}>Field Service Management</div>
+                {v.businessName !== false && <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>R.C Art Construction LLC</div>}
+                <div style={{ color: '#64748b', fontSize: 11 }}>Professional Art Services</div>
               </div>
             </div>
             {v.businessAddress !== false && (
               <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.8 }}>
-                Portland, OR 97201<br />info@fsmpro.com<br />(503) 555-0100
+                Portland, OR 97201<br />info@rcartconstruction.com<br />(503) 555-0100
               </div>
             )}
           </div>
@@ -261,8 +261,8 @@ export default function EstimateDocumentConfigured({ estimate, visibility = {} }
 
       {/* ── FOOTER ── */}
       <div style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', padding: '14px 52px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>FSM Pro · Portland, OR · info@fsmpro.com · (503) 555-0100</div>
-        <div style={{ fontSize: 11, color: '#cbd5e1' }}>Estimate #{estimate.estimate_number} · Valid 30 days from date issued</div>
+        <div style={{ fontSize: 11, color: '#94a3b8' }}>R.C Art Construction LLC · Portland, OR · info@rcartconstruction.com · (503) 555-0100</div>
+        <div style={{ fontSize: 11, color: '#cbd5e1' }}>Estimate #{estimate.estimate_number} · Generated with NexArt Pro</div>
       </div>
 
     </div>

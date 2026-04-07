@@ -20,9 +20,9 @@ export default function FinalDocumentRenderer({ documentData }) {
               <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <div className="font-bold text-slate-900 text-lg">FSM Pro</div>
-          <div className="text-slate-400 text-xs">Field Service Management</div>
-          <div className="text-slate-400 text-xs mt-1">Portland, OR · info@fsmpro.com</div>
+          <div className="font-bold text-slate-900 text-lg">R.C Art Construction LLC</div>
+          <div className="text-slate-400 text-xs">Professional Art Services</div>
+          <div className="text-slate-400 text-xs mt-1">Portland, OR · info@rcartconstruction.com</div>
         </div>
 
         <div className="border border-slate-200 rounded-xl overflow-hidden text-sm">
@@ -159,6 +159,12 @@ export default function FinalDocumentRenderer({ documentData }) {
             <p className="text-slate-600 text-sm whitespace-pre-wrap">{documentData[s.key]}</p>
           </div>
         ))}
+
+      {/* Footer */}
+      <div className="px-8 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+        <span>R.C Art Construction LLC · Portland, OR · info@rcartconstruction.com</span>
+        <span>Generated with NexArt Pro</span>
+      </div>
 
       {/* Signature */}
       {documentData.status === 'signed' && documentData.signer_name && (
