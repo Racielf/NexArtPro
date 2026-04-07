@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+// Labor-type categories (for Material/Labor filter)
+const LABOR_CATEGORIES = new Set(['Labor', 'Misc', 'Admin', 'Plumbing', 'Electrical', 'HVAC']);
 import { Plus, Search } from 'lucide-react';
 import { PRICE_BOOK_SEED } from './priceBookSeed';
 import { SERVICES_SEED, CATEGORIES } from '@/components/settings/services/servicesSeed';
@@ -31,6 +33,7 @@ export default function PriceBookSection() {
   const [showForm, setShowForm]   = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [showMarket, setShowMarket] = useState(true);
+  const [typeFilter, setTypeFilter] = useState('All'); // 'All' | 'Material' | 'Labor'
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -43,6 +46,8 @@ export default function PriceBookSection() {
       if (filter === 'Priced'   &&  unpriced) return false;
       if (filter === 'Unpriced' && !unpriced) return false;
       if (catFilter !== 'All' && e.category !== catFilter) return false;
+      if (typeFilter === 'Labor'    &&  !LABOR_CATEGORIES.has(e.category)) return false;
+      if (typeFilter === 'Material' &&   LABOR_CATEGORIES.has(e.category)) return false;
       if (q) {
         const inName  = e.display_name?.toLowerCase().includes(q);
         const inCat   = e.category?.toLowerCase().includes(q);
@@ -52,7 +57,7 @@ export default function PriceBookSection() {
       }
       return true;
     });
-  }, [entries, search, filter, catFilter]);
+  }, [entries, search, filter, catFilter, typeFilter]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const openNew  = () => { setEditingEntry(null); setShowForm(true); };
@@ -79,6 +84,7 @@ export default function PriceBookSection() {
 
   const toggleActive = (id) => setEntries(prev => prev.map(e => e.id === id ? { ...e, is_active: !e.is_active } : e));
   const toggleReview = (id) => setEntries(prev => prev.map(e => e.id === id ? { ...e, needs_review: !e.needs_review } : e));
+  const handleInlineUpdate = (id, newPrice) => setEntries(prev => prev.map(e => e.id === id ? { ...e, base_price: newPrice, updated_date: new Date().toISOString() } : e));
 
   // ── CSV Import merge handler ───────────────────────────────────────────────
   const handleCsvImport = (rows) => {
@@ -182,6 +188,18 @@ export default function PriceBookSection() {
           ))}
         </div>
 
+        {/* Material / Labor filter */}
+        <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+          {['All', 'Material', 'Labor'].map(t => (
+            <button key={t} onClick={() => setTypeFilter(t)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
+                typeFilter === t ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}>
+              {t}
+            </button>
+          ))}
+        </div>
+
         {/* Category dropdown */}
         <select
           className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-600 focus:outline-none focus:border-blue-400 transition"
@@ -224,6 +242,7 @@ export default function PriceBookSection() {
         onEdit={openEdit}
         onToggleActive={toggleActive}
         onToggleReview={toggleReview}
+        onInlineUpdate={handleInlineUpdate}
         showMarket={showMarket}
       />
 
