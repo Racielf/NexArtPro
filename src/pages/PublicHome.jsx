@@ -141,7 +141,7 @@ export default function PublicHome() {
       <section 
         className="relative py-32 px-6 overflow-hidden min-h-screen flex items-center"
         style={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1541123603104-802565a7fce3?w=1600&h=900&fit=crop)',
+          backgroundImage: 'url(https://media.base44.com/images/public/69cc888bb34befdf803a06b0/09739ac11_image.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
