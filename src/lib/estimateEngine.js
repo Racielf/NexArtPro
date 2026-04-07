@@ -157,9 +157,22 @@ export function runEstimateEngine(groups = [], {
     }, new Decimal(0))
   );
 
+  // Total book value = sum of (book_price * qty) for items that have book data
+  const totalBookValue = toMoney(
+    allItems.reduce((acc, item) => {
+      const b = D(item.book_price);
+      return b.isZero() ? acc : acc.plus(b.times(D(item.quantity)));
+    }, new Decimal(0))
+  );
+
   const grossMargin    = toMoney(D(grandTotal).minus(D(totalCost)));
   const grossMarginPct = grandTotal > 0
     ? toMoney(D(grossMargin).dividedBy(D(grandTotal)).times(100))
+    : 0;
+
+  // marginPercentage: variance vs book (how much above/below book price we're selling)
+  const marginPercentage = totalBookValue > 0
+    ? toMoney(D(totalVariance).dividedBy(D(totalBookValue)).times(100))
     : 0;
 
   return {
@@ -173,7 +186,9 @@ export function runEstimateEngine(groups = [], {
     depositAmount: depositAmt,
     // Internal audit (admin only)
     totalCost,
-    totalVariance,   // sum of (unit_price - book_price) * qty across all items with book data
+    totalBookValue,      // sum of book_price * qty across all items with book data
+    totalVariance,       // sum of (unit_price - book_price) * qty — positive = selling above book
+    marginPercentage,    // totalVariance / totalBookValue * 100
     grossMargin,
     grossMarginPct,
   };
