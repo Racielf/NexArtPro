@@ -34,7 +34,7 @@ import ProfitabilityDashboard from './pages/ProfitabilityDashboard';
 
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoadingAuth } = useAuth();
+  const { isAuthenticated, isLoadingAuth, navigateToLogin } = useAuth();
 
   if (isLoadingAuth) {
     return (
@@ -45,7 +45,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    window.location.href = '/login';
+    navigateToLogin();
     return null;
   }
 
