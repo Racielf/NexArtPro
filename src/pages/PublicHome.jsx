@@ -1,18 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Home, Paintbrush, Wrench, Wind, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
-
-const services = [
-  { icon: Paintbrush, name: 'Painting', description: 'Interior and exterior painting services' },
-  { icon: Wrench, name: 'Kitchen Remodeling', description: 'Complete kitchen redesigns and upgrades' },
-  { icon: Home, name: 'Bathroom Remodeling', description: 'Modern bathroom renovations' },
-  { icon: Wind, name: 'Drywall', description: 'Professional drywall installation and repair' },
-  { icon: Layers, name: 'Flooring', description: 'Quality flooring solutions' },
-];
+import { SERVICES_LIST, getServiceName } from '@/lib/services';
 
 export default function PublicHome() {
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedServiceFromUrl, setSelectedServiceFromUrl] = useState(null);
   const [formData, setFormData] = useState({
     service: '',
     details: '',
@@ -30,6 +24,18 @@ export default function PublicHome() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const serviceId = urlParams.get('service');
+    if (serviceId) {
+      const serviceName = getServiceName(serviceId);
+      if (serviceName) {
+        setFormData(prev => ({ ...prev, service: serviceName }));
+        setSelectedServiceFromUrl(serviceId);
+      }
+    }
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -216,20 +222,26 @@ export default function PublicHome() {
                 {currentStep === 1 && (
                   <div className="space-y-6">
                     <div>
+                      {selectedServiceFromUrl && (
+                        <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-blue-700 font-medium">
+                            ✓ Selected Service: <strong>{formData.service}</strong>
+                          </p>
+                        </div>
+                      )}
                       <h3 className="text-2xl font-bold text-slate-900 mb-6">What type of project?</h3>
                       <div className="grid grid-cols-1 gap-3">
-                        {services.map((svc) => (
+                        {SERVICES_LIST.map((svc) => (
                           <button
-                            key={svc.name}
+                            key={svc.id}
                             type="button"
                             onClick={() => handleSelectChange('service', svc.name)}
-                            className={`p-4 rounded-lg border-2 font-semibold transition text-left flex items-center gap-3 ${
+                            className={`p-4 rounded-lg border-2 font-semibold transition text-left ${
                               formData.service === svc.name
                                 ? 'border-slate-900 bg-slate-900 text-white'
                                 : 'border-slate-200 bg-white text-slate-900 hover:border-slate-300'
                             }`}
                           >
-                            <svc.icon className="w-6 h-6 flex-shrink-0" />
                             {svc.name}
                           </button>
                         ))}

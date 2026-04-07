@@ -1,35 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Paintbrush, Wrench, Home, Wind, Layers } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
-
-const services = [
-  {
-    icon: Wrench,
-    name: 'Bathroom Remodeling',
-    description: 'Modern bathroom renovations with premium fixtures, tile work, and spacious designs that enhance both functionality and aesthetics.'
-  },
-  {
-    icon: Wrench,
-    name: 'Kitchen Remodeling',
-    description: 'Complete kitchen redesigns including cabinetry, countertops, appliances, and layout optimization for the heart of your home.'
-  },
-  {
-    icon: Paintbrush,
-    name: 'Painting',
-    description: 'Professional interior and exterior painting services using premium paints and expert application techniques.'
-  },
-  {
-    icon: Wind,
-    name: 'Drywall',
-    description: 'Expert drywall installation, repair, and finishing for smooth, professional walls and ceilings.'
-  },
-  {
-    icon: Layers,
-    name: 'Flooring',
-    description: 'Quality flooring solutions including hardwood, tile, vinyl, and laminate installations tailored to your style.'
-  },
-];
+import { SERVICES_LIST } from '@/lib/services';
 
 export default function Services() {
   return (
@@ -66,20 +39,30 @@ export default function Services() {
 
       {/* SERVICES GRID */}
       <section className="py-24 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-            {services.map((svc, i) => {
-              const Icon = svc.icon;
-              return (
-                <div key={i} className="flex flex-col items-start">
-                  <div className="w-14 h-14 bg-slate-900 rounded-lg flex items-center justify-center mb-6">
-                    <Icon className="w-7 h-7 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-slate-900 mb-3 text-lg">{svc.name}</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{svc.description}</p>
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {SERVICES_LIST.map((svc) => (
+              <div key={svc.id} className="group overflow-hidden rounded-xl border border-slate-200 hover:shadow-lg transition flex flex-col">
+                <div className="relative h-56 overflow-hidden bg-slate-200">
+                  <img
+                    src={svc.image}
+                    alt={svc.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                  />
                 </div>
-              );
-            })}
+                <div className="p-6 flex-1 flex flex-col">
+                  <h3 className="font-semibold text-slate-900 mb-3 text-lg">{svc.name}</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed mb-6 flex-1">{svc.description}</p>
+                  <Link
+                    to={`/estimate?service=${svc.id}`}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-blue-600 text-white font-semibold rounded-lg transition self-start"
+                  >
+                    Get Estimate
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
