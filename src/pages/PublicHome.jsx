@@ -133,24 +133,15 @@ export default function PublicHome() {
         </div>
       </section>
 
-      {/* SERVICES SECTION */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-4xl font-bold text-slate-900 mb-20">What We Do</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-            {services.map((svc, i) => {
-              const Icon = svc.icon;
-              return (
-                <div key={i} className="flex flex-col items-start">
-                  <div className="w-14 h-14 bg-slate-900 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-600 transition">
-                    <Icon className="w-7 h-7 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-slate-900 mb-3 text-lg">{svc.name}</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{svc.description}</p>
-                </div>
-              );
-            })}
-          </div>
+      {/* SERVICES SECTION - Link to dedicated Services page */}
+      <section className="py-24 px-6 bg-white border-t border-slate-200">
+        <div className="max-w-5xl mx-auto text-center">
+          <h2 className="text-4xl font-bold text-slate-900 mb-6">Our Services</h2>
+          <p className="text-lg text-slate-600 mb-10">Explore our full range of professional construction services</p>
+          <Link to="/services" className="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 hover:bg-blue-600 text-white font-semibold rounded-lg transition">
+            View All Services
+            <ArrowRight className="w-5 h-5" />
+          </Link>
         </div>
       </section>
 
