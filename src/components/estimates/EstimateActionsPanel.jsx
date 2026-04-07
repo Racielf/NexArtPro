@@ -154,7 +154,7 @@ function ActionCard({ icon: Icon, title, subtitle, badge, badgeVariant, ctaLabel
 }
 
 // ── main component ────────────────────────────────────────────────────────────
-const MIN_SAFE_MARGIN = 15; // percent
+const MIN_SAFE_MARGIN = 25; // percent — admin PIN required below this
 
 export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenSendReview }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -486,7 +486,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
             <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 border border-red-200">
               <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />
               <span className="text-[9px] font-semibold text-red-600">
-                Margin {marginPct.toFixed(1)}% — below 15% minimum
+                Margin {marginPct.toFixed(1)}% — admin PIN required
               </span>
             </div>
           );
@@ -641,6 +641,8 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         onContinue={() => { setMarginGuardOpen(false); onOpenSendReview?.(); }}
         marginPct={estimate?.gross_margin_pct ?? estimate?.gross_margin_percent}
         isAdmin={currentUser?.role === 'admin'}
+        currentUser={currentUser}
+        estimate={estimate}
       />
 
       {/* ── MORE ACTIONS ──────────────────────────────────────────────────── */}
