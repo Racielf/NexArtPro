@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceDisciplineGuard from '@/components/estimates/internal/PriceDisciplineGuard';
-import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceFromCost } from '@/lib/estimateEngine';
+import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -107,6 +107,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           const real         = parseFloat(item.unit_price) || 0;
           const cost         = parseFloat(item.unit_cost)  || 0;
           const autoSuggest  = suggestPriceFromCost(cost, 0.30);
+          const negMeta      = getNegotiationMeta(cost, real);
           const diff         = real - book;
           const isAtBook = book > 0 && Math.abs(diff) < 0.01;
           const isLow  = book > 0 && diff < -0.001;
@@ -139,7 +140,10 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
                 <Input
                   type="number" step="0.01" value={item.unit_price}
                   onChange={e => update('unit_price', e.target.value)}
-                  className={`h-8 pl-4 pr-7 text-sm text-right font-semibold border-slate-200 ${isLow ? 'border-red-300 bg-red-50/50 text-red-700' : 'text-slate-900'}`}
+                  className={`h-8 pl-4 pr-7 text-sm text-right font-semibold border-slate-200 ${
+                    negMeta.status === 'critical' ? 'border-red-400 bg-red-50/60 text-red-700' :
+                    isLow ? 'border-red-300 bg-red-50/50 text-red-700' : 'text-slate-900'
+                  }`}
                   min={0}
                 />
                 {/* ⚡ Auto-price button — internal only, never in PDF */}
@@ -154,14 +158,49 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
                   </button>
                 )}
               </div>
-              {/* Suggested price hint */}
-              {autoSuggest > 0 && (
-                <span className={`text-[9px] font-semibold leading-none ${real < autoSuggest ? 'text-emerald-600' : 'text-slate-400'}`}>
-                  {real < autoSuggest
-                    ? `Suggested (30%): $${autoSuggest.toFixed(2)}`
-                    : 'Above target margin'}
-                </span>
-              )}
+              {/* ── Negotiation Helper — internal only, never in PDF/client ── */}
+              {negMeta.status !== 'none' && (() => {
+                const { margin, suggested, floor, status } = negMeta;
+                const statusIcon =
+                  status === 'healthy'  ? <span style={{ color: '#10b981', fontSize: 10 }}>✔</span> :
+                  status === 'warning'  ? <span style={{ color: '#f59e0b', fontSize: 10 }}>⚠</span> :
+                                          <span style={{ color: '#ef4444', fontSize: 10 }}>✗</span>;
+                const marginColor =
+                  status === 'healthy' ? '#10b981' :
+                  status === 'warning' ? '#d97706' : '#ef4444';
+
+                return (
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', gap: 2,
+                    padding: '4px 6px', borderRadius: 6, marginTop: 2,
+                    background: status === 'critical' ? 'rgba(239,68,68,0.06)' : status === 'warning' ? 'rgba(245,158,11,0.06)' : 'rgba(16,185,129,0.06)',
+                    border: `1px solid ${status === 'critical' ? 'rgba(239,68,68,0.2)' : status === 'warning' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}`,
+                  }}>
+                    {/* Margin row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {statusIcon}
+                      <span style={{ fontSize: 9, fontWeight: 700, color: marginColor }}>
+                        {margin !== null ? `${margin.toFixed(1)}% margin` : '—'}
+                      </span>
+                    </div>
+                    {/* Suggested & floor prices */}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <span style={{ fontSize: 9, color: '#64748b' }}>
+                        Suggested (30%): <strong style={{ color: '#10b981' }}>${suggested.toFixed(2)}</strong>
+                      </span>
+                      <span style={{ fontSize: 9, color: '#64748b' }}>
+                        Min (20%): <strong style={{ color: '#f59e0b' }}>${floor.toFixed(2)}</strong>
+                      </span>
+                    </div>
+                    {/* Critical warning */}
+                    {status === 'critical' && (
+                      <span style={{ fontSize: 9, fontWeight: 700, color: '#b91c1c' }}>
+                        Below minimum margin (20%)
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
               
               {book > 0 && (() => {
                 const pct = (diff / book) * 100;

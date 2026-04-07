@@ -127,6 +127,45 @@ export function suggestPriceFromCost(unitCost, targetMargin = 0.30) {
   return toMoney(cost.dividedBy(new Decimal(1).minus(margin)));
 }
 
+/**
+ * getNegotiationMeta(unitCost, unitPrice)
+ * Central helper for the Negotiation Helper UI (internal only — never in PDF/client docs).
+ * Returns margin %, suggested price (30%), floor price (20%), and health status.
+ *
+ * Formulas:
+ *   margin      = (price - cost) / price  [gross margin %]
+ *   suggested   = cost / (1 - 0.30)       [price at 30% margin]
+ *   floor       = cost / (1 - 0.20)       [price at 20% margin]
+ *   status:
+ *     healthy  → margin >= 30%
+ *     warning  → margin >= 20% && < 30%
+ *     critical → margin < 20%
+ *
+ * @returns {{ margin: number, suggested: number, floor: number, status: 'healthy'|'warning'|'critical'|'none' }}
+ */
+export function getNegotiationMeta(unitCost, unitPrice) {
+  const cost  = D(unitCost);
+  const price = D(unitPrice);
+
+  // No cost data → nothing to show
+  if (cost.isZero() || cost.isNegative()) return { margin: null, suggested: 0, floor: 0, status: 'none' };
+
+  const suggested = toMoney(cost.dividedBy(new Decimal(1).minus(D(0.30))));
+  const floor     = toMoney(cost.dividedBy(new Decimal(1).minus(D(0.20))));
+
+  // If price is 0 or below cost, treat as critical
+  if (price.isZero() || price.lte(cost)) {
+    return { margin: 0, suggested, floor, status: 'critical' };
+  }
+
+  const margin = toMoney(price.minus(cost).dividedBy(price).times(100)); // percentage
+  const status =
+    margin >= 30 ? 'healthy' :
+    margin >= 20 ? 'warning' : 'critical';
+
+  return { margin, suggested, floor, status };
+}
+
 // ─── Aggregate Engine (full estimate) ─────────────────────────────────────────
 
 /**
