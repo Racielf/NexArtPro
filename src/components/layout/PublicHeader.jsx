@@ -25,6 +25,16 @@ export default function PublicHeader() {
         {/* Navigation */}
         <nav className="flex items-center gap-8">
           <Link 
+            to="/" 
+            className={`text-sm font-medium transition ${
+              isActive('/') 
+                ? 'text-slate-900 border-b-2 border-blue-600' 
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Home
+          </Link>
+          <Link 
             to="/services" 
             className={`text-sm font-medium transition ${
               isActive('/services') 
