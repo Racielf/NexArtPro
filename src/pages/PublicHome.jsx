@@ -70,41 +70,81 @@ export default function PublicHome() {
       </header>
 
       {/* HERO SECTION */}
-      <section className="bg-gradient-to-br from-slate-900 to-slate-800 text-white py-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Professional Construction & Remodeling Services
-          </h1>
-          <p className="text-xl text-slate-300 mb-10 leading-relaxed">
-            Expert craftsmanship. On-time delivery. Quality you can trust. Get your free estimate today.
-          </p>
-          <a href="#estimate-form" className="inline-flex items-center gap-2 px-8 py-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition">
-            Get a Free Estimate
-            <ArrowRight className="w-5 h-5" />
-          </a>
+      <section className="bg-white text-slate-900 py-24 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="max-w-2xl">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+              Quality Construction Services in Oregon
+            </h1>
+            <p className="text-lg text-slate-600 mb-12 leading-relaxed">
+              Expert craftsmanship. Licensed & insured. Your project deserves the best.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <a href="#estimate-form" className="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 hover:bg-blue-600 text-white font-semibold rounded-lg transition">
+                Get a Free Estimate
+                <ArrowRight className="w-5 h-5" />
+              </a>
+              <Link to="/login" className="inline-flex items-center gap-2 px-8 py-4 border-2 border-slate-900 text-slate-900 hover:bg-slate-50 font-semibold rounded-lg transition">
+                Team Access
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* SERVICES SECTION */}
-      <section className="py-20 px-6 bg-slate-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-900 mb-4">Our Services</h2>
-            <p className="text-lg text-slate-600">From painting to complete remodels, we handle it all with professional expertise</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <section className="py-24 px-6 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-bold text-slate-900 mb-20">What We Do</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
             {services.map((svc, i) => {
               const Icon = svc.icon;
               return (
-                <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 hover:shadow-lg transition text-center">
-                  <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-6 h-6 text-blue-500" />
+                <div key={i} className="flex flex-col items-start">
+                  <div className="w-14 h-14 bg-slate-900 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-600 transition">
+                    <Icon className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="font-semibold text-slate-900 mb-2">{svc.name}</h3>
-                  <p className="text-sm text-slate-600">{svc.description}</p>
+                  <h3 className="font-semibold text-slate-900 mb-3 text-lg">{svc.name}</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">{svc.description}</p>
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* TRUST SECTION */}
+      <section className="py-24 px-6 bg-slate-50">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <Check className="w-6 h-6 text-slate-900 flex-shrink-0" />
+                <h3 className="font-semibold text-slate-900">Licensed in Oregon</h3>
+              </div>
+              <p className="text-sm text-slate-600">Full compliance with state regulations</p>
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <Check className="w-6 h-6 text-slate-900 flex-shrink-0" />
+                <h3 className="font-semibold text-slate-900">Fully Insured</h3>
+              </div>
+              <p className="text-sm text-slate-600">Complete coverage for your peace of mind</p>
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <Check className="w-6 h-6 text-slate-900 flex-shrink-0" />
+                <h3 className="font-semibold text-slate-900">Free Estimates</h3>
+              </div>
+              <p className="text-sm text-slate-600">Transparent pricing, no hidden fees</p>
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <Check className="w-6 h-6 text-slate-900 flex-shrink-0" />
+                <h3 className="font-semibold text-slate-900">Quality First</h3>
+              </div>
+              <p className="text-sm text-slate-600">Professional craftsmanship always</p>
+            </div>
           </div>
         </div>
       </section>
@@ -234,27 +274,50 @@ export default function PublicHome() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="bg-slate-900 text-white py-16 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Transform Your Space?</h2>
-          <p className="text-lg text-slate-300 mb-8">
-            Join hundreds of satisfied customers who've trusted us with their renovation projects
+      <section className="bg-white text-slate-900 py-24 px-6 border-t border-slate-200">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-4xl font-bold mb-6">Let's Get Started</h2>
+          <p className="text-lg text-slate-600 mb-12">
+            Get your free estimate today. We'll contact you within 24 hours.
           </p>
-          <a href="#estimate-form" className="inline-flex items-center gap-2 px-8 py-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition">
-            Get a Free Estimate Now
+          <a href="#estimate-form" className="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 hover:bg-blue-600 text-white font-semibold rounded-lg transition">
+            Request Your Free Estimate
             <ArrowRight className="w-5 h-5" />
           </a>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-slate-50 border-t border-slate-200 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-600">
-          <div>&copy; 2026 {appConfig.company.name}. All rights reserved.</div>
-          <div className="flex items-center gap-6">
-            <span>📍 {appConfig.company.city}</span>
-            <span>📧 {appConfig.company.email}</span>
-            <span>📞 {appConfig.company.phone}</span>
+      <footer className="bg-slate-900 text-white py-12 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8 border-b border-slate-700">
+            <div>
+              <h4 className="font-semibold mb-3">Contact</h4>
+              <div className="space-y-2 text-sm text-slate-300">
+                <p>📍 {appConfig.company.city}</p>
+                <p>📧 {appConfig.company.email}</p>
+                <p>📞 {appConfig.company.phone}</p>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-3">Quick Links</h4>
+              <div className="space-y-2">
+                <a href="#estimate-form" className="text-sm text-slate-300 hover:text-white transition">Get Estimate</a>
+                <br />
+                <Link to="/login" className="text-sm text-slate-300 hover:text-white transition">Team Access</Link>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-3">Services</h4>
+              <div className="text-sm text-slate-300 space-y-1">
+                <p>Painting</p>
+                <p>Kitchen & Bath</p>
+                <p>Flooring & Drywall</p>
+              </div>
+            </div>
+          </div>
+          <div className="pt-8 text-center text-sm text-slate-400">
+            &copy; 2026 {appConfig.company.name}. All rights reserved.
           </div>
         </div>
       </footer>
