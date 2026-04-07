@@ -106,6 +106,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
           const book = parseFloat(item.book_price) || 0;
           const real = parseFloat(item.unit_price) || 0;
           const diff = real - book;
+          const isAtBook = book > 0 && Math.abs(diff) < 0.01;
           const isLow  = book > 0 && diff < -0.001;
           const isHigh = book > 0 && diff > 0.001;
           const isOk   = book > 0 && !isLow && !isHigh;
@@ -159,9 +160,9 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
                   </span>
                 );
               })()}
-              {/* ── Smart Price Suggestions — ADMIN ONLY, never in PDF/client doc ── */}
+              {/* ── Smart Price Suggestions + Reset — ADMIN ONLY ── */}
               {book > 0 && (
-                <div className="flex gap-0.5 mt-0.5">
+                <div className="flex gap-0.5 mt-0.5 flex-wrap">
                   {suggested.map(s => (
                     <button
                       key={s.margin}
@@ -177,6 +178,17 @@ function LineItemRow({ item, onUpdate, onRemove, showCost }) {
                       {s.label}
                     </button>
                   ))}
+                  {/* Reset to book price */}
+                  {!isAtBook && (
+                    <button
+                      type="button"
+                      onClick={() => update('unit_price', book)}
+                      title={`Reset to book price $${book.toFixed(2)}`}
+                      className="text-[9px] px-1 py-0.5 rounded border border-slate-200 bg-white text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-colors leading-none font-semibold"
+                    >
+                      ↺ book
+                    </button>
+                  )}
                 </div>
               )}
             </div>
