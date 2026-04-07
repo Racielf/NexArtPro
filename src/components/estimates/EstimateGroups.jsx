@@ -561,11 +561,45 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
               </div>
             );
 
+            // Margin alert state (thresholds: healthy ≥40, warning ≥30, critical <30)
+            const marginState =
+              grossMarginPct >= 40 ? 'healthy' :
+              grossMarginPct >= 30 ? 'warning' : 'critical';
+
             return (
               <div style={{ minWidth: 200 }}>
                 <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#d97706', marginBottom: 10 }}>
                   🔒 Internal Audit View
                 </p>
+
+                {/* ── Critical margin banner — internal only ── */}
+                {marginState === 'critical' && (
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 8,
+                    background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.22)',
+                    borderRadius: 8, padding: '7px 10px', marginBottom: 10,
+                  }}>
+                    <span style={{ fontSize: 13, lineHeight: 1.4, flexShrink: 0 }}>⚠️</span>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: '#b91c1c', lineHeight: 1.45, margin: 0 }}>
+                      Low margin alert: this estimate is below the 30% target. Review labor or material pricing.
+                    </p>
+                  </div>
+                )}
+
+                {/* ── Warning margin banner — internal only ── */}
+                {marginState === 'warning' && (
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 8,
+                    background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.22)',
+                    borderRadius: 8, padding: '7px 10px', marginBottom: 10,
+                  }}>
+                    <span style={{ fontSize: 13, lineHeight: 1.4, flexShrink: 0 }}>⚠</span>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: '#92400e', lineHeight: 1.45, margin: 0 }}>
+                      Margin below 40% target. Consider adjusting pricing before sending.
+                    </p>
+                  </div>
+                )}
+
                 {/* 3-card grid */}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <AuditCard
@@ -585,7 +619,7 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
                     color={healthColor.text}
                     bg={healthColor.bg}
                     border={healthColor.border}
-                    sub={grossMarginPct > 40 ? '✓ Healthy' : grossMarginPct >= 25 ? '⚠ Review' : '✗ Low margin'}
+                    sub={marginState === 'healthy' ? '✓ Healthy' : marginState === 'warning' ? '⚠ Below target' : '✗ Low margin'}
                   />
                 </div>
                 {/* Book reference row (only when book data exists) */}
