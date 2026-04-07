@@ -27,14 +27,14 @@ export default function EstimateDocumentOptions({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span>Document Options</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 py-3">
+        <div className="space-y-3 py-3 overflow-y-auto flex-1 min-h-0">
           <p className="text-xs text-slate-500">Choose what appears in the document sent to clients.</p>
 
           {[
