@@ -4,6 +4,7 @@ import { PRICE_BOOK_SEED } from './priceBookSeed';
 import { SERVICES_SEED, CATEGORIES } from '@/components/settings/services/servicesSeed';
 import PriceBookTable from './PriceBookTable';
 import PriceBookForm from './PriceBookForm';
+import PriceBookImport from './PriceBookImport';
 
 const FILTERS = ['All', 'Active', 'Inactive', 'Needs Review', 'Priced', 'Unpriced'];
 
@@ -69,6 +70,52 @@ export default function PriceBookSection() {
 
   const toggleActive = (id) => setEntries(prev => prev.map(e => e.id === id ? { ...e, is_active: !e.is_active } : e));
   const toggleReview = (id) => setEntries(prev => prev.map(e => e.id === id ? { ...e, needs_review: !e.needs_review } : e));
+
+  // ── CSV Import merge handler ───────────────────────────────────────────────
+  const handleCsvImport = (rows) => {
+    let added = 0, updated = 0, skipped = 0;
+    setEntries(prev => {
+      const next = [...prev];
+      rows.forEach(row => {
+        const name = (row.service_name || '').trim();
+        if (!name) { skipped++; return; }
+        const idx = next.findIndex(e => e.display_name?.toLowerCase() === name.toLowerCase());
+        if (idx >= 0) {
+          // Update book_price (and optional fields) — never overwrite manual edits
+          next[idx] = {
+            ...next[idx],
+            base_price: row.book_price ?? next[idx].base_price,
+            ...(row.category && { category: row.category }),
+            ...(row.uom     && { unit: row.uom }),
+            ...(row.notes   && { notes: row.notes }),
+            ...(row.estimated_cost && { estimated_cost: row.estimated_cost }),
+            needs_review: false,
+          };
+          updated++;
+        } else {
+          // New entry
+          next.push({
+            id: genId(),
+            display_name: name,
+            _service_name_ref: name,
+            service_id: null,
+            category: row.category || 'Misc',
+            unit: row.uom || 'each',
+            base_price: row.book_price ?? null,
+            estimated_cost: row.estimated_cost || null,
+            markup: null,
+            notes: row.notes || '',
+            is_active: true,
+            needs_review: true,
+            source: 'csv_import',
+          });
+          added++;
+        }
+      });
+      return next;
+    });
+    return { added, updated, skipped };
+  };
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const total    = entries.length;
@@ -147,6 +194,11 @@ export default function PriceBookSection() {
           className="flex items-center gap-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 transition rounded-xl px-4 py-2 flex-shrink-0">
           <Plus className="w-3.5 h-3.5" /> Add Price
         </button>
+      </div>
+
+      {/* CSV Import */}
+      <div className="mb-4">
+        <PriceBookImport onImport={handleCsvImport} />
       </div>
 
       {/* Table */}
