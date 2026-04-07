@@ -79,16 +79,48 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
     }
   };
 
+  const enabled = !!estimate.client_name && !loading;
+
   return (
-    <Button
-      size="sm"
+    <button
       onClick={handleConvert}
-      disabled={loading || !estimate.client_name}
+      disabled={!enabled}
       title={!estimate.client_name ? 'Customer required' : 'Convert to Work Order'}
-      className={`gap-1.5 text-white ${estimate.client_name ? 'bg-purple-600 hover:bg-purple-700' : 'bg-slate-300 cursor-not-allowed'}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '7px 14px',
+        fontSize: '13px',
+        fontWeight: 600,
+        borderRadius: '6px',
+        border: '1px solid transparent',
+        cursor: enabled ? 'pointer' : 'not-allowed',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        letterSpacing: '0.3px',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        backgroundColor: enabled ? '#6366f1' : '#cbd5e1',
+        color: 'white',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+        opacity: enabled ? 1 : 0.7,
+      }}
+      onMouseEnter={e => {
+        if (!enabled) return;
+        e.currentTarget.style.backgroundColor = '#4f46e5';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.25)';
+        e.currentTarget.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={e => {
+        if (!enabled) return;
+        e.currentTarget.style.backgroundColor = '#6366f1';
+        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+      onMouseDown={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+      onMouseUp={e => { if (enabled) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.25)'; } }}
     >
-      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ClipboardList className="w-3.5 h-3.5" />}
+      {loading ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <ClipboardList style={{ width: 14, height: 14 }} />}
       Convert to Work Order
-    </Button>
+    </button>
   );
 }
