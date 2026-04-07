@@ -8,10 +8,10 @@ import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight } from 'lucide-react';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 export default function Invoices() {
   const navigate = useNavigate();
-  const branding = useCompanyBranding();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -38,8 +38,8 @@ export default function Invoices() {
   };
 
   const handlePrint = (inv) => {
-    // Use company branding from context
-    const companyName = branding.companyName;
+    // Use company branding from appConfig
+    const companyName = appConfig.company.name;
     const content = `
       <html><head><title>Invoice #${inv.invoice_number}</title>
       <style>
@@ -87,7 +87,7 @@ export default function Invoices() {
         ${inv.status === 'paid' ? `<p style="color:green;font-weight:bold">✓ PAID</p>` : ''}
       </div>
       ${inv.notes ? `<div style="margin-top:30px;border-top:1px solid #eee;padding-top:20px"><p style="color:#888;font-size:11px;font-weight:bold">NOTES</p><p>${inv.notes}</p></div>` : ''}
-      <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;text-align:center"><p style="color:#999;font-size:10px">Generated with NexArt Pro</p></div>
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;text-align:center"><p style="color:#999;font-size:10px">Generated with ${appConfig.appName}</p></div>
       </body></html>`;
     const w = window.open('', '_blank');
     w.document.write(content);
