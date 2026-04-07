@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Save, Trash2 } from 'lucide-react';
+import { X, Eye, Save, Trash2, FileText, Wrench, ChevronRight } from 'lucide-react';
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
@@ -126,38 +126,51 @@ export default function EstimateEditor() {
 
   const hasClient = !!estimate.client_name;
 
+  // Status badge config
+  const STATUS_BADGE = {
+    draft:              { label: 'Draft',       cls: 'bg-slate-100 text-slate-600' },
+    scheduled:          { label: 'Scheduled',   cls: 'bg-blue-100 text-blue-700' },
+    sent:               { label: 'Sent',        cls: 'bg-indigo-100 text-indigo-700' },
+    viewed:             { label: 'Viewed',      cls: 'bg-violet-100 text-violet-700' },
+    approved:           { label: 'Approved',    cls: 'bg-emerald-100 text-emerald-800' },
+    signed:             { label: 'Signed',      cls: 'bg-green-100 text-green-800' },
+    converted:          { label: 'Converted',   cls: 'bg-teal-700 text-white' },
+    declined:           { label: 'Declined',    cls: 'bg-red-100 text-red-700' },
+    changes_requested:  { label: 'Changes Req.', cls: 'bg-amber-100 text-amber-800' },
+    visit_completed:    { label: 'Visited',     cls: 'bg-cyan-100 text-cyan-700' },
+    on_my_way:          { label: 'On My Way',   cls: 'bg-sky-100 text-sky-700' },
+  };
+  const statusBadge = STATUS_BADGE[estimate.status] || STATUS_BADGE.draft;
+  const totalFmt = estimate.total != null
+    ? `$${parseFloat(estimate.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+    : '—';
+
   return (
-    <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50">
+    <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 font-inter">
 
       {/* ── TOP BAR ── */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
-        <div className="flex items-center px-4 h-12 gap-2">
 
-          {/* Cancel / Close */}
-          <button onClick={handleCancel}
-            className="p-1.5 hover:bg-slate-100 rounded-md transition-colors flex-shrink-0 flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-xs font-medium">
-            <X className="w-4 h-4" />
-            {isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
-          </button>
+        {/* Row 1: Identity + Actions */}
+        <div className="flex items-center px-4 h-11 gap-3 relative">
 
-          {/* Title */}
-          <span className="font-bold text-slate-900 text-sm whitespace-nowrap flex-shrink-0">
-            {hasClient ? `Estimate #${estimate.estimate_number} · ${estimate.client_name}` : `New Estimate #${estimate.estimate_number}`}
-          </span>
+          {/* LEFT: Estimate ID + Client name */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-xs font-bold text-slate-400 tracking-widest uppercase flex-shrink-0">EST</span>
+            <span className="text-base font-bold text-slate-900 flex-shrink-0">
+              #{estimate.estimate_number}
+            </span>
+            {hasClient && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+                <span className="text-sm font-semibold text-slate-700 truncate">{estimate.client_name}</span>
+              </>
+            )}
+          </div>
 
-          <div className="flex-1" />
-
-          {/* Convert actions */}
+          {/* CENTER: Template selector */}
           {hasClient && (
-            <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-              <ConvertToInvoiceButton estimate={estimate} onConverted={loadEstimate} />
-              <ConvertToWorkOrderButton estimate={estimate} onConverted={loadEstimate} />
-            </div>
-          )}
-
-          {/* Template + Options (center-right) */}
-          {hasClient && (
-            <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <EstimateTemplateSelector
                 currentTemplate={estimate?.document_config?.template || 'professional'}
                 onTemplateChange={handleTemplateChange}
@@ -166,18 +179,54 @@ export default function EstimateEditor() {
             </div>
           )}
 
-          {/* Right actions */}
-          <div className="flex items-center gap-1 ml-3 flex-shrink-0 border-l border-slate-100 pl-3">
+          {/* RIGHT: Convert actions + Preview + Save indicator */}
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+            {hasClient && (
+              <>
+                <ConvertToInvoiceButton estimate={estimate} onConverted={loadEstimate} />
+                <ConvertToWorkOrderButton estimate={estimate} onConverted={loadEstimate} />
+              </>
+            )}
+            <div className="w-px h-5 bg-slate-200 mx-1" />
             <button onClick={() => setShowPreviewModal(true)}
-              className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title="Preview">
+              className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title="Preview document">
               <Eye className="w-4 h-4" />
             </button>
             {saving && (
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Save className="w-3 h-3 animate-pulse" />Saving…
+              <span className="text-xs text-slate-400 flex items-center gap-1 ml-1">
+                <Save className="w-3 h-3 animate-pulse" />
               </span>
             )}
           </div>
+
+          {/* CLOSE button — far right, ghost style */}
+          <button
+            onClick={handleCancel}
+            title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
+            className="ml-3 flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Row 2: Sticky summary mini-bar */}
+        <div className="flex items-center gap-0 px-4 h-8 bg-slate-50 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-1.5 pr-4 border-r border-slate-200">
+            <span className="text-slate-400 font-medium">Total</span>
+            <span className="font-bold text-slate-900 tabular-nums">{totalFmt}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-4 border-r border-slate-200">
+            <span className="text-slate-400 font-medium">Status</span>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${statusBadge.cls}`}>
+              {statusBadge.label}
+            </span>
+          </div>
+          {estimate.title && (
+            <div className="flex items-center gap-1.5 px-4">
+              <span className="text-slate-400 font-medium">Project</span>
+              <span className="font-semibold text-slate-700 truncate max-w-[200px]">{estimate.title}</span>
+            </div>
+          )}
         </div>
       </div>
 
