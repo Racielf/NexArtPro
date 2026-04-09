@@ -1,8 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
-const supabaseUrl = 'https://hdjeiugbhqhebrpneyma.supabase.co';
-const supabaseAnonKey = 'sb_publishable_TNoF7weSWe-OarIQ3zB4CA_z0Si5gup';
+const supabaseUrl = Deno.env.get('VITE_SUPABASE_URL');
+const supabaseAnonKey = Deno.env.get('VITE_SUPABASE_ANON_KEY');
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 Deno.serve(async (req) => {
