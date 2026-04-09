@@ -62,10 +62,6 @@ export default function TeamAccess() {
     );
   }
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
 
 
   const handleSubmit = async (e) => {
