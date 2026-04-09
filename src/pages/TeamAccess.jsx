@@ -43,7 +43,7 @@ export default function TeamAccess() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(isTeamAccessGranted);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginRole, setLoginRole] = useState('agent');
