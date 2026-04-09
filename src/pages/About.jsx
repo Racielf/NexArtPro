@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import { ArrowRight, Check } from 'lucide-react';
 import PublicHeader from '@/components/layout/PublicHeader';
 import PublicFooter from '@/components/layout/PublicFooter';
@@ -13,7 +14,7 @@ export default function About() {
       <section className="bg-white py-20 px-6 border-b border-slate-200">
         <div className="max-w-5xl mx-auto">
           <h1 className="text-5xl font-bold text-slate-900 mb-4">About {appConfig.company.name}</h1>
-          <p className="text-xl text-slate-600">Trusted construction and remodeling services in Oregon since 2015</p>
+          <p className="text-xl text-slate-600 leading-relaxed">Trusted construction and remodeling services in Oregon since 2015</p>
         </div>
       </section>
 
@@ -23,14 +24,14 @@ export default function About() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-20">
             <div>
               <h2 className="text-3xl font-bold text-slate-900 mb-6">Our Story</h2>
-              <p className="text-slate-600 mb-4 leading-relaxed">
-                {appConfig.company.name} started with a simple mission: deliver exceptional quality and professional service to every project, regardless of size. With over a decade of experience in construction and remodeling, we've built a reputation for reliability, craftsmanship, and customer satisfaction.
+              <p className="text-slate-600 mb-4 leading-8">
+                R.C Art Construction LLC was founded in 2023 with a clear purpose: to provide dependable construction and remodeling services for homeowners who want their project done right from start to finish.
               </p>
-              <p className="text-slate-600 mb-4 leading-relaxed">
-                Our team is committed to understanding your vision and bringing it to life with meticulous attention to detail. From bathrooms to kitchens, painting to flooring, we take pride in transforming spaces and exceeding expectations.
+              <p className="text-slate-600 mb-4 leading-8">
+                We are a small company, and that is our advantage. We stay directly involved in our projects, maintain clear communication, and focus on doing the work properly.
               </p>
-              <p className="text-slate-600 leading-relaxed">
-                We believe in transparent communication, fair pricing, and quality workmanship. Every project is an opportunity to demonstrate our commitment to excellence.
+              <p className="text-slate-600 leading-8">
+                Our goal is to help homeowners improve their spaces with solid workmanship, straightforward communication, and service they can rely on.
               </p>
             </div>
             <div className="bg-slate-100 rounded-xl h-96" />
@@ -44,32 +45,55 @@ export default function About() {
                 <Check className="w-6 h-6 text-slate-900 flex-shrink-0 mt-1" />
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Licensed in Oregon</h3>
-                  <p className="text-slate-600 text-sm">Fully licensed and compliant with all state regulations and building codes.</p>
+                  <p className="text-slate-600 text-sm leading-relaxed">Fully licensed and compliant with all state regulations and building codes.</p>
                 </div>
               </div>
               <div className="flex gap-4">
                 <Check className="w-6 h-6 text-slate-900 flex-shrink-0 mt-1" />
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Fully Insured</h3>
-                  <p className="text-slate-600 text-sm">Complete coverage for your peace of mind and project protection.</p>
+                  <p className="text-slate-600 text-sm leading-relaxed">Complete coverage for your peace of mind and project protection.</p>
                 </div>
               </div>
               <div className="flex gap-4">
                 <Check className="w-6 h-6 text-slate-900 flex-shrink-0 mt-1" />
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Professional Estimates</h3>
-                  <p className="text-slate-600 text-sm">Transparent, detailed estimates with no hidden fees or surprises.</p>
+                  <p className="text-slate-600 text-sm leading-relaxed">Transparent, detailed estimates with no hidden fees or surprises.</p>
                 </div>
               </div>
               <div className="flex gap-4">
                 <Check className="w-6 h-6 text-slate-900 flex-shrink-0 mt-1" />
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-2">Quality Workmanship</h3>
-                  <p className="text-slate-600 text-sm">Expert craftsmanship and attention to detail on every project.</p>
+                  <p className="text-slate-600 text-sm leading-relaxed">Expert craftsmanship and attention to detail on every project.</p>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* AVISO SITIO */}
+      <section className="py-12 px-6 bg-slate-50">
+        <div className="max-w-5xl mx-auto rounded-3xl border border-slate-200/70 bg-white p-8">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">
+            Website Update in Progress
+          </h2>
+
+          <p className="text-slate-600 mb-4 leading-relaxed">
+            Our website is still being updated, and some sections may be incomplete. You can still request services normally using the form on the home page.
+          </p>
+
+          <p className="text-slate-600 leading-relaxed">
+            If you do not receive a response, please call or text{" "}
+            <a
+              href="tel:+15039366172"
+              className="font-semibold text-slate-900 hover:text-cta-orange"
+            >
+              (503) 936-6172
+            </a>.
+          </p>
         </div>
       </section>
 

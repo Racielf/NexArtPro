@@ -3,10 +3,10 @@
  *
  * Intercepts "Review & Send" when gross_margin_pct < 25%.
  * - Non-admin: blocked, must request admin approval
- * - Admin: must enter PIN to approve & send
- * - On approval: logs audit event (manual_approval) with user, margin, timestamp
+ * - Admin: must enter PIN — validated SERVER-SIDE via approveMargin function
+ * - On approval: server logs audit event (manual_approval) with user, margin, timestamp
  *
- * PIN is read from env/config — never hardcoded here.
+ * PIN is never stored or checked on the client.
  * Never affects PDF, preview, or any client-facing document.
  */
 import React, { useState } from 'react';
@@ -15,26 +15,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertTriangle, ShieldAlert, Lock, CheckCircle2, KeyRound } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { logApproval } from '@/lib/estimateAuditLog';
-
-// PIN is stored as an app-level setting — fetched from a known estimate field or env.
-// Default fallback PIN for demo purposes only (replace with Settings entity in production).
-const ADMIN_PIN = import.meta.env.VITE_ADMIN_APPROVAL_PIN || '1234';
-
-async function handleApprovalLog({ user, marginPct, estimateId, estimateNumber }) {
-  // Use centralized audit logger
-  await logApproval({
-    estimate_id: estimateId,
-    estimate_number: estimateNumber,
-    user,
-    marginPct,
-  });
-}
 
 export default function MarginGuardModal({ open, onClose, onContinue, marginPct, isAdmin, currentUser, estimate }) {
   const [pin, setPin]         = useState('');
   const [pinError, setPinError] = useState('');
   const [approved, setApproved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const marginDisplay = marginPct !== null && marginPct !== undefined
     ? `${parseFloat(marginPct).toFixed(1)}%`
@@ -48,27 +34,44 @@ export default function MarginGuardModal({ open, onClose, onContinue, marginPct,
   };
 
   const handlePinSubmit = async () => {
-    if (pin !== ADMIN_PIN) {
-      setPinError('Incorrect PIN. Try again.');
-      setPin('');
+    if (!isAdmin) {
+      setPinError('Admin approval required');
       return;
     }
+    if (!pin) {
+      setPinError('Enter your PIN');
+      return;
+    }
+
+    setSubmitting(true);
     setPinError('');
-    setApproved(true);
 
-    // Log audit event
-    await handleApprovalLog({
-      user: currentUser,
-      marginPct,
-      estimateId: estimate?.id,
-      estimateNumber: estimate?.estimate_number,
-    });
+    try {
+      const result = await base44.functions.invoke('approveMargin', {
+        pin,
+        estimate_id: estimate?.id,
+        estimate_number: estimate?.estimate_number,
+        margin_pct: marginPct,
+      });
 
-    // Brief confirmation flash, then proceed
-    setTimeout(() => {
-      handleClose();
-      onContinue();
-    }, 700);
+      if (result?.approved) {
+        setApproved(true);
+        // Brief confirmation flash, then proceed
+        setTimeout(() => {
+          handleClose();
+          onContinue();
+        }, 700);
+      } else {
+        setPinError(result?.error || 'Approval denied');
+        setPin('');
+      }
+    } catch (err) {
+      const msg = err?.data?.error || err?.message || 'Approval failed';
+      setPinError(msg);
+      setPin('');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -131,9 +134,10 @@ export default function MarginGuardModal({ open, onClose, onContinue, marginPct,
               />
               <Button
                 onClick={handlePinSubmit}
+                disabled={submitting}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 h-9 flex-shrink-0"
               >
-                Approve & Send
+                {submitting ? 'Verifying…' : 'Approve & Send'}
               </Button>
             </div>
             {pinError && (

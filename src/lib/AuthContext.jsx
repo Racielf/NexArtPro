@@ -1,7 +1,10 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+
+import { clearTeamAccessGrant } from '@/pages/TeamAccess';
+import { clearLocalSession } from '@/lib/roleUtils';
 
 const AuthContext = createContext();
 
@@ -37,13 +40,8 @@ export const AuthProvider = ({ children }) => {
         const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
         setAppPublicSettings(publicSettings);
         
-        // If we got the app public settings successfully, check if user is authenticated
-        if (appParams.token) {
-          await checkUserAuth();
-        } else {
-          setIsLoadingAuth(false);
-          setIsAuthenticated(false);
-        }
+        // Always resolve the current session before ending auth loading.
+        await checkUserAuth();
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
@@ -52,10 +50,11 @@ export const AuthProvider = ({ children }) => {
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
           if (reason === 'auth_required') {
-            setAuthError({
-              type: 'auth_required',
-              message: 'Authentication required'
-            });
+            // App requires auth — but user may already have a valid session.
+            // Always attempt checkUserAuth before giving up.
+            await checkUserAuth();
+            setIsLoadingPublicSettings(false);
+            return;
           } else if (reason === 'user_not_registered') {
             setAuthError({
               type: 'user_not_registered',
@@ -97,6 +96,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
     } catch (error) {
       console.error('User auth check failed:', error);
+      setUser(null);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       
@@ -110,9 +110,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = useCallback((shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
+    clearTeamAccessGrant();
+    clearLocalSession();
     
     if (shouldRedirect) {
       // Use the SDK's logout method which handles token cleanup and redirect
@@ -121,12 +123,22 @@ export const AuthProvider = ({ children }) => {
       // Just remove the token without redirect
       base44.auth.logout();
     }
-  };
+  }, []);
 
-  const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
-  };
+  const navigateToLogin = useCallback(() => {
+    // Send /login to the auth provider only once, but return to /dashboard after auth.
+    const redirectUrl = (() => {
+      const url = window.location.pathname === '/login'
+        ? new URL('/dashboard', window.location.origin)
+        : new URL(window.location.href);
+      url.searchParams.delete('from_url');
+      url.searchParams.delete('access_token');
+      url.searchParams.delete('refresh_token');
+      return url.toString();
+    })();
+
+    base44.auth.redirectToLogin(redirectUrl);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ 

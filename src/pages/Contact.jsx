@@ -77,7 +77,9 @@ export default function Contact() {
                   <Phone className="w-6 h-6 text-slate-900 flex-shrink-0 mt-1" />
                   <div>
                     <h3 className="font-semibold text-slate-900 mb-1">Phone</h3>
-                    <p className="text-slate-600">{appConfig.company.phone}</p>
+                    <a href="tel:+15039366172" className="text-slate-600 hover:text-cta-orange transition font-medium">
+                      (503) 936-6172
+                    </a>
                   </div>
                 </div>
                 <div className="flex gap-4">

@@ -12,6 +12,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import MarginGuardModal from '@/components/estimates/internal/MarginGuardModal';
+import { normalizeUserRole } from '@/lib/utils';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function fmt(isoStr) {
@@ -194,7 +195,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   }, [s, omwActive, omwInterval]);
 
   // ── derived context ──────────────────────────────────────────────────────
-  const role = currentUser?.role || 'employee';
+  const role = normalizeUserRole(currentUser?.role);
   const hasAppointment  = !!estimate?.appointment_id;
   const visitDone       = ['visit_completed', 'sent', 'viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
   const isSent          = !!estimate?.sent_at || ['sent', 'viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);

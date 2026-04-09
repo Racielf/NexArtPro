@@ -19,11 +19,12 @@ import {
   BarChart2
 } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import { isAdmin } from '@/lib/roleUtils';
 
 const navGroups = [
   {
     items: [
-      { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     ]
   },
   {
@@ -105,19 +106,21 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-gray-700">
-        <Link
-          to="/settings"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            location.pathname === '/settings'
-              ? 'bg-primary text-white'
-              : 'text-gray-400 hover:text-white hover:bg-gray-800'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          Settings
-        </Link>
-      </div>
+      {isAdmin() && (
+        <div className="p-3 border-t border-gray-700">
+          <Link
+            to="/settings"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              location.pathname === '/settings'
+                ? 'bg-primary text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            Settings
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

@@ -195,24 +195,36 @@ export default function PublicHome() {
                   className="inline-flex items-center gap-2 px-8 py-3.5 bg-cta-orange hover:bg-orange-600 text-white font-bold rounded-lg transition shadow-xl"
                 >
                   <span>📋</span>
-                  GET A FREE ESTIMATE
+                  Get Free Estimate
                   <ArrowRight className="w-5 h-5" />
                 </button>
                 <a 
-                  href="tel:+15039361234"
+                  href="tel:+15039366172"
                   className="inline-flex items-center gap-2 px-6 py-3.5 border-2 border-cta-orange/60 hover:border-cta-orange text-white font-semibold rounded-lg transition"
                 >
                   <span>📞</span>
-                  (503) 936-1234
+                  (503) 936-6172
                 </a>
+              </div>
+
+              <div className="mt-10 rounded-3xl border border-white/20 bg-white/10 px-6 py-5 text-white shadow-xl">
+                <p className="text-sm sm:text-base leading-6">
+                  Our website is currently being updated. Some sections may be incomplete, but you can still request services normally. If you do not receive a response, please call or text{" "}
+                  <a
+                    href="tel:+15039366172"
+                    className="font-semibold text-cta-orange hover:text-orange-300"
+                  >
+                    (503) 936-6172
+                  </a>.
+                </p>
               </div>
             </div>
 
             {/* Right: Floating Card Form */}
             <div className="relative" data-hero-form>
               <div className="bg-white rounded-3xl shadow-2xl p-10">
-                <h2 className="text-3xl font-black text-slate-900 mb-2 text-center">GET A FREE ESTIMATE</h2>
-                <p className="text-sm text-slate-600 mb-8 text-center">Tell us about your project and we'll get back to you with a free, no-obligation estimate.</p>
+                <h2 className="text-3xl font-black text-slate-900 mb-2 text-center">Get a Free Estimate</h2>
+                <p className="text-sm text-slate-600 mb-8 text-center">Tell us about your project and we'll get back to you with a fast, no-obligation estimate.</p>
 
                 {heroSuccess ? (
                   <div className="text-center py-12">
@@ -280,26 +292,23 @@ export default function PublicHome() {
                       />
                     </div>
 
-                    {/* Row 4: Service Pills */}
+                    {/* Row 4: Service Needed */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-3">Service Needed</label>
-                      <div className="flex flex-wrap gap-2">
+                      <label className="block text-xs font-bold text-slate-700 mb-2">Service Needed</label>
+                      <select
+                        name="service"
+                        value={heroFormData.service}
+                        onChange={(e) => setHeroFormData(p => ({ ...p, service: e.target.value }))}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cta-orange focus:border-transparent bg-white"
+                      >
+                        <option value="">-- Select a service --</option>
                         {SERVICES_LIST.map(svc => (
-                          <button
-                            key={svc.id}
-                            type="button"
-                            onClick={() => setHeroFormData(p => ({ ...p, service: svc.name }))}
-                            className={`px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
-                              heroFormData.service === svc.name
-                                ? 'bg-cta-orange text-white border-2 border-cta-orange shadow-md'
-                                : 'bg-slate-100 text-slate-700 border-2 border-slate-200 hover:border-cta-orange hover:bg-orange-50'
-                            }`}
-                          >
+                          <option key={svc.id} value={svc.name}>
                             {svc.name}
-                            <ArrowRight className="w-3 h-3" />
-                          </button>
+                          </option>
                         ))}
-                      </div>
+                        <option value="Other">Other</option>
+                      </select>
                     </div>
 
                     {/* Row 5: Project Details */}

@@ -21,11 +21,21 @@
     "service": {
       "type": "string",
       "enum": [
-        "Painting",
         "Kitchen Remodeling",
         "Bathroom Remodeling",
-        "Drywall",
-        "Flooring"
+        "Interior Painting",
+        "Exterior Painting",
+        "Flooring Installation",
+        "Drywall Repair",
+        "Roof Repair / Replacement",
+        "General Home Renovation",
+        "Plumbing",
+        "Electrical Work",
+        "Carpentry",
+        "Door & Window Installation",
+        "Home Additions",
+        "Basement Finishing",
+        "Deck & Patio Construction"
       ],
       "description": "Service type"
     },

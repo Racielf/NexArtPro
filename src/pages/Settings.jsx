@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SettingsSidebar from '@/components/settings/SettingsSidebar';
 import SettingsSection from '@/components/settings/SettingsSection';
 import SettingsCard from '@/components/settings/SettingsCard';
 import SettingsRow from '@/components/settings/SettingsRow';
 import SettingsToggle from '@/components/settings/SettingsToggle';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, ShieldCheck } from 'lucide-react';
 import ServicesCatalogSection from '@/components/settings/services/ServicesCatalogSection';
 import PriceBookSection from '@/components/settings/pricebook/PriceBookSection';
+import { base44 } from '@/api/base44Client';
+import { normalizeUserRole } from '@/lib/utils';
+import { getUsers, createUser, toggleUserActive } from '@/lib/userStore';
 
 // ─── Shared input styles ──────────────────────────────────────────────────────
 const inputCls = 'w-64 text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';
@@ -196,10 +199,137 @@ function GeneralPanel({ state, set }) {
   );
 }
 
+function TeamAccessPanel({ userRole }) {
+  const isAdminUser = userRole === 'admin';
+  const [users, setUsers] = useState([]);
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'agent' });
+  const [formError, setFormError] = useState('');
+
+  const refresh = async () => { setUsers(await getUsers()); };
+
+  useEffect(() => { refresh(); }, []);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setFormError('');
+    if (!newUser.username.trim() || !newUser.password.trim()) {
+      setFormError('Username and password are required');
+      return;
+    }
+    const result = await createUser(newUser);
+    if (!result.ok) {
+      setFormError(result.error);
+      return;
+    }
+    setNewUser({ username: '', password: '', role: 'agent' });
+    await refresh();
+  };
+
+  const handleToggle = async (id) => {
+    await toggleUserActive(id);
+    await refresh();
+  };
+
+  if (!isAdminUser) {
+    return (
+      <SettingsSection title="Team & Access" description="Manage authorized internal users and their access level.">
+        <SettingsCard>
+          <div className="px-5 py-8 text-center">
+            <ShieldCheck className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-slate-500">Admin access required</p>
+            <p className="text-xs text-slate-400 mt-1">Only administrators can manage team access.</p>
+          </div>
+        </SettingsCard>
+      </SettingsSection>
+    );
+  }
+
+  return (
+    <SettingsSection title="Team & Access" description="Manage authorized internal users and their access level.">
+      {/* User list */}
+      <SettingsCard>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <th className="px-5 py-3">Username</th>
+              <th className="px-5 py-3">Role</th>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.id} className="border-b border-slate-50 last:border-0">
+                <td className="px-5 py-3 font-medium text-slate-800">{u.username}</td>
+                <td className="px-5 py-3 capitalize text-slate-600">{u.role}</td>
+                <td className="px-5 py-3">
+                  <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${u.active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                    {u.active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="px-5 py-3 text-right">
+                  <button
+                    onClick={() => handleToggle(u.id)}
+                    className={`text-xs font-medium ${u.active ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'}`}
+                  >
+                    {u.active ? 'Deactivate' : 'Reactivate'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </SettingsCard>
+
+      {/* Create user form */}
+      <SettingsCard>
+        <div className="px-5 py-4">
+          <p className="text-sm font-semibold text-slate-700 mb-3">Add Agent</p>
+          <form onSubmit={handleCreate} className="flex items-end gap-3 flex-wrap">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Username</label>
+              <input
+                className={inputCls}
+                value={newUser.username}
+                onChange={e => { setNewUser({ ...newUser, username: e.target.value }); setFormError(''); }}
+                placeholder="e.g. agent2"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Password</label>
+              <input
+                className={inputCls}
+                type="password"
+                value={newUser.password}
+                onChange={e => { setNewUser({ ...newUser, password: e.target.value }); setFormError(''); }}
+                placeholder="••••••"
+              />
+            </div>
+            <button
+              type="submit"
+              className="h-9 px-4 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition uppercase tracking-wider"
+            >
+              <Plus className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Create
+            </button>
+          </form>
+          {formError && <p className="text-xs text-red-500 mt-2">{formError}</p>}
+        </div>
+      </SettingsCard>
+    </SettingsSection>
+  );
+}
+
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 
 export default function Settings() {
   const [activeSection, setActiveSection] = useState('company');
+  const [userRole, setUserRole] = useState(() => sessionStorage.getItem('user_role') || 'user');
+
+  useEffect(() => {
+    base44.auth.me()
+      .then(u => setUserRole(normalizeUserRole(u?.role)))
+      .catch(() => {});
+  }, []);
 
   // Local state per section (mock — no backend yet)
   const [company, setCompany] = useState({ name: 'FSM Pro', email: 'info@fsmpro.com', phone: '(503) 555-0100', address: 'Portland, OR 97201', license: '' });
@@ -215,6 +345,7 @@ export default function Settings() {
     pricebook: <PriceBookPanel />,
     labor:     <LaborPanel     state={labor}     set={setLabor}     />,
     payments:  <PaymentsPanel  state={payments}  set={setPayments}  />,
+    team:      <TeamAccessPanel userRole={userRole} />,
     general:   <GeneralPanel   state={general}   set={setGeneral}   />,
   };
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Phone, Mail, MapPin } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 export default function PublicFooter() {
@@ -25,18 +26,28 @@ export default function PublicFooter() {
               <Link to="/gallery" className="text-sm text-slate-300 hover:text-white transition block">Gallery</Link>
               <Link to="/about" className="text-sm text-slate-300 hover:text-white transition block">About</Link>
               <Link to="/contact" className="text-sm text-slate-300 hover:text-white transition block">Contact</Link>
+              <Link to="/partners" className="text-sm text-slate-300 hover:text-white transition block">Partners</Link>
             </nav>
           </div>
 
           {/* Contact */}
           <div>
             <h4 className="font-semibold mb-3">Contact</h4>
-            <div className="space-y-2 text-sm text-slate-300">
-              <p>📍 {appConfig.company.city}, Oregon</p>
-              <p>📧 {appConfig.company.email}</p>
-              <p>📞 {appConfig.company.phone}</p>
+            <div className="space-y-3 text-sm text-slate-300">
+              <div className="flex gap-2 items-start">
+                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{appConfig.company.city}, Oregon</span>
+              </div>
+              <div className="flex gap-2 items-start">
+                <Mail className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <a href={`mailto:${appConfig.company.email}`} className="hover:text-white transition">{appConfig.company.email}</a>
+              </div>
+              <div className="flex gap-2 items-start">
+                <Phone className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <a href="tel:+15039366172" className="hover:text-white transition font-medium">(503) 936-6172</a>
+              </div>
               <div className="pt-3">
-                <Link to="/login" className="text-xs text-slate-400 hover:text-slate-300 transition">Team Access →</Link>
+                <Link to="/team-access" className="text-xs text-slate-400 hover:text-slate-300 transition">Team Access →</Link>
               </div>
             </div>
           </div>

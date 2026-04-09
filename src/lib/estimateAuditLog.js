@@ -7,6 +7,7 @@
  * Avoids duplicates by checking if old_value !== new_value before logging.
  */
 import { base44 } from '@/api/base44Client';
+import { normalizeUserRole } from '@/lib/utils';
 
 /**
  * logChange — Log a single field change to audit trail
@@ -40,7 +41,7 @@ export async function logChange({
 
   try {
     const userName = user?.full_name || user?.email || 'Unknown';
-    const userRole = user?.role || 'user';
+    const userRole = normalizeUserRole(user?.role);
 
     // Build change note
     const changeNote = [

@@ -10,7 +10,7 @@ Phase 1.2 (Estimate Audit & Security Refinement)
 - **Estimates Editor**: Multi-panel editor with grouped line items, pricing engine (Decimal.js), approval workflow
 - **Margin Guards**: Internal guardrails (25% minimum safe margin) with PIN-based admin override
 - **Audit Trail**: EstimateVersionHistory + EstimateAuditLog for all changes
-- **Roles**: admin | employee (recently formalized)
+- **Roles**: admin | agent (recently formalized)
 
 ## Tech Stack
 - Frontend: React 18 + Tailwind CSS + shadcn/ui

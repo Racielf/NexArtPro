@@ -133,14 +133,18 @@ export default function NotificationsPanel() {
   }, []);
 
   const loadNotifications = async () => {
-    const [workOrders, invoices, estimates, bankTransactions] = await Promise.all([
-      base44.entities.WorkOrder.list('-created_date', 200),
-      base44.entities.Invoice.list('-created_date', 200),
-      base44.entities.Estimate.list('-created_date', 200),
-      base44.entities.BankTransaction.list('-created_date', 200),
-    ]);
-    setNotifications(buildNotifications({ workOrders, invoices, estimates, bankTransactions }));
-    setLastRefresh(new Date());
+    try {
+      const [workOrders, invoices, estimates, bankTransactions] = await Promise.all([
+        base44.entities.WorkOrder.list('-created_date', 200),
+        base44.entities.Invoice.list('-created_date', 200),
+        base44.entities.Estimate.list('-created_date', 200),
+        base44.entities.BankTransaction.list('-created_date', 200),
+      ]);
+      setNotifications(buildNotifications({ workOrders, invoices, estimates, bankTransactions }));
+      setLastRefresh(new Date());
+    } catch {
+      // local_auth mode — no backend available
+    }
     setLoading(false);
   };
 

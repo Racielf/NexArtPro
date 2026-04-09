@@ -6,7 +6,7 @@
 1. **EstimateDocumentOptions**: Made scrollable for mobile (max-height, flex flex-col, overflow-y-auto)
 2. **EstimateGroups**: Removed "One option/Multiple options" toggle (simplified UI)
 3. **EstimateActionsPanel**: Formalized roles
-   - Added `const role = currentUser?.role || 'employee'` (line 197)
+   - Added `const role = currentUser?.role || 'agent'` (line 197)
    - Updated MarginGuardModal prop: `isAdmin={role === 'admin'}` (line 644)
 4. **MarginGuardModal**: Added security guard
    - Planned: `if (!isAdmin) return;` in handlePinSubmit() (line 51)
@@ -20,7 +20,7 @@
 - ✅ OMW tracking
 - ✅ Send estimate to client (with margin check)
 - ✅ Audit trail (EstimateVersionHistory)
-- ✅ Role-based restrictions (admin vs employee)
+- ✅ Role-based restrictions (admin vs agent)
 
 ### Known Risks (Mitigated)
 - **MarginGuardModal bypass**: Non-admin could invoke handlePinSubmit() without PIN input → Fix: Add `if (!isAdmin) return;`

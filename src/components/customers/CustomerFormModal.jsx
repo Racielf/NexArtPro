@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,19 +61,56 @@ export default function CustomerFormModal({ open, onOpenChange, customer = null,
       toast.error('First name, last name and phone are required');
       return;
     }
-    setSaving(true);
-    const data = { ...form, display_name: form.display_name || `${form.first_name} ${form.last_name}` };
-    let saved;
-    if (customer) {
-      saved = await base44.entities.Customer.update(customer.id, data);
-      toast.success('Customer updated');
-    } else {
-      saved = await base44.entities.Customer.create(data);
-      toast.success('Customer created');
+    if (!supabase) {
+      toast.error('Database not configured');
+      return;
     }
-    setSaving(false);
-    onOpenChange(false);
-    onSaved?.(saved || { ...data, id: customer?.id });
+    setSaving(true);
+    try {
+      const data = {
+        first_name: form.first_name,
+        last_name: form.last_name,
+        display_name: form.display_name || `${form.first_name} ${form.last_name}`,
+        email: form.email || null,
+        phone: form.phone,
+        customer_type: form.customer_type,
+        company_name: form.company_name || null,
+        service_address: form.service_address || null,
+        city: form.city || null,
+        state: form.state || null,
+        zip: form.zip || null,
+        notes: form.notes || null,
+        internal_notes: form.internal_notes || null,
+      };
+      let saved;
+      if (customer) {
+        const { data: row, error } = await supabase
+          .from('customers')
+          .update(data)
+          .eq('id', customer.id)
+          .select()
+          .single();
+        if (error) throw error;
+        saved = row;
+        toast.success('Customer updated');
+      } else {
+        const { data: row, error } = await supabase
+          .from('customers')
+          .insert(data)
+          .select()
+          .single();
+        if (error) throw error;
+        saved = row;
+        toast.success('Customer created');
+      }
+      onOpenChange(false);
+      onSaved?.(saved);
+    } catch (err) {
+      console.error('[CustomerFormModal] Save failed:', err);
+      toast.error(err?.message || 'Failed to save customer');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

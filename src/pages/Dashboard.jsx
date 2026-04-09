@@ -70,12 +70,21 @@ export default function Dashboard() {
     const today = format(new Date(), 'yyyy-MM-dd');
     const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
 
-    const [appts, estimates, workOrders, invoices] = await Promise.all([
-      base44.entities.Appointment.list('-created_date', 200),
-      base44.entities.Estimate.list('-created_date', 100),
-      base44.entities.WorkOrder.list('-created_date', 100),
-      base44.entities.Invoice.list('-created_date', 100),
-    ]);
+    let appts, estimates, workOrders, invoices;
+    try {
+      [appts, estimates, workOrders, invoices] = await Promise.all([
+        base44.entities.Appointment.list('-created_date', 200),
+        base44.entities.Estimate.list('-created_date', 100),
+        base44.entities.WorkOrder.list('-created_date', 100),
+        base44.entities.Invoice.list('-created_date', 100),
+      ]);
+    } catch {
+      if (sessionStorage.getItem('local_auth') === 'true') {
+        setLoading(false);
+        return;
+      }
+      throw arguments[0];
+    }
 
     const todayAppts = appts.filter(a => (a.appointment_date || a.scheduled_date) === today);
     const active = workOrders.filter(w => !['completed', 'invoiced', 'cancelled'].includes(w.status));

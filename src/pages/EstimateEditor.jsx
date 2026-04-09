@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { X, Eye, Save, Trash2, FileText, Wrench, ChevronRight } from 'lucide-react';
@@ -57,7 +58,7 @@ export default function EstimateEditor() {
 
     // ── LOW_MARGIN_ALERT: fire event-driven backend alert (non-admin only) ──
     const marginPct = parseFloat(updatedEstimate?.gross_margin_pct ?? updatedEstimate?.gross_margin_percent ?? 100);
-    const isAdmin   = currentUser?.role === 'admin';
+    const isAdmin   = normalizeUserRole(currentUser?.role) === 'admin';
     if (!isNaN(marginPct) && marginPct < 25 && !isAdmin && estimateId) {
       // Fire-and-forget — never blocks the save flow
       base44.functions.invoke('lowMarginAlert', {
