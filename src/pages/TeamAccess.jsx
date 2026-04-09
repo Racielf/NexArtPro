@@ -4,17 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import PublicHeader from '@/components/layout/PublicHeader';
 import PublicFooter from '@/components/layout/PublicFooter';
 import { ShieldCheck, X } from 'lucide-react';
-// Local users (no Supabase needed)
-const LOCAL_USERS = [
-  { username: 'admin', password: 'admin', role: 'admin' },
-  { username: 'agent1', password: 'admin', role: 'agent' },
-];
-
-function authenticateLocal(username, password) {
-  const user = LOCAL_USERS.find(u => u.username === username && u.password === password);
-  if (!user) return { ok: false, error: 'Invalid username or password' };
-  return { ok: true, user };
-}
+import { authenticate } from '@/lib/userStore';
 
 const GATE_KEY = 'team_access_granted';
 const GATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -181,7 +171,7 @@ export default function TeamAccess() {
                 }
                 setLoginSubmitting(true);
                 try {
-                  const result = authenticateLocal(loginEmail.trim(), loginPassword.trim());
+                  const result = await authenticate(loginEmail.trim(), loginPassword.trim());
                   if (result.ok && result.user.role !== loginRole) {
                     setLoginError('Role mismatch — your account is not registered as ' + loginRole);
                     return;
