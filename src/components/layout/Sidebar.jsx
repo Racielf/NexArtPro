@@ -20,6 +20,9 @@ import {
 } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import { isAdmin } from '@/lib/roleUtils';
+import { logout } from '@/lib/sessionManager';
+import { useNavigate } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 
 const navGroups = [
   {
@@ -59,6 +62,7 @@ const navGroups = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <div className="w-56 min-h-screen bg-gray-900 flex flex-col">
@@ -121,6 +125,15 @@ export default function Sidebar() {
           </Link>
         </div>
       )}
+      <div className="p-3 border-t border-gray-700">
+        <button
+          onClick={() => logout(navigate)}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-gray-400 hover:text-red-400 hover:bg-gray-800 w-full"
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </button>
+      </div>
     </div>
   );
 }
