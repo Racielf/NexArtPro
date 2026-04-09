@@ -43,7 +43,7 @@ import ProfitabilityDashboard from './pages/ProfitabilityDashboard';
 
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoadingAuth } = useAuth();
+  const { isLoadingAuth } = useAuth();
 
   if (isLoadingAuth) {
     return (
@@ -55,8 +55,8 @@ const ProtectedRoute = ({ children }) => {
 
   const localAuth = sessionStorage.getItem('local_auth') === 'true';
 
-  if (!isAuthenticated && !localAuth) {
-    return <Navigate to="/login" replace />;
+  if (!localAuth) {
+    return <Navigate to="/team-access" replace />;
   }
 
   return children;
