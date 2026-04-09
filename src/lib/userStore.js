@@ -15,12 +15,14 @@ export async function getUsers() {
 
 export async function authenticate(username, password) {
   if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  console.log('[auth] querying app_users for:', username);
   const { data, error } = await supabase
     .from('app_users')
     .select('id, username, display_name, role, active')
     .eq('username', username)
     .eq('password', password)
     .single();
+  console.log('[auth] result:', { data, error });
   if (error || !data) return { ok: false, error: 'Invalid username or password' };
   if (!data.active) return { ok: false, error: 'Account is deactivated' };
   return { ok: true, user: data };
