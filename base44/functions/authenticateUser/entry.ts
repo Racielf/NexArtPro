@@ -2,6 +2,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const supabaseUrl = Deno.env.get('VITE_SUPABASE_URL');
 const supabaseAnonKey = Deno.env.get('VITE_SUPABASE_ANON_KEY');
+console.log('SUPABASE_URL:', supabaseUrl);
+console.log('SUPABASE_KEY:', supabaseAnonKey?.slice(0, 20));
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 Deno.serve(async (req) => {
