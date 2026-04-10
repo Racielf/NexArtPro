@@ -74,27 +74,14 @@ export default function ProposalEditor() {
   const handleSave = async (estimateData) => {
     setSaving(true);
     
-    // EstimateGroups returns estimate format, extract Proposal fields
+    // EstimateGroups returns estimate format — adapter handles field filtering
+    // unit_cost is now persisted for shared pricing intelligence
     const proposalChanges = extractProposalChanges(estimateData);
     
-    // 🔒 Merge proposalDetails into notes as JSON (preserve any legacy text)
-    const existingNotes = proposal?.notes ? (typeof proposal.notes === 'string' ? proposal.notes : proposal.notes) : '';
-    const notesData = {
-      proposalDetails,
-      legacyNotes: existingNotes
-    };
+    // Merge proposalDetails into notes as JSON
+    const existingNotes = proposal?.notes || '';
+    const notesData = { proposalDetails, legacyNotes: existingNotes };
     proposalChanges.notes = JSON.stringify(notesData);
-    
-    // 🔒 Safety validation: ensure items[] contains ONLY Proposal fields
-    if (proposalChanges.items) {
-      proposalChanges.items.forEach((item) => {
-        if ('unit_cost' in item || 'taxable' in item) {
-          console.warn('⚠️ Filtering EstimateGroups fields from Proposal items');
-          delete item.unit_cost;
-          delete item.taxable;
-        }
-      });
-    }
     
     const sanitized = { ...proposal, ...proposalChanges };
     

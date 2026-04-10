@@ -76,6 +76,21 @@
       "type": "number",
       "default": 0
     },
+    "total_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Sum of all unit_cost * quantity (internal)"
+    },
+    "gross_margin": {
+      "type": "number",
+      "default": 0,
+      "description": "Total - Total Cost (internal)"
+    },
+    "gross_margin_pct": {
+      "type": "number",
+      "default": 0,
+      "description": "Gross margin percentage (internal)"
+    },
     "payment_terms": {
       "type": "string"
     },

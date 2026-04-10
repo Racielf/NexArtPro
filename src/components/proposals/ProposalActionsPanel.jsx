@@ -8,6 +8,9 @@ import {
 } from 'lucide-react';
 import { generateProposalPDF } from '@/utils/proposalPDFGenerator';
 import ProposalAdjustmentModal from '@/components/proposals/ProposalAdjustmentModal';
+import { validateEstimatePricing } from '@/lib/pricingValidation';
+import LossPreventionModal from '@/components/estimates/internal/LossPreventionModal';
+import { mapItemsToGroups } from '@/components/proposals/ProposalEstimateGroupsAdapter';
 
 const STATUS_CONFIG = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -199,6 +202,8 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
   const [loading, setLoading] = useState(false);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [showAdjustment, setShowAdjustment] = useState(false);
+  const [lossModalOpen, setLossModalOpen] = useState(false);
+  const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [] });
   const status = proposal?.status || 'draft';
   const badge = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const proposalId = proposal?.id;
@@ -217,6 +222,13 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
 
   return (
     <>
+    <LossPreventionModal
+      open={lossModalOpen}
+      onClose={() => setLossModalOpen(false)}
+      onProceed={() => { setLossModalOpen(false); onOpenSend(); }}
+      lossItems={lossValidation.lossItems}
+      zeroProfitItems={lossValidation.zeroProfitItems}
+    />
     <ProposalAdjustmentModal
       open={showAdjustment}
       onClose={() => setShowAdjustment(false)}
@@ -269,7 +281,19 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
                 onClick={() => transition('review_needed')}
                 cls="text-amber-700 border-amber-200 hover:bg-amber-50" />
             )}
-            <ActionBtn icon={Send} label="Send to Client" onClick={onOpenSend} disabled={loading}
+            <ActionBtn icon={Send} label="Send to Client" disabled={loading}
+              onClick={() => {
+                if (!proposal.client_email) { toast.error('Client email is required to send'); return; }
+                // Loss prevention gate — reuse shared validation
+                const proxyForValidation = { groups: mapItemsToGroups(proposal.items) };
+                const pv = validateEstimatePricing(proxyForValidation);
+                if (!pv.canProceed || pv.requiresConfirmation) {
+                  setLossValidation(pv);
+                  setLossModalOpen(true);
+                  return;
+                }
+                onOpenSend();
+              }}
               cls="text-blue-700 border-blue-200 hover:bg-blue-50" />
           </>
         )}
