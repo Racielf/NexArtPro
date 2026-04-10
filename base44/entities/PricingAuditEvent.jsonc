@@ -31,9 +31,7 @@
         "field_change",
         "override_loss_send",
         "override_loss_approve",
-        "override_zero_profit_send",
-        "override_zero_profit_approve",
-        "override_low_margin",
+        "zero_profit_confirmation",
         "send_after_override",
         "approve_after_override",
         "manual_approval"

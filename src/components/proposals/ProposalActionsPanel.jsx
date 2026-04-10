@@ -11,6 +11,7 @@ import { mapProposalToEstimate } from '@/lib/proposalDocumentMapper';
 import ProposalAdjustmentModal from '@/components/proposals/ProposalAdjustmentModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
 import { canSendDocument } from '@/lib/pricingPermissions';
+import { logOverrideAction } from '@/lib/pricingAuditService';
 import { normalizeUserRole } from '@/lib/utils';
 import LossPreventionModal from '@/components/estimates/internal/LossPreventionModal';
 import PricingOverrideModal from '@/components/estimates/internal/PricingOverrideModal';
@@ -239,7 +240,24 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
     <LossPreventionModal
       open={lossModalOpen}
       onClose={() => setLossModalOpen(false)}
-      onProceed={() => { setLossModalOpen(false); onOpenSend(); }}
+      onProceed={() => {
+        setLossModalOpen(false);
+        // Log zero-profit confirmation as audit event
+        if (proposal?.id && lossValidation.zeroProfitItems?.length > 0) {
+          logOverrideAction({
+            documentId: proposal.id,
+            documentKind: 'proposal',
+            documentNumber: proposal.proposal_number,
+            eventType: 'zero_profit_confirmation',
+            reason: '',
+            userEmail: currentUser?.email,
+            userRole: role,
+            marginAtEvent: parseFloat(proposal.gross_margin_pct) || null,
+            totalAtEvent: parseFloat(proposal.total_amount) || null,
+          });
+        }
+        onOpenSend();
+      }}
       lossItems={lossValidation.lossItems}
       zeroProfitItems={lossValidation.zeroProfitItems}
     />

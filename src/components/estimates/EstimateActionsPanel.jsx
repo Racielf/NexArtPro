@@ -11,11 +11,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { logComm, logCommFailed } from '@/lib/commTracking';
-import MarginGuardModal from '@/components/estimates/internal/MarginGuardModal';
 import LossPreventionModal from '@/components/estimates/internal/LossPreventionModal';
 import PricingOverrideModal from '@/components/estimates/internal/PricingOverrideModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
-import { canSendDocument, canApproveDocument, canProceedLowMargin } from '@/lib/pricingPermissions';
+import { canSendDocument } from '@/lib/pricingPermissions';
+import { logOverrideAction } from '@/lib/pricingAuditService';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { normalizeUserRole } from '@/lib/utils';
 
@@ -160,13 +160,11 @@ function ActionCard({ icon: Icon, title, subtitle, badge, badgeVariant, ctaLabel
 }
 
 // ── main component ────────────────────────────────────────────────────────────
-const MIN_SAFE_MARGIN = 25; // percent — admin PIN required below this
 
 export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenSendReview }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [finishOpen,   setFinishOpen]   = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
-  const [marginGuardOpen, setMarginGuardOpen] = useState(false);
   const [lossModalOpen, setLossModalOpen] = useState(false);
   const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [] });
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
@@ -484,7 +482,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
               dtv.errors.forEach(e => toast.error(e));
               return;
             }
-            // Loss prevention check with role-based permissions
+            // Pricing check with role-based permissions (RBAC only gates loss pricing)
             const pv = validateEstimatePricing(estimate);
             if (pv.lossItems.length > 0 || pv.zeroProfitItems.length > 0) {
               const gate = canSendDocument(role, pv);
@@ -493,27 +491,18 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
                 return;
               }
               if (gate.requiresOverride) {
+                // Loss pricing — manager/admin override with PIN + reason
                 setLossValidation(pv);
                 setOverrideAction('send');
                 setOverrideModalOpen(true);
                 return;
               }
               if (gate.requiresConfirm) {
+                // Zero-profit — standard confirmation for all roles
                 setLossValidation(pv);
                 setLossModalOpen(true);
                 return;
               }
-            }
-            // Margin guard check with role-based permissions
-            const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
-            const marginGate = canProceedLowMargin(role, marginPct, MIN_SAFE_MARGIN);
-            if (!marginGate.allowed) {
-              toast.error(marginGate.blockedReason);
-              return;
-            }
-            if (marginGate.requiresOverride) {
-              setMarginGuardOpen(true);
-              return;
             }
             onOpenSendReview?.();
           }}
@@ -521,19 +510,6 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
           <Send className="w-3.5 h-3.5 text-indigo-500" />
           Review & Send
         </button>
-        {/* Inline margin warning — visible only when margin < 15% */}
-        {(() => {
-          const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? null);
-          if (isNaN(marginPct) || marginPct === null || marginPct >= MIN_SAFE_MARGIN) return null;
-          return (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 border border-red-200">
-              <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />
-              <span className="text-[9px] font-semibold text-red-600">
-                Margin {marginPct.toFixed(1)}% — admin PIN required
-              </span>
-            </div>
-          );
-        })()}
         <button onClick={() => setApprovalOpen(true)}
           className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
           <ThumbsUp className="w-3.5 h-3.5 text-green-500" />
@@ -677,41 +653,39 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         </div>
       )}
 
-      {/* ── LOSS PREVENTION MODAL (confirm-only for manager/admin zero-profit) ── */}
+      {/* ── LOSS PREVENTION MODAL (zero-profit confirmation — all roles) ── */}
       <LossPreventionModal
         open={lossModalOpen}
         onClose={() => setLossModalOpen(false)}
         onProceed={() => {
           setLossModalOpen(false);
-          // After zero-profit acknowledged, continue to margin guard or send
-          const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
-          const marginGate = canProceedLowMargin(role, marginPct, MIN_SAFE_MARGIN);
-          if (marginGate.requiresOverride) {
-            setMarginGuardOpen(true);
-          } else if (!marginGate.allowed) {
-            toast.error(marginGate.blockedReason);
-          } else {
-            onOpenSendReview?.();
+          // Log zero-profit confirmation as audit event
+          if (estimate?.id && lossValidation.zeroProfitItems?.length > 0) {
+            logOverrideAction({
+              documentId: estimate.id,
+              documentKind: estimate.document_type === 'BID' ? 'bid' : 'estimate',
+              documentNumber: estimate.estimate_number,
+              eventType: 'zero_profit_confirmation',
+              reason: '',
+              userEmail: currentUser?.email,
+              userRole: role,
+              marginAtEvent: parseFloat(estimate.gross_margin_pct) || null,
+              totalAtEvent: parseFloat(estimate.total) || null,
+            });
           }
+          onOpenSendReview?.();
         }}
         lossItems={lossValidation.lossItems}
         zeroProfitItems={lossValidation.zeroProfitItems}
       />
 
-      {/* ── PRICING OVERRIDE MODAL (manager/admin loss override with reason) ── */}
+      {/* ── PRICING OVERRIDE MODAL (loss pricing only — manager/admin with PIN + reason) ── */}
       <PricingOverrideModal
         open={overrideModalOpen}
         onClose={() => setOverrideModalOpen(false)}
         onApproved={() => {
           setOverrideModalOpen(false);
-          // After override, still check margin guard
-          const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
-          const marginGate = canProceedLowMargin(role, marginPct, MIN_SAFE_MARGIN);
-          if (marginGate.requiresOverride) {
-            setMarginGuardOpen(true);
-          } else {
-            onOpenSendReview?.();
-          }
+          onOpenSendReview?.();
         }}
         action={overrideAction}
         role={role}
@@ -721,17 +695,6 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         pricingResult={lossValidation}
         lossItems={lossValidation.lossItems}
         zeroProfitItems={lossValidation.zeroProfitItems}
-      />
-
-      {/* ── MARGIN GUARD MODAL ── */}
-      <MarginGuardModal
-        open={marginGuardOpen}
-        onClose={() => setMarginGuardOpen(false)}
-        onContinue={() => { setMarginGuardOpen(false); onOpenSendReview?.(); }}
-        marginPct={estimate?.gross_margin_pct ?? estimate?.gross_margin_percent}
-        isAdmin={role === 'admin' || role === 'manager'}
-        currentUser={currentUser}
-        estimate={estimate}
       />
 
       {/* ── MORE ACTIONS ──────────────────────────────────────────────────── */}

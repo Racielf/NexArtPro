@@ -5,26 +5,22 @@
  * Uses the output of validateEstimatePricing() and applies role-based rules.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
- * PERMISSIONS MATRIX
+ * PERMISSIONS MATRIX (REVISED — zero-profit is NOT role-gated)
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * Action                        │ sales       │ manager       │ admin
  * ─────────────────────────────-┼─────────────┼───────────────┼──────────────
  * Send with loss pricing        │ BLOCKED     │ OVERRIDE+PIN  │ OVERRIDE+PIN
- * Send with zero profit         │ BLOCKED     │ CONFIRM       │ CONFIRM
+ * Send with zero profit         │ CONFIRM     │ CONFIRM       │ CONFIRM
  * Approve with loss pricing     │ BLOCKED     │ OVERRIDE+PIN  │ OVERRIDE+PIN
- * Approve with zero profit      │ BLOCKED     │ CONFIRM       │ CONFIRM
- * Override loss prevention      │ BLOCKED     │ OVERRIDE+PIN  │ OVERRIDE+PIN
- * Edit price below book         │ ALLOWED*    │ ALLOWED       │ ALLOWED
+ * Approve with zero profit      │ CONFIRM     │ CONFIRM       │ CONFIRM
+ * Edit price below book         │ ALLOWED     │ ALLOWED       │ ALLOWED
  * Change document type          │ ALLOWED     │ ALLOWED       │ ALLOWED
  * View internal pricing fields  │ ALLOWED     │ ALLOWED       │ ALLOWED
- * Low margin send (<25%)        │ BLOCKED     │ OVERRIDE+PIN  │ OVERRIDE+PIN
- *
- * * sales CAN set price below book but cannot send/approve if result is loss
  *
  * BLOCKED      = action disabled, message shown
- * CONFIRM      = confirmation dialog required
- * OVERRIDE+PIN = explicit acknowledgement + admin/manager PIN + reason captured
+ * CONFIRM      = standard confirmation dialog (no PIN, no reason, all roles)
+ * OVERRIDE+PIN = explicit acknowledgement + manager/admin PIN + reason captured
  * ALLOWED      = no restriction
  *
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -93,6 +89,8 @@ function override() {
 /**
  * Check if user can send a document given its pricing validation result.
  *
+ * RBAC only gates LOSS pricing. Zero-profit is a standard confirmation for ALL roles.
+ *
  * @param {string} role - 'sales' | 'manager' | 'admin'
  * @param {{ canProceed, lossItems, zeroProfitItems, requiresConfirmation }} pricingResult
  *   Output of validateEstimatePricing()
@@ -108,7 +106,7 @@ export function canSendDocument(role, pricingResult) {
   // No pricing issues → everyone can send
   if (!hasLoss && !hasZeroProfit) return RESULT_ALLOWED;
 
-  // Loss items present
+  // Loss items present → role-gated
   if (hasLoss) {
     if (role === ROLES.SALES) {
       return blocked(
@@ -120,15 +118,8 @@ export function canSendDocument(role, pricingResult) {
     return override();
   }
 
-  // Zero profit only (no loss)
+  // Zero profit only (no loss) → standard confirmation for ALL roles
   if (hasZeroProfit) {
-    if (role === ROLES.SALES) {
-      return blocked(
-        `Cannot send — ${zeroProfitItems.length} item${zeroProfitItems.length > 1 ? 's' : ''} at zero profit. ` +
-        'A manager or admin must review before sending.'
-      );
-    }
-    // manager/admin: simple confirm
     return RESULT_CONFIRM;
   }
 
@@ -143,27 +134,8 @@ export function canApproveDocument(role, pricingResult) {
   return canSendDocument(role, pricingResult);
 }
 
-/**
- * Check if user can proceed through a low-margin guard.
- *
- * @param {string} role
- * @param {number} marginPct
- * @param {number} [minMargin=25]
- * @returns gate result
- */
-export function canProceedLowMargin(role, marginPct, minMargin = 25) {
-  if (isNaN(marginPct) || marginPct >= minMargin) return RESULT_ALLOWED;
-
-  if (role === ROLES.SALES) {
-    return blocked(
-      `Cannot proceed — margin is ${marginPct.toFixed(1)}% (minimum ${minMargin}%). ` +
-      'A manager or admin must approve this.'
-    );
-  }
-
-  // manager/admin: override with PIN
-  return override();
-}
+// canProceedLowMargin removed — margin-based restrictions are not part of the RBAC layer.
+// The RBAC layer only controls who can override loss pricing.
 
 /**
  * Build an audit record for a pricing override.
@@ -208,10 +180,10 @@ export function buildPricingAuditRecord({
  */
 export function getPermissionSummary(role) {
   if (role === ROLES.ADMIN) {
-    return 'Full access — can override all pricing restrictions with PIN verification.';
+    return 'Full access — can override loss pricing with PIN verification.';
   }
   if (role === ROLES.MANAGER) {
-    return 'Can override pricing restrictions with PIN verification. Cannot bypass system-level blocks.';
+    return 'Can override loss pricing with PIN verification.';
   }
-  return 'Standard access — cannot send or approve documents with loss pricing or zero profit.';
+  return 'Standard access — cannot send or approve documents with loss pricing. Zero-profit requires confirmation.';
 }
