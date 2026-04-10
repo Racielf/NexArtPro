@@ -18,6 +18,22 @@ import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceF
 import { logChange } from '@/lib/estimateAuditLog';
 import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
 
+function NotesSection({ label, placeholder, value, onChange, accent = false }) {
+  return (
+    <div>
+      <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${accent ? 'text-amber-600' : 'text-slate-500'}`}>
+        {label}
+      </label>
+      <Textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`min-h-[110px] text-sm ${accent ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200'}`}
+      />
+    </div>
+  );
+}
+
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
