@@ -55,6 +55,10 @@ const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'r
 
 // calcTotals is now delegated to estimateEngine.js (Decimal.js-backed pure functions)
 
+function EstimateGroups() {
+  return null;
+}
+
 // ─── Single Line Item Row ──────────────────────────────────────────────────────
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange }) {
   const [expanded, setExpanded] = useState(!item.service_name);
