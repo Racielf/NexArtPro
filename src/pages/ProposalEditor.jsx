@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Save, ChevronRight, Trash2 } from 'lucide-react';
+import { X, Eye, Save, Send, Trash2 } from 'lucide-react';
 import ProposalSidebarCustomer from '@/components/proposals/ProposalSidebarCustomer';
 import ProposalActionsPanel from '@/components/proposals/ProposalActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
@@ -171,58 +171,57 @@ export default function ProposalEditor() {
 
       {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
-        <div className="flex items-center px-4 h-11 gap-3 relative">
+        <div className="flex items-center px-4 h-12 gap-3">
+          {/* Left: Document title */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span className="text-xs font-bold text-slate-400 tracking-widest uppercase flex-shrink-0">PROP</span>
-            <span className="text-base font-bold text-slate-900 flex-shrink-0">#{proposal.proposal_number}</span>
+            <h1 className="text-base font-bold text-slate-900 flex-shrink-0">
+              Proposal <span className="text-primary">#{proposal.proposal_number}</span>
+            </h1>
             {hasClient && (
-              <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                <span className="text-sm font-semibold text-slate-700 truncate">{proposal.client_name}</span>
-              </>
+              <span className="text-sm text-slate-500 truncate hidden sm:inline">· {proposal.client_name}</span>
             )}
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-            <button onClick={() => setShowPreview(true)}
-              className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title="Preview document">
-              <Eye className="w-4 h-4" />
+          {/* Right: Status + Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${statusBadge.cls}`}>
+              {statusBadge.label}
+            </span>
+
+            <div className="w-px h-5 bg-slate-200 mx-1" />
+
+            <button
+              onClick={() => setShowPreview(true)}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Client View
             </button>
+
+            <button
+              onClick={() => {
+                if (!proposal.client_email) { toast.error('Client email is required to send'); return; }
+                setShowSend(true);
+              }}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Send to Client
+            </button>
+
             {saving && (
-              <span className="text-xs text-slate-400 flex items-center gap-1 ml-1">
+              <span className="text-xs text-slate-400 flex items-center gap-1">
                 <Save className="w-3 h-3 animate-pulse" />
               </span>
             )}
-          </div>
 
-          <button onClick={handleCancel}
-            className="ml-3 flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-0 px-4 h-8 bg-slate-50 border-t border-slate-100 text-xs">
-          <div className="flex items-center gap-1.5 pr-4 border-r border-slate-200">
-            <span className="text-slate-400 font-medium">Total</span>
-            <span className="font-bold text-slate-900 tabular-nums">{totalFmt}</span>
+            <button
+              onClick={handleCancel}
+              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex items-center gap-1.5 px-4 border-r border-slate-200">
-            <span className="text-slate-400 font-medium">Status</span>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${statusBadge.cls}`}>
-              {statusBadge.label}
-            </span>
-          </div>
-          {proposal.title && (
-            <div className="flex items-center gap-1.5 px-4">
-              <span className="text-slate-400 font-medium">Project</span>
-              <span className="font-semibold text-slate-700 truncate max-w-[200px]">{proposal.title}</span>
-            </div>
-          )}
-          {proposal.source_estimate_id && (
-            <div className="flex items-center gap-1.5 px-4">
-              <span className="text-slate-400 font-medium">From Estimate</span>
-            </div>
-          )}
         </div>
       </div>
 

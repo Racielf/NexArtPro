@@ -643,37 +643,39 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   return (
     <div className="w-full space-y-0">
 
-      {/* ── DOCUMENT HEADER CARD ── */}
-      <div className="bg-white rounded-lg border border-slate-200 mb-4 px-6 py-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            {(() => { const dc = getDocTypeConfig(estimate?.document_type); return (
-              <h2 className="text-2xl font-bold text-slate-900">
-                {dc.label} <span className="text-primary">#{estimate?.estimate_number}</span>
-              </h2>
-            ); })()}
-            {estimate?.title && <p className="text-sm text-slate-500 mt-1">{estimate.title}</p>}
-            {estimate?.document_type === 'BID' && (estimate?.job_number || estimate?.plan_reference) && (
-              <div className="flex items-center gap-3 mt-1">
-                {estimate.job_number && <span className="text-xs text-slate-500">Job: <strong className="text-slate-700">{estimate.job_number}</strong></span>}
-                {estimate.plan_reference && <span className="text-xs text-slate-500">Plan: <strong className="text-slate-700">{estimate.plan_reference}</strong></span>}
-              </div>
+      {/* ── SERVICES SECTION HEADER ── */}
+      <div className="bg-white rounded-lg border border-slate-200 mb-4 px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <h3 className="text-sm font-bold text-slate-900">
+            Services
+            {isPreview && (
+              <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                Read-only
+              </span>
             )}
-          </div>
-          <div className="flex items-center gap-5 text-sm flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 text-xs font-medium">Expires</span>
+          </h3>
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium">Expires</span>
               <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
-                className="h-8 text-sm w-36 border-slate-200" />
+                className="h-7 text-xs w-32 border-slate-200" />
             </div>
-
             <button onClick={() => setShowCost(v => !v)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors ${showCost ? 'bg-amber-100 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+              className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-colors ${showCost ? 'bg-amber-100 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}>
               {showCost ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              {showCost ? 'Hiding cost' : 'Show cost'}
+              {showCost ? 'Cost on' : 'Cost'}
             </button>
           </div>
         </div>
+        {!isPreview && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 h-8 px-3 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Bulk Actions
+          </button>
+        )}
       </div>
 
       {/* ── ESTIMATE-LEVEL LOSS WARNING — warning-only, not blocking ── */}
@@ -687,23 +689,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
               Review pricing before sending to client.
             </p>
           </div>
-        </div>
-      )}
-
-      {/* ── GROUPS ── */}
-      {!isPreview && (
-        <div className="bg-white rounded-lg border border-slate-200 mb-4 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Bulk Actions</p>
-            <p className="text-xs text-slate-500">Use bulk tools while editing line items and groups.</p>
-          </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 h-9 px-3 rounded-md border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50"
-          >
-            <Layers className="w-4 h-4" />
-            Bulk Actions
-          </button>
         </div>
       )}
 

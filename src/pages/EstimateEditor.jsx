@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Save, Trash2, ChevronRight } from 'lucide-react';
+import { X, Eye, Save, Trash2, Send, ChevronDown, MoreHorizontal } from 'lucide-react';
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
@@ -202,73 +202,58 @@ export default function EstimateEditor() {
 
       {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
-        <div className="flex items-center px-4 h-11 gap-3 relative">
+        <div className="flex items-center px-4 h-12 gap-3">
+          {/* Left: Document title */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span className="text-xs font-bold text-slate-400 tracking-widest uppercase flex-shrink-0">{docConfig.abbreviation}</span>
-            <span className="text-base font-bold text-slate-900 flex-shrink-0">#{estimate.estimate_number}</span>
+            <h1 className="text-base font-bold text-slate-900 flex-shrink-0">
+              Bid <span className="text-primary">#{estimate.estimate_number}</span>
+            </h1>
             {hasClient && (
-              <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                <span className="text-sm font-semibold text-slate-700 truncate">{estimate.client_name}</span>
-              </>
+              <span className="text-sm text-slate-500 truncate hidden sm:inline">· {estimate.client_name}</span>
             )}
           </div>
 
-          {hasClient && (
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <EstimateTemplateSelector
-                currentTemplate={estimate?.document_config?.template || 'professional'}
-                onTemplateChange={handleTemplateChange}
-                onShowOptions={() => setShowDocumentOptions(true)}
-              />
-            </div>
-          )}
+          {/* Right: Status + Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${statusBadge.cls}`}>
+              {statusBadge.label}
+            </span>
 
-          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-            {hasClient && (
-              <>
-                <ConvertToInvoiceButton estimate={estimate} onConverted={loadEstimate} />
-                <ConvertToWorkOrderButton estimate={estimate} onConverted={loadEstimate} />
-              </>
-            )}
             <div className="w-px h-5 bg-slate-200 mx-1" />
-            <button onClick={() => setShowPreviewModal(true)}
-              className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title="Preview document">
-              <Eye className="w-4 h-4" />
+
+            <button
+              onClick={() => setShowPreviewModal(true)}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Client View
             </button>
+
+            <button
+              onClick={() => {
+                if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
+                setShowSendModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Review & Send
+            </button>
+
             {saving && (
-              <span className="text-xs text-slate-400 flex items-center gap-1 ml-1">
+              <span className="text-xs text-slate-400 flex items-center gap-1">
                 <Save className="w-3 h-3 animate-pulse" />
               </span>
             )}
-          </div>
 
-          <button
-            onClick={handleCancel}
-            title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
-            className="ml-3 flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-0 px-4 h-8 bg-slate-50 border-t border-slate-100 text-xs">
-          <div className="flex items-center gap-1.5 pr-4 border-r border-slate-200">
-            <span className="text-slate-400 font-medium">Total</span>
-            <span className="font-bold text-slate-900 tabular-nums">{totalFmt}</span>
+            <button
+              onClick={handleCancel}
+              title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
+              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex items-center gap-1.5 px-4 border-r border-slate-200">
-            <span className="text-slate-400 font-medium">Status</span>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${statusBadge.cls}`}>
-              {statusBadge.label}
-            </span>
-          </div>
-          {estimate.title && (
-            <div className="flex items-center gap-1.5 px-4">
-              <span className="text-slate-400 font-medium">Project</span>
-              <span className="font-semibold text-slate-700 truncate max-w-[200px]">{estimate.title}</span>
-            </div>
-          )}
         </div>
       </div>
 
