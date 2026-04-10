@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -10,7 +10,10 @@ import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { mapProposalToEstimate } from '@/lib/proposalDocumentMapper';
 import ProposalAdjustmentModal from '@/components/proposals/ProposalAdjustmentModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
+import { canSendDocument } from '@/lib/pricingPermissions';
+import { normalizeUserRole } from '@/lib/utils';
 import LossPreventionModal from '@/components/estimates/internal/LossPreventionModal';
+import PricingOverrideModal from '@/components/estimates/internal/PricingOverrideModal';
 import { mapItemsToGroups } from '@/components/proposals/ProposalEstimateGroupsAdapter';
 
 const STATUS_CONFIG = {
@@ -205,6 +208,16 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
   const [showAdjustment, setShowAdjustment] = useState(false);
   const [lossModalOpen, setLossModalOpen] = useState(false);
   const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [] });
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [role, setRole] = useState('sales');
+
+  useEffect(() => {
+    base44.auth.me().then(u => {
+      setCurrentUser(u);
+      setRole(normalizeUserRole(u?.role));
+    }).catch(() => {});
+  }, []);
   const status = proposal?.status || 'draft';
   const badge = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const proposalId = proposal?.id;
@@ -227,6 +240,19 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
       open={lossModalOpen}
       onClose={() => setLossModalOpen(false)}
       onProceed={() => { setLossModalOpen(false); onOpenSend(); }}
+      lossItems={lossValidation.lossItems}
+      zeroProfitItems={lossValidation.zeroProfitItems}
+    />
+    <PricingOverrideModal
+      open={overrideModalOpen}
+      onClose={() => setOverrideModalOpen(false)}
+      onApproved={() => { setOverrideModalOpen(false); onOpenSend(); }}
+      action="send"
+      role={role}
+      currentUser={currentUser}
+      document={proposal}
+      documentType="proposal"
+      pricingResult={lossValidation}
       lossItems={lossValidation.lossItems}
       zeroProfitItems={lossValidation.zeroProfitItems}
     />
@@ -282,13 +308,25 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
             <ActionBtn icon={Send} label="Send to Client" disabled={loading}
               onClick={() => {
                 if (!proposal.client_email) { toast.error('Client email is required to send'); return; }
-                // Loss prevention gate — reuse shared validation
+                // Loss prevention gate with role-based permissions
                 const proxyForValidation = { groups: mapItemsToGroups(proposal.items) };
                 const pv = validateEstimatePricing(proxyForValidation);
-                if (!pv.canProceed || pv.requiresConfirmation) {
-                  setLossValidation(pv);
-                  setLossModalOpen(true);
-                  return;
+                if (pv.lossItems.length > 0 || pv.zeroProfitItems.length > 0) {
+                  const gate = canSendDocument(role, pv);
+                  if (!gate.allowed) {
+                    toast.error(gate.blockedReason);
+                    return;
+                  }
+                  if (gate.requiresOverride) {
+                    setLossValidation(pv);
+                    setOverrideModalOpen(true);
+                    return;
+                  }
+                  if (gate.requiresConfirm) {
+                    setLossValidation(pv);
+                    setLossModalOpen(true);
+                    return;
+                  }
                 }
                 onOpenSend();
               }}

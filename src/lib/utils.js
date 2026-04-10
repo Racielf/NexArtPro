@@ -9,11 +9,19 @@ export function cn(...inputs) {
 export const isIframe = window.self !== window.top;
 
 // ── Role normalization ────────────────────────────────────────────────────────
-// Maps legacy stored role values to the current role structure.
-// Roles: admin | user
-const LEGACY_ROLE_MAP = { employee: 'user', agent: 'user' };
+// Maps raw role values to the pricing permission role structure.
+// Pricing roles: admin | manager | sales
+// The User entity role field can have: admin, manager, sales, user, employee, agent
+const PRICING_ROLE_MAP = {
+  admin:    'admin',
+  manager:  'manager',
+  sales:    'sales',
+  user:     'sales',      // default users → sales permissions
+  employee: 'sales',      // legacy
+  agent:    'sales',      // legacy
+};
 
 export function normalizeUserRole(rawRole) {
-  if (!rawRole) return 'user';
-  return LEGACY_ROLE_MAP[rawRole] ?? rawRole;
+  if (!rawRole) return 'sales';
+  return PRICING_ROLE_MAP[rawRole] ?? 'sales';
 }

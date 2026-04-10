@@ -13,7 +13,9 @@ import { toast } from 'sonner';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import MarginGuardModal from '@/components/estimates/internal/MarginGuardModal';
 import LossPreventionModal from '@/components/estimates/internal/LossPreventionModal';
+import PricingOverrideModal from '@/components/estimates/internal/PricingOverrideModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
+import { canSendDocument, canApproveDocument, canProceedLowMargin } from '@/lib/pricingPermissions';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { normalizeUserRole } from '@/lib/utils';
 
@@ -167,6 +169,8 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const [marginGuardOpen, setMarginGuardOpen] = useState(false);
   const [lossModalOpen, setLossModalOpen] = useState(false);
   const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [] });
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [overrideAction, setOverrideAction] = useState('send');
   const [currentUser,  setCurrentUser]  = useState(null);
   const [omwActive,    setOmwActive]    = useState(false);
   const [omwMiles,     setOmwMiles]     = useState(estimate?.miles_traveled || 0);
@@ -480,20 +484,38 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
               dtv.errors.forEach(e => toast.error(e));
               return;
             }
-            // Loss prevention check — runs before margin guard
+            // Loss prevention check with role-based permissions
             const pv = validateEstimatePricing(estimate);
-            if (!pv.canProceed || pv.requiresConfirmation) {
-              setLossValidation(pv);
-              setLossModalOpen(true);
+            if (pv.lossItems.length > 0 || pv.zeroProfitItems.length > 0) {
+              const gate = canSendDocument(role, pv);
+              if (!gate.allowed) {
+                toast.error(gate.blockedReason);
+                return;
+              }
+              if (gate.requiresOverride) {
+                setLossValidation(pv);
+                setOverrideAction('send');
+                setOverrideModalOpen(true);
+                return;
+              }
+              if (gate.requiresConfirm) {
+                setLossValidation(pv);
+                setLossModalOpen(true);
+                return;
+              }
+            }
+            // Margin guard check with role-based permissions
+            const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
+            const marginGate = canProceedLowMargin(role, marginPct, MIN_SAFE_MARGIN);
+            if (!marginGate.allowed) {
+              toast.error(marginGate.blockedReason);
               return;
             }
-            // Margin guard check
-            const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
-            if (!isNaN(marginPct) && marginPct < MIN_SAFE_MARGIN) {
+            if (marginGate.requiresOverride) {
               setMarginGuardOpen(true);
-            } else {
-              onOpenSendReview?.();
+              return;
             }
+            onOpenSendReview?.();
           }}
           className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
           <Send className="w-3.5 h-3.5 text-indigo-500" />
@@ -655,7 +677,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         </div>
       )}
 
-      {/* ── LOSS PREVENTION MODAL ── */}
+      {/* ── LOSS PREVENTION MODAL (confirm-only for manager/admin zero-profit) ── */}
       <LossPreventionModal
         open={lossModalOpen}
         onClose={() => setLossModalOpen(false)}
@@ -663,12 +685,40 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
           setLossModalOpen(false);
           // After zero-profit acknowledged, continue to margin guard or send
           const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
-          if (!isNaN(marginPct) && marginPct < MIN_SAFE_MARGIN) {
+          const marginGate = canProceedLowMargin(role, marginPct, MIN_SAFE_MARGIN);
+          if (marginGate.requiresOverride) {
+            setMarginGuardOpen(true);
+          } else if (!marginGate.allowed) {
+            toast.error(marginGate.blockedReason);
+          } else {
+            onOpenSendReview?.();
+          }
+        }}
+        lossItems={lossValidation.lossItems}
+        zeroProfitItems={lossValidation.zeroProfitItems}
+      />
+
+      {/* ── PRICING OVERRIDE MODAL (manager/admin loss override with reason) ── */}
+      <PricingOverrideModal
+        open={overrideModalOpen}
+        onClose={() => setOverrideModalOpen(false)}
+        onApproved={() => {
+          setOverrideModalOpen(false);
+          // After override, still check margin guard
+          const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
+          const marginGate = canProceedLowMargin(role, marginPct, MIN_SAFE_MARGIN);
+          if (marginGate.requiresOverride) {
             setMarginGuardOpen(true);
           } else {
             onOpenSendReview?.();
           }
         }}
+        action={overrideAction}
+        role={role}
+        currentUser={currentUser}
+        document={estimate}
+        documentType="estimate"
+        pricingResult={lossValidation}
         lossItems={lossValidation.lossItems}
         zeroProfitItems={lossValidation.zeroProfitItems}
       />
@@ -679,7 +729,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         onClose={() => setMarginGuardOpen(false)}
         onContinue={() => { setMarginGuardOpen(false); onOpenSendReview?.(); }}
         marginPct={estimate?.gross_margin_pct ?? estimate?.gross_margin_percent}
-        isAdmin={role === 'admin'}
+        isAdmin={role === 'admin' || role === 'manager'}
         currentUser={currentUser}
         estimate={estimate}
       />
