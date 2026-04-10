@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import ClientSelector from './ClientSelector';
 
 /**
  * ClientFormModal — create or edit a base44 Client record.
@@ -18,16 +19,15 @@ export default function ClientFormModal({ open, onOpenChange, client = null, onS
   const empty = { full_name: '', phone: '', email: '', address: '', city: '', state: '', zip: '', notes: '' };
   const [form, setForm] = useState(() => client ? { ...empty, ...client } : empty);
   const [saving, setSaving] = useState(false);
-  const [clients, setClients] = useState([]);
-  const [mode, setMode] = useState('form'); // 'select' | 'form'
-  const [searchTerm, setSearchTerm] = useState('');
+  const [mode, setMode] = useState('form'); // 'form'
+  const [showSelector, setShowSelector] = useState(false);
 
   React.useEffect(() => {
     if (open) {
       setForm(client ? { ...empty, ...client } : empty);
-      setMode(client ? 'form' : 'select');
-      setSearchTerm('');
-      base44.entities.Client.list('-created_date', 100).then(setClients).catch(() => {});
+      setMode('form');
+      // Si no hay cliente en modo crear, muestra selector automáticamente
+      if (!client) setShowSelector(true);
     }
   }, [open, client?.id]);
 
@@ -35,14 +35,8 @@ export default function ClientFormModal({ open, onOpenChange, client = null, onS
 
   const handleSelectExisting = (selectedClient) => {
     setForm({ ...empty, ...selectedClient });
-    setMode('form');
+    setShowSelector(false);
   };
-
-  const filteredClients = clients.filter(c =>
-    c.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone?.includes(searchTerm) ||
-    c.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const handleSave = async () => {
     if (!form.full_name.trim() || !form.phone.trim()) {
@@ -78,46 +72,6 @@ export default function ClientFormModal({ open, onOpenChange, client = null, onS
         <DialogHeader>
           <DialogTitle>{client ? 'Edit Customer' : 'New Customer'}</DialogTitle>
         </DialogHeader>
-        
-        {mode === 'select' && !client && (
-          <div className="space-y-3 pt-2">
-            <p className="text-xs text-slate-600">Select an existing customer or create a new one:</p>
-            <Input
-              autoFocus
-              placeholder="Search by name, phone, or email..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="h-8 text-sm"
-            />
-            <div className="max-h-72 overflow-y-auto space-y-1 border border-slate-200 rounded-lg p-2">
-              {filteredClients.length === 0 ? (
-                <p className="text-xs text-slate-400 py-4 text-center">No customers found</p>
-              ) : (
-                filteredClients.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => handleSelectExisting(c)}
-                    className="w-full text-left px-3 py-2 rounded hover:bg-primary/10 transition-colors border border-slate-100 hover:border-primary"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-900">{c.full_name}</p>
-                        {c.phone && <p className="text-[10px] text-slate-500">{c.phone}</p>}
-                      </div>
-                      <span className="text-[10px] text-primary font-medium">→</span>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-            <button
-              onClick={() => { setMode('form'); setSearchTerm(''); }}
-              className="w-full text-xs text-primary hover:underline font-medium py-2"
-            >
-              + Create new customer
-            </button>
-          </div>
-        )}
         
         {mode === 'form' && (
         <div className="space-y-4 pt-2">
@@ -159,7 +113,7 @@ export default function ClientFormModal({ open, onOpenChange, client = null, onS
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
             {!client && (
-              <Button variant="outline" size="sm" onClick={() => { setMode('select'); setSearchTerm(''); }}>Back</Button>
+              <Button variant="outline" size="sm" onClick={() => setShowSelector(true)}>← Select Different</Button>
             )}
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={handleSave} disabled={saving}>
@@ -169,6 +123,13 @@ export default function ClientFormModal({ open, onOpenChange, client = null, onS
         </div>
         )}
       </DialogContent>
+
+      <ClientSelector
+        open={showSelector}
+        onOpenChange={setShowSelector}
+        onSelect={handleSelectExisting}
+        onCreateNew={() => setShowSelector(false)}
+      />
     </Dialog>
   );
 }
