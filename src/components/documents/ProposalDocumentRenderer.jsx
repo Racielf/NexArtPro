@@ -1,18 +1,26 @@
 import React from 'react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
-import SharedLineItemsTable from './SharedLineItemsTable';
-import SharedFinancialSummary from './SharedFinancialSummary';
 import { tb, tList, tReplace } from '@/lib/documentTranslations';
+import { COLORS, FONT, SPACE, S } from './pdf/PDFStyles';
+import PDFHeader from './pdf/PDFHeader';
+import PDFSectionBlock from './pdf/PDFSectionBlock';
+import PDFInfoGrid, { InfoRow } from './pdf/PDFInfoGrid';
+import PDFLineItemsTable from './pdf/PDFLineItemsTable';
+import PDFTotalsBlock from './pdf/PDFTotalsBlock';
+import PDFSignatureBlock from './pdf/PDFSignatureBlock';
+import PDFFooter from './pdf/PDFFooter';
 
 /**
- * ProposalDocumentRenderer — Client-friendly PROPOSAL presentation
- * Supports EN, ES, BILINGUAL rendering via `lang` prop.
+ * ProposalDocumentRenderer — Client-friendly PROPOSAL
  *
- * Section order:
- *  1. Header  2. Client/Project Info  3. Intro/Cover Note  4. Project Summary
- *  5. Services Included  6. What's Included  7. Optional Add-ons
- *  8. Schedule/Timeline  9. Terms  10. Acceptance
+ * Design: More whitespace, softer sections, highlighted intro,
+ * clean pricing table, strong total block, warm accent (violet).
+ *
+ * Uses shared PDF layout components for visual consistency.
+ * CRITICAL: Never exposes book_price, unit_cost, margin.
  */
+
+const ACCENT = COLORS.proposal.accent;
 
 const formatDate = (d, lang) => {
   if (!d) return null;
@@ -20,39 +28,13 @@ const formatDate = (d, lang) => {
   return new Date(d + 'T12:00:00').toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric' });
 };
 
-const ACCENT = '#7c3aed';
-
-const S = {
-  sectionLabel: { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: ACCENT, marginBottom: 10, marginTop: 0 },
-  sectionBlock: { marginBottom: 28 },
-  bodyText: { fontSize: 12, color: '#475569', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 },
-  cardBg: { background: '#faf5ff', border: `1px solid ${ACCENT}20`, borderRadius: 8, padding: '16px 20px' },
-  subtleCard: { background: '#f9fafb', padding: '14px 20px', borderRadius: 8, border: '1px solid #e5e7eb' },
-  tinyLabel: { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9ca3af', marginBottom: 6 },
-  bilingualSub: { fontSize: 10, color: '#9ca3af', fontStyle: 'italic', marginTop: 2 },
-};
-
-// Bilingual section title renderer
-function SectionTitle({ enKey, lang }) {
-  const text = tb('proposal', enKey, lang);
-  if (lang !== 'bilingual') {
-    return <div style={S.sectionLabel}>{text}</div>;
-  }
-  const [en, es] = text.split('\n');
-  return (
-    <div style={{ ...S.sectionLabel, lineHeight: 1.6 }}>
-      {en}
-      {es && <span style={{ display: 'block', fontSize: 9, color: '#a78bfa', fontWeight: 600, marginTop: 1 }}>{es}</span>}
-    </div>
-  );
-}
-
 export default function ProposalDocumentRenderer({ estimate, options = {}, lang: langProp }) {
   if (!estimate) return null;
 
   const lang = langProp || estimate?.document_language || 'en';
   const T = (key) => tb('proposal', key, lang);
   const primaryLang = lang === 'bilingual' ? 'en' : lang;
+  const bilingualEs = lang === 'bilingual';
 
   const opts = {
     showPrices: options.showPrices !== false,
@@ -82,158 +64,134 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
   const depositAmount = estimate.deposit_amount || (total * depositPct / 100);
   const remaining = total - depositAmount;
 
+  // Bilingual helpers
+  const esTitle = (key) => bilingualEs ? tb('proposal', key, 'es') : null;
+
   return (
-    <div style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif", fontSize: 13, lineHeight: 1.6, background: 'white', color: '#1f2937', minWidth: 640 }}>
+    <div style={{ fontFamily: FONT.family, fontSize: FONT.size.md, lineHeight: FONT.lineHeight.normal, background: COLORS.white, color: COLORS.text.primary, minWidth: 640 }}>
 
-      {/* ═══════ 1. HEADER ═══════ */}
-      <div style={{ padding: '40px 48px 28px', borderBottom: `4px solid ${ACCENT}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#111', letterSpacing: '-0.5px', marginBottom: 2 }}>{appConfig.company.name}</div>
-            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 16 }}>{appConfig.company.tagline}</div>
-            <div style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.8 }}>
-              {appConfig.company.address}<br />{appConfig.company.email} · {appConfig.company.phone}
-            </div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', color: ACCENT, marginBottom: 4 }}>{T('docLabel')}</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: '#111', lineHeight: 1 }}>#{estimate.estimate_number || '—'}</div>
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>{today}</div>
-            {expDate && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{T('validUntil')}: {expDate}</div>}
-          </div>
-        </div>
-      </div>
+      {/* ═══ 1. HEADER ═══ */}
+      <PDFHeader
+        docLabel={T('docLabel')}
+        number={estimate.estimate_number}
+        date={today}
+        expDate={expDate}
+        variant="proposal"
+        accent={ACCENT}
+      />
 
-      <div style={{ padding: '0 48px' }}>
+      <div style={{ padding: `0 ${SPACE.page}px` }}>
 
-        {/* ═══════ 2. CLIENT / PROJECT INFO ═══════ */}
-        <div style={{ ...S.sectionBlock, paddingTop: 28 }}>
-          <SectionTitle enKey="clientProjectInfo" lang={lang} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
-            <div>
-              <div style={S.tinyLabel}>{T('preparedFor')}</div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#111', marginBottom: 4 }}>{estimate.client_name}</div>
-              {estimate.client_address && <div style={{ color: '#6b7280', fontSize: 12, marginBottom: 2 }}>{estimate.client_address}</div>}
-              {estimate.client_email && <div style={{ color: '#9ca3af', fontSize: 11 }}>{estimate.client_email}</div>}
-              {estimate.client_phone && <div style={{ color: '#9ca3af', fontSize: 11 }}>{estimate.client_phone}</div>}
-            </div>
-            <div>
-              {estimate.title && (
-                <>
-                  <div style={S.tinyLabel}>{T('project')}</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#111', marginBottom: 8 }}>{estimate.title}</div>
-                </>
-              )}
-              {opts.showPrices && (
-                <div style={{ background: '#f3f4f6', padding: '14px 16px', borderRadius: 8, marginTop: estimate.title ? 8 : 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: 6 }}>{T('yourInvestment')}</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: ACCENT }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* ═══ 2. CLIENT / PROJECT INFO ═══ */}
+        <PDFSectionBlock title={T('clientProjectInfo')} titleEs={esTitle('clientProjectInfo')} accent={ACCENT} noBorder style={{ paddingTop: SPACE['2xl'] }}>
+          <PDFInfoGrid
+            variant="proposal"
+            leftTitle={T('preparedFor')}
+            leftContent={
+              <div>
+                <div style={{ fontWeight: FONT.weight.bold, fontSize: FONT.size.lg + 1, color: COLORS.text.primary, marginBottom: 4 }}>{estimate.client_name}</div>
+                {estimate.client_address && <div style={{ color: COLORS.text.muted, fontSize: FONT.size.base, marginBottom: 2 }}>{estimate.client_address}</div>}
+                {estimate.client_email && <div style={{ color: COLORS.text.faint, fontSize: FONT.size.sm }}>{estimate.client_email}</div>}
+                {estimate.client_phone && <div style={{ color: COLORS.text.faint, fontSize: FONT.size.sm }}>{estimate.client_phone}</div>}
+              </div>
+            }
+            rightTitle={T('project')}
+            rightContent={
+              <div>
+                {estimate.title && (
+                  <div style={{ fontWeight: FONT.weight.bold, fontSize: FONT.size.lg, color: COLORS.text.primary, marginBottom: SPACE.sm }}>{estimate.title}</div>
+                )}
+                {opts.showPrices && (
+                  <div style={{ background: COLORS.bg.subtle, padding: `${SPACE.lg}px`, borderRadius: 8, marginTop: estimate.title ? SPACE.sm : 0 }}>
+                    <div style={{ fontSize: FONT.size.xs, fontWeight: FONT.weight.bold, color: COLORS.text.muted, textTransform: 'uppercase', marginBottom: 6 }}>{T('yourInvestment')}</div>
+                    <div style={{ fontSize: FONT.size['4xl'], fontWeight: FONT.weight.extrabold, color: ACCENT, lineHeight: 1 }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                  </div>
+                )}
+              </div>
+            }
+          />
+        </PDFSectionBlock>
 
-        {/* ═══════ 3. INTRO / COVER NOTE ═══════ */}
-        <div style={S.sectionBlock}>
-          <SectionTitle enKey="coverNote" lang={lang} />
-          <div style={S.cardBg}>
-            <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.7, margin: 0 }}>
+        {/* ═══ 3. COVER NOTE ═══ */}
+        <PDFSectionBlock title={T('coverNote')} titleEs={esTitle('coverNote')} accent={ACCENT}>
+          <div style={S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder)}>
+            <p style={{ fontSize: FONT.size.md, color: COLORS.text.secondary, lineHeight: FONT.lineHeight.relaxed, margin: 0 }}>
               {T('coverGreeting')} <strong>{estimate.client_name}</strong>,
             </p>
-            <p style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.75, margin: '10px 0 0 0' }}>
-              {T('coverBody1')}
-            </p>
-            <p style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.75, margin: '10px 0 0 0' }}>
-              {T('coverBody2')}
-            </p>
+            <p style={{ ...S.body, marginTop: SPACE.md }}>{T('coverBody1')}</p>
+            <p style={{ ...S.body, marginTop: SPACE.md }}>{T('coverBody2')}</p>
           </div>
-        </div>
+        </PDFSectionBlock>
 
-        {/* ═══════ 4. PROJECT SUMMARY ═══════ */}
+        {/* ═══ 4. PROJECT SUMMARY ═══ */}
         {(estimate.title || estimate.notes) && (
-          <div style={S.sectionBlock}>
-            <SectionTitle enKey="projectSummary" lang={lang} />
-            {estimate.title && (
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#111', marginBottom: 8 }}>{estimate.title}</div>
-            )}
-            {estimate.notes ? (
-              <p style={S.bodyText}>{estimate.notes}</p>
-            ) : (
-              <p style={{ ...S.bodyText, color: '#9ca3af', fontStyle: 'italic' }}>
-                {T('projectSummaryDefault')}
-              </p>
-            )}
-          </div>
+          <PDFSectionBlock title={T('projectSummary')} titleEs={esTitle('projectSummary')} accent={ACCENT}>
+            {estimate.title && <div style={{ fontWeight: FONT.weight.semibold, fontSize: FONT.size.lg, color: COLORS.text.primary, marginBottom: SPACE.sm }}>{estimate.title}</div>}
+            {estimate.notes
+              ? <p style={S.body}>{estimate.notes}</p>
+              : <p style={{ ...S.body, color: COLORS.text.faint, fontStyle: 'italic' }}>{T('projectSummaryDefault')}</p>
+            }
+          </PDFSectionBlock>
         )}
 
-        {/* ═══════ 5. SERVICES INCLUDED ═══════ */}
+        {/* ═══ 5. SERVICES INCLUDED ═══ */}
         {opts.showBreakdown && mainGroups.length > 0 && (
-          <div style={S.sectionBlock}>
-            <SectionTitle enKey="servicesIncluded" lang={lang} />
-            <p style={{ ...S.bodyText, marginBottom: 12 }}>{T('servicesIntro')}</p>
-            <SharedLineItemsTable groups={mainGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} />
-          </div>
+          <PDFSectionBlock title={T('servicesIncluded')} titleEs={esTitle('servicesIncluded')} accent={ACCENT}>
+            <p style={{ ...S.body, marginBottom: SPACE.md }}>{T('servicesIntro')}</p>
+            <PDFLineItemsTable groups={mainGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} variant="proposal" />
+          </PDFSectionBlock>
         )}
 
-        {/* ═══════ 6. WHAT'S INCLUDED ═══════ */}
-        <div style={S.sectionBlock}>
-          <SectionTitle enKey="whatsIncluded" lang={lang} />
-          <div style={S.cardBg}>
+        {/* ═══ 6. WHAT'S INCLUDED ═══ */}
+        <PDFSectionBlock title={T('whatsIncluded')} titleEs={esTitle('whatsIncluded')} accent={ACCENT}>
+          <div style={S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder)}>
             {estimate.payment_terms ? (
-              <p style={S.bodyText}>{estimate.payment_terms}</p>
+              <p style={S.body}>{estimate.payment_terms}</p>
             ) : (
-              <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.75 }}>
-                <div style={{ fontWeight: 600, color: '#374151', marginBottom: 6 }}>{T('whatsIncludedTitle')}</div>
-                <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {tList('proposal', 'whatsIncludedItems', lang).map((item, i) => (
-                    <li key={i}>{item}</li>
-                  ))}
+              <div style={{ fontSize: FONT.size.base, color: COLORS.text.secondary, lineHeight: FONT.lineHeight.relaxed }}>
+                <div style={{ fontWeight: FONT.weight.semibold, color: COLORS.text.secondary, marginBottom: 6 }}>{T('whatsIncludedTitle')}</div>
+                <ul style={{ margin: 0, paddingLeft: 18, lineHeight: FONT.lineHeight.loose }}>
+                  {tList('proposal', 'whatsIncludedItems', lang).map((item, i) => <li key={i} style={{ marginBottom: 3 }}>{item}</li>)}
                 </ul>
               </div>
             )}
           </div>
-        </div>
+        </PDFSectionBlock>
 
-        {/* ═══════ 7. OPTIONAL ADD-ONS ═══════ */}
+        {/* ═══ 7. OPTIONAL ADD-ONS ═══ */}
         {opts.showBreakdown && addOnGroups.length > 0 && (
-          <div style={S.sectionBlock}>
-            <SectionTitle enKey="optionalAddOns" lang={lang} />
-            <p style={{ ...S.bodyText, marginBottom: 12 }}>{T('addOnsIntro')}</p>
-            <SharedLineItemsTable groups={addOnGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} />
-          </div>
+          <PDFSectionBlock title={T('optionalAddOns')} titleEs={esTitle('optionalAddOns')} accent={ACCENT}>
+            <p style={{ ...S.body, marginBottom: SPACE.md }}>{T('addOnsIntro')}</p>
+            <PDFLineItemsTable groups={addOnGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} variant="proposal" />
+          </PDFSectionBlock>
         )}
 
-        {/* ═══════ 8. SCHEDULE / TIMELINE ═══════ */}
-        <div style={S.sectionBlock}>
-          <SectionTitle enKey="scheduleTimeline" lang={lang} />
+        {/* ═══ 8. SCHEDULE / TIMELINE ═══ */}
+        <PDFSectionBlock title={T('scheduleTimeline')} titleEs={esTitle('scheduleTimeline')} accent={ACCENT}>
           {(startDate || endDate) ? (
-            <div style={{ display: 'flex', gap: 20 }}>
+            <div style={{ display: 'flex', gap: SPACE.xl }}>
               {startDate && (
-                <div style={{ ...S.subtleCard, flex: 1 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 4 }}>{T('estimatedStart')}</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>{startDate}</div>
+                <div style={{ ...S.card(COLORS.bg.card, COLORS.border.medium), flex: 1 }}>
+                  <div style={S.tinyLabel}>{T('estimatedStart')}</div>
+                  <div style={{ fontSize: FONT.size.lg, fontWeight: FONT.weight.semibold, color: COLORS.text.primary }}>{startDate}</div>
                 </div>
               )}
               {endDate && (
-                <div style={{ ...S.subtleCard, flex: 1 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 4 }}>{T('estimatedCompletion')}</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>{endDate}</div>
+                <div style={{ ...S.card(COLORS.bg.card, COLORS.border.medium), flex: 1 }}>
+                  <div style={S.tinyLabel}>{T('estimatedCompletion')}</div>
+                  <div style={{ fontSize: FONT.size.lg, fontWeight: FONT.weight.semibold, color: COLORS.text.primary }}>{endDate}</div>
                 </div>
               )}
             </div>
           ) : (
-            <p style={{ ...S.bodyText, color: '#9ca3af', fontStyle: 'italic' }}>
-              {T('scheduleDefault')}
-            </p>
+            <p style={{ ...S.body, color: COLORS.text.faint, fontStyle: 'italic' }}>{T('scheduleDefault')}</p>
           )}
-        </div>
+        </PDFSectionBlock>
 
-        {/* ═══════ INVESTMENT SUMMARY ═══════ */}
+        {/* ═══ INVESTMENT SUMMARY ═══ */}
         {opts.showPrices && (
-          <div style={S.sectionBlock}>
-            <SectionTitle enKey="investmentSummary" lang={lang} />
-            <SharedFinancialSummary
+          <PDFSectionBlock title={T('investmentSummary')} titleEs={esTitle('investmentSummary')} accent={ACCENT}>
+            <PDFTotalsBlock
               estimate={estimate}
               total={total}
               depositPct={depositPct}
@@ -242,88 +200,60 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
               showDeposit={depositPct > 0}
               accent={ACCENT}
               lang={primaryLang}
+              variant="proposal"
             />
-          </div>
+          </PDFSectionBlock>
         )}
 
-        {/* ═══════ 9. TERMS ═══════ */}
+        {/* ═══ 9. TERMS ═══ */}
         {opts.showTerms && (
-          <div style={S.sectionBlock}>
-            <SectionTitle enKey="terms" lang={lang} />
-
+          <PDFSectionBlock title={T('terms')} titleEs={esTitle('terms')} accent={ACCENT}>
             {estimate.exclusions && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>{T('whatsNotIncluded')}</div>
-                <p style={S.bodyText}>{estimate.exclusions}</p>
+              <div style={{ marginBottom: SPACE.lg }}>
+                <div style={S.subHeading}>{T('whatsNotIncluded')}</div>
+                <p style={S.body}>{estimate.exclusions}</p>
               </div>
             )}
-
             {estimate.payment_terms && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>{T('paymentTerms')}</div>
-                <p style={S.bodyText}>{estimate.payment_terms}</p>
+              <div style={{ marginBottom: SPACE.lg }}>
+                <div style={S.subHeading}>{T('paymentTerms')}</div>
+                <p style={S.body}>{estimate.payment_terms}</p>
               </div>
             )}
-
-            {estimate.warranty_terms ? (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>{T('warranty')}</div>
-                <p style={S.bodyText}>{estimate.warranty_terms}</p>
-              </div>
-            ) : (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>{T('warranty')}</div>
-                <p style={S.bodyText}>{T('warrantyDefault')}</p>
-              </div>
-            )}
-
-            {estimate.legal_terms ? (
-              <div style={{ marginBottom: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>{T('termsConditions')}</div>
-                <p style={S.bodyText}>{estimate.legal_terms}</p>
-              </div>
-            ) : (
-              <div style={{ marginBottom: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>{T('termsConditions')}</div>
-                <p style={S.bodyText}>{estimate.expiration_date ? T('termsValidPeriod') : T('termsDefault')}</p>
-              </div>
-            )}
-          </div>
+            <div style={{ marginBottom: SPACE.lg }}>
+              <div style={S.subHeading}>{T('warranty')}</div>
+              <p style={S.body}>{estimate.warranty_terms || T('warrantyDefault')}</p>
+            </div>
+            <div>
+              <div style={S.subHeading}>{T('termsConditions')}</div>
+              <p style={S.body}>{estimate.legal_terms || (estimate.expiration_date ? T('termsValidPeriod') : T('termsDefault'))}</p>
+            </div>
+          </PDFSectionBlock>
         )}
 
-        {/* ═══════ 10. ACCEPTANCE ═══════ */}
+        {/* ═══ 10. ACCEPTANCE ═══ */}
         {opts.showSignatures && (
-          <div style={{ ...S.sectionBlock, paddingTop: 4 }}>
-            <SectionTitle enKey="acceptance" lang={lang} />
-            <div style={{ ...S.cardBg, marginBottom: 20 }}>
-              <p style={{ fontSize: 11.5, color: '#374151', lineHeight: 1.65, margin: 0 }}>
+          <PDFSectionBlock title={T('acceptance')} titleEs={esTitle('acceptance')} accent={ACCENT}>
+            <div style={{ ...S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder), marginBottom: SPACE.xl }}>
+              <p style={{ fontSize: FONT.size.sm + 0.5, color: COLORS.text.secondary, lineHeight: FONT.lineHeight.relaxed, margin: 0 }}>
                 {tReplace(T('acceptanceBody'), { company: appConfig.company.name })}
               </p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48 }}>
-              {[
+            <PDFSignatureBlock
+              variant="proposal"
+              accent={ACCENT}
+              dateLabel={T('date')}
+              signatures={[
                 { title: T('authorizedRep'), sub: appConfig.company.name },
                 { title: T('clientSignature'), sub: estimate.client_name || 'Client' },
-              ].map((sig, i) => (
-                <div key={i}>
-                  <div style={{ height: 48, borderBottom: `2px solid ${ACCENT}`, marginBottom: 8 }} />
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#111' }}>{sig.title}</div>
-                  <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{sig.sub}</div>
-                  <div style={{ marginTop: 14, height: 24, borderBottom: '1px solid #d1d5db' }} />
-                  <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 4 }}>{T('date')}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+              ]}
+            />
+          </PDFSectionBlock>
         )}
       </div>
 
-      {/* ═══════ FOOTER ═══════ */}
-      <div style={{ textAlign: 'center', padding: '14px 48px', borderTop: `2px solid ${ACCENT}`, marginTop: 8 }}>
-        <div style={{ fontSize: 9, color: '#9ca3af' }}>
-          {appConfig.company.name} · {appConfig.company.address} · {today}
-        </div>
-      </div>
+      {/* ═══ FOOTER ═══ */}
+      <PDFFooter date={today} accent={ACCENT} variant="proposal" />
     </div>
   );
 }
