@@ -282,7 +282,7 @@ export default function ProposalEditor() {
                   disabled
                   className="h-7 text-xs font-semibold border border-slate-200 rounded px-2 bg-slate-50 text-slate-700 cursor-not-allowed"
                 >
-                  {DOC_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  <option value="PROPOSAL">Proposal</option>
                 </select>
               </div>
               <button
