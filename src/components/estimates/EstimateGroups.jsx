@@ -85,8 +85,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
             onChange={v => update('service_name', v)}
             onSelect={picked => {
                 setExpanded(true);
-                const pickedPrice = picked.unit_price ?? item.unit_price;
-                const bookPrice = picked.unit_price != null ? picked.unit_price : (item.book_price || 0);
+                const pickedPrice = picked.unit_price || 0;
                 const updated = {
                   ...item,
                   service_name: picked.name,
@@ -94,7 +93,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   unit:         picked.unit || item.unit,
                   unit_price:   pickedPrice,
                   unit_cost:    picked.unit_cost ?? item.unit_cost,
-                  book_price:   bookPrice,
+                  book_price:   pickedPrice,
                   line_total:   (parseFloat(item.quantity) || 1) * pickedPrice,
                 };
                 onUpdate(updated);
