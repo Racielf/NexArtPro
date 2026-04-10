@@ -6,7 +6,8 @@ import {
   Send, CheckCircle, XCircle, RotateCcw, Eye, Printer, Download,
   FileText, ClipboardList, ChevronRight, AlertCircle, FileEdit
 } from 'lucide-react';
-import { generateProposalPDF } from '@/utils/proposalPDFGenerator';
+import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
+import { mapProposalToEstimate } from '@/lib/proposalDocumentMapper';
 import ProposalAdjustmentModal from '@/components/proposals/ProposalAdjustmentModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
 import LossPreventionModal from '@/components/estimates/internal/LossPreventionModal';
@@ -251,18 +252,15 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
         <SectionLabel label="Document" />
         <ActionBtn icon={Eye} label="Preview" onClick={onOpenPreview} />
         <ActionBtn icon={Printer} label="Print" onClick={() => {
-          const w = window.open(`/proposal-view?id=${proposalId}&print=1`, '_blank');
-          if (w) w.onload = () => w.print();
+          const estimateData = mapProposalToEstimate(proposal);
+          printEstimate(estimateData);
         }} />
-        <ActionBtn icon={Download} label={downloadingPDF ? 'Generating…' : 'Download PDF'} 
+        <ActionBtn icon={Download} label={downloadingPDF ? 'Generating…' : 'Download PDF'}
           onClick={async () => {
-            if (!pdfElementRef?.current) {
-              toast.error('Document not ready');
-              return;
-            }
             setDownloadingPDF(true);
             try {
-              await generateProposalPDF(proposal, pdfElementRef.current);
+              const estimateData = mapProposalToEstimate(proposal);
+              await downloadEstimate(estimateData);
               toast.success('PDF downloaded');
             } catch (err) {
               toast.error('PDF generation failed');
