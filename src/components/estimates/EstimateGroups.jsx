@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
-  Pencil, Check, X, Eye, EyeOff, BookOpen, LayoutTemplate, Layers
+  Pencil, Check, X, Eye, EyeOff, BookOpen, LayoutTemplate
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceDisciplineGuard from '@/components/estimates/internal/PriceDisciplineGuard';
@@ -667,15 +667,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
             </button>
           </div>
         </div>
-        {!isPreview && (
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 h-8 px-3 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            Bulk Actions
-          </button>
-        )}
       </div>
 
       {/* ── ESTIMATE-LEVEL LOSS WARNING — warning-only, not blocking ── */}
