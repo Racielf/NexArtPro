@@ -52,7 +52,7 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
       client_address: estimate?.client_address || '',
     });
     setEditing(!estimate?.client_name);
-  }, [estimate?.id]);
+  }, [estimate?.id, estimate?.client_name]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
