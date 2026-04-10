@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
@@ -30,6 +30,7 @@ const fmtCurrency = (n) => `$${(parseFloat(n) || 0).toLocaleString(undefined, { 
 
 export default function ProposalLineItems({ proposal, onSave, locked }) {
   const [local, setLocal] = useState(proposal);
+  const qtyRefs = useRef({});
 
   useEffect(() => { setLocal(proposal); }, [proposal?.id]);
 
@@ -103,11 +104,12 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                 value={item.service_name || ''}
                 onChange={v => updateItem(item.id, 'service_name', v)}
                 onSelect={sel => {
-                  updateItem(item.id, 'service_name', sel.name);
-                  if (sel.unit) updateItem(item.id, 'unit', sel.unit);
-                  if (sel.unit_price !== undefined) updateItem(item.id, 'unit_price', sel.unit_price);
-                  if (sel.description) updateItem(item.id, 'description', sel.description);
-                }}
+                   updateItem(item.id, 'service_name', sel.name);
+                   if (sel.unit) updateItem(item.id, 'unit', sel.unit);
+                   if (sel.unit_price !== undefined) updateItem(item.id, 'unit_price', sel.unit_price);
+                   if (sel.description) updateItem(item.id, 'description', sel.description);
+                   setTimeout(() => qtyRefs.current[item.id]?.focus(), 0);
+                 }}
                 placeholder="Service name"
                 className={`h-7 text-xs border border-slate-200 rounded px-2 ${!isEditable ? 'opacity-60 cursor-not-allowed' : ''}`}
                 disabled={!isEditable}
@@ -118,9 +120,9 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                 disabled={!isEditable} placeholder="Notes" className="h-7 text-xs" />
             </div>
             <div className="col-span-1">
-              <Input type="number" value={item.quantity ?? 1} onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                disabled={!isEditable} className="h-7 text-xs text-center" />
-            </div>
+               <Input ref={el => qtyRefs.current[item.id] = el} type="number" value={item.quantity ?? 1} onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                 disabled={!isEditable} className="h-7 text-xs text-center" />
+             </div>
             <div className="col-span-1">
               <Input value={item.unit || 'ea'} onChange={e => updateItem(item.id, 'unit', e.target.value)}
                 disabled={!isEditable} className="h-7 text-xs text-center" />
