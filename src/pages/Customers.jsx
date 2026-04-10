@@ -24,6 +24,7 @@ export default function Customers() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   useEffect(() => { loadCustomers(); }, []);
 
@@ -41,6 +42,29 @@ export default function Customers() {
     if (!confirm('Delete this customer?')) return;
     await base44.entities.Customer.delete(id);
     toast.success('Customer deleted');
+    loadCustomers();
+  };
+
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(c => c.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    const idsArray = Array.from(selectedIds);
+    await Promise.all(idsArray.map(id => base44.entities.Customer.delete(id)));
+    setSelectedIds(new Set());
+    toast.success(`${idsArray.length} customer(s) deleted`);
     loadCustomers();
   };
 
@@ -69,22 +93,35 @@ export default function Customers() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="px-6 pt-4 pb-3 flex-shrink-0 flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-52">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input placeholder="Search by name, phone, email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 h-9 bg-white" />
-        </div>
-        <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg p-0.5">
-          {[{ value: 'all', label: 'All' }, ...CUSTOMER_TYPES].map(t => (
-            <button
-              key={t.value}
-              onClick={() => setTypeFilter(t.value)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${typeFilter === t.value ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              {t.label}
-            </button>
-          ))}
+      {/* Filters & Select All */}
+      <div className="px-6 pt-4 pb-3 flex-shrink-0 space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {filtered.length > 0 && (
+            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === filtered.length && filtered.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-medium text-slate-600">Select all</span>
+            </label>
+          )}
+          <div className="relative flex-1 min-w-52">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input placeholder="Search by name, phone, email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 h-9 bg-white" />
+          </div>
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg p-0.5">
+            {[{ value: 'all', label: 'All' }, ...CUSTOMER_TYPES].map(t => (
+              <button
+                key={t.value}
+                onClick={() => setTypeFilter(t.value)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${typeFilter === t.value ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -102,67 +139,89 @@ export default function Customers() {
             <Button onClick={openCreate} size="sm"><Plus className="w-3.5 h-3.5 mr-1.5" />New Customer</Button>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filtered.map(customer => {
-              const typeConfig = getTypeConfig(customer.customer_type);
-              const TypeIcon = typeConfig.icon;
-              const displayName = customer.display_name || `${customer.first_name} ${customer.last_name}`;
-              const fullAddress = [customer.service_address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ');
-              return (
-                <div key={customer.id} onClick={() => navigate(`/customer-profile?id=${customer.id}`)} className="bg-white rounded-xl border border-slate-200 px-4 py-3.5 flex items-center gap-4 hover:shadow-sm hover:border-slate-300 transition-all group cursor-pointer">
-                  {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-bold text-primary">
-                      {(customer.first_name?.[0] || '?').toUpperCase()}{(customer.last_name?.[0] || '').toUpperCase()}
-                    </span>
-                  </div>
+          <div className="space-y-3">
+            {selectedIds.size > 0 && (
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
+                <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5" onClick={() => {
+                  if (confirm(`Delete ${selectedIds.size} customer(s)?`)) handleDeleteSelected();
+                }}>
+                  Delete Selected
+                </Button>
+              </div>
+            )}
+            <div className="space-y-2">
+              {filtered.map(customer => {
+                const typeConfig = getTypeConfig(customer.customer_type);
+                const TypeIcon = typeConfig.icon;
+                const displayName = customer.display_name || `${customer.first_name} ${customer.last_name}`;
+                const fullAddress = [customer.service_address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ');
+                return (
+                  <div key={customer.id} className="bg-white rounded-xl border border-slate-200 px-4 py-3.5 flex items-center gap-4 hover:shadow-sm hover:border-slate-300 transition-all group">
+                    {/* Checkbox */}
+                    <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(customer.id)}
+                        onChange={() => toggleSelect(customer.id)}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </label>
 
-                  {/* Main info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-slate-900 text-sm">{displayName}</span>
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${typeConfig.color}`}>
-                        <TypeIcon className="w-2.5 h-2.5" />{typeConfig.label}
+                    {/* Avatar */}
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-bold text-primary">
+                        {(customer.first_name?.[0] || '?').toUpperCase()}{(customer.last_name?.[0] || '').toUpperCase()}
                       </span>
-                      {customer.company_name && (
-                        <span className="text-xs text-slate-400">{customer.company_name}</span>
-                      )}
                     </div>
-                    <div className="flex items-center gap-4 mt-1 flex-wrap">
-                      {customer.phone && (
-                        <a href={`tel:${customer.phone}`} className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors">
-                          <Phone className="w-3 h-3" />{customer.phone}
-                        </a>
-                      )}
-                      {customer.email && (
-                        <a href={`mailto:${customer.email}`} className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors truncate max-w-48">
-                          <Mail className="w-3 h-3 flex-shrink-0" />{customer.email}
-                        </a>
-                      )}
-                      {fullAddress && (
-                        <span className="flex items-center gap-1 text-xs text-slate-400 truncate max-w-60">
-                          <MapPin className="w-3 h-3 flex-shrink-0" />{fullAddress}
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Link to="/appointments" className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors" title="View appointments">
-                      <Calendar className="w-3.5 h-3.5" />
-                    </Link>
-                    <Link to="/estimates" className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors" title="View estimates">
-                      <FileText className="w-3.5 h-3.5" />
-                    </Link>
-                    <button onClick={() => openEdit(customer)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors" title="Edit">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Main info - clickable for Open */}
+                    <div onClick={() => navigate(`/customer-profile?id=${customer.id}`)} className="flex-1 min-w-0 cursor-pointer">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-slate-900 text-sm">{displayName}</span>
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${typeConfig.color}`}>
+                          <TypeIcon className="w-2.5 h-2.5" />{typeConfig.label}
+                        </span>
+                        {customer.company_name && (
+                          <span className="text-xs text-slate-400">{customer.company_name}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 mt-1 flex-wrap">
+                        {customer.phone && (
+                          <a href={`tel:${customer.phone}`} className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors">
+                            <Phone className="w-3 h-3" />{customer.phone}
+                          </a>
+                        )}
+                        {customer.email && (
+                          <a href={`mailto:${customer.email}`} className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors truncate max-w-48">
+                            <Mail className="w-3 h-3 flex-shrink-0" />{customer.email}
+                          </a>
+                        )}
+                        {fullAddress && (
+                          <span className="flex items-center gap-1 text-xs text-slate-400 truncate max-w-60">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />{fullAddress}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link to="/appointments" className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors" title="View appointments">
+                        <Calendar className="w-3.5 h-3.5" />
+                      </Link>
+                      <Link to="/estimates" className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors" title="View estimates">
+                        <FileText className="w-3.5 h-3.5" />
+                      </Link>
+                      <button onClick={() => openEdit(customer)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors" title="Edit">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-400 flex-shrink-0 transition-colors" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-400 flex-shrink-0 transition-colors" />
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
