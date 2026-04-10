@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { MapPin, Mail, Phone, Bell, BellOff, Pencil, Search, UserPlus, Plus } from 'lucide-react';
+import { MapPin, Mail, Phone, Bell, BellOff, Pencil, Search, UserPlus, Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ClientFormModal from '@/components/proposals/ClientFormModal';
 
@@ -148,11 +148,18 @@ export default function ProposalSidebarCustomer({ proposal, onCustomerChange }) 
             {proposal?.client_id && (
               <Link to="/clients" className="block text-xs text-primary hover:underline font-medium">View customer profile →</Link>
             )}
-            <button
-              onClick={() => { setEditingClient(linkedClient); setShowClientModal(true); }}
-              className="block text-xs text-slate-500 hover:text-primary hover:underline font-medium transition-colors">
-              Edit customer details
-            </button>
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                onClick={() => { setEditingClient(linkedClient); setShowClientModal(true); }}
+                className="flex-1 text-xs text-slate-500 hover:text-primary hover:underline font-medium transition-colors">
+                Edit customer details
+              </button>
+              <button
+                onClick={() => onCustomerChange({ client_id: '', client_name: '', client_email: '', client_phone: '', client_address: '' })}
+                className="text-red-500 hover:text-red-700 p-1 transition-colors" title="Remove customer">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {address && (
