@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Eye, Lock, Download, CheckCircle } from 'lucide-react';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
+import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import SignaturePad from '@/components/SignaturePad';
 
 export default function ClientDocumentView() {
@@ -208,10 +210,24 @@ export default function ClientDocumentView() {
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-6">
           <div className="p-8">
             {docType === 'estimate' || docType === 'invoice' || docType === 'proposal' ? (
-              <EstimateTemplateRenderer
-                estimate={document}
-                editable={false}
-              />
+              (document?.document_type === 'BID' || document?.document_type === 'PROPOSAL') ? (
+                <DocumentTypeRenderer
+                  estimate={document}
+                  options={{
+                    ...DEFAULT_OPTIONS,
+                    showPrices: true,
+                    showBreakdown: true,
+                    showTerms: true,
+                    showSignatures: true,
+                    hideInternalNotes: true,
+                  }}
+                />
+              ) : (
+                <EstimateTemplateRenderer
+                  estimate={document}
+                  editable={false}
+                />
+              )
             ) : (
               <div className="text-center py-8">
                 <p className="text-slate-500">Unable to display document</p>

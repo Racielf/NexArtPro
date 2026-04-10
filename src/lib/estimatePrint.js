@@ -3,25 +3,48 @@ import { createRoot } from 'react-dom/client';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
+import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 /**
- * Renders EstimateTemplateRenderer into a hidden iframe and triggers window.print().
- * Uses document_config from estimate for template + options.
+ * Resolves the correct React element for rendering based on document_type.
+ * BID/PROPOSAL → DocumentTypeRenderer (structured sections)
+ * Legacy/other → EstimateTemplateRenderer (template-based)
  */
-export function printEstimate(estimate, visibility) {
+function resolveRendererElement(estimate) {
+  const docType = estimate?.document_type;
+  const mergedOpts = { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options };
+
+  if (docType === 'BID' || docType === 'PROPOSAL') {
+    return React.createElement(DocumentTypeRenderer, {
+      estimate,
+      options: mergedOpts,
+    });
+  }
+
+  return React.createElement(EstimateTemplateRenderer, {
+    estimate,
+    template: estimate?.document_config?.template || 'professional',
+    options: mergedOpts,
+  });
+}
+
+function createIframeDoc(estimate, rootId) {
   const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
+  iframe.style.cssText = rootId === 'print-root'
+    ? 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;'
+    : 'position:fixed;top:-9999px;left:-9999px;width:1200px;height:1600px;border:none;';
   document.body.appendChild(iframe);
 
   const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  const docLabel = estimate?.document_type === 'BID' ? 'Bid' : estimate?.document_type === 'PROPOSAL' ? 'Proposal' : 'Estimate';
 
   iframeDoc.open();
   iframeDoc.write(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Estimate #${estimate?.estimate_number || ''}</title>
+  <title>${docLabel} #${estimate?.estimate_number || ''}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -32,21 +55,22 @@ export function printEstimate(estimate, visibility) {
   </style>
 </head>
 <body>
-  <div id="print-root"></div>
+  <div id="${rootId}"></div>
 </body>
 </html>`);
   iframeDoc.close();
 
-  const container = iframeDoc.getElementById('print-root');
+  return { iframe, container: iframeDoc.getElementById(rootId) };
+}
+
+/**
+ * Renders document into a hidden iframe and triggers window.print().
+ */
+export function printEstimate(estimate, visibility) {
+  const { iframe, container } = createIframeDoc(estimate, 'print-root');
   const root = createRoot(container);
 
-  root.render(
-    React.createElement(EstimateTemplateRenderer, {
-      estimate,
-      template: estimate?.document_config?.template || 'professional',
-      options: { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options },
-    })
-  );
+  root.render(resolveRendererElement(estimate));
 
   setTimeout(() => {
     iframe.contentWindow.focus();
@@ -59,47 +83,13 @@ export function printEstimate(estimate, visibility) {
 }
 
 /**
- * Generates and downloads a PDF file of the estimate.
- * Uses document_config from estimate for template + options.
+ * Generates and downloads a PDF file of the document.
  */
 export async function downloadEstimate(estimate, visibility) {
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1200px;height:1600px;border:none;';
-  document.body.appendChild(iframe);
-
-  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-
-  iframeDoc.open();
-  iframeDoc.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Estimate #${estimate?.estimate_number || ''}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', Arial, sans-serif; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @page { margin: 0; size: letter; }
-    @media print { body { margin: 0; } }
-  </style>
-</head>
-<body>
-  <div id="pdf-root"></div>
-</body>
-</html>`);
-  iframeDoc.close();
-
-  const container = iframeDoc.getElementById('pdf-root');
+  const { iframe, container } = createIframeDoc(estimate, 'pdf-root');
   const root = createRoot(container);
 
-  root.render(
-    React.createElement(EstimateTemplateRenderer, {
-      estimate,
-      template: estimate?.document_config?.template || 'professional',
-      options: { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options },
-    })
-  );
+  root.render(resolveRendererElement(estimate));
 
   setTimeout(async () => {
     try {
@@ -130,7 +120,8 @@ export async function downloadEstimate(estimate, visibility) {
         heightLeft -= pageHeight;
       }
 
-      const filename = `Estimate-${estimate?.estimate_number || 'document'}.pdf`;
+      const docLabel = estimate?.document_type === 'BID' ? 'Bid' : estimate?.document_type === 'PROPOSAL' ? 'Proposal' : 'Estimate';
+      const filename = `${docLabel}-${estimate?.estimate_number || 'document'}.pdf`;
       pdf.save(filename);
     } finally {
       root.unmount();

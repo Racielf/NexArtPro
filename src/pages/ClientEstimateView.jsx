@@ -10,7 +10,9 @@ import { logComm } from '@/lib/commTracking';
 import ClientSignaturePad from '@/components/estimates/ClientSignaturePad';
 import ClientChangesRequest from '@/components/estimates/ClientChangesRequest';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
+import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 export default function ClientEstimateView() {
@@ -179,12 +181,15 @@ export default function ClientEstimateView() {
   const isFinal = ['approved', 'signed', 'declined', 'converted'].includes(estimate.status);
   const canAct = !isFinal && estimate.status !== 'changes_requested';
 
+  const dc = getDocTypeConfig(estimate?.document_type);
+  const docLabel = dc.label;
+
   const statusBanner = {
-    approved: { bg: 'bg-green-50 border-green-200', icon: <CheckCircle className="w-5 h-5 text-green-600" />, title: 'Estimate Approved', body: "Thank you! We'll be in touch soon to schedule the work." },
+    approved: { bg: 'bg-green-50 border-green-200', icon: <CheckCircle className="w-5 h-5 text-green-600" />, title: `${docLabel} Approved`, body: "Thank you! We'll be in touch soon to schedule the work." },
     signed: { bg: 'bg-green-50 border-green-200', icon: <PenLine className="w-5 h-5 text-green-600" />, title: `Signed by ${estimate.signer_name || 'you'}`, body: `Signed on ${estimate.signed_at ? new Date(estimate.signed_at).toLocaleString() : ''}` },
-    declined: { bg: 'bg-red-50 border-red-200', icon: <XCircle className="w-5 h-5 text-red-500" />, title: 'Estimate Declined', body: 'We appreciate your feedback. Contact us if you change your mind.' },
-    changes_requested: { bg: 'bg-amber-50 border-amber-200', icon: <MessageSquare className="w-5 h-5 text-amber-500" />, title: 'Changes Requested', body: "We received your request and will send a revised estimate soon." },
-    viewed: { bg: 'bg-blue-50 border-blue-200', icon: <Eye className="w-5 h-5 text-blue-500" />, title: 'Estimate Viewed', body: 'Please review below and take action when ready.' },
+    declined: { bg: 'bg-red-50 border-red-200', icon: <XCircle className="w-5 h-5 text-red-500" />, title: `${docLabel} Declined`, body: 'We appreciate your feedback. Contact us if you change your mind.' },
+    changes_requested: { bg: 'bg-amber-50 border-amber-200', icon: <MessageSquare className="w-5 h-5 text-amber-500" />, title: 'Changes Requested', body: `We received your request and will send a revised ${docLabel.toLowerCase()} soon.` },
+    viewed: { bg: 'bg-blue-50 border-blue-200', icon: <Eye className="w-5 h-5 text-blue-500" />, title: `${docLabel} Viewed`, body: 'Please review below and take action when ready.' },
   }[estimate.status];
 
   return (
@@ -236,19 +241,33 @@ export default function ClientEstimateView() {
         <div className="bg-slate-200 flex-1 overflow-auto p-8 flex justify-center">
           <div className="w-full max-w-4xl shadow-xl rounded-sm bg-white">
 
-            <EstimateTemplateRenderer
-              estimate={estimate}
-              template={estimate.document_config?.template || 'pro'}
-              options={{
-                ...DEFAULT_OPTIONS,
-                showPrices: true,
-                showBreakdown: true,
-                showTerms: true,
-                showSignatures: true,
-                hideInternalNotes: true,
-              }}
-              documentType="estimate"
-            />
+            {(estimate?.document_type === 'BID' || estimate?.document_type === 'PROPOSAL') ? (
+              <DocumentTypeRenderer
+                estimate={estimate}
+                options={{
+                  ...DEFAULT_OPTIONS,
+                  showPrices: true,
+                  showBreakdown: true,
+                  showTerms: true,
+                  showSignatures: true,
+                  hideInternalNotes: true,
+                }}
+              />
+            ) : (
+              <EstimateTemplateRenderer
+                estimate={estimate}
+                template={estimate.document_config?.template || 'pro'}
+                options={{
+                  ...DEFAULT_OPTIONS,
+                  showPrices: true,
+                  showBreakdown: true,
+                  showTerms: true,
+                  showSignatures: true,
+                  hideInternalNotes: true,
+                }}
+                documentType="estimate"
+              />
+            )}
 
           </div>
         </div>
