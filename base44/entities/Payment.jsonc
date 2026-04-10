@@ -1,0 +1,43 @@
+{
+  "name": "Payment",
+  "type": "object",
+  "properties": {
+    "invoice_id": {
+      "type": "string"
+    },
+    "invoice_number": {
+      "type": "number"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "default": 0
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "cash",
+        "check",
+        "card",
+        "bank_transfer",
+        "zelle",
+        "venmo",
+        "other"
+      ],
+      "default": "cash"
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "invoice_id",
+    "amount"
+  ]
+}
