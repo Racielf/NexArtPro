@@ -5,6 +5,18 @@
     "proposal_number": {
       "type": "number"
     },
+    "source_estimate_id": {
+      "type": "string",
+      "description": "Reference to source Estimate if created from one"
+    },
+    "creation_mode": {
+      "type": "string",
+      "enum": [
+        "new_proposal",
+        "from_estimate"
+      ],
+      "default": "new_proposal"
+    },
     "client_id": {
       "type": "string"
     },
@@ -27,39 +39,20 @@
       "type": "string",
       "enum": [
         "draft",
+        "review_needed",
         "sent",
-        "accepted"
+        "approved",
+        "accepted",
+        "rejected",
+        "converted_to_invoice",
+        "converted_to_work_order"
       ],
       "default": "draft"
     },
     "items": {
       "type": "array",
-      "description": "Line items for the proposal",
       "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "service_name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "quantity": {
-            "type": "number"
-          },
-          "unit": {
-            "type": "string"
-          },
-          "unit_price": {
-            "type": "number"
-          },
-          "line_total": {
-            "type": "number"
-          }
-        }
+        "type": "object"
       }
     },
     "subtotal": {
@@ -98,10 +91,21 @@
       "type": "string",
       "format": "date"
     },
-    "invoice_number": {
-      "type": "string"
+    "template_name": {
+      "type": "string",
+      "default": "professional"
     },
     "sent_at": {
+      "type": "string"
+    },
+    "viewed_at": {
+      "type": "string"
+    },
+    "view_count": {
+      "type": "number",
+      "default": 0
+    },
+    "approved_at": {
       "type": "string"
     },
     "accepted_at": {
@@ -112,6 +116,24 @@
     },
     "accepted_by_name": {
       "type": "string"
+    },
+    "rejected_at": {
+      "type": "string"
+    },
+    "rejected_reason": {
+      "type": "string"
+    },
+    "invoice_id": {
+      "type": "string"
+    },
+    "invoice_number": {
+      "type": "string"
+    },
+    "work_order_id": {
+      "type": "string"
+    },
+    "work_order_number": {
+      "type": "number"
     },
     "company_id": {
       "type": "string",

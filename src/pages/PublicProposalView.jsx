@@ -17,9 +17,18 @@ export default function PublicProposalView() {
   useEffect(() => {
     if (!proposalId) { setLoading(false); return; }
     base44.entities.Proposal.filter({ id: proposalId }).then(res => {
-      setProposal(res[0] || null);
-      if (res[0]?.status === 'accepted') setAccepted(true);
+      const p = res[0] || null;
+      setProposal(p);
+      if (p?.status === 'accepted') setAccepted(true);
       setLoading(false);
+      // Track view
+      if (p && !['accepted', 'converted_to_invoice', 'converted_to_work_order'].includes(p.status)) {
+        const now = new Date().toISOString();
+        base44.entities.Proposal.update(p.id, {
+          viewed_at: p.viewed_at || now,
+          view_count: (p.view_count || 0) + 1,
+        }).catch(() => {});
+      }
     });
   }, []);
 

@@ -40,7 +40,7 @@ import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import ProfitabilityDashboard from './pages/ProfitabilityDashboard';
-import Proposals from './pages/Proposals';
+import Proposals from './pages/Proposals.jsx';
 import ProposalEditor from './pages/ProposalEditor';
 import PublicProposalView from './pages/PublicProposalView';
 
