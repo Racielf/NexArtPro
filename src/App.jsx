@@ -43,6 +43,7 @@ import ProfitabilityDashboard from './pages/ProfitabilityDashboard';
 import Proposals from './pages/Proposals.jsx';
 import ProposalEditor from './pages/ProposalEditor';
 import PublicProposalView from './pages/PublicProposalView';
+import ClientDocumentView from './pages/ClientDocumentView';
 
 
 const ProtectedRoute = ({ children }) => {
@@ -122,6 +123,7 @@ const AuthenticatedApp = () => {
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />
       <Route path="/proposal-view" element={<PublicProposalView />} />
+      <Route path="/client-document" element={<ClientDocumentView />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
