@@ -275,570 +275,91 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           );
         })()}
 
-        {/* Book Price — secondary reference, visually muted */}
+        {/* Book Price — secondary reference, properly styled */}
         {(() => {
           const book = parseFloat(item.book_price) || 0;
-          if (book === 0) return <div className="text-right text-xs text-slate-200">—</div>;
           return (
-            <div className="text-right leading-tight">
-              <div className="text-[10px] text-slate-400 font-medium">${book.toFixed(2)}</div>
-              <div className="text-[9px] text-slate-300 leading-none">book ref</div>
+            <div className="flex items-center justify-end h-8 px-2 rounded border border-slate-100 bg-slate-50/40 text-right">
+              {book > 0 ? (
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[10px] text-slate-600 font-semibold">${book.toFixed(2)}</div>
+                  <div className="text-[9px] text-slate-400 leading-none">ref</div>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-300 font-medium italic">no ref</div>
+              )}
             </div>
           );
         })()}
 
-        {/* Unit cost (internal only) — placeholder keeps grid */}
-        <div>
-          {showCost && (
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
-              <Input type="number" step="0.01" value={item.unit_cost} onChange={e => update('unit_cost', e.target.value)}
-                onBlur={() => handlePriceBlur('unit_cost')}
-                className="h-8 pl-4 text-sm text-right border-slate-200 bg-amber-50/60" min={0} />
-            </div>
-          )}
-        </div>
-
-        {/* Line total — shows formula for transparency */}
-        <div className="text-right">
-          <div className="font-bold text-slate-900 text-sm tabular-nums">
-            ${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </div>
-          {(parseFloat(item.quantity) > 0 && parseFloat(item.unit_price) > 0) && (
-            <div className="text-[9px] text-slate-400 leading-none mt-0.5 tabular-nums">
-              {parseFloat(item.quantity) % 1 === 0 ? parseInt(item.quantity) : parseFloat(item.quantity).toFixed(2)} {item.unit} × ${parseFloat(item.unit_price).toFixed(2)}
-            </div>
-          )}
-        </div>
-
-        {/* Remove */}
-        <button onClick={() => onRemove(item.id)}
-          className="flex justify-center p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
-          <X className="w-3 h-3" />
-        </button>
-      </div>
-
-      {/* Expanded detail row */}
-      {expanded && (
-        <div className="px-10 pb-4 space-y-2">
-          <Input value={item.description} onChange={e => update('description', e.target.value)}
-            placeholder="Description (optional)…"
-            className="h-8 text-sm border-slate-200 text-slate-600" />
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
-              <input type="checkbox" checked={item.taxable !== false}
-                onChange={e => update('taxable', e.target.checked)} className="rounded" />
-              Taxable
-            </label>
-            <button onClick={() => setExpanded(false)}
-              className="text-xs text-slate-400 hover:text-slate-600">collapse</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Work Group ────────────────────────────────────────────────────────────────
-function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds = new Set(), onLogChange }) {
-  const [editingName, setEditingName] = useState(false);
-  const [nameVal, setNameVal] = useState(group.name);
-
-  const updateItem = (updatedItem) => {
-    onUpdate({ ...group, items: group.items.map(i => i.id === updatedItem.id ? updatedItem : i) });
-  };
-  const removeItem = (id) => {
-    onUpdate({ ...group, items: group.items.filter(i => i.id !== id) });
-  };
-  const addItem = () => {
-    const item = emptyItem();
-    onUpdate({ ...group, items: [...group.items, item] });
-  };
-
-  const groupSubtotal = (group.items || []).reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0);
-  const groupCost = (group.items || []).reduce((s, i) => s + (parseFloat(i.unit_cost) || 0) * (parseFloat(i.quantity) || 0), 0);
-
-  const saveGroupName = () => {
-    onUpdate({ ...group, name: nameVal || 'Group' });
-    setEditingName(false);
-  };
-
-  return (
-    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-3">
-      {/* Group header */}
-      <div className="flex items-center gap-3 px-6 py-3 bg-slate-800 text-white">
-        <button onClick={() => onUpdate({ ...group, collapsed: !group.collapsed })}
-          className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0">
-          {group.collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-
-        {editingName ? (
-          <div className="flex items-center gap-2 flex-1">
-            <Input autoFocus value={nameVal} onChange={e => setNameVal(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && saveGroupName()}
-              className="h-8 text-sm font-bold bg-white/10 border-white/30 text-white placeholder:text-white/50 flex-1" />
-            <button onClick={saveGroupName} className="p-1 rounded hover:bg-white/20"><Check className="w-4 h-4" /></button>
-            <button onClick={() => setEditingName(false)} className="p-1 rounded hover:bg-white/20"><X className="w-4 h-4" /></button>
-          </div>
-        ) : (
-          <button onClick={() => setEditingName(true)}
-            className="flex items-center gap-2 flex-1 text-left group">
-            <span className="font-bold text-base tracking-wide">{group.name}</span>
-            <Pencil className="w-4 h-4 opacity-0 group-hover:opacity-60 transition-opacity" />
-          </button>
-        )}
-
-        <div className="flex items-center gap-4 ml-auto text-sm font-semibold">
-          <span className="text-white/70">{group.items?.length || 0} items</span>
-          <span className="text-white">${groupSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          {showCost && <span className="text-amber-300 text-xs">cost ${groupCost.toFixed(2)}</span>}
-          {!isOnly && (
-            <button onClick={() => onRemove(group.id)}
-              className="p-1 rounded hover:bg-red-500/30 text-white/50 hover:text-white transition-colors ml-1">
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Column headers */}
-      {!group.collapsed && (
-        <>
-          <div className="grid text-[10px] text-slate-400 font-semibold uppercase tracking-wide px-4 py-2 bg-slate-50 border-b border-slate-100"
-            style={{ gridTemplateColumns: '20px 2fr 55px 80px 110px 80px 1fr 110px 28px' }}>
-            <div />
-            <div>Service</div>
-            <div className="text-center text-slate-500">Qty</div>
-            <div className="text-center text-slate-500">UOM</div>
-            <div className="text-right text-slate-600">Unit Price</div>
-            <div className="text-right text-slate-400 text-[9px]">Book<br/>ref</div>
-            <div className={`text-right ${showCost ? 'text-amber-600' : ''}`}>{showCost ? 'Cost' : ''}</div>
-            <div className="text-right">Line Total</div>
-            <div />
+        {/* Right: Customer-facing totals */}
+        <div className="space-y-3 text-sm ml-auto w-80">
+          <div className="flex justify-between py-2">
+            <span className="text-slate-600">Subtotal</span>
+            <span className="font-semibold text-slate-800">{fmt(subtotal)}</span>
           </div>
 
-          <div className="divide-y divide-slate-100 min-h-[40px]">
-            {group.items.length === 0 && (
-              <div className="py-6 text-center text-slate-300 text-xs">No items yet — click below to add</div>
-            )}
-            {group.items.map(item => (
-              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} />
-            ))}
-          </div>
-
-          <div className="px-6 py-3 flex items-center gap-4 border-t border-slate-100 bg-slate-50/50">
-            <button onClick={addItem}
-              className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
-              <Plus className="w-4 h-4" />Add line item
-            </button>
-            <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
-              <BookOpen className="w-4 h-4" />Price book
-            </button>
-            <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
-              <LayoutTemplate className="w-4 h-4" />Templates
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── Notes Section ─────────────────────────────────────────────────────────────
-function NotesSection({ label, placeholder, value, onChange, accent }) {
-  return (
-    <div>
-      <label className={`text-sm font-semibold block mb-2 ${accent ? 'text-amber-700' : 'text-slate-700'}`}>{label}</label>
-      <Textarea value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder} rows={3}
-        className={`text-sm resize-none border-slate-200 ${accent ? 'bg-amber-50/30' : ''}`} />
-    </div>
-  );
-}
-
-// ─── Main EstimateGroups Component ────────────────────────────────────────────
-// readOnlyDiscountType: if true, disables discount type selector (Proposal mode)
-export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false }) {
-  const [groups, setGroups] = useState(() => {
-    if (estimate?.groups?.length) return estimate.groups;
-    if (estimate?.line_items?.length) {
-      return [{ id: uid(), name: 'General', collapsed: false, items: estimate.line_items.map(li => ({
-        id: uid(), service_name: li.name || '', description: li.description || '',
-        quantity: li.quantity || 1, unit: 'ea', unit_price: li.unit_price || 0,
-        unit_cost: li.unit_cost || 0, book_price: li.book_price || 0, line_total: li.total_price || 0, taxable: true,
-      })) }];
-    }
-    return DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] }));
-  });
-
-  const [taxRate, setTaxRate] = useState(estimate?.tax_rate || 0);
-  const [discountType, setDiscountType] = useState(estimate?.discount_type || 'percent');
-  const [discountValue, setDiscountValue] = useState(estimate?.discount_value || 0);
-  const [depositPercent, setDepositPercent] = useState(estimate?.deposit_percent || 0);
-  const [expirationDate, setExpirationDate] = useState(estimate?.expiration_date || '');
-  const [notes, setNotes] = useState(estimate?.notes || '');
-  const [internalNotes, setInternalNotes] = useState(estimate?.internal_notes || '');
-  const [exclusions, setExclusions] = useState(estimate?.exclusions || '');
-  const [warrantyTerms, setWarrantyTerms] = useState(estimate?.warranty_terms || '');
-  const [paymentTerms, setPaymentTerms] = useState(estimate?.payment_terms || '');
-  const [legalTerms, setLegalTerms] = useState(estimate?.legal_terms || '');
-  const [showCost, setShowCost] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-  const [approvalMode, setApprovalMode] = useState('one');
-  const [fixedItemIds, setFixedItemIds] = useState(new Set()); // tracks recently auto-adjusted items
-  const { priceLog, addLog, clearLog } = usePriceAuditLog();
-
-  // Sync when estimate id changes
-  useEffect(() => {
-    if (!estimate?.id) return;
-    setGroups(estimate.groups?.length ? estimate.groups :
-      estimate.line_items?.length ? [{
-        id: uid(), name: 'General', collapsed: false,
-        items: estimate.line_items.map(li => ({
-          id: uid(), service_name: li.name || '', description: li.description || '',
-          quantity: li.quantity || 1, unit: 'ea', unit_price: li.unit_price || 0,
-          unit_cost: li.unit_cost || 0, book_price: li.book_price || 0, line_total: li.total_price || 0, taxable: true,
-        }))
-      }] : DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] })));
-    setTaxRate(estimate.tax_rate || 0);
-    setDiscountType(estimate.discount_type || 'percent');
-    setDiscountValue(estimate.discount_value || 0);
-    setDepositPercent(estimate.deposit_percent || 0);
-    setExpirationDate(estimate.expiration_date || '');
-    setNotes(estimate.notes || '');
-    setInternalNotes(estimate.internal_notes || '');
-    setExclusions(estimate.exclusions || '');
-    setWarrantyTerms(estimate.warranty_terms || '');
-    setPaymentTerms(estimate.payment_terms || '');
-    setLegalTerms(estimate.legal_terms || '');
-  }, [estimate?.id]);
-
-  // Debounced auto-save — engine recalculates all line_totals via Decimal.js before saving.
-  // SECURITY: Internal audit fields (totalBookValue, totalVariance, marginPercentage) are
-  // intentionally excluded from the persisted payload — they live only in admin memory state.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
-
-      // ── Public fields only — never expose internal audit data to the document payload ──
-      onSave({
-        ...estimate,
-        groups: result.groups,
-        // Financial inputs
-        tax_rate: taxRate,
-        discount_type: discountType,
-        discount_value: discountValue,
-        deposit_percent: depositPercent,
-        expiration_date: expirationDate,
-        notes,
-        internal_notes: internalNotes,
-        exclusions,
-        warranty_terms: warrantyTerms,
-        payment_terms: paymentTerms,
-        legal_terms: legalTerms,
-        // Computed customer-facing totals
-        subtotal: result.subtotal,
-        discount_amount: result.discountAmount,
-        tax_amount: result.taxAmount,
-        total: result.total,
-        deposit_amount: result.depositAmount,
-        // Computed internal totals (cost/margin — stored for admin reports, never shown to client)
-        total_cost: result.totalCost,
-        gross_margin: result.grossMargin,
-        gross_margin_pct: result.grossMarginPct,
-        // ⛔ EXCLUDED: totalBookValue, totalVariance, marginPercentage — admin-only, not persisted
-      });
-    }, 800);
-    return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms]);
-
-  const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
-  const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
-  const addGroup = () => setGroups(prev => [...prev, { id: uid(), name: 'New Group', collapsed: false, items: [] }]);
-
-  // ── Fix Low Margin Items — internal only, never persisted as a flag to client ──
-  const handleFixLowMargin = () => {
-    const confirmed = window.confirm('Only items below 30% margin will be adjusted. Continue?');
-    if (!confirmed) return;
-
-    const adjustedIds = new Set();
-    setGroups(prev => prev.map(group => ({
-      ...group,
-      items: (group.items || []).map(item => {
-        const cost  = parseFloat(item.unit_cost)  || 0;
-        const price = parseFloat(item.unit_price) || 0;
-        if (cost <= 0) return item; // no cost data — skip
-        const meta = getNegotiationMeta(cost, price);
-        if (meta.status === 'healthy') return item; // margin >= 30% — skip
-        // Adjust to 30% margin: price = cost / (1 - 0.30)
-        const newPrice = parseFloat((cost / 0.70).toFixed(2));
-        adjustedIds.add(item.id);
-        const newLineTotal = parseFloat(((parseFloat(item.quantity) || 1) * newPrice).toFixed(2));
-        return { ...item, unit_price: newPrice, line_total: newLineTotal, _autoAdjusted: true };
-      }),
-    })));
-
-    setFixedItemIds(adjustedIds);
-    // Clear highlight after 4 seconds
-    setTimeout(() => setFixedItemIds(new Set()), 4000);
-  };
-
-  // Live reactive calculation — admin sees real-time margin vs book price.
-  // Internal fields (totalBookValue, totalVariance, marginPercentage) stay in component memory only.
-  const { subtotal, discountAmount, taxAmount, total, depositAmount,
-          totalCost, grossMargin, grossMarginPct,
-          totalVariance, totalBookValue, marginPercentage } =
-    runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
-
-  const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-
-  return (
-    <div className="w-full space-y-0">
-
-      {/* ── ESTIMATE HEADER CARD ── */}
-      <div className="bg-white rounded-lg border border-slate-200 mb-4 px-6 py-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">
-              Estimate <span className="text-primary">#{estimate?.estimate_number}</span>
-            </h2>
-            {estimate?.title && <p className="text-sm text-slate-500 mt-1">{estimate.title}</p>}
-          </div>
-          <div className="flex items-center gap-5 text-sm flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 text-xs font-medium">Expires</span>
-              <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
-                className="h-8 text-sm w-36 border-slate-200" />
-            </div>
-
-            <button onClick={() => setShowCost(v => !v)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors ${showCost ? 'bg-amber-100 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
-              {showCost ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              {showCost ? 'Hiding cost' : 'Show cost'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── GROUPS ── */}
-      {groups.map(group => (
-        <WorkGroup key={group.id} group={group} onUpdate={updateGroup} onRemove={removeGroup}
-          showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} onLogChange={addLog} />
-      ))}
-
-      {/* Add group button */}
-      <button onClick={addGroup}
-        className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary border-2 border-dashed border-slate-200 hover:border-primary/40 rounded-xl w-full py-3 justify-center transition-colors mb-4">
-        <Plus className="w-4 h-4" />Add work group
-      </button>
-
-      {/* ── PRICE DISCIPLINE GUARD (internal only — never in PDF/preview/send) ── */}
-      <PriceDisciplineGuard groups={groups} minVarianceThreshold={-0.20} />
-
-      {/* ── TOTALS CARD ── */}
-      <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
-        <div className="flex gap-8 flex-wrap justify-between">
-
-          {/* ── INTERNAL AUDIT VIEW — admin only, never in PDF/Preview/Send ── */}
-          {showCost && (() => {
-            // Color logic: >40% = healthy, 25–39.99% = warning, <25% = danger
-            const healthColor =
-              grossMarginPct > 40  ? { text: '#10b981', bg: 'rgba(16,185,129,0.07)',  border: 'rgba(16,185,129,0.18)' } :
-              grossMarginPct >= 25 ? { text: '#f59e0b', bg: 'rgba(245,158,11,0.07)',  border: 'rgba(245,158,11,0.18)' } :
-                                     { text: '#ef4444', bg: 'rgba(239,68,68,0.07)',   border: 'rgba(239,68,68,0.18)'  };
-
-            const AuditCard = ({ label, value, color, bg, border, sub }) => (
-              <div style={{
-                background: bg || 'rgba(241,245,249,0.7)',
-                border: `1px solid ${border || '#e2e8f0'}`,
-                borderRadius: 12,
-                padding: '12px 16px',
-                minWidth: 120,
-                flex: 1,
-              }}>
-                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: 4 }}>
-                  {label}
-                </p>
-                <p style={{ fontSize: 18, fontWeight: 700, color: color || '#1e293b', lineHeight: 1.2 }}>
-                  {value}
-                </p>
-                {sub && <p style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>{sub}</p>}
-              </div>
-            );
-
-            // Margin alert state (thresholds: healthy ≥40, warning ≥30, critical <30)
-            const marginState =
-              grossMarginPct >= 40 ? 'healthy' :
-              grossMarginPct >= 30 ? 'warning' : 'critical';
-
-            return (
-              <div style={{ minWidth: 200 }}>
-                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#d97706', marginBottom: 10 }}>
-                  🔒 Internal Audit View
-                </p>
-
-                {/* ── Critical margin banner — internal only ── */}
-                {marginState === 'critical' && (
-                  <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 8,
-                    background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.22)',
-                    borderRadius: 8, padding: '7px 10px', marginBottom: 10,
-                  }}>
-                    <span style={{ fontSize: 13, lineHeight: 1.4, flexShrink: 0 }}>⚠️</span>
-                    <p style={{ fontSize: 10, fontWeight: 600, color: '#b91c1c', lineHeight: 1.45, margin: 0 }}>
-                      Low margin alert: this estimate is below the 30% target. Review labor or material pricing.
-                    </p>
-                  </div>
-                )}
-
-                {/* ── Warning margin banner — internal only ── */}
-                {marginState === 'warning' && (
-                  <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 8,
-                    background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.22)',
-                    borderRadius: 8, padding: '7px 10px', marginBottom: 10,
-                  }}>
-                    <span style={{ fontSize: 13, lineHeight: 1.4, flexShrink: 0 }}>⚠</span>
-                    <p style={{ fontSize: 10, fontWeight: 600, color: '#92400e', lineHeight: 1.45, margin: 0 }}>
-                      Margin below 40% target. Consider adjusting pricing before sending.
-                    </p>
-                  </div>
-                )}
-
-                {/* 3-card grid */}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <AuditCard
-                    label="Total Cost"
-                    value={fmt(totalCost)}
-                  />
-                  <AuditCard
-                    label="Gross Margin"
-                    value={fmt(grossMargin)}
-                    color={healthColor.text}
-                    bg={healthColor.bg}
-                    border={healthColor.border}
-                  />
-                  <AuditCard
-                    label="Margin %"
-                    value={`${grossMarginPct.toFixed(1)}%`}
-                    color={healthColor.text}
-                    bg={healthColor.bg}
-                    border={healthColor.border}
-                    sub={marginState === 'healthy' ? '✓ Healthy' : marginState === 'warning' ? '⚠ Below target' : '✗ Low margin'}
-                  />
+          {/* Discount */}
+          <div className="flex items-center justify-between gap-3 py-2">
+            <span className="text-slate-600">Discount</span>
+            <div className="flex items-center gap-1.5">
+              {readOnlyDiscountType ? (
+                <div className="h-8 px-2 flex items-center text-xs text-slate-500 font-medium bg-slate-50 rounded border border-slate-200">
+                  {discountType === 'percent' ? '%' : '$'}
                 </div>
-                {/* ── Fix Low Margin button — internal only ── */}
-                <button
-                  type="button"
-                  onClick={handleFixLowMargin}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    marginTop: 10, padding: '6px 12px', borderRadius: 8,
-                    fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)',
-                    color: '#4f46e5', transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; }}
-                >
-                  🛡️ Fix Low Margin Items
-                </button>
-
-                {/* Book reference row (only when book data exists) */}
-                {totalBookValue > 0 && (
-                  <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(241,245,249,0.9)', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                      <div>
-                        <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Book Value</p>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>{fmt(totalBookValue)}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>vs Book</p>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: totalVariance >= 0 ? '#10b981' : '#ef4444' }}>
-                          {totalVariance >= 0 ? '+' : ''}{fmt(totalVariance)}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Book Margin</p>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: marginPercentage >= 15 ? '#10b981' : marginPercentage >= 0 ? '#f59e0b' : '#ef4444' }}>
-                          {marginPercentage >= 0 ? '+' : ''}{marginPercentage.toFixed(1)}%
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* Right: Customer-facing totals */}
-          <div className="space-y-3 text-sm ml-auto w-80">
-            <div className="flex justify-between py-2">
-              <span className="text-slate-600">Subtotal</span>
-              <span className="font-semibold text-slate-800">{fmt(subtotal)}</span>
+              ) : (
+                <select value={discountType} onChange={e => setDiscountType(e.target.value)}
+                  className="h-8 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600">
+                  <option value="percent">%</option>
+                  <option value="fixed">$</option>
+                </select>
+              )}
+              <Input type="number" value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+                className="h-8 w-20 text-right text-sm border-slate-200" min={0} />
             </div>
-
-            {/* Discount */}
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-slate-600">Discount</span>
-              <div className="flex items-center gap-1.5">
-                {readOnlyDiscountType ? (
-                  <div className="h-8 px-2 flex items-center text-xs text-slate-500 font-medium bg-slate-50 rounded border border-slate-200">
-                    {discountType === 'percent' ? '%' : '$'}
-                  </div>
-                ) : (
-                  <select value={discountType} onChange={e => setDiscountType(e.target.value)}
-                    className="h-8 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600">
-                    <option value="percent">%</option>
-                    <option value="fixed">$</option>
-                  </select>
-                )}
-                <Input type="number" value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
-                  className="h-8 w-20 text-right text-sm border-slate-200" min={0} />
-              </div>
+          </div>
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-xs text-slate-500">
+              <span>Discount amount</span>
+              <span className="text-red-500 font-medium">-{fmt(discountAmount)}</span>
             </div>
-            {discountAmount > 0 && (
-              <div className="flex justify-between text-xs text-slate-500">
-                <span>Discount amount</span>
-                <span className="text-red-500 font-medium">-{fmt(discountAmount)}</span>
-              </div>
-            )}
+          )}
 
-            {/* Tax */}
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-slate-600">Tax (%)</span>
-              <Input type="number" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
+          {/* Tax */}
+          <div className="flex items-center justify-between gap-3 py-2">
+            <span className="text-slate-600">Tax (%)</span>
+            <Input type="number" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
+              className="h-8 w-20 text-right text-sm border-slate-200" min={0} max={100} />
+          </div>
+          {taxAmount > 0 && (
+            <div className="flex justify-between text-xs text-slate-500">
+              <span>Tax ({taxRate}%)</span>
+              <span className="font-medium">{fmt(taxAmount)}</span>
+            </div>
+          )}
+
+          {/* Total */}
+          <div className="flex justify-between pt-4 border-t-2 border-slate-300">
+            <span className="font-bold text-slate-900 text-lg">Total</span>
+            <span className="font-bold text-primary text-3xl">{fmt(total)}</span>
+          </div>
+
+          {/* Deposit */}
+          <div className="flex items-center justify-between gap-3 pt-2">
+            <span className="text-slate-600 text-xs font-medium">Deposit (%)</span>
+            <div className="flex items-center gap-1.5">
+              <Input type="number" value={depositPercent} onChange={e => setDepositPercent(parseFloat(e.target.value) || 0)}
                 className="h-8 w-20 text-right text-sm border-slate-200" min={0} max={100} />
             </div>
-            {taxAmount > 0 && (
-              <div className="flex justify-between text-xs text-slate-500">
-                <span>Tax ({taxRate}%)</span>
-                <span className="font-medium">{fmt(taxAmount)}</span>
-              </div>
-            )}
-
-            {/* Total */}
-            <div className="flex justify-between pt-4 border-t-2 border-slate-300">
-              <span className="font-bold text-slate-900 text-lg">Total</span>
-              <span className="font-bold text-primary text-3xl">{fmt(total)}</span>
-            </div>
-
-            {/* Deposit */}
-            <div className="flex items-center justify-between gap-3 pt-2">
-              <span className="text-slate-600 text-xs font-medium">Deposit (%)</span>
-              <div className="flex items-center gap-1.5">
-                <Input type="number" value={depositPercent} onChange={e => setDepositPercent(parseFloat(e.target.value) || 0)}
-                  className="h-8 w-20 text-right text-sm border-slate-200" min={0} max={100} />
-              </div>
-            </div>
-            {depositAmount > 0 && (
-              <div className="flex justify-between text-sm text-green-700 font-medium bg-green-50 rounded px-3 py-2">
-                <span>Deposit due</span>
-                <span>{fmt(depositAmount)}</span>
-              </div>
-            )}
           </div>
+          {depositAmount > 0 && (
+            <div className="flex justify-between text-sm text-green-700 font-medium bg-green-50 rounded px-3 py-2">
+              <span>Deposit due</span>
+              <span>{fmt(depositAmount)}</span>
+            </div>
+          )}
         </div>
+      </div>
       </div>
 
       {/* ── NOTES & TERMS ── */}
