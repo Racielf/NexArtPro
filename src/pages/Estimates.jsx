@@ -17,6 +17,7 @@ export default function Estimates() {
   const [creating, setCreating] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ open: false, estimate: null, canDelete: false });
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   useEffect(() => {
     loadData();
@@ -77,8 +78,33 @@ export default function Estimates() {
     if (!est) return;
     await base44.entities.Estimate.delete(est.id);
     setEstimates(estimates.filter(e => e.id !== est.id));
+    setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
     setDeleteModal({ open: false, estimate: null, canDelete: false });
     toast.success(`Estimate #${est.estimate_number} deleted`);
+  };
+
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(e => e.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    const idsArray = Array.from(selectedIds);
+    await Promise.all(idsArray.map(id => base44.entities.Estimate.delete(id)));
+    setEstimates(estimates.filter(e => !selectedIds.has(e.id)));
+    setSelectedIds(new Set());
+    setDeleteModal({ open: false, estimate: null, canDelete: false });
+    toast.success(`${idsArray.length} estimate(s) deleted`);
   };
 
   return (
@@ -88,29 +114,45 @@ export default function Estimates() {
       {deleteModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-            <h2 className="text-base font-bold text-slate-900 mb-2">Delete Estimate?</h2>
-            {deleteModal.canDelete ? (
+            <h2 className="text-base font-bold text-slate-900 mb-2">Delete {deleteModal.estimate ? 'Estimate' : 'Estimates'}?</h2>
+            {deleteModal.estimate ? (
+              deleteModal.canDelete ? (
+                <>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Are you sure you want to delete Estimate #{deleteModal.estimate?.estimate_number}? This action cannot be undone.
+                  </p>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={handleConfirmDelete}>
+                      Delete Estimate
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-slate-500 mb-4">
+                    This estimate cannot be deleted. You can archive it instead.
+                  </p>
+                  <div className="flex justify-end">
+                    <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>
+                      Close
+                    </Button>
+                  </div>
+                </>
+              )
+            ) : (
               <>
                 <p className="text-sm text-slate-500 mb-4">
-                  Are you sure you want to delete Estimate #{deleteModal.estimate?.estimate_number}? This action cannot be undone.
+                  {selectedIds.size} estimate(s) will be permanently deleted.
                 </p>
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>
                     Cancel
                   </Button>
-                  <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={handleConfirmDelete}>
-                    Delete Estimate
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-slate-500 mb-4">
-                  This estimate cannot be deleted. You can archive it instead.
-                </p>
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>
-                    Close
+                  <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={handleDeleteSelected}>
+                    Delete
                   </Button>
                 </div>
               </>
@@ -152,15 +194,39 @@ export default function Estimates() {
       />
 
       <div className="p-6 space-y-4 flex-1">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search estimates..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex items-center gap-3">
+          {filtered.length > 0 && (
+            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === filtered.length && filtered.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-medium text-slate-600">Select all</span>
+            </label>
+          )}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search estimates..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
+
+        {/* Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+            <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
+            <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5"
+              onClick={() => setDeleteModal({ open: true, estimate: null, canDelete: true })}>
+              <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+            </Button>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-16 text-muted-foreground">Loading...</div>
@@ -177,14 +243,21 @@ export default function Estimates() {
         ) : (
           <div className="space-y-3">
             {filtered.map(est => (
-              <Card
-                key={est.id}
-                className="hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => navigate(`/estimate-editor?id=${est.id}`)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
+             <Card
+               key={est.id}
+               className="hover:shadow-md transition-shadow"
+             >
+               <CardContent className="p-4">
+                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                   <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                     <input
+                       type="checkbox"
+                       checked={selectedIds.has(est.id)}
+                       onChange={() => toggleSelect(est.id)}
+                       className="w-4 h-4 cursor-pointer"
+                     />
+                   </label>
+                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/estimate-editor?id=${est.id}`)}>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-primary">#{est.estimate_number}</span>
                         <h3 className="font-semibold text-foreground">
@@ -205,17 +278,19 @@ export default function Estimates() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={e => { e.stopPropagation(); navigate(`/estimate-editor?id=${est.id}`); }}
-                      >
-                        <Pencil className="w-3.5 h-3.5" /> Open
-                      </Button>
                     </div>
-                  </div>
+                    <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={e => { e.stopPropagation(); navigate(`/estimate-editor?id=${est.id}`); }}
+                    >
+                      <Pencil className="w-3.5 h-3.5" /> Open
+                    </Button>
+                    </div>
+                    </div>
+                    </CardContent>
                 </CardContent>
               </Card>
             ))}
