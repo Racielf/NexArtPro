@@ -1,25 +1,29 @@
-import { SERVICES_SEED } from '@/components/settings/services/servicesSeed';
-import { PRICE_BOOK_SEED } from '@/components/settings/pricebook/priceBookSeed';
+import { getServices, getPriceBook } from '@/lib/supabaseServiceCache';
 
 // Normalize text for comparison
 const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-// Resolve price book service_ids on first call (lazy, cached)
-let _resolved = null;
+/**
+ * Resolve price book → service_id links.
+ * Supabase rows should already have service_id set.
+ * For seed fallback rows that use _service_name_ref, resolve by name match.
+ * Re-resolves on every call since the underlying cache can refresh.
+ */
 function getResolved() {
-  if (_resolved) return _resolved;
-  _resolved = PRICE_BOOK_SEED.map(pb => {
+  const services = getServices();
+  const priceBook = getPriceBook();
+  return priceBook.map(pb => {
     if (pb.service_id) return pb;
-    const match = SERVICES_SEED.find(s => s.name === pb._service_name_ref);
+    // Fallback: match by name for legacy seed data
+    const match = services.find(s => s.name === (pb._service_name_ref || pb.display_name));
     return { ...pb, service_id: match?.id || null };
   });
-  return _resolved;
 }
 
 /**
  * Search services + price book entries.
  * Returns ranked results ready for the picker UI.
- * Each result: { id, name, category, unit, base_price, source, pbEntry, svcEntry }
+ * Each result: { id, name, category, unit, base_price, estimated_cost, source, pbEntry, svcEntry }
  */
 export function searchServices(query, limit = 12) {
   const q = norm(query);
@@ -52,7 +56,9 @@ export function searchServices(query, limit = 12) {
 
   const results = [];
 
-  SERVICES_SEED.forEach(svc => {
+  const SERVICES = getServices();
+
+  SERVICES.forEach(svc => {
     if (!svc.is_active) return;
 
     const nameScore  = score(svc.name);
