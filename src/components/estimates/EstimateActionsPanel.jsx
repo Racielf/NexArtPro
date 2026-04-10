@@ -15,7 +15,7 @@ import LossPreventionModal from '@/components/estimates/internal/LossPreventionM
 import PricingOverrideModal from '@/components/estimates/internal/PricingOverrideModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
 import { canSendDocument } from '@/lib/pricingPermissions';
-import { logOverrideAction } from '@/lib/pricingAuditService';
+import { logZeroProfitConfirmation } from '@/lib/pricingAuditService';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { normalizeUserRole } from '@/lib/utils';
 
@@ -659,14 +659,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         onClose={() => setLossModalOpen(false)}
         onProceed={() => {
           setLossModalOpen(false);
-          // Log zero-profit confirmation as audit event
+          // Log zero-profit confirmation (NOT an override)
           if (estimate?.id && lossValidation.zeroProfitItems?.length > 0) {
-            logOverrideAction({
+            logZeroProfitConfirmation({
               documentId: estimate.id,
               documentKind: estimate.document_type === 'BID' ? 'bid' : 'estimate',
               documentNumber: estimate.estimate_number,
-              eventType: 'zero_profit_confirmation',
-              reason: '',
               userEmail: currentUser?.email,
               userRole: role,
               marginAtEvent: parseFloat(estimate.gross_margin_pct) || null,

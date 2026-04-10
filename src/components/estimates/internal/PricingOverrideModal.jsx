@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ShieldAlert, KeyRound, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { buildPricingAuditRecord } from '@/lib/pricingPermissions';
-import { logOverrideAction } from '@/lib/pricingAuditService';
+import { logLossOverride } from '@/lib/pricingAuditService';
 
 export default function PricingOverrideModal({
   open,
@@ -73,11 +73,11 @@ export default function PricingOverrideModal({
       });
 
       if (result?.data?.approved || result?.approved) {
-        // Build audit record
+        // Build audit record for caller
         const audit = buildPricingAuditRecord({
           userEmail: currentUser?.email,
           userRole: role,
-          action: hasLoss ? `override_loss_${action}` : `override_zero_profit_${action}`,
+          action: `override_loss_${action}`,
           reason: reason.trim(),
           documentId: document?.id,
           documentType,
@@ -87,12 +87,12 @@ export default function PricingOverrideModal({
           total: document?.total || document?.total_amount,
         });
 
-        // Persist audit event to database
-        logOverrideAction({
+        // Persist loss override to audit trail
+        logLossOverride({
           documentId: document?.id,
           documentKind: documentType,
           documentNumber: docNumber,
-          eventType: hasLoss ? `override_loss_${action}` : `override_zero_profit_${action}`,
+          eventType: `override_loss_${action}`,
           reason: reason.trim(),
           userEmail: currentUser?.email,
           userRole: role,
@@ -100,7 +100,6 @@ export default function PricingOverrideModal({
           totalAtEvent: parseFloat(document?.total || document?.total_amount) || null,
           metadata: {
             lossItems: pricingResult?.lossItems || [],
-            zeroProfitItems: pricingResult?.zeroProfitItems || [],
           },
         });
 
@@ -154,6 +153,8 @@ export default function PricingOverrideModal({
           </div>
         )}
 
+        {/* Zero-profit items should never reach this modal — they use LossPreventionModal.
+             This block is kept as a safety net but should not normally render. */}
         {!hasLoss && zeroProfitItems.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
             <p className="text-sm font-semibold text-amber-800 mb-1">

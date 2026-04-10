@@ -10,15 +10,13 @@ import { ChevronDown, ChevronRight, Shield, Edit3, AlertTriangle, Send, CheckCir
 import { fetchAuditHistory } from '@/lib/pricingAuditService';
 
 const EVENT_CONFIG = {
-  field_change:                 { icon: Edit3,          label: 'Field Change',        color: 'text-blue-600',    bg: 'bg-blue-50' },
-  override_loss_send:           { icon: Shield,         label: 'Loss Override (Send)', color: 'text-red-600',     bg: 'bg-red-50' },
-  override_loss_approve:        { icon: Shield,         label: 'Loss Override (Approve)', color: 'text-red-600',  bg: 'bg-red-50' },
-  override_zero_profit_send:    { icon: AlertTriangle,  label: 'Zero Profit Override', color: 'text-amber-600',  bg: 'bg-amber-50' },
-  override_zero_profit_approve: { icon: AlertTriangle,  label: 'Zero Profit Override', color: 'text-amber-600',  bg: 'bg-amber-50' },
-  override_low_margin:          { icon: AlertTriangle,  label: 'Low Margin Override',  color: 'text-amber-600',  bg: 'bg-amber-50' },
-  send_after_override:          { icon: Send,           label: 'Sent After Override',  color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  approve_after_override:       { icon: CheckCircle,    label: 'Approved After Override', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  manual_approval:              { icon: CheckCircle,    label: 'Manual Approval',      color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  field_change:                 { icon: Edit3,          label: 'Field Change',             color: 'text-blue-600',    bg: 'bg-blue-50' },
+  override_loss_send:           { icon: Shield,         label: 'Loss Override (Send)',      color: 'text-red-600',     bg: 'bg-red-50' },
+  override_loss_approve:        { icon: Shield,         label: 'Loss Override (Approve)',   color: 'text-red-600',     bg: 'bg-red-50' },
+  zero_profit_confirmation:     { icon: AlertTriangle,  label: 'Zero-Profit Confirmed',    color: 'text-amber-600',   bg: 'bg-amber-50' },
+  send_after_override:          { icon: Send,           label: 'Sent After Override',      color: 'text-indigo-600',  bg: 'bg-indigo-50' },
+  approve_after_override:       { icon: CheckCircle,    label: 'Approved After Override',  color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  manual_approval:              { icon: CheckCircle,    label: 'Manual Approval',          color: 'text-emerald-600', bg: 'bg-emerald-50' },
 };
 
 function fmtDateTime(iso) {
@@ -34,7 +32,7 @@ function AuditEventRow({ event }) {
   const config = EVENT_CONFIG[event.event_type] || EVENT_CONFIG.field_change;
   const Icon = config.icon;
   const isFieldChange = event.event_type === 'field_change';
-  const isOverride = event.event_type?.startsWith('override_');
+  const isLossOverride = event.event_type === 'override_loss_send' || event.event_type === 'override_loss_approve';
 
   return (
     <div className="flex items-start gap-2.5 py-2.5 border-b border-slate-100 last:border-0">
@@ -68,7 +66,7 @@ function AuditEventRow({ event }) {
           </div>
         )}
 
-        {isOverride && event.reason && (
+        {isLossOverride && event.reason && (
           <div className="mt-1 px-2 py-1.5 rounded bg-slate-50 border border-slate-100">
             <p className="text-[10px] text-slate-400 font-semibold mb-0.5">Reason:</p>
             <p className="text-[11px] text-slate-600 leading-snug">{event.reason}</p>
@@ -112,7 +110,8 @@ export default function PricingAuditHistory({ documentId }) {
     });
   }, [documentId, open]);
 
-  const overrideCount = events.filter(e => e.event_type?.startsWith('override_')).length;
+  const lossOverrideCount = events.filter(e => e.event_type === 'override_loss_send' || e.event_type === 'override_loss_approve').length;
+  const confirmCount = events.filter(e => e.event_type === 'zero_profit_confirmation').length;
   const fieldChangeCount = events.filter(e => e.event_type === 'field_change').length;
 
   return (
@@ -130,9 +129,9 @@ export default function PricingAuditHistory({ documentId }) {
               {events.length}
             </span>
           )}
-          {overrideCount > 0 && (
+          {lossOverrideCount > 0 && (
             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">
-              {overrideCount} override{overrideCount > 1 ? 's' : ''}
+              {lossOverrideCount} override{lossOverrideCount > 1 ? 's' : ''}
             </span>
           )}
           <span className="text-[9px] text-slate-300 font-medium uppercase tracking-wide ml-1">persisted</span>
@@ -159,7 +158,8 @@ export default function PricingAuditHistory({ documentId }) {
             <div className="flex items-center gap-3 mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-400">
               <span>{fieldChangeCount} field change{fieldChangeCount !== 1 ? 's' : ''}</span>
               <span>·</span>
-              <span>{overrideCount} override{overrideCount !== 1 ? 's' : ''}</span>
+              <span>{lossOverrideCount} override{lossOverrideCount !== 1 ? 's' : ''}</span>
+              {confirmCount > 0 && <><span>·</span><span>{confirmCount} confirmation{confirmCount !== 1 ? 's' : ''}</span></>}
             </div>
           )}
         </div>
