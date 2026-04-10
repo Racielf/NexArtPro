@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ShieldAlert, KeyRound, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { buildPricingAuditRecord } from '@/lib/pricingPermissions';
+import { logOverrideAction } from '@/lib/pricingAuditService';
 
 export default function PricingOverrideModal({
   open,
@@ -86,7 +87,22 @@ export default function PricingOverrideModal({
           total: document?.total || document?.total_amount,
         });
 
-        console.log('[PricingOverride] Audit record:', audit);
+        // Persist audit event to database
+        logOverrideAction({
+          documentId: document?.id,
+          documentKind: documentType,
+          documentNumber: docNumber,
+          eventType: hasLoss ? `override_loss_${action}` : `override_zero_profit_${action}`,
+          reason: reason.trim(),
+          userEmail: currentUser?.email,
+          userRole: role,
+          marginAtEvent: parseFloat(document?.gross_margin_pct) || null,
+          totalAtEvent: parseFloat(document?.total || document?.total_amount) || null,
+          metadata: {
+            lossItems: pricingResult?.lossItems || [],
+            zeroProfitItems: pricingResult?.zeroProfitItems || [],
+          },
+        });
 
         setApproved(true);
         setTimeout(() => {

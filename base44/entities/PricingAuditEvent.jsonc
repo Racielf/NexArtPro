@@ -1,0 +1,82 @@
+{
+  "name": "PricingAuditEvent",
+  "type": "object",
+  "properties": {
+    "document_id": {
+      "type": "string",
+      "description": "ID of the estimate or proposal"
+    },
+    "document_kind": {
+      "type": "string",
+      "enum": [
+        "estimate",
+        "proposal",
+        "bid"
+      ],
+      "description": "Type of document"
+    },
+    "document_number": {
+      "type": "number"
+    },
+    "line_item_id": {
+      "type": "string",
+      "description": "Nullable \u2014 set for line-item-level events"
+    },
+    "line_item_name": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "field_change",
+        "override_loss_send",
+        "override_loss_approve",
+        "override_zero_profit_send",
+        "override_zero_profit_approve",
+        "override_low_margin",
+        "send_after_override",
+        "approve_after_override",
+        "manual_approval"
+      ],
+      "description": "Type of audit event"
+    },
+    "field_name": {
+      "type": "string",
+      "description": "Field that changed (for field_change events)"
+    },
+    "old_value": {
+      "type": "string",
+      "description": "Previous value (stringified)"
+    },
+    "new_value": {
+      "type": "string",
+      "description": "New value (stringified)"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "user_role": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string",
+      "description": "User-provided justification for overrides"
+    },
+    "margin_at_event": {
+      "type": "number",
+      "description": "Gross margin % at time of event"
+    },
+    "total_at_event": {
+      "type": "number",
+      "description": "Document total at time of event"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional context (affected items, pricing snapshot, etc.)"
+    }
+  },
+  "required": [
+    "document_id",
+    "event_type"
+  ]
+}

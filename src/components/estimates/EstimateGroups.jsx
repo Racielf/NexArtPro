@@ -25,6 +25,7 @@ import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceF
 import { logChange } from '@/lib/estimateAuditLog';
 import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
+import { logFieldChange } from '@/lib/pricingAuditService';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -474,7 +475,7 @@ function NotesSection({ label, placeholder, value, onChange, accent }) {
 
 // ─── Main EstimateGroups Component ────────────────────────────────────────────
 // readOnlyDiscountType: if true, disables discount type selector (Proposal mode)
-export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false }) {
+export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false, currentUser }) {
   const [groups, setGroups] = useState(() => {
     if (estimate?.groups?.length) return estimate.groups;
     if (estimate?.line_items?.length) {
@@ -503,6 +504,33 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [approvalMode, setApprovalMode] = useState('one');
   const [fixedItemIds, setFixedItemIds] = useState(new Set());
   const { priceLog, addLog, clearLog } = usePriceAuditLog();
+
+  // Persist pricing field changes to audit trail
+  const handleFieldAudit = ({ item, field, oldValue, newValue }) => {
+    // Add to session log
+    addLog({ item, field, oldValue, newValue, user: currentUser?.email || 'admin' });
+    // Persist to database (fire-and-forget)
+    if (estimate?.id) {
+      const oldNum = parseFloat(oldValue) || 0;
+      const newNum = parseFloat(newValue) || 0;
+      if (Math.abs(newNum - oldNum) >= 0.01) {
+        logFieldChange({
+          documentId: estimate.id,
+          documentKind: estimate.document_type === 'BID' ? 'bid' : 'estimate',
+          documentNumber: estimate.estimate_number,
+          lineItemId: item.id,
+          lineItemName: item.service_name || '(unnamed)',
+          fieldName: field,
+          oldValue: oldNum,
+          newValue: newNum,
+          userEmail: currentUser?.email || '',
+          userRole: currentUser?.role || '',
+          marginAtEvent: parseFloat(estimate.gross_margin_pct) || null,
+          totalAtEvent: parseFloat(estimate.total) || null,
+        });
+      }
+    }
+  };
 
   // Sync when estimate id changes
   useEffect(() => {
@@ -659,7 +687,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       {/* ── GROUPS ── */}
       {groups.map(group => (
         <WorkGroup key={group.id} group={group} onUpdate={updateGroup} onRemove={removeGroup}
-          showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} onLogChange={addLog} isPreview={isPreview} />
+          showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} onLogChange={handleFieldAudit} isPreview={isPreview} />
       ))}
 
       {/* Add group button */}
@@ -877,10 +905,10 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         )}
       </div>
 
-      {/* ── INTERNAL PRICE AUDIT LOG ── */}
+      {/* ── INTERNAL PRICE AUDIT LOG (session) ── */}
       {!isPreview && <PriceAuditLog entries={priceLog} onClear={clearLog} />}
 
-      {/* ── INTERNAL AUDIT HISTORY ── */}
+      {/* ── INTERNAL AUDIT HISTORY (legacy) ── */}
       {!isPreview && estimate?.id && <EstimateAuditHistory estimateId={estimate.id} />}
 
     </div>

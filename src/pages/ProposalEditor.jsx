@@ -12,6 +12,7 @@ import ProposalSendModal from '@/components/proposals/ProposalSendModal';
 import CommTimeline from '@/components/shared/CommTimeline';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
+import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 
 const STATUS_BADGE = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -44,7 +45,10 @@ export default function ProposalEditor() {
   const [showSend, setShowSend] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const pdfElementRef = useRef(null);
+
+  useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
   useEffect(() => { load(); }, []);
 
@@ -283,6 +287,7 @@ export default function ProposalEditor() {
               saving={saving}
               readOnlyDiscountType={true}
               isPreview={isPreview}
+              currentUser={currentUser}
             />
             
             {/* PROPOSAL DETAILS SECTIONS */}
@@ -330,6 +335,11 @@ export default function ProposalEditor() {
                   className="w-full h-20 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                 />
               </div>
+
+              {/* Persisted pricing audit trail — internal only */}
+              {!isPreview && proposal?.id && (
+                <PricingAuditHistory documentId={proposal.id} />
+              )}
             </div>
           </div>
         </div>

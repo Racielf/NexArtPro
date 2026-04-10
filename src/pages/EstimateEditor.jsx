@@ -18,6 +18,7 @@ import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomer
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { getDocTypeConfig, DOC_TYPE_OPTIONS, validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
+import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -365,7 +366,12 @@ export default function EstimateEditor() {
             onSave={handleSave}
             saving={saving}
             isPreview={isPreview}
+            currentUser={currentUser}
           />
+          {/* Persisted pricing audit trail — internal only */}
+          {!isPreview && estimate?.id && (
+            <PricingAuditHistory documentId={estimate.id} />
+          )}
         </div>
       </div>
 
