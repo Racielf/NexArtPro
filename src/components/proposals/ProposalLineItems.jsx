@@ -16,6 +16,28 @@ function calculateLineTotal(item) {
   return (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
 }
 
+// Pricing indicator badge
+function PricingBadge({ bookPrice, yourPrice }) {
+  const book = parseFloat(bookPrice) || 0;
+  const yours = parseFloat(yourPrice) || 0;
+  if (book === 0) return null;
+  const diff = yours - book;
+  const pct = (diff / book) * 100;
+  const isDanger = pct < -15;
+  const isWarning = pct < 0 && pct >= -15;
+  const isGreen = pct >= 0;
+  const dotColor = isDanger ? 'bg-red-500' : isWarning ? 'bg-amber-400' : 'bg-emerald-500';
+  const textColor = isDanger ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-emerald-600';
+  const bgColor = isDanger ? 'bg-red-50 border-red-200' : isWarning ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200';
+  const label = isDanger ? `Critical ${pct.toFixed(1)}%` : isWarning ? `−${Math.abs(pct).toFixed(1)}% disc` : isGreen && diff > 0 ? `+${pct.toFixed(1)}%` : '✓ at book';
+  return (
+    <span className={`inline-flex items-center gap-1 text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${bgColor} ${textColor}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
+      {label}
+    </span>
+  );
+}
+
 export default function ProposalLineItems({ proposal, onSave, locked }) {
   const [local, setLocal] = useState(proposal);
   const qtyRefs = useRef({});
@@ -113,11 +135,11 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
 
       {/* Services Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-left">
-        <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-slate-50/80 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+        <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest">
           <div className="col-span-5 text-left">Service Details</div>
           <div className="col-span-1 text-center">Qty</div>
           <div className="col-span-1 text-center">Unit</div>
-          <div className="col-span-2 text-right text-indigo-500">Book Ref</div>
+          <div className="col-span-2 text-right text-slate-300">Book Ref</div>
           <div className="col-span-2 text-right">Your Price</div>
           <div className="col-span-1 text-right">Line Total</div>
         </div>
@@ -128,9 +150,13 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
             const yourPrice = parseFloat(item.unit_price) || 0;
             const diff = yourPrice - bookPrice;
             const deltaPercent = bookPrice ? (diff / bookPrice) * 100 : 0;
+            const isDanger = deltaPercent < -15;
+            const isWarning = deltaPercent < 0 && deltaPercent >= -15;
 
             return (
-              <div key={item.id} className="group hover:bg-slate-50/50 transition-all duration-200">
+              <div key={item.id} className={`group transition-all duration-200 ${
+                isDanger ? 'bg-red-50/40 hover:bg-red-50/60' : isWarning ? 'bg-amber-50/30 hover:bg-amber-50/50' : 'hover:bg-slate-50/50'
+              }`}>
                 <div className="grid grid-cols-12 gap-3 px-6 py-4 items-start">
                   
                   {/* Service & Description Area */}
@@ -199,25 +225,33 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
 
                   {/* Your Price (Editable) */}
                   <div className="col-span-2">
-                    <div className="relative">
-                      <Input 
-                        type="number" 
-                        value={item.unit_price} 
-                        onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value))}
-                        className={`h-9 text-sm text-right font-bold shadow-sm ${
-                          diff < 0 ? 'border-red-200 bg-red-50 text-red-700 focus:ring-red-500' : 'focus:ring-blue-500'
-                        }`}
-                        disabled={!isEditable}
-                      />
-                      {diff < 0 && <AlertCircle className="w-3 h-3 text-red-400 absolute left-2 top-3" />}
+                    <div className="flex flex-col gap-1">
+                      <div className="relative">
+                        <Input 
+                          type="number" 
+                          value={item.unit_price} 
+                          onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value))}
+                          className={`h-9 text-sm text-right font-bold shadow-sm ${
+                            isDanger ? 'border-red-300 bg-red-50/60 text-red-700 focus:ring-red-500' : isWarning ? 'border-amber-300 bg-amber-50/60 text-amber-700 focus:ring-amber-500' : 'focus:ring-blue-500'
+                          }`}
+                          disabled={!isEditable}
+                        />
+                      </div>
+                      {bookPrice > 0 && <PricingBadge bookPrice={bookPrice} yourPrice={yourPrice} />}
                     </div>
                   </div>
 
                   {/* Total & Action */}
-                  <div className="col-span-1 flex flex-col items-end gap-1">
-                    <div className="text-sm font-bold text-slate-900 pt-2">
+                  <div className="col-span-1 flex flex-col items-end gap-1 text-right">
+                    <div className="text-sm font-bold text-slate-900">
                       {fmtCurrency(item.line_total)}
                     </div>
+                    {(parseFloat(item.quantity) > 0 && parseFloat(item.unit_price) > 0) && (
+                      <div className="text-[9px] text-slate-400 leading-none">
+                        {parseInt(item.quantity) === parseFloat(item.quantity) ? parseInt(item.quantity) : parseFloat(item.quantity).toFixed(2)} {item.unit} × ${parseFloat(item.unit_price).toFixed(2)}
+                      </div>
+                    )}
+                    <PricingBadge bookPrice={item.book_price} yourPrice={item.unit_price} />
                     {isEditable && (
                       <button 
                         onClick={() => removeItem(item.id)}
