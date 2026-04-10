@@ -336,10 +336,6 @@ export default function Proposals() {
                           onClick={e => { e.stopPropagation(); navigate(`/proposal-editor?id=${p.id}`); }}>
                           <Pencil className="w-3.5 h-3.5" /> Open
                         </Button>
-                        <Button variant="ghost" size="sm" disabled={p.status !== 'draft'} className="text-red-500 hover:text-red-700 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                          onClick={e => { e.stopPropagation(); if (p.status === 'draft') setDeleteModal({ open: true, proposal: p }); }}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
                       </div>
                     </div>
                   </CardContent>
