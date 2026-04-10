@@ -258,29 +258,27 @@ export default function Estimates() {
                      />
                    </label>
                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/estimate-editor?id=${est.id}`)}>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-primary">#{est.estimate_number}</span>
-                        <h3 className="font-semibold text-foreground">
-                          {est.client_name || <span className="text-muted-foreground italic">No client</span>}
-                        </h3>
-                        <StatusBadge status={est.status} />
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        {est.title && <span className="text-sm text-muted-foreground">{est.title}</span>}
-                        <span className="text-sm font-semibold text-foreground">
-                          ${(est.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
-                        {est.expiration_date && (
-                          <span className="text-xs text-muted-foreground">Exp: {est.expiration_date}</span>
-                        )}
-                        {est.client_address && (
-                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">{est.client_address}</span>
-                        )}
-                      </div>
-                    </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                    <Button
+                     <div className="flex items-center gap-2 flex-wrap">
+                       <span className="font-bold text-primary">#{est.estimate_number}</span>
+                       <h3 className="font-semibold text-foreground">
+                         {est.client_name || <span className="text-muted-foreground italic">No client</span>}
+                       </h3>
+                       <StatusBadge status={est.status} />
+                     </div>
+                     <div className="flex items-center gap-3 mt-1 flex-wrap">
+                       {est.title && <span className="text-sm text-muted-foreground">{est.title}</span>}
+                       <span className="text-sm font-semibold text-foreground">
+                         ${(est.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                       </span>
+                       {est.expiration_date && (
+                         <span className="text-xs text-muted-foreground">Exp: {est.expiration_date}</span>
+                       )}
+                       {est.client_address && (
+                         <span className="text-xs text-muted-foreground truncate max-w-[200px]">{est.client_address}</span>
+                       )}
+                     </div>
+                   </div>
+                   <Button
                       variant="outline"
                       size="sm"
                       className="gap-1.5"
