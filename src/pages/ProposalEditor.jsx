@@ -48,8 +48,20 @@ export default function ProposalEditor() {
 
   const handleSave = async (updatedProposal) => {
     setSaving(true);
-    await base44.entities.Proposal.update(proposalId, updatedProposal);
-    setProposal(updatedProposal);
+    
+    // Coerce string numbers to actual numbers in items
+    const sanitized = { ...updatedProposal };
+    if (sanitized.items && Array.isArray(sanitized.items)) {
+      sanitized.items = sanitized.items.map(item => ({
+        ...item,
+        quantity: item.quantity != null ? parseFloat(item.quantity) || 0 : 0,
+        unit_price: item.unit_price != null ? parseFloat(item.unit_price) || 0 : 0,
+        line_total: item.line_total != null ? parseFloat(item.line_total) || 0 : 0,
+      }));
+    }
+    
+    await base44.entities.Proposal.update(proposalId, sanitized);
+    setProposal(sanitized);
     setSaving(false);
   };
 
