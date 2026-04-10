@@ -135,27 +135,9 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           const book         = parseFloat(item.book_price) || 0;
           const real         = parseFloat(item.unit_price) || 0;
           const cost         = parseFloat(item.unit_cost)  || 0;
-          const autoSuggest  = suggestPriceFromCost(cost, 0.30);
-          const negMeta      = getNegotiationMeta(cost, real);
+          const autoSuggest  = !isPreview ? suggestPriceFromCost(cost, 0.30) : 0;
+          const negMeta      = !isPreview ? getNegotiationMeta(cost, real) : { status: 'none' };
           const diff         = real - book;
-          const isAtBook = book > 0 && Math.abs(diff) < 0.01;
-          const isLow  = book > 0 && diff < -0.001;
-          const isHigh = book > 0 && diff > 0.001;
-          const isOk   = book > 0 && !isLow && !isHigh;
-
-          let greenColor = 'text-slate-400';
-          if (book > 0) {
-            const markupPct = (diff / book) * 100;
-            if (markupPct >= 20) greenColor = 'text-emerald-900';
-            else if (markupPct >= 15) greenColor = 'text-emerald-800';
-            else if (markupPct >= 10) greenColor = 'text-emerald-700';
-            else if (markupPct >= 5) greenColor = 'text-emerald-600';
-            else if (markupPct > 0) greenColor = 'text-emerald-500';
-            else greenColor = 'text-slate-400';
-          }
-
-          // Smart price suggestions (admin-only, only when book_price exists)
-          const MARGINS = [0.10, 0.20, 0.30];
           const suggested = MARGINS.map(m => ({
             label: `+${m * 100}%`,
             price: parseFloat((book * (1 + m)).toFixed(2)),
@@ -176,8 +158,8 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   }`}
                   min={0}
                 />
-                {/* ⚡ Auto-price button — internal only, never in PDF */}
-                {autoSuggest > 0 && (
+                {/* ⚡ Auto-price button — internal only, never in PDF/client view */}
+                {!isPreview && autoSuggest > 0 && (
                   <button
                     type="button"
                     onClick={() => update('unit_price', autoSuggest)}
@@ -189,7 +171,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 )}
               </div>
               {/* ── Negotiation Helper — internal only, never in PDF/client ── */}
-              {negMeta.status !== 'none' && (() => {
+              {!isPreview && negMeta.status !== 'none' && (() => {
                 const { margin, suggested, floor, status } = negMeta;
                 const statusIcon =
                   status === 'healthy'  ? <span style={{ color: '#10b981', fontSize: 10 }}>✔</span> :
@@ -232,7 +214,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 );
               })()}
               
-              {book > 0 && (() => {
+              {!isPreview && book > 0 && (() => {
                 const pct = (diff / book) * 100;
                 const isDanger  = pct < -15;
                 const isWarning = pct < 0 && pct >= -15;
@@ -252,7 +234,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 );
               })()}
               {/* ── Smart Price Suggestions + Reset — ADMIN ONLY ── */}
-              {book > 0 && (
+              {!isPreview && book > 0 && (
                 <div className="flex gap-0.5 mt-0.5 flex-wrap">
                   {suggested.map(s => (
                     <button
