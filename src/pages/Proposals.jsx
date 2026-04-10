@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import PageHeader from '@/components/shared/PageHeader';
+import ClientFormModal from '@/components/proposals/ClientFormModal';
 import { ScrollText, Plus, Search, Pencil, Trash2, CheckCircle, Send, Clock, AlertCircle, FileText, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,6 +31,7 @@ export default function Proposals() {
   const [deleteModal, setDeleteModal] = useState({ open: false, proposal: null });
   const [showFromEstimate, setShowFromEstimate] = useState(false);
   const [estimateSearch, setEstimateSearch] = useState('');
+  const [showClientModal, setShowClientModal] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -49,14 +51,22 @@ export default function Proposals() {
     return list.length ? Math.max(...list.map(p => p.proposal_number || 0)) + 1 : 1001;
   };
 
-  const handleNew = async () => {
+  const handleNew = () => {
+    setShowClientModal(true);
+  };
+
+  const handleClientModalSave = async (customer) => {
     setCreating(true);
     const num = await nextProposalNumber();
     const created = await base44.entities.Proposal.create({
       proposal_number: num,
       status: 'draft',
       creation_mode: 'new_proposal',
-      client_name: '',
+      client_id: customer.id,
+      client_name: customer.display_name || `${customer.first_name} ${customer.last_name}`,
+      client_email: customer.email,
+      client_phone: customer.phone,
+      client_address: customer.service_address,
       items: [],
       subtotal: 0,
       tax_rate: 0,
@@ -65,6 +75,7 @@ export default function Proposals() {
       total_amount: 0,
     });
     setCreating(false);
+    setShowClientModal(false);
     navigate(`/proposal-editor?id=${created.id}&new=1`);
   };
 
@@ -124,6 +135,15 @@ export default function Proposals() {
 
   return (
     <div className="flex flex-col h-full">
+
+      {/* Client Form Modal */}
+      {showClientModal && (
+        <ClientFormModal
+          onSave={handleClientModalSave}
+          onClose={() => setShowClientModal(false)}
+          mode="new"
+        />
+      )}
 
       {/* Delete Modal */}
       {deleteModal.open && (
