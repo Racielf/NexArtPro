@@ -20,8 +20,14 @@ function emptyItem() {
 
 function recalc(data) {
   const items = data.items || [];
-  const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.line_total) || 0), 0);
-  const discounted = Math.max(0, subtotal - (parseFloat(data.discount_value) || 0));
+  const subtotal = items.reduce(
+    (sum, item) => sum + (parseFloat(item.line_total) || 0),
+    0
+  );
+  const discounted = Math.max(
+    0,
+    subtotal - (parseFloat(data.discount_value) || 0)
+  );
   const taxAmount = discounted * ((parseFloat(data.tax_rate) || 0) / 100);
 
   return {
@@ -32,7 +38,9 @@ function recalc(data) {
 }
 
 const fmtCurrency = (n) =>
-  `$${(parseFloat(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  `$${(parseFloat(n) || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+  })}`;
 
 export default function ProposalLineItems({ proposal, onSave, locked }) {
   const [local, setLocal] = useState(proposal);
@@ -121,7 +129,9 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
       </div>
 
       <div className="bg-slate-50 border border-slate-200 rounded-t-xl px-5 py-2.5 flex items-center justify-between sticky top-0 z-10">
-        <div className="text-xs font-medium text-slate-500">Running Subtotal</div>
+        <div className="text-xs font-medium text-slate-500">
+          Running Subtotal
+        </div>
         <div className="text-sm font-bold text-slate-900">
           {fmtCurrency(local.subtotal)}
         </div>
@@ -157,19 +167,23 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                 value={item.service_name || ''}
                 onChange={(value) => updateItem(item.id, 'service_name', value)}
                 onSelect={(selected) => {
-                                   patchItem(item.id, {
-                                     ...(selected.unit && !item.unit ? { unit: selected.unit } : {}),
-                                     unit_price:
-                                       selected.unit_price !== undefined
-                                         ? selected.unit_price
-                                         : item.unit_price || 0,
-                                     description: selected.description || item.description || '',
-                                   });
+                  patchItem(item.id, {
+                    service_name: selected.name || item.service_name || '',
+                    ...(selected.unit && !item.unit
+                      ? { unit: selected.unit }
+                      : {}),
+                    unit_price:
+                      selected.unit_price !== undefined
+                        ? selected.unit_price
+                        : item.unit_price || 0,
+                    description:
+                      selected.description || item.description || '',
+                  });
 
-                                   setTimeout(() => {
-                                     qtyRefs.current[item.id]?.focus();
-                                   }, 0);
-                                 }}
+                  setTimeout(() => {
+                    qtyRefs.current[item.id]?.focus();
+                  }, 0);
+                }}
                 placeholder="Service name"
                 className={`h-7 text-xs border border-slate-200 rounded px-2 ${
                   !isEditable ? 'opacity-60 cursor-not-allowed' : ''
@@ -181,7 +195,9 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
             <div className="col-span-2">
               <Input
                 value={item.description || ''}
-                onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                onChange={(e) =>
+                  updateItem(item.id, 'description', e.target.value)
+                }
                 disabled={!isEditable}
                 placeholder="Notes"
                 className="h-7 text-xs"
@@ -236,9 +252,9 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
             {isEditable && (
               <div className="col-span-1 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
+                  type="button"
                   onClick={() => removeItem(item.id)}
                   className="p-1 text-red-400 hover:text-red-600"
-                  type="button"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -249,8 +265,8 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
 
         {isEditable && (
           <button
-            onClick={addItem}
             type="button"
+            onClick={addItem}
             className="w-full flex items-center gap-2 px-5 py-3.5 text-xs text-primary hover:bg-primary/10 font-semibold transition-colors border-t border-slate-100"
           >
             <Plus className="w-4 h-4" />
@@ -311,7 +327,9 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
 
           <div className="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-200">
             <span>Total</span>
-            <span className="text-primary">{fmtCurrency(local.total_amount)}</span>
+            <span className="text-primary">
+              {fmtCurrency(local.total_amount)}
+            </span>
           </div>
         </div>
       </div>
@@ -343,7 +361,10 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
             internal: true,
           },
         ].map(({ field, label, placeholder, internal }) => (
-          <div key={field} className="bg-white rounded-xl border border-slate-200 p-4">
+          <div
+            key={field}
+            className="bg-white rounded-xl border border-slate-200 p-4"
+          >
             <label
               className={`text-xs font-bold uppercase tracking-wider block mb-2 ${
                 internal ? 'text-amber-600' : 'text-slate-500'
