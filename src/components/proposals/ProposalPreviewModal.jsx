@@ -5,11 +5,11 @@ import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import { mapProposalToEstimate } from '@/lib/proposalDocumentMapper';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 
-export default function ProposalPreviewModal({ proposal, proposalDetails = {}, open, onClose, onSend }) {
+export default function ProposalPreviewModal({ proposal, proposalDetails = {}, open, onClose, onSend, language }) {
   if (!open || !proposal) return null;
 
-  // Map proposal → estimate shape for document renderers
-  const estimateData = mapProposalToEstimate(proposal, proposalDetails);
+  // Map proposal → estimate shape for document renderers (passes resolved language)
+  const estimateData = mapProposalToEstimate(proposal, proposalDetails, language);
 
   const canSend = !['sent', 'approved', 'accepted', 'converted_to_invoice', 'converted_to_work_order'].includes(proposal.status);
 
@@ -62,6 +62,7 @@ export default function ProposalPreviewModal({ proposal, proposalDetails = {}, o
             <DocumentTypeRenderer
               estimate={estimateData}
               options={estimateData.document_config?.options}
+              lang={estimateData.document_language}
             />
           </div>
         </div>

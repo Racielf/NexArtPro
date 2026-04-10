@@ -17,6 +17,7 @@ import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButto
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { getDocTypeConfig, DOC_TYPE_OPTIONS, validateDocTypeFields } from '@/lib/documentTypeConfig';
+import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -125,7 +126,18 @@ export default function EstimateEditor() {
   const handleCustomerChange = async (customerData, clientRecord) => {
     setSaving(true);
     const updated = { ...estimate, ...customerData };
-    await base44.entities.Estimate.update(estimateId, { ...updated, updated_by: 'Admin' });
+    
+    // Auto-resolve document language from client preference (only if not already set)
+    const savePayload = { ...updated, updated_by: 'Admin' };
+    if (clientRecord) {
+      const autoLang = getAutoLanguageForClient(estimate, clientRecord);
+      if (autoLang) {
+        savePayload.document_language = autoLang;
+        updated.document_language = autoLang;
+      }
+    }
+    
+    await base44.entities.Estimate.update(estimateId, savePayload);
     setEstimate(updated);
     if (clientRecord) setClient(clientRecord);
     setSaving(false);

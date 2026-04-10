@@ -47,6 +47,16 @@
     "internal_notes": {
       "type": "string"
     },
+    "preferred_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es",
+        "bilingual"
+      ],
+      "default": "en",
+      "description": "Customer preferred document language"
+    },
     "company_id": {
       "type": "string",
       "description": "Company identifier for multi-tenant support",

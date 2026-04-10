@@ -11,6 +11,7 @@ import { createEstimateProxy, extractProposalChanges } from '@/components/propos
 import ProposalSendModal from '@/components/proposals/ProposalSendModal';
 import CommTimeline from '@/components/shared/CommTimeline';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
+import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 
 const STATUS_BADGE = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -95,9 +96,18 @@ export default function ProposalEditor() {
     }
   };
 
-  const handleCustomerChange = async (customerData, _clientRecord) => {
+  const handleCustomerChange = async (customerData, clientRecord) => {
     setSaving(true);
     const updated = { ...proposal, ...customerData };
+    
+    // Auto-resolve document language from client preference
+    if (clientRecord) {
+      const autoLang = getAutoLanguageForClient({ document_language: proposal?.document_language }, clientRecord);
+      if (autoLang) {
+        updated.document_language = autoLang;
+      }
+    }
+    
     await base44.entities.Proposal.update(proposalId, updated);
     setProposal(updated);
     setSaving(false);
@@ -332,6 +342,7 @@ export default function ProposalEditor() {
         open={showPreview}
         onClose={() => setShowPreview(false)}
         onSend={() => setShowSend(true)}
+        language={proposal?.document_language}
       />
 
       {showSend && (

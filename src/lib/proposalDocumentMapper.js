@@ -37,10 +37,13 @@ function parseProposalDetails(proposal, overrideDetails) {
  * @param {Object} [proposalDetails] - Optional override (from editor state)
  * @returns {Object} estimate-shaped object for document renderers
  */
-export function mapProposalToEstimate(proposal, proposalDetails) {
+export function mapProposalToEstimate(proposal, proposalDetails, language) {
   if (!proposal) return null;
 
   const details = parseProposalDetails(proposal, proposalDetails);
+
+  // Resolve language: explicit param > proposal field > 'en'
+  const resolvedLang = language || proposal?.document_language || 'en';
 
   // Map flat items[] → groups[] (client-safe: no unit_cost, book_price)
   const groups = [{
@@ -62,7 +65,7 @@ export function mapProposalToEstimate(proposal, proposalDetails) {
     // Identity
     estimate_number: proposal.proposal_number,
     document_type: 'PROPOSAL', // Always PROPOSAL for proposals
-    document_language: 'en',
+    document_language: resolvedLang,
 
     // Client info
     client_name: proposal.client_name || '',

@@ -87,7 +87,12 @@ export default function EstimateDocumentOptions({
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">Controls section titles and default copy in the PDF.</p>
+            <p className="text-[11px] text-slate-400 mt-2">
+              Controls section titles and default copy in the PDF.
+              {language && language !== 'en' && (
+                <span className="block mt-1 text-primary font-medium">Auto-detected from client preference.</span>
+              )}
+            </p>
           </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">

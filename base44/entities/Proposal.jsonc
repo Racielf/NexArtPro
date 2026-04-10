@@ -50,6 +50,16 @@
       ],
       "default": "draft"
     },
+    "document_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es",
+        "bilingual"
+      ],
+      "default": "en",
+      "description": "Document language: en, es, or bilingual"
+    },
     "items": {
       "type": "array",
       "items": {

@@ -41,6 +41,16 @@
     },
     "sqft": {
       "type": "number"
+    },
+    "preferred_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es",
+        "bilingual"
+      ],
+      "default": "en",
+      "description": "Client preferred document language"
     }
   },
   "required": [
