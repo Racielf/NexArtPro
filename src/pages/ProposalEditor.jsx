@@ -110,6 +110,11 @@ export default function ProposalEditor() {
 
   const fmtCurrency = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(publicUrl);
+    toast.success('Client link copied to clipboard');
+  };
+
   if (loading) return (
     <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
       <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
@@ -151,6 +156,11 @@ export default function ProposalEditor() {
               {proposal.status === 'draft' && (
                 <Button size="sm" variant="outline" onClick={sendToBid} className="gap-1.5">
                   <Send className="w-3.5 h-3.5" /> Send as Bid
+                </Button>
+              )}
+              {proposal.status === 'sent' && (
+                <Button size="sm" variant="outline" onClick={handleCopyLink} className="gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50">
+                  <Send className="w-3.5 h-3.5" /> Copy Client Link
                 </Button>
               )}
               <Button size="sm" variant="outline" onClick={() => window.open(publicUrl, '_blank')} className="gap-1.5">
