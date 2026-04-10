@@ -1,46 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, TrendingDown, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import { debounce } from 'lodash';
 
 const EDITABLE_STATUSES = ['draft', 'review_needed'];
 
-function emptyItem() {
-  return {
-    id: Math.random().toString(36).slice(2),
-    service_name: '',
-    description: '',
-    quantity: 1,
-    unit: 'ea',
-    unit_price: 0,
-    line_total: 0,
-  };
+// Utilidades fuera del componente para evitar re-renderizados innecesarios
+const fmtCurrency = (n) => new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+}).format(n || 0);
+
+function calculateLineTotal(item) {
+  return (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
 }
-
-function recalc(data) {
-  const items = data.items || [];
-  const subtotal = items.reduce(
-    (sum, item) => sum + (parseFloat(item.line_total) || 0),
-    0
-  );
-  const discounted = Math.max(
-    0,
-    subtotal - (parseFloat(data.discount_value) || 0)
-  );
-  const taxAmount = discounted * ((parseFloat(data.tax_rate) || 0) / 100);
-
-  return {
-    subtotal,
-    tax_amount: taxAmount,
-    total_amount: discounted + taxAmount,
-  };
-}
-
-const fmtCurrency = (n) =>
-  `$${(parseFloat(n) || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-  })}`;
 
 export default function ProposalLineItems({ proposal, onSave, locked }) {
   const [local, setLocal] = useState(proposal);
@@ -55,16 +29,21 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
     [onSave]
   );
 
-  useEffect(() => {
-    return () => {
-      debouncedSave.cancel();
-    };
-  }, [debouncedSave]);
-
   const update = (patch) => {
     const merged = { ...local, ...patch };
-    const totals = recalc(merged);
-    const finalData = { ...merged, ...totals };
+    
+    // Lógica de Recálculo centralizada
+    const items = merged.items || [];
+    const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.line_total) || 0), 0);
+    const discounted = Math.max(0, subtotal - (parseFloat(merged.discount_value) || 0));
+    const taxAmount = discounted * ((parseFloat(merged.tax_rate) || 0) / 100);
+    
+    const finalData = {
+      ...merged,
+      subtotal,
+      tax_amount: taxAmount,
+      total_amount: discounted + taxAmount,
+    };
 
     setLocal(finalData);
     debouncedSave(finalData);
@@ -73,38 +52,35 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
   const updateItem = (id, field, value) => {
     const items = (local.items || []).map((item) => {
       if (item.id !== id) return item;
-
       const updatedItem = { ...item, [field]: value };
-
-      if (field === 'quantity' || field === 'unit_price') {
-        updatedItem.line_total =
-          (parseFloat(updatedItem.quantity) || 0) *
-          (parseFloat(updatedItem.unit_price) || 0);
-      }
-
+      updatedItem.line_total = calculateLineTotal(updatedItem);
       return updatedItem;
     });
-
     update({ items });
   };
 
   const patchItem = (id, patch) => {
     const items = (local.items || []).map((item) => {
       if (item.id !== id) return item;
-
       const updatedItem = { ...item, ...patch };
-      updatedItem.line_total =
-        (parseFloat(updatedItem.quantity) || 0) *
-        (parseFloat(updatedItem.unit_price) || 0);
-
+      updatedItem.line_total = calculateLineTotal(updatedItem);
       return updatedItem;
     });
-
     update({ items });
   };
 
   const addItem = () => {
-    update({ items: [...(local.items || []), emptyItem()] });
+    const newItem = {
+      id: Math.random().toString(36).slice(2),
+      service_name: '',
+      description: '',
+      quantity: 1,
+      unit: 'ea',
+      book_price: 0,
+      unit_price: 0,
+      line_total: 0,
+    };
+    update({ items: [...(local.items || []), newItem] });
   };
 
   const removeItem = (id) => {
@@ -114,274 +90,203 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
   const isEditable = !locked && EDITABLE_STATUSES.includes(local?.status);
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
-        <label className="text-xs text-slate-500 font-medium block mb-1">
-          Project Title
-        </label>
-        <Input
-          value={local.title || ''}
-          onChange={(e) => update({ title: e.target.value })}
-          disabled={!isEditable}
-          placeholder="e.g. Kitchen Remodel — Phase 1"
-          className="text-sm font-medium"
-        />
-      </div>
-
-      <div className="bg-slate-50 border border-slate-200 rounded-t-xl px-5 py-2.5 flex items-center justify-between sticky top-0 z-10">
-        <div className="text-xs font-medium text-slate-500">
-          Running Subtotal
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Header: Project Title & Running Subtotal */}
+      <div className="flex flex-col md:flex-row gap-4 items-end justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex-1 w-full text-left">
+          <label className="text-[10px] uppercase tracking-widest text-slate-400 font-bold block mb-1.5">
+            Project Identification
+          </label>
+          <Input 
+            value={local.title || ''} 
+            onChange={(e) => update({ title: e.target.value })} 
+            disabled={!isEditable} 
+            placeholder="e.g. Kitchen Remodel — Phase 1" 
+            className="text-lg font-semibold bg-slate-50/50 border-none focus:ring-2 focus:ring-blue-500/20 px-0 pl-2" 
+          />
         </div>
-        <div className="text-sm font-bold text-slate-900">
-          {fmtCurrency(local.subtotal)}
+        <div className="text-right bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
+          <div className="text-[10px] uppercase font-bold text-blue-400 tracking-tight">Running Subtotal</div>
+          <div className="text-xl font-black text-blue-700">{fmtCurrency(local.subtotal)}</div>
         </div>
       </div>
 
-      <div className="bg-white rounded-b-xl border border-slate-200 border-t-0 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-white">
-          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-widest">
-            Services
-          </h2>
-          <span className="text-xs text-slate-400 font-medium">
-            {(local.items || []).length}{' '}
-            {(local.items || []).length === 1 ? 'item' : 'items'}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-12 gap-2 px-5 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-widest border-b border-slate-200 bg-slate-50">
-          <div className="col-span-4">Service</div>
-          <div className="col-span-2">Notes</div>
+      {/* Services Table */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-left">
+        <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-slate-50/80 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          <div className="col-span-5 text-left">Service Details</div>
           <div className="col-span-1 text-center">Qty</div>
           <div className="col-span-1 text-center">Unit</div>
-          <div className="col-span-2 text-right">Unit Price</div>
-          <div className="col-span-2 text-right">Total</div>
+          <div className="col-span-2 text-right text-indigo-500">Book Ref</div>
+          <div className="col-span-2 text-right">Your Price</div>
+          <div className="col-span-1 text-right">Line Total</div>
         </div>
 
-        {(local.items || []).map((item) => (
-          <div
-            key={item.id}
-            className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-slate-100 items-center group hover:bg-blue-50/40 transition-colors"
-          >
-            <div className="col-span-4">
-              <SmartServicePicker
-                value={item.service_name || ''}
-                onChange={(value) => updateItem(item.id, 'service_name', value)}
-                onSelect={(selected) => {
-                  patchItem(item.id, {
-                    service_name: selected.name || item.service_name || '',
-                    ...(selected.unit && !item.unit
-                      ? { unit: selected.unit }
-                      : {}),
-                    unit_price:
-                      selected.unit_price !== undefined
-                        ? selected.unit_price
-                        : item.unit_price || 0,
-                    description:
-                      selected.description || item.description || '',
-                  });
+        <div className="divide-y divide-slate-100">
+          {(local.items || []).map((item) => {
+            const bookPrice = parseFloat(item.book_price) || 0;
+            const yourPrice = parseFloat(item.unit_price) || 0;
+            const diff = yourPrice - bookPrice;
+            const deltaPercent = bookPrice ? (diff / bookPrice) * 100 : 0;
 
-                  setTimeout(() => {
-                    qtyRefs.current[item.id]?.focus();
-                  }, 0);
-                }}
-                placeholder="Service name"
-                className={`h-7 text-xs border border-slate-200 rounded px-2 ${
-                  !isEditable ? 'opacity-60 cursor-not-allowed' : ''
-                }`}
-                disabled={!isEditable}
-              />
-            </div>
+            return (
+              <div key={item.id} className="group hover:bg-slate-50/50 transition-all duration-200">
+                <div className="grid grid-cols-12 gap-3 px-6 py-4 items-start">
+                  
+                  {/* Service & Description Area */}
+                  <div className="col-span-5 space-y-1.5 text-left">
+                    <SmartServicePicker 
+                      value={item.service_name || ''} 
+                      onChange={(val) => updateItem(item.id, 'service_name', val)}
+                      onSelect={(selected) => {
+                        patchItem(item.id, {
+                          service_name: selected.name,
+                          unit: item.unit || selected.unit || 'ea',
+                          book_price: selected.unit_price || 0,
+                          unit_price: item.unit_price || selected.unit_price || 0,
+                          description: item.description || selected.description || ''
+                        });
+                        setTimeout(() => qtyRefs.current[item.id]?.focus(), 50);
+                      }}
+                      disabled={!isEditable}
+                    />
+                    <textarea
+                      value={item.description || ''}
+                      onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                      disabled={!isEditable}
+                      placeholder="Enter detailed scope of work..."
+                      className="w-full text-xs text-slate-500 bg-transparent border-none focus:ring-0 p-0 resize-none leading-relaxed placeholder:text-slate-300 italic"
+                      rows={2}
+                    />
+                    
+                    {/* Profitability Indicator */}
+                    {bookPrice > 0 && (
+                      <div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-tighter ${
+                        diff < 0 ? 'text-red-500' : diff > 0 ? 'text-emerald-600' : 'text-slate-400'
+                      }`}>
+                        {diff < 0 ? <TrendingDown className="w-3 h-3"/> : diff > 0 ? <TrendingUp className="w-3 h-3"/> : null}
+                        {diff < 0 ? `${Math.abs(deltaPercent).toFixed(0)}% below book` : diff > 0 ? `${deltaPercent.toFixed(0)}% above book` : 'At book price'}
+                      </div>
+                    )}
+                  </div>
 
-            <div className="col-span-2">
-              <Input
-                value={item.description || ''}
-                onChange={(e) =>
-                  updateItem(item.id, 'description', e.target.value)
-                }
-                disabled={!isEditable}
-                placeholder="Notes"
-                className="h-7 text-xs"
-              />
-            </div>
+                  {/* Quantity & Unit */}
+                  <div className="col-span-1">
+                    <Input 
+                      ref={el => qtyRefs.current[item.id] = el}
+                      type="number" 
+                      value={item.quantity} 
+                      onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value))} 
+                      className="h-9 text-sm text-center font-medium shadow-sm"
+                      disabled={!isEditable}
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Input 
+                      value={item.unit} 
+                      onChange={(e) => updateItem(item.id, 'unit', e.target.value)} 
+                      className="h-9 text-xs text-center uppercase text-slate-500 bg-slate-50/30 shadow-sm"
+                      disabled={!isEditable}
+                    />
+                  </div>
 
-            <div className="col-span-1">
-              <Input
-                ref={(el) => {
-                  qtyRefs.current[item.id] = el;
-                }}
-                type="number"
-                value={item.quantity ?? 1}
-                onChange={(e) =>
-                  updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)
-                }
-                onFocus={(e) => e.target.select()}
-                disabled={!isEditable}
-                className="h-7 text-xs text-center"
-              />
-            </div>
+                  {/* Book Price (Locked) */}
+                  <div className="col-span-2">
+                    <div className="h-9 flex items-center justify-end px-3 text-sm font-medium text-slate-400 bg-slate-50 rounded-md border border-dashed border-slate-200">
+                      {fmtCurrency(bookPrice)}
+                    </div>
+                  </div>
 
-            <div className="col-span-1">
-              <Input
-                value={item.unit || 'ea'}
-                onChange={(e) => updateItem(item.id, 'unit', e.target.value)}
-                disabled={!isEditable}
-                className="h-7 text-xs text-center"
-              />
-            </div>
+                  {/* Your Price (Editable) */}
+                  <div className="col-span-2">
+                    <div className="relative">
+                      <Input 
+                        type="number" 
+                        value={item.unit_price} 
+                        onChange={(e) => updateItem(item.id, 'unit_price', parseFloat(e.target.value))}
+                        className={`h-9 text-sm text-right font-bold shadow-sm ${
+                          diff < 0 ? 'border-red-200 bg-red-50 text-red-700 focus:ring-red-500' : 'focus:ring-blue-500'
+                        }`}
+                        disabled={!isEditable}
+                      />
+                      {diff < 0 && <AlertCircle className="w-3 h-3 text-red-400 absolute left-2 top-3" />}
+                    </div>
+                  </div>
 
-            <div className="col-span-2">
-              <Input
-                type="number"
-                value={item.unit_price ?? 0}
-                onChange={(e) =>
-                  updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)
-                }
-                disabled={!isEditable}
-                className="h-7 text-xs text-right"
-              />
-            </div>
-
-            <div
-              className={`${
-                isEditable ? 'col-span-1' : 'col-span-2'
-              } text-right text-sm font-semibold text-slate-800`}
-            >
-              {fmtCurrency(item.line_total)}
-            </div>
-
-            {isEditable && (
-              <div className="col-span-1 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  type="button"
-                  onClick={() => removeItem(item.id)}
-                  className="p-1 text-red-400 hover:text-red-600"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                  {/* Total & Action */}
+                  <div className="col-span-1 flex flex-col items-end gap-1">
+                    <div className="text-sm font-bold text-slate-900 pt-2">
+                      {fmtCurrency(item.line_total)}
+                    </div>
+                    {isEditable && (
+                      <button 
+                        onClick={() => removeItem(item.id)}
+                        className="text-slate-300 hover:text-red-500 p-1 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+            );
+          })}
+        </div>
 
+        {/* Add Service Button */}
         {isEditable && (
           <button
             type="button"
             onClick={addItem}
-            className="w-full flex items-center gap-2 px-5 py-3.5 text-xs text-primary hover:bg-primary/10 font-semibold transition-colors border-t border-slate-100"
+            className="w-full flex items-center justify-center gap-2 py-4 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all border-t border-slate-100 uppercase tracking-widest"
           >
-            <Plus className="w-4 h-4" />
-            Add Service
+            <Plus className="w-4 h-4" /> Add Line Item
           </button>
         )}
-
-        {(local.items || []).length === 0 && !isEditable && (
-          <div className="px-5 py-8 text-center text-sm text-slate-400">
-            No line items
-          </div>
-        )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <div className="max-w-xs ml-auto space-y-2.5">
-          <div className="flex justify-between text-sm text-slate-600">
-            <span>Subtotal</span>
-            <span className="font-semibold">{fmtCurrency(local.subtotal)}</span>
-          </div>
+      {/* Summary Section (Discount, Tax, Total) */}
+      <div className="flex flex-col md:flex-row gap-6 justify-between items-start pt-4 text-left">
+        <div className="grid grid-cols-2 gap-4 flex-1 w-full">
+           {[
+            { field: 'payment_terms', label: 'Payment Terms', color: 'text-slate-500' },
+            { field: 'internal_notes', label: 'Internal Notes (Hidden)', color: 'text-amber-600' }
+          ].map(note => (
+            <div key={note.field} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-left">
+              <label className={`text-[10px] font-black uppercase tracking-widest block mb-2 ${note.color}`}>
+                {note.label}
+              </label>
+              <textarea 
+                value={local[note.field] || ''} 
+                onChange={(e) => update({ [note.field]: e.target.value })}
+                className="w-full text-xs text-slate-600 bg-transparent border-none p-0 focus:ring-0 resize-none"
+                rows={3}
+                placeholder="Type here..."
+              />
+            </div>
+          ))}
+        </div>
 
-          <div className="flex justify-between items-center text-sm text-slate-600">
+        <div className="w-full md:w-80 bg-slate-900 text-white p-6 rounded-2xl shadow-xl space-y-4">
+          <div className="flex justify-between text-slate-400 text-xs font-bold uppercase tracking-widest">
+            <span>Subtotal</span>
+            <span className="text-white">{fmtCurrency(local.subtotal)}</span>
+          </div>
+          <div className="flex justify-between items-center text-slate-400 text-xs font-bold uppercase tracking-widest">
             <span>Discount ($)</span>
-            <Input
+            <input 
               type="number"
               value={local.discount_value || 0}
-              onChange={(e) =>
-                update({ discount_value: parseFloat(e.target.value) || 0 })
-              }
-              disabled={!isEditable}
-              className="h-7 text-xs w-28 text-right"
+              onChange={(e) => update({ discount_value: parseFloat(e.target.value) || 0 })}
+              className="w-20 bg-slate-800 border-none rounded px-2 py-1 text-right text-white focus:ring-1 focus:ring-blue-500"
             />
           </div>
-
-          <div className="flex justify-between items-center text-sm text-slate-600">
-            <span>Tax (%)</span>
-            <Input
-              type="number"
-              value={local.tax_rate || 0}
-              onChange={(e) =>
-                update({ tax_rate: parseFloat(e.target.value) || 0 })
-              }
-              disabled={!isEditable}
-              className="h-7 text-xs w-28 text-right"
-            />
-          </div>
-
-          <div className="flex justify-between items-center text-sm text-slate-600">
-            <span>Expiration Date</span>
-            <Input
-              type="date"
-              value={local.expiration_date || ''}
-              onChange={(e) => update({ expiration_date: e.target.value })}
-              disabled={!isEditable}
-              className="h-7 text-xs w-36"
-            />
-          </div>
-
-          <div className="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-200">
-            <span>Total</span>
-            <span className="text-primary">
-              {fmtCurrency(local.total_amount)}
-            </span>
+          <div className="h-px bg-slate-800 w-full" />
+          <div className="flex justify-between items-center pt-2">
+            <span className="text-lg font-bold">Total Amount</span>
+            <span className="text-2xl font-black text-blue-400">{fmtCurrency(local.total_amount)}</span>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 pb-8">
-        {[
-          {
-            field: 'payment_terms',
-            label: 'Payment Terms',
-            placeholder: 'e.g. 50% deposit, balance on completion…',
-            internal: false,
-          },
-          {
-            field: 'legal_terms',
-            label: 'Legal Terms',
-            placeholder: 'Legal language, warranty, liability…',
-            internal: false,
-          },
-          {
-            field: 'notes',
-            label: 'Client Notes',
-            placeholder: 'Visible to client…',
-            internal: false,
-          },
-          {
-            field: 'internal_notes',
-            label: 'Internal Notes',
-            placeholder: 'Team only — not visible to client…',
-            internal: true,
-          },
-        ].map(({ field, label, placeholder, internal }) => (
-          <div
-            key={field}
-            className="bg-white rounded-xl border border-slate-200 p-4"
-          >
-            <label
-              className={`text-xs font-bold uppercase tracking-wider block mb-2 ${
-                internal ? 'text-amber-600' : 'text-slate-500'
-              }`}
-            >
-              {label}
-            </label>
-            <textarea
-              value={local[field] || ''}
-              onChange={(e) => update({ [field]: e.target.value })}
-              disabled={!isEditable}
-              placeholder={placeholder}
-              rows={3}
-              className="w-full text-xs text-slate-700 resize-none focus:outline-none placeholder:text-slate-300 disabled:opacity-60"
-            />
-          </div>
-        ))}
       </div>
     </div>
   );
