@@ -34,6 +34,7 @@ export default function EstimateEditor() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDocumentOptions, setShowDocumentOptions] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
 
   useEffect(() => { loadEstimate(); }, []);
 
@@ -46,6 +47,10 @@ export default function EstimateEditor() {
       if (est.client_id) {
         const cls = await base44.entities.Client.filter({ id: est.client_id });
         if (cls.length) setClient(cls[0]);
+      }
+      // Auto-open customer modal for new estimates without a client
+      if (isNew && !est.client_name) {
+        setShowCustomerModal(true);
       }
     }
     setLoading(false);
@@ -253,17 +258,10 @@ export default function EstimateEditor() {
 
         {/* LEFT SIDEBAR — customer panel */}
         <div className="w-56 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col min-h-0">
-          {isNew && !hasClient ? (
-            <NewEstimateCustomerPanel
-              estimate={estimate}
-              onCustomerSet={(customerData, clientRecord) => handleCustomerChange(customerData, clientRecord)}
-            />
-          ) : (
-            <EstimateSidebarCustomer
-              estimate={estimate}
-              onCustomerChange={handleCustomerChange}
-            />
-          )}
+          <EstimateSidebarCustomer
+            estimate={estimate}
+            onCustomerChange={handleCustomerChange}
+          />
           {hasClient && (
             <div className="px-4 pb-5 pt-3 border-t border-slate-100 flex-shrink-0">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Communications</p>
@@ -326,6 +324,27 @@ export default function EstimateEditor() {
         options={estimate?.document_config?.options || DEFAULT_OPTIONS}
         onSave={handleDocumentOptionsSave}
       />
+
+      {/* Customer picker modal for new estimates */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+              <h2 className="text-sm font-bold text-slate-800">Select Customer</h2>
+              <button onClick={() => setShowCustomerModal(false)} className="p-1 hover:bg-slate-100 rounded-md transition-colors">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+            <NewEstimateCustomerPanel
+              estimate={estimate}
+              onCustomerSet={async (customerData, clientRecord) => {
+                await handleCustomerChange(customerData, clientRecord);
+                setShowCustomerModal(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Discard new estimate confirmation */}
       {showDiscardConfirm && (
