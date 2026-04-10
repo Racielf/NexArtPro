@@ -6,7 +6,7 @@
  * Never rendered in PDF, preview, send, or any client-facing document.
  */
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Shield, Edit3, AlertTriangle, Send, CheckCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Shield, Edit3, AlertTriangle, Send } from 'lucide-react';
 import { fetchAuditHistory } from '@/lib/pricingAuditService';
 
 const EVENT_CONFIG = {
@@ -14,7 +14,6 @@ const EVENT_CONFIG = {
   loss_override:              { icon: Shield,        label: 'Loss Override',         color: 'text-red-600',     bg: 'bg-red-50' },
   zero_profit_confirmation:   { icon: AlertTriangle, label: 'Zero-Profit Confirmed', color: 'text-amber-600',   bg: 'bg-amber-50' },
   send_after_override:        { icon: Send,          label: 'Sent After Override',   color: 'text-indigo-600',  bg: 'bg-indigo-50' },
-  manual_approval:            { icon: CheckCircle,   label: 'Manual Approval',       color: 'text-emerald-600', bg: 'bg-emerald-50' },
 };
 
 function fmtDateTime(iso) {

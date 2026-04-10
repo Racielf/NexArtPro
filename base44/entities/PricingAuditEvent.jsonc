@@ -8,8 +8,7 @@
         "field_change",
         "loss_override",
         "zero_profit_confirmation",
-        "send_after_override",
-        "manual_approval"
+        "send_after_override"
       ],
       "description": "Audit event classification"
     },

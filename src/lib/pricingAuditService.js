@@ -4,12 +4,11 @@
  * INTERNAL ONLY. Never imported by client-facing renderers/PDF/preview.
  * All writes are fire-and-forget (non-blocking).
  *
- * Event taxonomy (exhaustive):
+ * Event taxonomy (exhaustive — 4 types only):
  *   field_change              — unit_price or unit_cost modified
  *   loss_override             — manager/admin overrides loss pricing (PIN + reason)
  *   zero_profit_confirmation  — any role confirms zero-profit (standard confirmation)
  *   send_after_override       — document sent following a loss override
- *   manual_approval           — manual status change to approved
  *
  * Standardized payload shape:
  *   event_type, document_id, document_kind, user_email, user_role, metadata
@@ -84,13 +83,14 @@ export async function logZeroProfitConfirmation({ documentId, documentKind, user
 }
 
 /**
- * Log a post-override action (send_after_override, manual_approval).
+ * Log a send-after-override event.
+ * Only call when a document is actually sent following a valid loss override.
  *
  * metadata: { margin_at_event?, total_at_event? }
  */
-export async function logActionEvent({ documentId, documentKind, eventType, userEmail, userRole, metadata }) {
+export async function logSendAfterOverride({ documentId, documentKind, userEmail, userRole, metadata }) {
   await persistEvent({
-    event_type: eventType,
+    event_type: 'send_after_override',
     document_id: documentId,
     document_kind: documentKind || 'estimate',
     user_email: userEmail || '',
