@@ -14,6 +14,7 @@ import EstimateTemplateSelector from '@/components/estimates/EstimateTemplateSel
 import EstimateDocumentOptions from '@/components/estimates/EstimateDocumentOptions';
 import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrderButton';
 import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
+import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 export default function EstimateEditor() {
@@ -252,11 +253,17 @@ export default function EstimateEditor() {
 
         {/* LEFT SIDEBAR — customer panel */}
         <div className="w-56 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col min-h-0">
-          <EstimateSidebarCustomer
-            estimate={estimate}
-            onCustomerChange={handleCustomerChange}
-          />
-          {/* Communications below customer */}
+          {isNew && !hasClient ? (
+            <NewEstimateCustomerPanel
+              estimate={estimate}
+              onCustomerSet={(customerData, clientRecord) => handleCustomerChange(customerData, clientRecord)}
+            />
+          ) : (
+            <EstimateSidebarCustomer
+              estimate={estimate}
+              onCustomerChange={handleCustomerChange}
+            />
+          )}
           {hasClient && (
             <div className="px-4 pb-5 pt-3 border-t border-slate-100 flex-shrink-0">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Communications</p>
