@@ -14,11 +14,13 @@ import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 function resolveRendererElement(estimate) {
   const docType = estimate?.document_type;
   const mergedOpts = { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options };
+  const lang = estimate?.document_language || 'en';
 
   if (docType === 'BID' || docType === 'PROPOSAL') {
     return React.createElement(DocumentTypeRenderer, {
       estimate,
       options: mergedOpts,
+      lang,
     });
   }
 
