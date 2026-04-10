@@ -5,6 +5,10 @@
     "estimate_number": {
       "type": "number"
     },
+    "source_proposal_id": {
+      "type": "string",
+      "description": "Reference to source Proposal if created as adjustment"
+    },
     "client_id": {
       "type": "string"
     },

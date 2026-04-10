@@ -9,14 +9,15 @@ import { ScrollText, Plus, Search, Pencil, Trash2, CheckCircle, Send, Clock, Ale
 import { toast } from 'sonner';
 
 const STATUS_CONFIG = {
-  draft:                   { label: 'Draft',           icon: Clock,         cls: 'bg-slate-100 text-slate-600' },
-  review_needed:           { label: 'Review Needed',   icon: AlertCircle,   cls: 'bg-amber-100 text-amber-700' },
-  sent:                    { label: 'Sent',            icon: Send,          cls: 'bg-blue-100 text-blue-700' },
-  approved:                { label: 'Approved',        icon: CheckCircle,   cls: 'bg-emerald-100 text-emerald-800' },
-  accepted:                { label: 'Accepted',        icon: CheckCircle,   cls: 'bg-emerald-100 text-emerald-800' },
-  rejected:                { label: 'Rejected',        icon: AlertCircle,   cls: 'bg-red-100 text-red-700' },
-  converted_to_invoice:    { label: 'Invoiced',        icon: FileText,      cls: 'bg-teal-100 text-teal-800' },
-  converted_to_work_order: { label: 'Work Order',      icon: CheckCircle,   cls: 'bg-purple-100 text-purple-800' },
+  draft:                   { label: 'Draft',              icon: Clock,         cls: 'bg-slate-100 text-slate-600' },
+  review_needed:           { label: 'Review Needed',      icon: AlertCircle,   cls: 'bg-amber-100 text-amber-700' },
+  sent:                    { label: 'Sent',               icon: Send,          cls: 'bg-blue-100 text-blue-700' },
+  approved:                { label: 'Approved',           icon: CheckCircle,   cls: 'bg-emerald-100 text-emerald-800' },
+  accepted:                { label: 'Accepted',           icon: CheckCircle,   cls: 'bg-emerald-100 text-emerald-800' },
+  rejected:                { label: 'Rejected',           icon: AlertCircle,   cls: 'bg-red-100 text-red-700' },
+  converted_to_invoice:    { label: 'Invoiced',           icon: FileText,      cls: 'bg-teal-100 text-teal-800' },
+  converted_to_work_order: { label: 'Work Order',         icon: CheckCircle,   cls: 'bg-purple-100 text-purple-800' },
+  pending_adjustment:      { label: 'Pending Adjustment', icon: AlertCircle,   cls: 'bg-amber-100 text-amber-800' },
 };
 
 export default function Proposals() {

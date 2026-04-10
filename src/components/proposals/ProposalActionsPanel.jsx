@@ -37,8 +37,15 @@ function SectionLabel({ label }) {
 
 function ConvertToInvoiceBtn({ proposal, onConverted }) {
   const [loading, setLoading] = useState(false);
+  const [warnAdjust, setWarnAdjust] = useState(false);
 
   const handle = async () => {
+    if (proposal?.adjustment_estimate_id && !warnAdjust) {
+      setWarnAdjust(true);
+      toast('An Adjustment Estimate exists. Click again to convert directly anyway, or use the Adjustment Estimate path.', { duration: 6000 });
+      return;
+    }
+    setWarnAdjust(false);
     setLoading(true);
     const list = await base44.entities.Invoice.list('-created_date', 20);
     const nextNum = list.length ? Math.max(...list.map(i => i.invoice_number || 0)) + 1 : 1001;
@@ -80,8 +87,15 @@ function ConvertToInvoiceBtn({ proposal, onConverted }) {
 
 function ConvertToWorkOrderBtn({ proposal, onConverted }) {
   const [loading, setLoading] = useState(false);
+  const [warnAdjust, setWarnAdjust] = useState(false);
 
   const handle = async () => {
+    if (proposal?.adjustment_estimate_id && !warnAdjust) {
+      setWarnAdjust(true);
+      toast('An Adjustment Estimate exists. Click again to convert directly anyway, or use the Adjustment Estimate path.', { duration: 6000 });
+      return;
+    }
+    setWarnAdjust(false);
     setLoading(true);
     const list = await base44.entities.WorkOrder.list('-created_date', 20);
     const nextNum = list.length ? Math.max(...list.map(w => w.work_order_number || 0)) + 1 : 1001;

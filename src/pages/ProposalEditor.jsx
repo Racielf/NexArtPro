@@ -12,14 +12,15 @@ import CommTimeline from '@/components/shared/CommTimeline';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
 
 const STATUS_BADGE = {
-  draft:                   { label: 'Draft',           cls: 'bg-slate-100 text-slate-600' },
-  review_needed:           { label: 'Review Needed',   cls: 'bg-amber-100 text-amber-700' },
-  sent:                    { label: 'Sent',            cls: 'bg-blue-100 text-blue-700' },
-  approved:                { label: 'Approved',        cls: 'bg-emerald-100 text-emerald-800' },
-  accepted:                { label: 'Accepted',        cls: 'bg-emerald-100 text-emerald-800' },
-  rejected:                { label: 'Rejected',        cls: 'bg-red-100 text-red-700' },
-  converted_to_invoice:    { label: 'Invoiced',        cls: 'bg-teal-700 text-white' },
-  converted_to_work_order: { label: 'Work Order',      cls: 'bg-purple-700 text-white' },
+  draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
+  review_needed:           { label: 'Review Needed',      cls: 'bg-amber-100 text-amber-700' },
+  sent:                    { label: 'Sent',               cls: 'bg-blue-100 text-blue-700' },
+  approved:                { label: 'Approved',           cls: 'bg-emerald-100 text-emerald-800' },
+  accepted:                { label: 'Accepted',           cls: 'bg-emerald-100 text-emerald-800' },
+  rejected:                { label: 'Rejected',           cls: 'bg-red-100 text-red-700' },
+  converted_to_invoice:    { label: 'Invoiced',           cls: 'bg-teal-700 text-white' },
+  converted_to_work_order: { label: 'Work Order',         cls: 'bg-purple-700 text-white' },
+  pending_adjustment:      { label: 'Pending Adjustment', cls: 'bg-amber-100 text-amber-800' },
 };
 
 export default function ProposalEditor() {
