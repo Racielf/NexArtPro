@@ -20,6 +20,8 @@
  */
 import { base44 } from '@/api/base44Client';
 
+export const ALLOWED_EVENT_TYPES = ['field_change', 'loss_override', 'zero_profit_confirmation', 'send_after_override'];
+
 // ── Internal ──────────────────────────────────────────────────────────────────
 
 async function persistEvent(payload) {
