@@ -664,11 +664,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
             logZeroProfitConfirmation({
               documentId: estimate.id,
               documentKind: estimate.document_type === 'BID' ? 'bid' : 'estimate',
-              documentNumber: estimate.estimate_number,
               userEmail: currentUser?.email,
               userRole: role,
-              marginAtEvent: parseFloat(estimate.gross_margin_pct) || null,
-              totalAtEvent: parseFloat(estimate.total) || null,
+              metadata: {
+                margin_at_event: parseFloat(estimate.gross_margin_pct) || null,
+                total_at_event: parseFloat(estimate.total) || null,
+              },
             });
           }
           onOpenSendReview?.();

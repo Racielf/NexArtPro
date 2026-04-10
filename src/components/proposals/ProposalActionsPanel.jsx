@@ -247,11 +247,12 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
           logZeroProfitConfirmation({
             documentId: proposal.id,
             documentKind: 'proposal',
-            documentNumber: proposal.proposal_number,
             userEmail: currentUser?.email,
             userRole: role,
-            marginAtEvent: parseFloat(proposal.gross_margin_pct) || null,
-            totalAtEvent: parseFloat(proposal.total_amount) || null,
+            metadata: {
+              margin_at_event: parseFloat(proposal.gross_margin_pct) || null,
+              total_at_event: parseFloat(proposal.total_amount) || null,
+            },
           });
         }
         onOpenSend();

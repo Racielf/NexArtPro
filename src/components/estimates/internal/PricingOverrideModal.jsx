@@ -17,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ShieldAlert, KeyRound, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { buildPricingAuditRecord } from '@/lib/pricingPermissions';
 import { logLossOverride } from '@/lib/pricingAuditService';
 
 export default function PricingOverrideModal({
@@ -73,40 +72,25 @@ export default function PricingOverrideModal({
       });
 
       if (result?.data?.approved || result?.approved) {
-        // Build audit record for caller
-        const audit = buildPricingAuditRecord({
-          userEmail: currentUser?.email,
-          userRole: role,
-          action: `override_loss_${action}`,
-          reason: reason.trim(),
-          documentId: document?.id,
-          documentType,
-          documentNumber: docNumber,
-          pricingResult,
-          grossMarginPct: document?.gross_margin_pct,
-          total: document?.total || document?.total_amount,
-        });
-
         // Persist loss override to audit trail
         logLossOverride({
           documentId: document?.id,
           documentKind: documentType,
-          documentNumber: docNumber,
-          eventType: `override_loss_${action}`,
-          reason: reason.trim(),
           userEmail: currentUser?.email,
           userRole: role,
-          marginAtEvent: parseFloat(document?.gross_margin_pct) || null,
-          totalAtEvent: parseFloat(document?.total || document?.total_amount) || null,
           metadata: {
+            reason: reason.trim(),
+            action,
             lossItems: pricingResult?.lossItems || [],
+            margin_at_event: parseFloat(document?.gross_margin_pct) || null,
+            total_at_event: parseFloat(document?.total || document?.total_amount) || null,
           },
         });
 
         setApproved(true);
         setTimeout(() => {
           handleClose();
-          onApproved(audit);
+          onApproved();
         }, 700);
       } else {
         setPinError(result?.data?.error || result?.error || 'Authorization denied');

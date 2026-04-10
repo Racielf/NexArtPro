@@ -10,13 +10,11 @@ import { ChevronDown, ChevronRight, Shield, Edit3, AlertTriangle, Send, CheckCir
 import { fetchAuditHistory } from '@/lib/pricingAuditService';
 
 const EVENT_CONFIG = {
-  field_change:                 { icon: Edit3,          label: 'Field Change',             color: 'text-blue-600',    bg: 'bg-blue-50' },
-  override_loss_send:           { icon: Shield,         label: 'Loss Override (Send)',      color: 'text-red-600',     bg: 'bg-red-50' },
-  override_loss_approve:        { icon: Shield,         label: 'Loss Override (Approve)',   color: 'text-red-600',     bg: 'bg-red-50' },
-  zero_profit_confirmation:     { icon: AlertTriangle,  label: 'Zero-Profit Confirmed',    color: 'text-amber-600',   bg: 'bg-amber-50' },
-  send_after_override:          { icon: Send,           label: 'Sent After Override',      color: 'text-indigo-600',  bg: 'bg-indigo-50' },
-  approve_after_override:       { icon: CheckCircle,    label: 'Approved After Override',  color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  manual_approval:              { icon: CheckCircle,    label: 'Manual Approval',          color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  field_change:               { icon: Edit3,         label: 'Field Change',          color: 'text-blue-600',    bg: 'bg-blue-50' },
+  loss_override:              { icon: Shield,        label: 'Loss Override',         color: 'text-red-600',     bg: 'bg-red-50' },
+  zero_profit_confirmation:   { icon: AlertTriangle, label: 'Zero-Profit Confirmed', color: 'text-amber-600',   bg: 'bg-amber-50' },
+  send_after_override:        { icon: Send,          label: 'Sent After Override',   color: 'text-indigo-600',  bg: 'bg-indigo-50' },
+  manual_approval:            { icon: CheckCircle,   label: 'Manual Approval',       color: 'text-emerald-600', bg: 'bg-emerald-50' },
 };
 
 function fmtDateTime(iso) {
@@ -31,8 +29,10 @@ function fmtDateTime(iso) {
 function AuditEventRow({ event }) {
   const config = EVENT_CONFIG[event.event_type] || EVENT_CONFIG.field_change;
   const Icon = config.icon;
+  const m = event.metadata || {};
   const isFieldChange = event.event_type === 'field_change';
-  const isLossOverride = event.event_type === 'override_loss_send' || event.event_type === 'override_loss_approve';
+  const isLossOverride = event.event_type === 'loss_override';
+  const marginSnap = m.margin_at_event;
 
   return (
     <div className="flex items-start gap-2.5 py-2.5 border-b border-slate-100 last:border-0">
@@ -54,28 +54,28 @@ function AuditEventRow({ event }) {
         {isFieldChange && (
           <div className="mt-1">
             <span className="text-[10px] text-slate-500">
-              {event.line_item_name && <span className="font-medium text-slate-700">{event.line_item_name}</span>}
-              {event.line_item_name && ' · '}
-              <span className="font-semibold">{event.field_name}</span>
+              {m.line_item_name && <span className="font-medium text-slate-700">{m.line_item_name}</span>}
+              {m.line_item_name && ' · '}
+              <span className="font-semibold">{m.field_name}</span>
             </span>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[11px] text-slate-400 tabular-nums">{event.old_value}</span>
+              <span className="text-[11px] text-slate-400 tabular-nums">{m.old_value}</span>
               <span className="text-[10px] text-slate-300">→</span>
-              <span className="text-[11px] font-bold text-slate-700 tabular-nums">{event.new_value}</span>
+              <span className="text-[11px] font-bold text-slate-700 tabular-nums">{m.new_value}</span>
             </div>
           </div>
         )}
 
-        {isLossOverride && event.reason && (
+        {isLossOverride && m.reason && (
           <div className="mt-1 px-2 py-1.5 rounded bg-slate-50 border border-slate-100">
             <p className="text-[10px] text-slate-400 font-semibold mb-0.5">Reason:</p>
-            <p className="text-[11px] text-slate-600 leading-snug">{event.reason}</p>
+            <p className="text-[11px] text-slate-600 leading-snug">{m.reason}</p>
           </div>
         )}
 
-        {event.metadata?.lossItems?.length > 0 && (
+        {isLossOverride && m.lossItems?.length > 0 && (
           <div className="mt-1 text-[10px] text-red-500">
-            {event.metadata.lossItems.length} loss item{event.metadata.lossItems.length > 1 ? 's' : ''} at time of override
+            {m.lossItems.length} loss item{m.lossItems.length > 1 ? 's' : ''} at time of override
           </div>
         )}
       </div>
@@ -83,12 +83,12 @@ function AuditEventRow({ event }) {
       <div className="flex-shrink-0 text-right">
         <p className="text-[10px] text-slate-400 tabular-nums">{fmtDateTime(event.created_date)}</p>
         <p className="text-[9px] text-slate-300 truncate max-w-[100px]">{event.user_email}</p>
-        {event.margin_at_event != null && (
+        {marginSnap != null && (
           <p className={`text-[9px] font-semibold tabular-nums mt-0.5 ${
-            event.margin_at_event >= 25 ? 'text-emerald-500' :
-            event.margin_at_event >= 0  ? 'text-amber-500' : 'text-red-500'
+            marginSnap >= 25 ? 'text-emerald-500' :
+            marginSnap >= 0  ? 'text-amber-500' : 'text-red-500'
           }`}>
-            {event.margin_at_event.toFixed(1)}% margin
+            {marginSnap.toFixed(1)}% margin
           </p>
         )}
       </div>
@@ -110,7 +110,7 @@ export default function PricingAuditHistory({ documentId }) {
     });
   }, [documentId, open]);
 
-  const lossOverrideCount = events.filter(e => e.event_type === 'override_loss_send' || e.event_type === 'override_loss_approve').length;
+  const lossOverrideCount = events.filter(e => e.event_type === 'loss_override').length;
   const confirmCount = events.filter(e => e.event_type === 'zero_profit_confirmation').length;
   const fieldChangeCount = events.filter(e => e.event_type === 'field_change').length;
 

@@ -507,9 +507,9 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
 
   // Persist pricing field changes to audit trail
   const handleFieldAudit = ({ item, field, oldValue, newValue }) => {
-    // Add to session log
+    // Add to session log (UI-only, not persisted)
     addLog({ item, field, oldValue, newValue, user: currentUser?.email || 'admin' });
-    // Persist to database (fire-and-forget)
+    // Persist to database (fire-and-forget) — only if value actually changed
     if (estimate?.id) {
       const oldNum = parseFloat(oldValue) || 0;
       const newNum = parseFloat(newValue) || 0;
@@ -517,16 +517,17 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         logFieldChange({
           documentId: estimate.id,
           documentKind: estimate.document_type === 'BID' ? 'bid' : 'estimate',
-          documentNumber: estimate.estimate_number,
-          lineItemId: item.id,
-          lineItemName: item.service_name || '(unnamed)',
-          fieldName: field,
-          oldValue: oldNum,
-          newValue: newNum,
           userEmail: currentUser?.email || '',
           userRole: currentUser?.role || '',
-          marginAtEvent: parseFloat(estimate.gross_margin_pct) || null,
-          totalAtEvent: parseFloat(estimate.total) || null,
+          metadata: {
+            field_name: field,
+            old_value: oldNum,
+            new_value: newNum,
+            line_item_id: item.id,
+            line_item_name: item.service_name || '(unnamed)',
+            margin_at_event: parseFloat(estimate.gross_margin_pct) || null,
+            total_at_event: parseFloat(estimate.total) || null,
+          },
         });
       }
     }
