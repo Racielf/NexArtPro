@@ -139,6 +139,60 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
   );
 }
 
+function ApplyAdjustmentBtn({ proposal, onConverted }) {
+  const [loading, setLoading] = useState(false);
+
+  const handle = async () => {
+    setLoading(true);
+    // Fetch the linked adjustment estimate
+    const ests = await base44.entities.Estimate.filter({ id: proposal.adjustment_estimate_id });
+    const est = ests[0];
+    if (!est) {
+      toast.error('Adjustment estimate not found');
+      setLoading(false);
+      return;
+    }
+
+    // Flatten items from groups or line_items
+    const items = est.groups
+      ? est.groups.flatMap(g => (g.items || []).map(it => ({
+          id: it.id,
+          service_name: it.service_name,
+          description: it.description,
+          quantity: it.quantity,
+          unit: it.unit,
+          unit_price: it.unit_price,
+          line_total: it.line_total,
+        })))
+      : (est.line_items || []);
+
+    const syncedFields = {
+      items,
+      subtotal:        est.subtotal        ?? proposal.subtotal,
+      tax_rate:        est.tax_rate         ?? proposal.tax_rate,
+      tax_amount:      est.tax_amount       ?? proposal.tax_amount,
+      discount_value:  est.discount_value   ?? proposal.discount_value,
+      total_amount:    est.total            ?? proposal.total_amount,
+      notes:           est.notes            ?? proposal.notes,
+      payment_terms:   est.payment_terms    ?? proposal.payment_terms,
+      legal_terms:     est.legal_terms      ?? proposal.legal_terms,
+      status:          'approved',
+      approved_at:     new Date().toISOString(),
+    };
+
+    await base44.entities.Proposal.update(proposal.id, syncedFields);
+    setLoading(false);
+    toast.success('Adjustment applied — Proposal updated and approved');
+    onConverted('approved', syncedFields);
+  };
+
+  return (
+    <ActionBtn icon={CheckCircle} label={loading ? 'Applying…' : 'Apply & Approve'}
+      onClick={handle} disabled={loading}
+      cls="text-emerald-700 border-emerald-200 hover:bg-emerald-50" />
+  );
+}
+
 export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenPreview, onOpenSend }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -276,6 +330,7 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
               className="w-full text-left text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg px-3 py-2 font-medium flex items-center gap-1.5 transition-colors">
               <FileEdit className="w-3 h-3" />EST #{proposal.adjustment_estimate_number || '—'} →
             </button>
+            <ApplyAdjustmentBtn proposal={proposal} onConverted={handleConverted} />
             <ActionBtn icon={RotateCcw} label="Reopen as Sent" disabled={loading}
               onClick={() => transition('sent')}
               cls="text-slate-700 border-slate-200 hover:bg-slate-50" />
