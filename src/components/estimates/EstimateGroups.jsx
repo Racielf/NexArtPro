@@ -2,6 +2,13 @@
  * EstimateGroups — professional grouped line items engine.
  * Each group = a work category (e.g. Demolition, Plumbing, Flooring).
  * Auto-saves with debounce on every change.
+ *
+ * PRICING MODEL (NexArt Pro Official):
+ *   book_price  = internal reference from price book (never drives totals)
+ *   unit_price  = customer-facing sale price (drives all totals)
+ *   unit_cost   = internal cost
+ *   line_total  = quantity * unit_price
+ *   line_margin = ((unit_price - unit_cost) / unit_price) * 100
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from '@/components/ui/input';
@@ -35,24 +42,22 @@ const emptyItem = () => ({
   taxable: true,
 });
 
-const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box', 'gal'];
+const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
 
 // Shared grid template — single source of truth for header + row alignment
-const GRID_COLS = 'minmax(20px,20px) minmax(120px,2fr) minmax(50px,60px) minmax(60px,80px) minmax(90px,120px) minmax(60px,80px) minmax(60px,1fr) minmax(80px,110px) minmax(24px,28px)';
-
-// calcTotals is now delegated to estimateEngine.js (Decimal.js-backed pure functions)
+// Cols: grip | service | qty | uom | unit_price | book_ref | cost | line_total | remove
+const GRID_COLS = 'minmax(20px,24px) minmax(180px,3fr) minmax(48px,60px) minmax(56px,76px) minmax(88px,110px) minmax(56px,72px) minmax(56px,90px) minmax(80px,110px) minmax(24px,28px)';
 
 // ─── Single Line Item Row ──────────────────────────────────────────────────────
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false }) {
   const [expanded, setExpanded] = useState(!item.service_name);
-  // Track "committed" values for onBlur diffing (price + cost only)
   const committedRef = React.useRef({ unit_price: item.unit_price, unit_cost: item.unit_cost });
 
   const update = (field, value) => {
     const numericFields = new Set(['quantity', 'unit_price', 'unit_cost', 'book_price']);
     const safeValue = numericFields.has(field) ? (parseFloat(value) || 0) : value;
     const updated = { ...item, [field]: safeValue };
-    // Always recalculate line_total using the decimal engine to avoid float errors
+    // line_total = quantity * unit_price (ALWAYS from unit_price, never book_price)
     updated.line_total = calculateLineTotal(
       field === 'quantity'   ? safeValue : updated.quantity,
       field === 'unit_price' ? safeValue : updated.unit_price
@@ -60,17 +65,31 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
     onUpdate(updated);
   };
 
-  // Called on onBlur of price/cost — logs only if value actually changed
   const handlePriceBlur = async (field) => {
     const oldValue = committedRef.current[field];
     const newValue = item[field];
-    if (oldValue !== newValue) {
-      if (onLogChange) {
-        onLogChange({ item, field, oldValue, newValue });
-      }
+    if (oldValue !== newValue && onLogChange) {
+      onLogChange({ item, field, oldValue, newValue });
     }
     committedRef.current[field] = newValue;
   };
+
+  // === Derived values (computed once, used in multiple places) ===
+  const price = parseFloat(item.unit_price) || 0;
+  const cost  = parseFloat(item.unit_cost)  || 0;
+  const book  = parseFloat(item.book_price) || 0;
+  const qty   = parseFloat(item.quantity)   || 0;
+
+  // Line-level margin: ((unit_price - unit_cost) / unit_price) * 100
+  const lineMarginPct = price > 0 && cost > 0 ? ((price - cost) / price) * 100 : null;
+
+  // Loss prevention flags (recalculate live on every render)
+  const isLoss       = cost > 0 && price > 0 && price < cost;
+  const isZeroProfit = cost > 0 && price > 0 && Math.abs(price - cost) < 0.01;
+
+  // Internal helpers (only computed outside preview)
+  const autoSuggest = !isPreview ? suggestPriceFromCost(cost, 0.30) : 0;
+  const negMeta     = !isPreview ? getNegotiationMeta(cost, price) : { status: 'none' };
 
   return (
     <div className={`border-b border-slate-100 last:border-0 transition-colors ${isFixed ? 'bg-emerald-50/60 ring-1 ring-inset ring-emerald-300' : expanded ? 'bg-blue-50/20' : 'hover:bg-slate-50/60'}`}>
@@ -83,27 +102,27 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           <GripVertical className="w-3.5 h-3.5" />
         </button>
 
-        {/* Service name — Smart Picker */}
-        <div>
+        {/* === SERVICE COLUMN ===
+            Order per rules: service name → description → internal margin/warnings */}
+        <div className="min-w-0">
           <SmartServicePicker
             value={item.service_name}
             onChange={v => update('service_name', v)}
             onSelect={picked => {
                 setExpanded(true);
-                // Null means "source has no data" — preserve existing value.
-                // A number (including 0) means "source explicitly set this".
-                const pickedPrice = picked.unit_price !== null ? Number(picked.unit_price) : (parseFloat(item.unit_price) || 0);
-                const pickedCost  = picked.unit_cost  !== null ? Number(picked.unit_cost)  : (parseFloat(item.unit_cost)  || 0);
-                const qty = parseFloat(item.quantity) || 1;
-                const lineTotal = calculateLineTotal(qty, pickedPrice);
+                // Null = source has no data → preserve existing. Number = explicit.
+                const pickedPrice = picked.unit_price !== null ? Number(picked.unit_price) : price;
+                const pickedCost  = picked.unit_cost  !== null ? Number(picked.unit_cost)  : cost;
+                const q = qty || 1;
+                const lineTotal = calculateLineTotal(q, pickedPrice);
                 const updated = {
                   ...item,
                   service_name: picked.name,
                   description:  picked.description || item.description || '',
                   unit:         picked.unit || item.unit,
-                  unit_price:   pickedPrice,
-                  unit_cost:    pickedCost,
-                  book_price:   pickedPrice,
+                  unit_price:   pickedPrice,   // auto-fill from book
+                  unit_cost:    pickedCost,     // load if available
+                  book_price:   pickedPrice,    // internal reference
                   line_total:   lineTotal,
                 };
                 console.log('[EstimateGroups] onSelect applied:', { pickedPrice, pickedCost, lineTotal, unit: updated.unit, name: updated.service_name });
@@ -112,195 +131,194 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
             placeholder="Service name"
             className="h-8 w-full text-sm font-semibold border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-1 focus:ring-primary/30 transition"
           />
-          {!expanded && item.description && (
-            <p className="text-xs text-slate-400 px-2 leading-snug truncate">{item.description}</p>
+
+          {/* Description — always visible below service name */}
+          {item.description && (
+            <p className="text-[11px] text-slate-400 px-2 leading-snug truncate mt-0.5">{item.description}</p>
+          )}
+
+          {/* === INTERNAL-ONLY: line margin + loss prevention + negotiation helpers ===
+              Rule 8: placed inside Service column, below description.
+              Rule 9: hidden in preview/PDF/client-facing mode. */}
+          {!isPreview && (cost > 0 || book > 0) && (
+            <div className="px-2 mt-1 space-y-1">
+              {/* Line margin % — rule 3: ((unit_price - unit_cost) / unit_price) * 100 */}
+              {lineMarginPct !== null && (
+                <span className={`inline-flex items-center gap-1 text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
+                  lineMarginPct >= 30 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                  lineMarginPct >= 20 ? 'bg-amber-50 border-amber-200 text-amber-600' :
+                  lineMarginPct >= 0  ? 'bg-red-50 border-red-200 text-red-600' :
+                                        'bg-red-100 border-red-300 text-red-700'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    lineMarginPct >= 30 ? 'bg-emerald-500' :
+                    lineMarginPct >= 20 ? 'bg-amber-400' : 'bg-red-500'
+                  }`} />
+                  {lineMarginPct.toFixed(1)}% margin
+                </span>
+              )}
+
+              {/* ⚠️ Loss prevention alerts — rule 10 */}
+              {isLoss && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-100 border border-red-300">
+                  <span className="text-red-600 text-[10px] font-bold">⚠ LOSS:</span>
+                  <span className="text-red-600 text-[10px]">Price ${price.toFixed(2)} &lt; Cost ${cost.toFixed(2)} — losing ${(cost - price).toFixed(2)}/unit</span>
+                </div>
+              )}
+              {isZeroProfit && !isLoss && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-100 border border-amber-300">
+                  <span className="text-amber-700 text-[10px] font-bold">⚠ Zero Profit:</span>
+                  <span className="text-amber-600 text-[10px]">Price equals cost — no margin on this item</span>
+                </div>
+              )}
+
+              {/* Negotiation helper — shows suggested & floor when margin is below target */}
+              {negMeta.status !== 'none' && negMeta.status !== 'healthy' && (
+                <div className={`flex flex-col gap-0.5 px-1.5 py-1 rounded text-[9px] border ${
+                  negMeta.status === 'critical' ? 'bg-red-50/60 border-red-200' : 'bg-amber-50/60 border-amber-200'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-500">Suggested (30%): <strong className="text-emerald-600">${negMeta.suggested.toFixed(2)}</strong></span>
+                    <span className="text-slate-500">Min (20%): <strong className="text-amber-600">${negMeta.floor.toFixed(2)}</strong></span>
+                  </div>
+                </div>
+              )}
+
+              {/* Book price variance badge */}
+              {book > 0 && (() => {
+                const diff = price - book;
+                const pct = (diff / book) * 100;
+                const isDanger  = pct < -15;
+                const isWarning = pct < 0 && pct >= -15;
+                const dotColor  = isDanger ? 'bg-red-500' : isWarning ? 'bg-amber-400' : 'bg-emerald-500';
+                const textColor = isDanger ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-emerald-600';
+                const bgColor   = isDanger ? 'bg-red-50 border-red-200' : isWarning ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200';
+                const label     = isDanger  ? `Critical ${pct.toFixed(1)}%`
+                                : isWarning ? `−${Math.abs(pct).toFixed(1)}% disc`
+                                : diff > 0 ? `+${pct.toFixed(1)}%`
+                                : '✓ at book';
+                return (
+                  <span className={`inline-flex items-center gap-1 text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${bgColor} ${textColor}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
+                    {label}
+                  </span>
+                );
+              })()}
+            </div>
           )}
         </div>
 
-        {/* Qty — standalone, prominent */}
+        {/* Qty */}
         <Input
           type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
           className="h-8 text-sm text-center border-slate-200 font-semibold px-1 w-full" min={0}
         />
 
-        {/* Unit of Measure — standalone, readable */}
+        {/* UOM */}
         <select value={item.unit} onChange={e => update('unit', e.target.value)}
           className="h-8 text-[11px] border border-slate-200 rounded px-1.5 bg-white text-slate-600 w-full font-medium">
           {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
 
-        {/* Price — primary editable field + variance badge + smart price suggestions */}
+        {/* Unit Price — clean editable field, drives all totals */}
         <div className="min-w-0 overflow-hidden">
-        {(() => {
-          const book         = parseFloat(item.book_price) || 0;
-          const real         = parseFloat(item.unit_price) || 0;
-          const cost         = parseFloat(item.unit_cost)  || 0;
-          const autoSuggest  = !isPreview ? suggestPriceFromCost(cost, 0.30) : 0;
-          const negMeta      = !isPreview ? getNegotiationMeta(cost, real) : { status: 'none' };
-          const diff         = real - book;
-          const suggested = MARGINS.map(m => ({
-            label: `+${m * 100}%`,
-            price: parseFloat((book * (1 + m)).toFixed(2)),
-            margin: m,
-          }));
-
-          return (
-            <div className="flex flex-col gap-0.5">
-              <div className="relative flex items-center gap-1">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
-                <Input
-                  type="number" step="0.01" value={item.unit_price}
-                  onChange={e => update('unit_price', e.target.value)}
-                  onBlur={() => handlePriceBlur('unit_price')}
-                  className={`h-8 pl-4 pr-7 text-sm text-right font-semibold border-slate-200 ${
-                    negMeta.status === 'critical' ? 'border-red-400 bg-red-50/60 text-red-700' :
-                    isLow ? 'border-red-300 bg-red-50/50 text-red-700' : 'text-slate-900'
-                  }`}
-                  min={0}
-                />
-                {/* ⚡ Auto-price button — internal only, never in PDF/client view */}
-                {!isPreview && autoSuggest > 0 && (
+          <div className="relative flex items-center">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+            <Input
+              type="number" step="0.01" value={item.unit_price}
+              onChange={e => update('unit_price', e.target.value)}
+              onBlur={() => handlePriceBlur('unit_price')}
+              className={`h-8 pl-4 pr-2 text-sm text-right font-semibold border-slate-200 ${
+                isLoss ? 'border-red-400 bg-red-50/60 text-red-700' :
+                isZeroProfit ? 'border-amber-400 bg-amber-50/60 text-amber-700' :
+                'text-slate-900'
+              }`}
+              min={0}
+            />
+            {/* ⚡ Auto-price button — internal only */}
+            {!isPreview && autoSuggest > 0 && (
+              <button
+                type="button"
+                onClick={() => update('unit_price', autoSuggest)}
+                title={`Set suggested price at 30% margin: $${autoSuggest.toFixed(2)}`}
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-[11px] leading-none hover:text-amber-500 text-slate-300 transition-colors"
+              >
+                ⚡
+              </button>
+            )}
+          </div>
+          {/* Smart price suggestion buttons — internal only */}
+          {!isPreview && book > 0 && (() => {
+            const MARGINS = [0.10, 0.20, 0.30];
+            const suggestions = MARGINS.map(m => ({
+              label: `+${m * 100}%`,
+              p: parseFloat((book * (1 + m)).toFixed(2)),
+              margin: m,
+            }));
+            const isAtBook = Math.abs(price - book) < 0.01;
+            return (
+              <div className="flex gap-0.5 mt-0.5 flex-wrap">
+                {suggestions.map(s => (
+                  <button
+                    key={s.margin}
+                    type="button"
+                    onClick={() => update('unit_price', s.p)}
+                    title={`Set to $${s.p} (${s.label} over book)`}
+                    className={`text-[9px] px-1 py-0.5 rounded border transition-colors leading-none font-semibold
+                      ${price === s.p
+                        ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                        : 'bg-white border-slate-200 text-slate-400 hover:border-primary/40 hover:text-primary'
+                      }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+                {!isAtBook && (
                   <button
                     type="button"
-                    onClick={() => update('unit_price', autoSuggest)}
-                    title={`Set suggested price at 30% margin: $${autoSuggest.toFixed(2)}`}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 text-[11px] leading-none hover:text-amber-500 text-slate-300 transition-colors"
+                    onClick={() => update('unit_price', book)}
+                    title={`Reset to book price $${book.toFixed(2)}`}
+                    className="text-[9px] px-1 py-0.5 rounded border border-slate-200 bg-white text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-colors leading-none font-semibold"
                   >
-                    ⚡
+                    ↺ book
                   </button>
                 )}
               </div>
-              {/* ── Negotiation Helper — internal only, never in PDF/client ── */}
-              {!isPreview && negMeta.status !== 'none' && (() => {
-                const { margin, suggested, floor, status } = negMeta;
-                const statusIcon =
-                  status === 'healthy'  ? <span style={{ color: '#10b981', fontSize: 10 }}>✔</span> :
-                  status === 'warning'  ? <span style={{ color: '#f59e0b', fontSize: 10 }}>⚠</span> :
-                                          <span style={{ color: '#ef4444', fontSize: 10 }}>✗</span>;
-                const marginColor =
-                  status === 'healthy' ? '#10b981' :
-                  status === 'warning' ? '#d97706' : '#ef4444';
+            );
+          })()}
+        </div>
 
-                return (
-                  <div style={{
-                    display: 'flex', flexDirection: 'column', gap: 2,
-                    padding: '4px 6px', borderRadius: 6, marginTop: 2,
-                    background: status === 'critical' ? 'rgba(239,68,68,0.06)' : status === 'warning' ? 'rgba(245,158,11,0.06)' : 'rgba(16,185,129,0.06)',
-                    border: `1px solid ${status === 'critical' ? 'rgba(239,68,68,0.2)' : status === 'warning' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}`,
-                  }}>
-                    {/* Margin row */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {statusIcon}
-                      <span style={{ fontSize: 9, fontWeight: 700, color: marginColor }}>
-                        {margin !== null ? `${margin.toFixed(1)}% margin` : '—'}
-                      </span>
-                    </div>
-                    {/* Suggested & floor prices */}
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <span style={{ fontSize: 9, color: '#64748b' }}>
-                        Suggested (30%): <strong style={{ color: '#10b981' }}>${suggested.toFixed(2)}</strong>
-                      </span>
-                      <span style={{ fontSize: 9, color: '#64748b' }}>
-                        Min (20%): <strong style={{ color: '#f59e0b' }}>${floor.toFixed(2)}</strong>
-                      </span>
-                    </div>
-                    {/* Critical warning */}
-                    {status === 'critical' && (
-                      <span style={{ fontSize: 9, fontWeight: 700, color: '#b91c1c' }}>
-                        Below minimum margin (20%)
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
-              
-              {!isPreview && book > 0 && (() => {
-                const pct = (diff / book) * 100;
-                const isDanger  = pct < -15;
-                const isWarning = pct < 0 && pct >= -15;
-                const isGreen   = pct >= 0;
-                const dotColor  = isDanger ? 'bg-red-500 shadow-red-400' : isWarning ? 'bg-amber-400 shadow-amber-300' : 'bg-emerald-500 shadow-emerald-300';
-                const textColor = isDanger ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-emerald-600';
-                const bgColor   = isDanger ? 'bg-red-50 border-red-200' : isWarning ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200';
-                const label     = isDanger  ? `Critical ${pct.toFixed(1)}%`
-                                : isWarning ? `−${Math.abs(pct).toFixed(1)}% disc`
-                                : isGreen && diff > 0 ? `+${pct.toFixed(1)}%`
-                                : '✓ at book';
-                return (
-                  <span className={`inline-flex items-center gap-1 text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${bgColor} ${textColor}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 shadow-sm ${dotColor}`} />
-                    {label}
-                  </span>
-                );
-              })()}
-              {/* ── Smart Price Suggestions + Reset — ADMIN ONLY ── */}
-              {!isPreview && book > 0 && (
-                <div className="flex gap-0.5 mt-0.5 flex-wrap">
-                  {suggested.map(s => (
-                    <button
-                      key={s.margin}
-                      type="button"
-                      onClick={() => update('unit_price', s.price)}
-                      title={`Set to $${s.price} (${s.label} over book)`}
-                      className={`text-[9px] px-1 py-0.5 rounded border transition-colors leading-none font-semibold
-                        ${real === s.price
-                          ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
-                          : 'bg-white border-slate-200 text-slate-400 hover:border-primary/40 hover:text-primary'
-                        }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                  {/* Reset to book price */}
-                  {!isAtBook && (
-                    <button
-                      type="button"
-                      onClick={() => update('unit_price', book)}
-                      title={`Reset to book price $${book.toFixed(2)}`}
-                      className="text-[9px] px-1 py-0.5 rounded border border-slate-200 bg-white text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-colors leading-none font-semibold"
-                    >
-                      ↺ book
-                    </button>
-                  )}
-                </div>
-                )}
-                </div>
-                );
-                })()}
-                </div>
-
-                {/* Book Price — secondary reference, visually muted */}
-        {!isPreview && (() => {
-          const book = parseFloat(item.book_price) || 0;
+        {/* Book Price — internal reference, hidden in preview */}
+        {!isPreview ? (() => {
           if (book === 0) return <div className="text-right text-xs text-slate-200">—</div>;
           return (
-            <div className="text-right leading-tight">
+            <div className="text-right leading-tight min-w-0">
               <div className="text-[10px] text-slate-400 font-medium">${book.toFixed(2)}</div>
               <div className="text-[9px] text-slate-300 leading-none">book ref</div>
             </div>
           );
-        })()}
+        })() : <div />}
 
-        {/* Unit cost (internal only) — placeholder keeps grid */}
-        <div>
-          {showCost && (
+        {/* Unit cost (internal only) */}
+        <div className="min-w-0">
+          {showCost && !isPreview ? (
             <div className="relative">
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
               <Input type="number" step="0.01" value={item.unit_cost} onChange={e => update('unit_cost', e.target.value)}
                 onBlur={() => handlePriceBlur('unit_cost')}
                 className="h-8 pl-4 text-sm text-right border-slate-200 bg-amber-50/60" min={0} />
             </div>
-          )}
+          ) : <div />}
         </div>
 
-        {/* Line total — shows formula for transparency */}
-        <div className="text-right">
+        {/* Line total — quantity * unit_price */}
+        <div className="text-right min-w-0">
           <div className="font-bold text-slate-900 text-sm tabular-nums">
             ${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
-          {(parseFloat(item.quantity) > 0 && parseFloat(item.unit_price) > 0) && (
+          {(qty > 0 && price > 0) && (
             <div className="text-[9px] text-slate-400 leading-none mt-0.5 tabular-nums">
-              {parseFloat(item.quantity) % 1 === 0 ? parseInt(item.quantity) : parseFloat(item.quantity).toFixed(2)} {item.unit} × ${parseFloat(item.unit_price).toFixed(2)}
+              {qty % 1 === 0 ? parseInt(qty) : qty.toFixed(2)} {item.unit} × ${price.toFixed(2)}
             </div>
           )}
         </div>
@@ -312,7 +330,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         </button>
       </div>
 
-      {/* Expanded detail row */}
+      {/* Expanded detail row — editable description + taxable */}
       {expanded && (
         <div className="px-10 pb-4 space-y-2">
           <Input value={item.description} onChange={e => update('description', e.target.value)}
@@ -407,8 +425,8 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             <div className="text-center text-slate-500">Qty</div>
             <div className="text-center text-slate-500">UOM</div>
             <div className="text-right text-slate-600">Unit Price</div>
-            <div className="text-right text-slate-400 text-[9px]">Book<br/>ref</div>
-            <div className={`text-right ${showCost ? 'text-amber-600' : ''}`}>{showCost ? 'Cost' : ''}</div>
+            {!isPreview ? <div className="text-right text-slate-400 text-[9px]">Book<br/>ref</div> : <div />}
+            <div className={`text-right ${showCost && !isPreview ? 'text-amber-600' : ''}`}>{showCost && !isPreview ? 'Cost' : ''}</div>
             <div className="text-right">Line Total</div>
             <div />
           </div>
@@ -482,7 +500,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [showCost, setShowCost] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [approvalMode, setApprovalMode] = useState('one');
-  const [fixedItemIds, setFixedItemIds] = useState(new Set()); // tracks recently auto-adjusted items
+  const [fixedItemIds, setFixedItemIds] = useState(new Set());
   const { priceLog, addLog, clearLog } = usePriceAuditLog();
 
   // Sync when estimate id changes
@@ -510,18 +528,14 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     setLegalTerms(estimate.legal_terms || '');
   }, [estimate?.id]);
 
-  // Debounced auto-save — engine recalculates all line_totals via Decimal.js before saving.
-  // SECURITY: Internal audit fields (totalBookValue, totalVariance, marginPercentage) are
-  // intentionally excluded from the persisted payload — they live only in admin memory state.
+  // Debounced auto-save
   useEffect(() => {
     const t = setTimeout(() => {
       const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
 
-      // ── Public fields only — never expose internal audit data to the document payload ──
       onSave({
         ...estimate,
         groups: result.groups,
-        // Financial inputs
         tax_rate: taxRate,
         discount_type: discountType,
         discount_value: discountValue,
@@ -533,17 +547,14 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         warranty_terms: warrantyTerms,
         payment_terms: paymentTerms,
         legal_terms: legalTerms,
-        // Computed customer-facing totals
         subtotal: result.subtotal,
         discount_amount: result.discountAmount,
         tax_amount: result.taxAmount,
         total: result.total,
         deposit_amount: result.depositAmount,
-        // Computed internal totals (cost/margin — stored for admin reports, never shown to client)
         total_cost: result.totalCost,
         gross_margin: result.grossMargin,
         gross_margin_pct: result.grossMarginPct,
-        // ⛔ EXCLUDED: totalBookValue, totalVariance, marginPercentage — admin-only, not persisted
       });
     }, 800);
     return () => clearTimeout(t);
@@ -553,7 +564,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
   const addGroup = () => setGroups(prev => [...prev, { id: uid(), name: 'New Group', collapsed: false, items: [] }]);
 
-  // ── Fix Low Margin Items — internal only, never persisted as a flag to client ──
+  // Fix Low Margin Items — internal only
   const handleFixLowMargin = () => {
     const confirmed = window.confirm('Only items below 30% margin will be adjusted. Continue?');
     if (!confirmed) return;
@@ -562,13 +573,12 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     setGroups(prev => prev.map(group => ({
       ...group,
       items: (group.items || []).map(item => {
-        const cost  = parseFloat(item.unit_cost)  || 0;
-        const price = parseFloat(item.unit_price) || 0;
-        if (cost <= 0) return item; // no cost data — skip
-        const meta = getNegotiationMeta(cost, price);
-        if (meta.status === 'healthy') return item; // margin >= 30% — skip
-        // Adjust to 30% margin: price = cost / (1 - 0.30)
-        const newPrice = parseFloat((cost / 0.70).toFixed(2));
+        const c  = parseFloat(item.unit_cost)  || 0;
+        const p = parseFloat(item.unit_price) || 0;
+        if (c <= 0) return item;
+        const meta = getNegotiationMeta(c, p);
+        if (meta.status === 'healthy') return item;
+        const newPrice = parseFloat((c / 0.70).toFixed(2));
         adjustedIds.add(item.id);
         const newLineTotal = parseFloat(((parseFloat(item.quantity) || 1) * newPrice).toFixed(2));
         return { ...item, unit_price: newPrice, line_total: newLineTotal, _autoAdjusted: true };
@@ -576,18 +586,24 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     })));
 
     setFixedItemIds(adjustedIds);
-    // Clear highlight after 4 seconds
     setTimeout(() => setFixedItemIds(new Set()), 4000);
   };
 
-  // Live reactive calculation — admin sees real-time margin vs book price.
-  // Internal fields (totalBookValue, totalVariance, marginPercentage) stay in component memory only.
+  // Live reactive calculation
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
           totalCost, grossMargin, grossMarginPct,
           totalVariance, totalBookValue, marginPercentage } =
     runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+  // Count loss items for estimate-level warning
+  const lossItems = [];
+  groups.forEach(g => (g.items || []).forEach(item => {
+    const p = parseFloat(item.unit_price) || 0;
+    const c = parseFloat(item.unit_cost) || 0;
+    if (c > 0 && p > 0 && p < c) lossItems.push(item);
+  }));
 
   return (
     <div className="w-full space-y-0">
@@ -617,6 +633,20 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         </div>
       </div>
 
+      {/* ── ESTIMATE-LEVEL LOSS WARNING — warning-only, not blocking ── */}
+      {!isPreview && lossItems.length > 0 && (
+        <div className="bg-red-50 border border-red-300 rounded-lg px-5 py-3 mb-4 flex items-start gap-3">
+          <span className="text-lg flex-shrink-0">🚨</span>
+          <div>
+            <p className="text-sm font-bold text-red-800">Loss Prevention Warning</p>
+            <p className="text-xs text-red-700 mt-0.5">
+              {lossItems.length} item{lossItems.length > 1 ? 's' : ''} priced below cost — you will lose money on {lossItems.length > 1 ? 'these items' : 'this item'}.
+              Review pricing before sending to client.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── GROUPS ── */}
       {groups.map(group => (
         <WorkGroup key={group.id} group={group} onUpdate={updateGroup} onRemove={removeGroup}
@@ -629,16 +659,15 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         <Plus className="w-4 h-4" />Add work group
       </button>
 
-      {/* ── PRICE DISCIPLINE GUARD (internal only — never in PDF/preview/send) ── */}
-      <PriceDisciplineGuard groups={groups} minVarianceThreshold={-0.20} />
+      {/* ── PRICE DISCIPLINE GUARD (internal only) ── */}
+      {!isPreview && <PriceDisciplineGuard groups={groups} minVarianceThreshold={-0.20} />}
 
       {/* ── TOTALS CARD ── */}
       <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
         <div className="flex gap-8 flex-wrap justify-between">
 
-          {/* ── INTERNAL AUDIT VIEW — admin only, never in PDF/Preview/Send ── */}
-          {showCost && (() => {
-            // Color logic: >40% = healthy, 25–39.99% = warning, <25% = danger
+          {/* ── INTERNAL AUDIT VIEW — admin only ── */}
+          {showCost && !isPreview && (() => {
             const healthColor =
               grossMarginPct > 40  ? { text: '#10b981', bg: 'rgba(16,185,129,0.07)',  border: 'rgba(16,185,129,0.18)' } :
               grossMarginPct >= 25 ? { text: '#f59e0b', bg: 'rgba(245,158,11,0.07)',  border: 'rgba(245,158,11,0.18)' } :
@@ -663,7 +692,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
               </div>
             );
 
-            // Margin alert state (thresholds: healthy ≥40, warning ≥30, critical <30)
             const marginState =
               grossMarginPct >= 40 ? 'healthy' :
               grossMarginPct >= 30 ? 'warning' : 'critical';
@@ -674,7 +702,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
                   🔒 Internal Audit View
                 </p>
 
-                {/* ── Critical margin banner — internal only ── */}
                 {marginState === 'critical' && (
                   <div style={{
                     display: 'flex', alignItems: 'flex-start', gap: 8,
@@ -683,12 +710,11 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
                   }}>
                     <span style={{ fontSize: 13, lineHeight: 1.4, flexShrink: 0 }}>⚠️</span>
                     <p style={{ fontSize: 10, fontWeight: 600, color: '#b91c1c', lineHeight: 1.45, margin: 0 }}>
-                      Low margin alert: this estimate is below the 30% target. Review labor or material pricing.
+                      Low margin alert: this estimate is below the 30% target.
                     </p>
                   </div>
                 )}
 
-                {/* ── Warning margin banner — internal only ── */}
                 {marginState === 'warning' && (
                   <div style={{
                     display: 'flex', alignItems: 'flex-start', gap: 8,
@@ -697,34 +723,20 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
                   }}>
                     <span style={{ fontSize: 13, lineHeight: 1.4, flexShrink: 0 }}>⚠</span>
                     <p style={{ fontSize: 10, fontWeight: 600, color: '#92400e', lineHeight: 1.45, margin: 0 }}>
-                      Margin below 40% target. Consider adjusting pricing before sending.
+                      Margin below 40% target. Consider adjusting pricing.
                     </p>
                   </div>
                 )}
 
-                {/* 3-card grid */}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <AuditCard
-                    label="Total Cost"
-                    value={fmt(totalCost)}
-                  />
-                  <AuditCard
-                    label="Gross Margin"
-                    value={fmt(grossMargin)}
-                    color={healthColor.text}
-                    bg={healthColor.bg}
-                    border={healthColor.border}
-                  />
-                  <AuditCard
-                    label="Margin %"
-                    value={`${grossMarginPct.toFixed(1)}%`}
-                    color={healthColor.text}
-                    bg={healthColor.bg}
-                    border={healthColor.border}
-                    sub={marginState === 'healthy' ? '✓ Healthy' : marginState === 'warning' ? '⚠ Below target' : '✗ Low margin'}
-                  />
+                  <AuditCard label="Total Cost" value={fmt(totalCost)} />
+                  <AuditCard label="Gross Margin" value={fmt(grossMargin)}
+                    color={healthColor.text} bg={healthColor.bg} border={healthColor.border} />
+                  <AuditCard label="Margin %" value={`${grossMarginPct.toFixed(1)}%`}
+                    color={healthColor.text} bg={healthColor.bg} border={healthColor.border}
+                    sub={marginState === 'healthy' ? '✓ Healthy' : marginState === 'warning' ? '⚠ Below target' : '✗ Low margin'} />
                 </div>
-                {/* ── Fix Low Margin button — internal only ── */}
+
                 <button
                   type="button"
                   onClick={handleFixLowMargin}
@@ -741,7 +753,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
                   🛡️ Fix Low Margin Items
                 </button>
 
-                {/* Book reference row (only when book data exists) */}
                 {totalBookValue > 0 && (
                   <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(241,245,249,0.9)', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -775,7 +786,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
               <span className="font-semibold text-slate-800">{fmt(subtotal)}</span>
             </div>
 
-            {/* Discount */}
             <div className="flex items-center justify-between gap-3 py-2">
               <span className="text-slate-600">Discount</span>
               <div className="flex items-center gap-1.5">
@@ -801,7 +811,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
               </div>
             )}
 
-            {/* Tax */}
             <div className="flex items-center justify-between gap-3 py-2">
               <span className="text-slate-600">Tax (%)</span>
               <Input type="number" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
@@ -814,13 +823,11 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
               </div>
             )}
 
-            {/* Total */}
             <div className="flex justify-between pt-4 border-t-2 border-slate-300">
               <span className="font-bold text-slate-900 text-lg">Total</span>
               <span className="font-bold text-primary text-3xl">{fmt(total)}</span>
             </div>
 
-            {/* Deposit */}
             <div className="flex items-center justify-between gap-3 pt-2">
               <span className="text-slate-600 text-xs font-medium">Deposit (%)</span>
               <div className="flex items-center gap-1.5">
@@ -847,7 +854,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
           <NotesSection label="Payment Terms" placeholder="e.g. 50% deposit, balance on completion…" value={paymentTerms} onChange={setPaymentTerms} />
         </div>
 
-        {/* Expandable terms */}
         <button onClick={() => setShowTerms(v => !v)}
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mt-5 font-medium transition-colors">
           {showTerms ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -862,11 +868,11 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         )}
       </div>
 
-      {/* ── INTERNAL PRICE AUDIT LOG — session-only, never in PDF/preview/send ── */}
-      <PriceAuditLog entries={priceLog} onClear={clearLog} />
+      {/* ── INTERNAL PRICE AUDIT LOG ── */}
+      {!isPreview && <PriceAuditLog entries={priceLog} onClear={clearLog} />}
 
-      {/* ── INTERNAL AUDIT HISTORY — persistent audit trail from EstimateVersionHistory ── */}
-      {estimate?.id && <EstimateAuditHistory estimateId={estimate.id} />}
+      {/* ── INTERNAL AUDIT HISTORY ── */}
+      {!isPreview && estimate?.id && <EstimateAuditHistory estimateId={estimate.id} />}
 
     </div>
   );
