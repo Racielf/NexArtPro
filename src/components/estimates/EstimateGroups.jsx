@@ -40,7 +40,7 @@ const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'r
 // calcTotals is now delegated to estimateEngine.js (Decimal.js-backed pure functions)
 
 // ─── Single Line Item Row ──────────────────────────────────────────────────────
-function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange }) {
+function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false }) {
   const [expanded, setExpanded] = useState(!item.service_name);
   // Track "committed" values for onBlur diffing (price + cost only)
   const committedRef = React.useRef({ unit_price: item.unit_price, unit_cost: item.unit_cost });
@@ -276,7 +276,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         })()}
 
         {/* Book Price — secondary reference, visually muted */}
-        {(() => {
+        {!isPreview && (() => {
           const book = parseFloat(item.book_price) || 0;
           if (book === 0) return <div className="text-right text-xs text-slate-200">—</div>;
           return (
@@ -422,7 +422,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
               <div className="py-6 text-center text-slate-300 text-xs">No items yet — click below to add</div>
             )}
             {group.items.map(item => (
-              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} />
+              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} isPreview={false} />
             ))}
           </div>
 
