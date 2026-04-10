@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { MapPin, Mail, Phone, Bell, BellOff, Pencil, Search, UserPlus, Plus } from 'lucide-react';
+import { MapPin, Mail, Phone, Bell, BellOff, Pencil, Search, UserPlus, Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ClientFormModal from '@/components/proposals/ClientFormModal';
 
@@ -152,6 +152,12 @@ export default function ProposalSidebarCustomer({ proposal, onCustomerChange }) 
               onClick={() => { setEditingClient(linkedClient); setShowClientModal(true); }}
               className="block text-xs text-slate-500 hover:text-primary hover:underline font-medium transition-colors">
               Edit customer details
+            </button>
+            <button
+              onClick={() => onCustomerChange({ client_id: '', client_name: '', client_email: '', client_phone: '', client_address: '' })}
+              className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 hover:underline font-medium transition-colors mt-2">
+              <X className="w-3 h-3" />
+              Remove customer
             </button>
           </div>
 
