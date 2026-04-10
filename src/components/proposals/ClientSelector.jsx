@@ -27,7 +27,7 @@ export default function ClientSelector({ open, onOpenChange, onSelect, onCreateN
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Select or Create Customer</DialogTitle>
         </DialogHeader>
