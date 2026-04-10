@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import { debounce } from 'lodash';
 
 const EDITABLE_STATUSES = ['draft', 'review_needed'];
@@ -92,12 +93,19 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
         {(local.items || []).map((item) => (
           <div key={item.id} className="grid grid-cols-12 gap-2 px-5 py-2.5 border-b border-slate-50 items-center group hover:bg-slate-50/50">
             <div className="col-span-4">
-              <Input value={item.service_name || ''} onChange={e => updateItem(item.id, 'service_name', e.target.value)}
-                disabled={!isEditable} placeholder="Service name" className="h-7 text-xs" />
-            </div>
-            <div className="col-span-2">
-              <Input value={item.description || ''} onChange={e => updateItem(item.id, 'description', e.target.value)}
-                disabled={!isEditable} placeholder="Notes" className="h-7 text-xs" />
+              <SmartServicePicker
+                value={item.service_name || ''}
+                onChange={v => updateItem(item.id, 'service_name', v)}
+                onSelect={sel => {
+                  updateItem(item.id, 'service_name', sel.name);
+                  if (sel.unit) updateItem(item.id, 'unit', sel.unit);
+                  if (sel.unit_price !== undefined) updateItem(item.id, 'unit_price', sel.unit_price);
+                  if (sel.description) updateItem(item.id, 'description', sel.description);
+                }}
+                placeholder="Service name"
+                className={`h-7 text-xs border border-slate-200 rounded px-2 ${!isEditable ? 'opacity-60 cursor-not-allowed' : ''}`}
+                disabled={!isEditable}
+              />
             </div>
             <div className="col-span-1">
               <Input type="number" value={item.quantity ?? 1} onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
