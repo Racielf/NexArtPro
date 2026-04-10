@@ -214,15 +214,6 @@ export default function Estimates() {
                       >
                         <Pencil className="w-3.5 h-3.5" /> Open
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        onClick={e => { e.stopPropagation(); handleDeleteClick(est); }}
-                        title={canDeleteEstimate(est) ? 'Delete estimate' : 'Cannot delete'}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
                     </div>
                   </div>
                 </CardContent>
