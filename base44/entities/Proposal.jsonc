@@ -1,0 +1,125 @@
+{
+  "name": "Proposal",
+  "type": "object",
+  "properties": {
+    "proposal_number": {
+      "type": "number"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "client_phone": {
+      "type": "string"
+    },
+    "client_address": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sent",
+        "accepted"
+      ],
+      "default": "draft"
+    },
+    "items": {
+      "type": "array",
+      "description": "Line items for the proposal",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "service_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "line_total": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "tax_rate": {
+      "type": "number",
+      "default": 0
+    },
+    "tax_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "discount_value": {
+      "type": "number",
+      "default": 0
+    },
+    "total_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "payment_terms": {
+      "type": "string"
+    },
+    "legal_terms": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "expiration_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "invoice_number": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string"
+    },
+    "accepted_at": {
+      "type": "string"
+    },
+    "accepted_ip": {
+      "type": "string"
+    },
+    "accepted_by_name": {
+      "type": "string"
+    },
+    "company_id": {
+      "type": "string",
+      "default": "rc-art"
+    }
+  },
+  "required": [
+    "client_name",
+    "status"
+  ]
+}

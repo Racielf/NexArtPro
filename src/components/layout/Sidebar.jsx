@@ -16,7 +16,8 @@ import {
   CreditCard,
   TrendingUp,
   DollarSign,
-  BarChart2
+  BarChart2,
+  ScrollText
 } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import { isAdmin } from '@/lib/roleUtils';
@@ -37,6 +38,7 @@ const navGroups = [
       { path: '/customers', label: 'Customers', icon: UserSquare },
       { path: '/appointments', label: 'Appointments', icon: Calendar },
       { path: '/estimates', label: 'Estimates', icon: FileText },
+      { path: '/proposals', label: 'Proposals', icon: ScrollText },
     ]
   },
   {

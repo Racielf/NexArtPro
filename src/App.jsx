@@ -40,6 +40,9 @@ import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import ProfitabilityDashboard from './pages/ProfitabilityDashboard';
+import Proposals from './pages/Proposals';
+import ProposalEditor from './pages/ProposalEditor';
+import PublicProposalView from './pages/PublicProposalView';
 
 
 const ProtectedRoute = ({ children }) => {
@@ -112,10 +115,13 @@ const AuthenticatedApp = () => {
         <Route path="/payroll" element={<Payroll />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/profitability" element={<ProfitabilityDashboard />} />
+        <Route path="/proposals" element={<Proposals />} />
+        <Route path="/proposal-editor" element={<ProposalEditor />} />
         <Route path="/settings" element={isAdmin() ? <Settings /> : <Navigate to="/dashboard" replace />} />
 
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />
+      <Route path="/proposal-view" element={<PublicProposalView />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
