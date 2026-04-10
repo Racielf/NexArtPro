@@ -394,39 +394,58 @@ export default function WorkOrderDetail() {
           />
 
           {/* ── FOOTER ── */}
-          <div className={`rounded-xl border shadow-sm px-6 py-4 flex items-center justify-between ${
-            workOrder.status === 'completed'
-              ? 'bg-green-50 border-green-200'
-              : 'bg-white border-slate-200'
-          }`}>
-            <div>
-              {workOrder.status === 'completed' ? (
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-green-800">Work Order Completed</p>
-                    {workOrder.completed_at && (
-                      <p className="text-xs text-green-600 mt-0.5">
-                        {new Date(workOrder.completed_at).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
+          {(() => {
+            const STATUS_NEXT = {
+              draft:       { next: 'assigned',    label: 'Mark Assigned' },
+              assigned:    { next: 'scheduled',   label: 'Mark Scheduled' },
+              scheduled:   { next: 'on_the_way',  label: 'On My Way' },
+              on_the_way:  { next: 'in_progress', label: 'Mark In Progress' },
+              in_progress: { next: 'completed',   label: 'Mark Completed' },
+            };
+            const step = STATUS_NEXT[workOrder.status];
+            const isCompleted = workOrder.status === 'completed';
+            const isInvoiced  = workOrder.status === 'invoiced';
+
+            if (isCompleted) return (
+              <div className="rounded-xl border border-green-200 bg-green-50 shadow-sm px-6 py-4 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-semibold text-green-800">Work Order Completed</p>
+                  {workOrder.completed_at && (
+                    <p className="text-xs text-green-600 mt-0.5">{new Date(workOrder.completed_at).toLocaleString()}</p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-sm text-slate-500">Mark as completed when all work is done.</p>
-              )}
-            </div>
-            {workOrder.status !== 'completed' && workOrder.status !== 'invoiced' && (
-              <Button
-                className="gap-2 bg-green-600 hover:bg-green-700 text-white"
-                onClick={markCompleted}
-                disabled={completing}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {completing ? 'Saving…' : 'Mark as Completed'}
-              </Button>
-            )}
-          </div>
+              </div>
+            );
+
+            if (isInvoiced || !step) return null;
+
+            const advance = async () => {
+              const patch = { status: step.next };
+              if (step.next === 'completed') patch.completed_at = new Date().toISOString();
+              setCompleting(true);
+              await base44.entities.WorkOrder.update(id, patch);
+              setWorkOrder(prev => ({ ...prev, ...patch }));
+              setCompleting(false);
+              toast.success(`Status updated to ${step.next.replace('_', ' ')}`);
+            };
+
+            return (
+              <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-6 py-4 flex items-center justify-between">
+                <p className="text-sm text-slate-500">
+                  Current: <span className="font-semibold text-slate-700">{workOrder.status.replace(/_/g, ' ')}</span>
+                </p>
+                <Button
+                  className={`gap-2 ${step.next === 'completed' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                  onClick={advance}
+                  disabled={completing}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {completing ? 'Saving…' : step.label}
+                </Button>
+              </div>
+            );
+          })()}
 
         </div>
       </div>
