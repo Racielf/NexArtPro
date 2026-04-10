@@ -38,7 +38,7 @@ function PricingBadge({ bookPrice, yourPrice }) {
   );
 }
 
-export default function ProposalLineItems({ proposal, onSave, locked }) {
+export default function ProposalLineItems({ proposal, onSave, locked, isPreview = false }) {
   const [local, setLocal] = useState(proposal);
   const qtyRefs = useRef({});
 
@@ -136,10 +136,10 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
       {/* Services Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-left">
         <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest">
-          <div className="col-span-5 text-left">Service Details</div>
+          <div className={`${isPreview ? 'col-span-7' : 'col-span-5'} text-left`}>Service Details</div>
           <div className="col-span-1 text-center">Qty</div>
           <div className="col-span-1 text-center">Unit</div>
-          <div className="col-span-2 text-right text-slate-300">Book Ref</div>
+          {!isPreview && <div className="col-span-2 text-right text-slate-300">Book Ref</div>}
           <div className="col-span-2 text-right">Your Price</div>
           <div className="col-span-1 text-right">Line Total</div>
         </div>
@@ -160,7 +160,7 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                 <div className="grid grid-cols-12 gap-3 px-6 py-4 items-start">
                   
                   {/* Service & Description Area */}
-                  <div className="col-span-5 space-y-1.5 text-left">
+                  <div className={`${isPreview ? 'col-span-7' : 'col-span-5'} space-y-1.5 text-left`}>
                     <SmartServicePicker 
                       value={item.service_name || ''} 
                       onChange={(val) => updateItem(item.id, 'service_name', val)}
@@ -185,8 +185,8 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                       rows={2}
                     />
                     
-                    {/* Profitability Indicator */}
-                    {bookPrice > 0 && (
+                    {/* Profitability Indicator — internal only */}
+                    {!isPreview && bookPrice > 0 && (
                       <div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-tighter ${
                         diff < 0 ? 'text-red-500' : diff > 0 ? 'text-emerald-600' : 'text-slate-400'
                       }`}>
@@ -216,12 +216,14 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                     />
                   </div>
 
-                  {/* Book Price (Locked) */}
-                  <div className="col-span-2">
-                    <div className="h-9 flex items-center justify-end px-3 text-sm font-medium text-slate-400 bg-slate-50 rounded-md border border-dashed border-slate-200">
-                      {fmtCurrency(bookPrice)}
+                  {/* Book Price (Locked) — internal only */}
+                  {!isPreview && (
+                    <div className="col-span-2">
+                      <div className="h-9 flex items-center justify-end px-3 text-sm font-medium text-slate-400 bg-slate-50 rounded-md border border-dashed border-slate-200">
+                        {fmtCurrency(bookPrice)}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Your Price (Editable) */}
                   <div className="col-span-2">
@@ -237,7 +239,7 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                           disabled={!isEditable}
                         />
                       </div>
-                      {bookPrice > 0 && <PricingBadge bookPrice={bookPrice} yourPrice={yourPrice} />}
+                      {!isPreview && bookPrice > 0 && <PricingBadge bookPrice={bookPrice} yourPrice={yourPrice} />}
                     </div>
                   </div>
 
