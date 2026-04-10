@@ -14,6 +14,7 @@ import { logComm, logCommFailed } from '@/lib/commTracking';
 import MarginGuardModal from '@/components/estimates/internal/MarginGuardModal';
 import LossPreventionModal from '@/components/estimates/internal/LossPreventionModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
+import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { normalizeUserRole } from '@/lib/utils';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -473,6 +474,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         </button>
         <button onClick={() => {
             if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
+            // Document type validation
+            const dtv = validateDocTypeFields(estimate);
+            if (!dtv.valid) {
+              dtv.errors.forEach(e => toast.error(e));
+              return;
+            }
             // Loss prevention check — runs before margin guard
             const pv = validateEstimatePricing(estimate);
             if (!pv.canProceed || pv.requiresConfirmation) {

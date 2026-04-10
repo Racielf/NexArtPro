@@ -24,6 +24,7 @@ import { usePriceAuditLog } from '@/hooks/usePriceAuditLog';
 import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
 import { logChange } from '@/lib/estimateAuditLog';
 import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
+import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -608,14 +609,22 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   return (
     <div className="w-full space-y-0">
 
-      {/* ── ESTIMATE HEADER CARD ── */}
+      {/* ── DOCUMENT HEADER CARD ── */}
       <div className="bg-white rounded-lg border border-slate-200 mb-4 px-6 py-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">
-              Estimate <span className="text-primary">#{estimate?.estimate_number}</span>
-            </h2>
+            {(() => { const dc = getDocTypeConfig(estimate?.document_type); return (
+              <h2 className="text-2xl font-bold text-slate-900">
+                {dc.label} <span className="text-primary">#{estimate?.estimate_number}</span>
+              </h2>
+            ); })()}
             {estimate?.title && <p className="text-sm text-slate-500 mt-1">{estimate.title}</p>}
+            {estimate?.document_type === 'BID' && (estimate?.job_number || estimate?.plan_reference) && (
+              <div className="flex items-center gap-3 mt-1">
+                {estimate.job_number && <span className="text-xs text-slate-500">Job: <strong className="text-slate-700">{estimate.job_number}</strong></span>}
+                {estimate.plan_reference && <span className="text-xs text-slate-500">Plan: <strong className="text-slate-700">{estimate.plan_reference}</strong></span>}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-5 text-sm flex-wrap">
             <div className="flex items-center gap-2">

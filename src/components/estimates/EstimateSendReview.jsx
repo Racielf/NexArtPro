@@ -13,6 +13,7 @@ import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import LossPreventionModal from './internal/LossPreventionModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
+import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 
 async function logDocument(estimateId, estimate, action, extra = {}) {
   await base44.entities.DocumentLog.create({
@@ -130,8 +131,16 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     logDocument(estimate.id, estimate, 'sent_link', { secure_link: clientLink });
   };
 
+  const docConfig = getDocTypeConfig(estimate?.document_type);
+
   const handleConfirmSend = () => {
     if (!recipientEmail) { toast.error('Recipient email is required'); return; }
+    // Document type validation — BID requires job_number or plan_reference
+    const dtv = validateDocTypeFields(estimate);
+    if (!dtv.valid) {
+      dtv.errors.forEach(e => toast.error(e));
+      return;
+    }
     // Loss prevention gate — block losses, warn zero-profit
     const pv = validateEstimatePricing(estimate);
     if (!pv.canProceed || pv.requiresConfirmation) {
@@ -206,7 +215,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         <div className="bg-green-50 border-b border-green-200 px-5 py-3 flex items-start gap-3">
           <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-green-900">Estimate sent successfully!</p>
+            <p className="text-sm font-semibold text-green-900">{docConfig.label} sent successfully!</p>
             <p className="text-xs text-green-700 mt-1">Sent to: <span className="font-medium">{recipientEmail}</span></p>
             <div className="mt-2 flex items-center gap-2 bg-white rounded-md border border-green-200 px-3 py-1.5">
               <span className="text-xs text-slate-600 truncate">Client link: {clientLink}</span>
@@ -237,7 +246,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         <div className="flex items-center gap-3">
           <div>
             <p className="text-sm font-bold text-slate-800">Review &amp; Send</p>
-            <p className="text-xs text-slate-400">Estimate #{estimate?.estimate_number} · {estimate?.client_name}</p>
+            <p className="text-xs text-slate-400">{docConfig.label} #{estimate?.estimate_number} · {estimate?.client_name}</p>
           </div>
         </div>
         <div className="flex items-center gap-3 pr-1">
@@ -411,12 +420,12 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Send className="w-5 h-5 text-primary" />Confirm & Send Estimate
+              <Send className="w-5 h-5 text-primary" />Confirm & Send {docConfig.label}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <p className="text-sm text-slate-600">
-              You're about to send <span className="font-semibold text-slate-800">Estimate #{estimate?.estimate_number}</span> to:
+              You're about to send <span className="font-semibold text-slate-800">{docConfig.label} #{estimate?.estimate_number}</span> to:
             </p>
             <div className="bg-slate-50 rounded-lg p-3 flex items-center gap-2">
               <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -437,7 +446,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
               </div>
             </div>
             <p className="text-xs text-slate-400">
-              The client will receive a link to view, approve, or decline the estimate.
+              The client will receive a link to view, approve, or decline the {docConfig.label.toLowerCase()}.
             </p>
           </div>
           <div className="flex gap-2 pt-1">

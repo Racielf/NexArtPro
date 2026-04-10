@@ -8,6 +8,7 @@ import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import LossPreventionModal from './internal/LossPreventionModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
+import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 
 export default function EstimatePreviewModal({ estimate, open, onClose, onSend }) {
   const [lossModalOpen, setLossModalOpen] = React.useState(false);
@@ -49,7 +50,7 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
         {/* Toolbar */}
         <div className="flex items-center justify-between px-5 py-3 border-b bg-slate-50 flex-shrink-0">
           <DialogTitle className="text-sm font-semibold">
-            Estimate #{estimate?.estimate_number} — Preview
+            {getDocTypeConfig(estimate?.document_type).label} #{estimate?.estimate_number} — Preview
           </DialogTitle>
           <div className="flex items-center gap-3 pr-1">
             <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">

@@ -5,6 +5,23 @@
     "estimate_number": {
       "type": "number"
     },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "BID",
+        "PROPOSAL"
+      ],
+      "default": "PROPOSAL",
+      "description": "Document type: BID (technical/commercial) or PROPOSAL (client-friendly)"
+    },
+    "job_number": {
+      "type": "string",
+      "description": "Job or project number reference (required for BID type)"
+    },
+    "plan_reference": {
+      "type": "string",
+      "description": "Plan set or specification reference (required for BID type if no job_number)"
+    },
     "source_proposal_id": {
       "type": "string",
       "description": "Reference to source Proposal if created as adjustment"
