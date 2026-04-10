@@ -74,14 +74,20 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
         />
       </div>
 
+      {/* Running Subtotal Bar */}
+      <div className="bg-slate-50 border border-slate-200 rounded-t-xl px-5 py-2.5 flex items-center justify-between sticky top-0 z-10">
+        <div className="text-xs font-medium text-slate-500">Running Subtotal</div>
+        <div className="text-sm font-bold text-slate-900">{fmtCurrency(local.subtotal)}</div>
+      </div>
+
       {/* Line Items Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50">
-          <h2 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Services / Line Items</h2>
-          <span className="text-xs text-slate-400">{(local.items || []).length} items</span>
+      <div className="bg-white rounded-b-xl border border-slate-200 border-t-0 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-white">
+          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Services</h2>
+          <span className="text-xs text-slate-400 font-medium">{(local.items || []).length} {(local.items || []).length === 1 ? 'item' : 'items'}</span>
         </div>
 
-        <div className="grid grid-cols-12 gap-2 px-5 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+        <div className="grid grid-cols-12 gap-2 px-5 py-3 text-[10px] font-semibold text-slate-600 uppercase tracking-widest border-b border-slate-200 bg-slate-50">
           <div className="col-span-4">Service</div>
           <div className="col-span-2">Notes</div>
           <div className="col-span-1 text-center">Qty</div>
@@ -90,8 +96,8 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
           <div className="col-span-2 text-right">Total</div>
         </div>
 
-        {(local.items || []).map((item) => (
-          <div key={item.id} className="grid grid-cols-12 gap-2 px-5 py-2.5 border-b border-slate-50 items-center group hover:bg-slate-50/50">
+        {(local.items || []).map((item, idx) => (
+          <div key={item.id} className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-slate-100 items-center group hover:bg-blue-50/40 transition-colors">
             <div className="col-span-4">
               <SmartServicePicker
                 value={item.service_name || ''}
@@ -106,6 +112,10 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                 className={`h-7 text-xs border border-slate-200 rounded px-2 ${!isEditable ? 'opacity-60 cursor-not-allowed' : ''}`}
                 disabled={!isEditable}
               />
+            </div>
+            <div className="col-span-2">
+              <Input value={item.description || ''} onChange={e => updateItem(item.id, 'description', e.target.value)}
+                disabled={!isEditable} placeholder="Notes" className="h-7 text-xs" />
             </div>
             <div className="col-span-1">
               <Input type="number" value={item.quantity ?? 1} onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
@@ -133,8 +143,8 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
         ))}
 
         {isEditable && (
-          <button onClick={addItem} className="w-full flex items-center gap-2 px-5 py-3 text-xs text-primary hover:bg-primary/5 font-medium transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Add line item
+          <button onClick={addItem} className="w-full flex items-center gap-2 px-5 py-3.5 text-xs text-primary hover:bg-primary/10 font-semibold transition-colors border-t border-slate-100">
+            <Plus className="w-4 h-4" /> Add Service
           </button>
         )}
 
