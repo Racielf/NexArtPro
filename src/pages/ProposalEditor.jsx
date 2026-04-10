@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -35,6 +35,7 @@ export default function ProposalEditor() {
   const [showPreview, setShowPreview] = useState(false);
   const [showSend, setShowSend] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const pdfElementRef = useRef(null);
 
   useEffect(() => { load(); }, []);
 
@@ -204,6 +205,7 @@ export default function ProposalEditor() {
             onStatusChange={handleStatusChange}
             onOpenPreview={() => setShowPreview(true)}
             onOpenSend={() => setShowSend(true)}
+            pdfElementRef={pdfElementRef}
           />
         )}
 
@@ -214,12 +216,14 @@ export default function ProposalEditor() {
               <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow.
             </div>
           )}
-          <ProposalLineItems
-            proposal={proposal}
-            onSave={handleSave}
-            saving={saving}
-            locked={isLocked}
-          />
+          <div ref={pdfElementRef}>
+            <ProposalLineItems
+              proposal={proposal}
+              onSave={handleSave}
+              saving={saving}
+              locked={isLocked}
+            />
+          </div>
         </div>
       </div>
 

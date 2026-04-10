@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import {
-  Send, CheckCircle, XCircle, RotateCcw, Eye, Printer,
+  Send, CheckCircle, XCircle, RotateCcw, Eye, Printer, Download,
   FileText, ClipboardList, ChevronRight, AlertCircle, FileEdit
 } from 'lucide-react';
+import { generateProposalPDF } from '@/utils/proposalPDFGenerator';
 import ProposalAdjustmentModal from '@/components/proposals/ProposalAdjustmentModal';
 
 const STATUS_CONFIG = {
@@ -193,9 +195,10 @@ function ApplyAdjustmentBtn({ proposal, onConverted }) {
   );
 }
 
-export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenPreview, onOpenSend }) {
+export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenPreview, onOpenSend, pdfElementRef }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [showAdjustment, setShowAdjustment] = useState(false);
   const status = proposal?.status || 'draft';
   const badge = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
@@ -240,6 +243,23 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
           const w = window.open(`/proposal-view?id=${proposalId}&print=1`, '_blank');
           if (w) w.onload = () => w.print();
         }} />
+        <ActionBtn icon={Download} label={downloadingPDF ? 'Generating…' : 'Download PDF'} 
+          onClick={async () => {
+            if (!pdfElementRef?.current) {
+              toast.error('Document not ready');
+              return;
+            }
+            setDownloadingPDF(true);
+            try {
+              await generateProposalPDF(proposal, pdfElementRef.current);
+              toast.success('PDF downloaded');
+            } catch (err) {
+              toast.error('PDF generation failed');
+            } finally {
+              setDownloadingPDF(false);
+            }
+          }} disabled={downloadingPDF}
+          cls="text-slate-700 border-slate-200 hover:bg-slate-50" />
 
         {/* Draft / Review Needed */}
         {(status === 'draft' || status === 'review_needed') && (
