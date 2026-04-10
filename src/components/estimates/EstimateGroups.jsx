@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
-  Pencil, Check, X, Eye, EyeOff, BookOpen, LayoutTemplate
+  Pencil, Check, X, Eye, EyeOff, BookOpen, LayoutTemplate, Layers
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceDisciplineGuard from '@/components/estimates/internal/PriceDisciplineGuard';
@@ -686,6 +686,22 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       )}
 
       {/* ── GROUPS ── */}
+      {!isPreview && (
+        <div className="bg-white rounded-lg border border-slate-200 mb-4 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Bulk Actions</p>
+            <p className="text-xs text-slate-500">Use bulk tools while editing line items and groups.</p>
+          </div>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 h-9 px-3 rounded-md border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <Layers className="w-4 h-4" />
+            Bulk Actions
+          </button>
+        </div>
+      )}
+
       {groups.map(group => (
         <WorkGroup key={group.id} group={group} onUpdate={updateGroup} onRemove={removeGroup}
           showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} onLogChange={handleFieldAudit} isPreview={isPreview} />
