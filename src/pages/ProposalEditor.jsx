@@ -42,6 +42,7 @@ export default function ProposalEditor() {
   });
   const [showSend, setShowSend] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [isPreview, setIsPreview] = useState(false);
   const pdfElementRef = useRef(null);
 
   useEffect(() => { load(); }, []);
@@ -271,11 +272,20 @@ export default function ProposalEditor() {
             </div>
           )}
           <div ref={pdfElementRef}>
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={() => setIsPreview(!isPreview)}
+                className="px-3 py-1 text-xs bg-slate-800 text-white rounded"
+              >
+                {isPreview ? 'Edit Mode' : 'Client View'}
+              </button>
+            </div>
             <EstimateGroups
               estimate={createEstimateProxy(proposal)}
               onSave={handleSave}
               saving={saving}
               readOnlyDiscountType={true}
+              isPreview={isPreview}
             />
             
             {/* PROPOSAL DETAILS SECTIONS */}

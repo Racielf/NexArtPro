@@ -35,6 +35,7 @@ export default function EstimateEditor() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDocumentOptions, setShowDocumentOptions] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [isPreview, setIsPreview] = useState(false);
 
   useEffect(() => { loadEstimate(); }, []);
 
@@ -289,10 +290,19 @@ export default function EstimateEditor() {
               <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow.
             </div>
           )}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setIsPreview(!isPreview)}
+              className="px-3 py-1 text-xs bg-slate-800 text-white rounded"
+            >
+              {isPreview ? 'Edit Mode' : 'Client View'}
+            </button>
+          </div>
           <EstimateGroups
             estimate={estimate}
             onSave={handleSave}
             saving={saving}
+            isPreview={isPreview}
           />
         </div>
       </div>
