@@ -340,7 +340,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
 }
 
 // ─── Work Group ────────────────────────────────────────────────────────────────
-function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds = new Set(), onLogChange }) {
+function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds = new Set(), onLogChange, isPreview = false }) {
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(group.name);
 
@@ -422,7 +422,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
               <div className="py-6 text-center text-slate-300 text-xs">No items yet — click below to add</div>
             )}
             {group.items.map(item => (
-              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} isPreview={false} />
+              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} isPreview={isPreview} />
             ))}
           </div>
 
@@ -458,7 +458,7 @@ function NotesSection({ label, placeholder, value, onChange, accent }) {
 
 // ─── Main EstimateGroups Component ────────────────────────────────────────────
 // readOnlyDiscountType: if true, disables discount type selector (Proposal mode)
-export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false }) {
+export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false }) {
   const [groups, setGroups] = useState(() => {
     if (estimate?.groups?.length) return estimate.groups;
     if (estimate?.line_items?.length) {
@@ -623,7 +623,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       {/* ── GROUPS ── */}
       {groups.map(group => (
         <WorkGroup key={group.id} group={group} onUpdate={updateGroup} onRemove={removeGroup}
-          showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} onLogChange={addLog} />
+          showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} onLogChange={addLog} isPreview={isPreview} />
       ))}
 
       {/* Add group button */}
