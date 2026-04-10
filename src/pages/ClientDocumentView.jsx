@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Eye, Lock, Download, CheckCircle } from 'lucide-react';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
+import SignaturePad from '@/components/SignaturePad';
 
 export default function ClientDocumentView() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -14,6 +15,7 @@ export default function ClientDocumentView() {
   const [error, setError] = useState(null);
   const [accepting, setAccepting] = useState(false);
   const [clientName, setClientName] = useState('');
+  const [signature, setSignature] = useState(null);
 
   useEffect(() => {
     loadDocument();
@@ -71,6 +73,11 @@ export default function ClientDocumentView() {
       return;
     }
 
+    if (!signature) {
+      toast.error('Please draw your signature');
+      return;
+    }
+
     setAccepting(true);
     try {
       const clientIP = await fetch('https://api.ipify.org?format=json')
@@ -83,6 +90,7 @@ export default function ClientDocumentView() {
         accepted_at: new Date().toISOString(),
         accepted_by_name: clientName,
         accepted_ip: clientIP,
+        signature_image_base64: signature,
       });
 
       setDocument(prev => ({
@@ -90,6 +98,7 @@ export default function ClientDocumentView() {
         status: 'accepted',
         accepted_at: new Date().toISOString(),
         accepted_by_name: clientName,
+        signature_image_base64: signature,
       }));
 
       toast.success('Proposal accepted successfully');
@@ -229,9 +238,10 @@ export default function ClientDocumentView() {
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
+                <SignaturePad onSignatureChange={setSignature} />
                 <button
                   onClick={handleAcceptProposal}
-                  disabled={accepting || !clientName.trim()}
+                  disabled={accepting || !clientName.trim() || !signature}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                 >
                   {accepting ? 'Processing…' : 'Accept Proposal'}
