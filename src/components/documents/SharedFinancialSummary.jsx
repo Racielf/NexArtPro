@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '@/lib/documentTranslations';
 
 /**
  * SharedFinancialSummary — Shared totals renderer for BID & PROPOSAL
@@ -16,14 +17,17 @@ export default function SharedFinancialSummary({
   remaining = 0,
   showDeposit = false,
   accent = '#0f172a',
+  lang = 'en',
 }) {
   if (!estimate) return null;
 
+  const ts = (key) => t('shared', key, lang);
+
   const rows = [
-    { label: 'Subtotal', value: estimate.subtotal || 0, show: true },
-    { label: 'Discount', value: -(estimate.discount_amount || 0), show: (estimate.discount_amount || 0) > 0, color: '#dc2626' },
-    { label: `Tax (${estimate.tax_rate || 0}%)`, value: estimate.tax_amount || 0, show: (estimate.tax_rate || 0) > 0 },
-    { label: 'TOTAL', value: total, show: true, bold: true, big: true },
+    { label: ts('subtotal'), value: estimate.subtotal || 0, show: true },
+    { label: ts('discount'), value: -(estimate.discount_amount || 0), show: (estimate.discount_amount || 0) > 0, color: '#dc2626' },
+    { label: `${ts('tax')} (${estimate.tax_rate || 0}%)`, value: estimate.tax_amount || 0, show: (estimate.tax_rate || 0) > 0 },
+    { label: ts('total').toUpperCase(), value: total, show: true, bold: true, big: true },
   ];
 
   return (
@@ -42,14 +46,14 @@ export default function SharedFinancialSummary({
             </div>
             {/* Deposit */}
             <div style={{ background: `${accent}08`, borderRadius: 8, padding: '16px 20px', border: `1.5px solid ${accent}30` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: accent, marginBottom: 10 }}>Payment Schedule</div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: accent, marginBottom: 10 }}>{ts('paymentSchedule')}</div>
               <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${accent}20` }}>
-                <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginBottom: 4 }}>Deposit to Start Work</div>
+                <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginBottom: 4 }}>{ts('depositToStart')}</div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: accent, lineHeight: 1 }}>${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>{depositPct}% of total</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>{depositPct}% {ts('ofTotal')}</div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#334155', fontWeight: 600, marginBottom: 3 }}>Remaining</div>
+                <div style={{ fontSize: 11, color: '#334155', fontWeight: 600, marginBottom: 3 }}>{ts('remaining')}</div>
                 <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
               </div>
             </div>

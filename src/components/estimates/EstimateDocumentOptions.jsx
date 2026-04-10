@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check, Globe } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import { LANGUAGE_OPTIONS } from '@/lib/documentTranslations';
 
 /**
  * Document options modal
@@ -13,8 +14,11 @@ export default function EstimateDocumentOptions({
   onClose,
   options = DEFAULT_OPTIONS,
   onSave,
+  language = 'en',
+  onLanguageChange,
 }) {
   const [localOptions, setLocalOptions] = useState(options);
+  const [localLang, setLocalLang] = useState(language);
 
   const toggleOption = (key) => {
     setLocalOptions(prev => ({ ...prev, [key]: !prev[key] }));
@@ -22,6 +26,7 @@ export default function EstimateDocumentOptions({
 
   const handleSave = () => {
     onSave(localOptions);
+    if (onLanguageChange) onLanguageChange(localLang);
     onClose();
   };
 
@@ -60,6 +65,30 @@ export default function EstimateDocumentOptions({
               </div>
             </label>
           ))}
+
+          {/* Language selector */}
+          <div className="border-t border-slate-200 pt-3 mt-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Globe className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-sm font-medium text-slate-700">Document Language</span>
+            </div>
+            <div className="flex gap-2">
+              {LANGUAGE_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setLocalLang(opt.value)}
+                  className={`flex-1 text-xs font-medium py-2 px-3 rounded-lg border-2 transition-all ${
+                    localLang === opt.value
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2">Controls section titles and default copy in the PDF.</p>
+          </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">
             <p className="text-xs text-amber-900 font-medium mb-1">🔒 Always hidden from clients</p>

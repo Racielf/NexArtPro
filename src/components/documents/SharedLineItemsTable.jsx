@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '@/lib/documentTranslations';
 
 /**
  * SharedLineItemsTable — Shared line items renderer for BID & PROPOSAL
@@ -8,8 +9,10 @@ import React from 'react';
  *
  * Uses the same data structure (groups → items) from the shared estimate engine.
  */
-export default function SharedLineItemsTable({ groups = [], showPrices = true, accent = '#0f172a' }) {
+export default function SharedLineItemsTable({ groups = [], showPrices = true, accent = '#0f172a', lang = 'en' }) {
   if (!groups.length) return null;
+
+  const ts = (key) => t('shared', key, lang);
 
   const thStyle = {
     textAlign: 'right',
@@ -49,16 +52,16 @@ export default function SharedLineItemsTable({ groups = [], showPrices = true, a
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
-                  <th style={thLeft}>Description</th>
-                  <th style={{ ...thStyle, width: 55 }}>Qty</th>
-                  <th style={{ ...thStyle, width: 50 }}>Unit</th>
-                  {showPrices && <th style={{ ...thStyle, width: 100 }}>Unit Price</th>}
-                  {showPrices && <th style={{ ...thStyle, width: 110 }}>Total</th>}
+                  <th style={thLeft}>{ts('description')}</th>
+                  <th style={{ ...thStyle, width: 55 }}>{ts('qty')}</th>
+                  <th style={{ ...thStyle, width: 50 }}>{ts('unit')}</th>
+                  {showPrices && <th style={{ ...thStyle, width: 100 }}>{ts('unitPrice')}</th>}
+                  {showPrices && <th style={{ ...thStyle, width: 110 }}>{ts('total')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {(group.items || []).length === 0 && (
-                  <tr><td colSpan={showPrices ? 5 : 3} style={{ ...tdLeft, color: '#94a3b8', fontStyle: 'italic', padding: '16px 14px' }}>No items</td></tr>
+                  <tr><td colSpan={showPrices ? 5 : 3} style={{ ...tdLeft, color: '#94a3b8', fontStyle: 'italic', padding: '16px 14px' }}>{ts('noItems')}</td></tr>
                 )}
                 {(group.items || []).map((item, idx) => (
                   <tr key={item.id || idx} style={{ background: idx % 2 === 0 ? 'white' : '#fafbfc' }}>

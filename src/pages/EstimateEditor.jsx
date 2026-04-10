@@ -114,6 +114,14 @@ export default function EstimateEditor() {
     setSaving(false);
   };
 
+  const handleLanguageChange = async (newLang) => {
+    setSaving(true);
+    const updated = { ...estimate, document_language: newLang };
+    await base44.entities.Estimate.update(estimateId, { document_language: newLang });
+    setEstimate(updated);
+    setSaving(false);
+  };
+
   const handleCustomerChange = async (customerData, clientRecord) => {
     setSaving(true);
     const updated = { ...estimate, ...customerData };
@@ -371,6 +379,8 @@ export default function EstimateEditor() {
         onClose={() => setShowDocumentOptions(false)}
         options={estimate?.document_config?.options || DEFAULT_OPTIONS}
         onSave={handleDocumentOptionsSave}
+        language={estimate?.document_language || 'en'}
+        onLanguageChange={handleLanguageChange}
       />
 
       {showDiscardConfirm && (

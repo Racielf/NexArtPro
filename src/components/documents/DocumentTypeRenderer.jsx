@@ -15,14 +15,15 @@ import ProposalDocumentRenderer from './ProposalDocumentRenderer';
  * Usage:
  *   <DocumentTypeRenderer estimate={estimate} options={options} />
  */
-export default function DocumentTypeRenderer({ estimate, options = {} }) {
+export default function DocumentTypeRenderer({ estimate, options = {}, lang }) {
   if (!estimate) return null;
 
+  const resolvedLang = lang || estimate?.document_language || 'en';
   const docType = estimate.document_type || 'PROPOSAL';
 
   if (docType === 'BID') {
-    return <BidDocumentRenderer estimate={estimate} options={options} />;
+    return <BidDocumentRenderer estimate={estimate} options={options} lang={resolvedLang} />;
   }
 
-  return <ProposalDocumentRenderer estimate={estimate} options={options} />;
+  return <ProposalDocumentRenderer estimate={estimate} options={options} lang={resolvedLang} />;
 }
