@@ -73,10 +73,10 @@ export default function Invoices() {
         <tbody>
           ${(inv.line_items || []).map(item => `
             <tr>
-              <td><strong>${item.name}</strong>${item.description ? `<br><small style="color:#666">${item.description}</small>` : ''}</td>
+              <td><strong>${item.service_name || item.name}</strong>${item.description ? `<br><small style="color:#666">${item.description}</small>` : ''}</td>
               <td>${item.quantity}</td>
               <td>$${(item.unit_price || 0).toFixed(2)}</td>
-              <td>$${(item.total_price || 0).toFixed(2)}</td>
+              <td>$${(item.line_total || item.total_price || 0).toFixed(2)}</td>
             </tr>`).join('')}
         </tbody>
       </table>
