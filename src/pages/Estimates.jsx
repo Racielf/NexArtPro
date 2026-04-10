@@ -288,9 +288,7 @@ export default function Estimates() {
                     >
                       <Pencil className="w-3.5 h-3.5" /> Open
                     </Button>
-                    </div>
-                    </div>
-                    </CardContent>
+                  </div>
                 </CardContent>
               </Card>
             ))}
