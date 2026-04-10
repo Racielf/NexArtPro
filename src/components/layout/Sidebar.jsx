@@ -110,22 +110,18 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {isAdmin() && (
-        <div className="p-3 border-t border-gray-700">
-          <Link
-            to="/settings"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              location.pathname === '/settings'
-                ? 'bg-primary text-white'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            Settings
-          </Link>
-        </div>
-      )}
       <div className="p-3 border-t border-gray-700">
+        <Link
+          to="/settings"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            location.pathname === '/settings'
+              ? 'bg-primary text-white'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          Settings
+        </Link>
         <button
           onClick={() => logout(navigate)}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-gray-400 hover:text-red-400 hover:bg-gray-800 w-full"
