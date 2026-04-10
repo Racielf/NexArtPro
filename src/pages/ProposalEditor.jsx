@@ -52,11 +52,28 @@ export default function ProposalEditor() {
     
     // EstimateGroups returns estimate format, extract Proposal fields
     const proposalChanges = extractProposalChanges(estimateData);
+    
+    // 🔒 Safety validation: ensure items[] contains ONLY Proposal fields
+    if (proposalChanges.items) {
+      proposalChanges.items.forEach((item) => {
+        if ('unit_cost' in item || 'taxable' in item) {
+          console.warn('⚠️ Filtering EstimateGroups fields from Proposal items');
+          delete item.unit_cost;
+          delete item.taxable;
+        }
+      });
+    }
+    
     const sanitized = { ...proposal, ...proposalChanges };
     
-    await base44.entities.Proposal.update(proposalId, sanitized);
-    setProposal(sanitized);
-    setSaving(false);
+    try {
+      await base44.entities.Proposal.update(proposalId, sanitized);
+      setProposal(sanitized);
+    } catch (err) {
+      console.error('Error saving proposal:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCustomerChange = async (customerData, _clientRecord) => {
