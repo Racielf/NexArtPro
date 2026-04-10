@@ -360,7 +360,6 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           )}
         </div>
       </div>
-      </div>
 
       {/* ── NOTES & TERMS ── */}
       <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
@@ -393,5 +392,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
       {estimate?.id && <EstimateAuditHistory estimateId={estimate.id} />}
 
     </div>
-  );
-}
+    );
+    }
+
+    export default EstimateGroups;
