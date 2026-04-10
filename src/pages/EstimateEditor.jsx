@@ -54,8 +54,24 @@ export default function EstimateEditor() {
 
   const handleSave = async (updatedEstimate) => {
     setSaving(true);
-    await base44.entities.Estimate.update(estimateId, { ...updatedEstimate, updated_by: 'Admin' });
-    setEstimate(updatedEstimate);
+    
+    // Coerce string numbers to actual numbers in groups
+    const sanitized = { ...updatedEstimate };
+    if (sanitized.groups && Array.isArray(sanitized.groups)) {
+      sanitized.groups = sanitized.groups.map(group => ({
+        ...group,
+        items: (group.items || []).map(item => ({
+          ...item,
+          quantity: item.quantity != null ? parseFloat(item.quantity) || 0 : 0,
+          unit_price: item.unit_price != null ? parseFloat(item.unit_price) || 0 : 0,
+          unit_cost: item.unit_cost != null ? parseFloat(item.unit_cost) || 0 : 0,
+          line_total: item.line_total != null ? parseFloat(item.line_total) || 0 : 0,
+        })),
+      }));
+    }
+    
+    await base44.entities.Estimate.update(estimateId, { ...sanitized, updated_by: 'Admin' });
+    setEstimate(sanitized);
     setSaving(false);
 
     const marginPct = parseFloat(updatedEstimate?.gross_margin_pct ?? updatedEstimate?.gross_margin_percent ?? 100);
