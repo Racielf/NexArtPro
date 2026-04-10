@@ -45,7 +45,10 @@ export default function Reports() {
   const revenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
   const unpaidTotal = invoices.filter(i => ['sent', 'overdue'].includes(i.status)).reduce((s, i) => s + Math.max((i.total || 0) - (i.amount_paid || 0), 0), 0);
   const unpaidCount = invoices.filter(i => ['sent', 'overdue'].includes(i.status)).length;
-  const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+  const totalExpenses = expenses.reduce((s, e) => {
+    const amount = parseFloat(e.amount);
+    return s + (isFinite(amount) ? amount : 0);
+  }, 0);
   const profit = revenue - totalExpenses;
   const completedWOs = workOrders.filter(w => w.status === 'completed').length;
   const activeWorkers = workers.filter(w => w.active !== false).length;
