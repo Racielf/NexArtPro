@@ -169,7 +169,7 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                           service_name: selected.name,
                           unit: item.unit || selected.unit || 'ea',
                           book_price: selected.unit_price || 0,
-                          unit_price: item.unit_price || selected.unit_price || 0,
+                          unit_price: selected.unit_price || 0,
                           description: item.description || selected.description || ''
                         });
                         setTimeout(() => qtyRefs.current[item.id]?.focus(), 50);
