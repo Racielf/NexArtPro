@@ -34,14 +34,14 @@ export default function ClientSelector({ open, onOpenChange, onSelect, onCreateN
 
         <div className="flex-1 overflow-hidden flex flex-col gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              autoFocus
-              placeholder="Search by name, phone, or email..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10 h-9"
-            />
+           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+           <Input
+             autoFocus
+             placeholder="Search by name, phone, or email..."
+             value={searchTerm}
+             onChange={e => setSearchTerm(e.target.value)}
+             className="pl-12 h-12 text-base font-medium"
+           />
           </div>
 
           {loading ? (
