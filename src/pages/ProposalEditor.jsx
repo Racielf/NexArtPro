@@ -13,7 +13,6 @@ import CommTimeline from '@/components/shared/CommTimeline';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
-import { DOC_TYPE_OPTIONS } from '@/lib/documentTypeConfig';
 
 const STATUS_BADGE = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -274,22 +273,17 @@ export default function ProposalEditor() {
             </div>
           )}
           <div ref={pdfElementRef}>
-            <div className="flex items-center gap-3 mb-3 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Type</span>
-                <select
-                  value="PROPOSAL"
-                  disabled
-                  className="h-7 text-xs font-semibold border border-slate-200 rounded px-2 bg-slate-50 text-slate-700 cursor-not-allowed"
-                >
-                  <option value="PROPOSAL">Proposal</option>
-                </select>
-              </div>
+            <div className="flex items-center gap-3 mb-3">
               <button
                 onClick={() => setIsPreview(!isPreview)}
-                className="px-3 py-1 text-xs bg-slate-800 text-white rounded"
+                className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full border transition-colors ${
+                  isPreview
+                    ? 'bg-amber-50 border-amber-300 text-amber-700'
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                }`}
               >
-                {isPreview ? 'Edit Mode' : 'Client View'}
+                <span className={`w-1.5 h-1.5 rounded-full ${isPreview ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                {isPreview ? 'Preview Mode' : 'Editing'}
               </button>
             </div>
             <EstimateGroups

@@ -341,9 +341,14 @@ export default function EstimateEditor() {
             )}
             <button
               onClick={() => setIsPreview(!isPreview)}
-              className="px-3 py-1 text-xs bg-slate-800 text-white rounded"
+              className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full border transition-colors ${
+                isPreview
+                  ? 'bg-amber-50 border-amber-300 text-amber-700'
+                  : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+              }`}
             >
-              {isPreview ? 'Edit Mode' : 'Client View'}
+              <span className={`w-1.5 h-1.5 rounded-full ${isPreview ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+              {isPreview ? 'Preview Mode' : 'Editing'}
             </button>
           </div>
           <EstimateGroups

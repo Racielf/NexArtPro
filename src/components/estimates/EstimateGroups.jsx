@@ -397,11 +397,16 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             <button onClick={() => setEditingName(false)} className="p-1 rounded hover:bg-white/20"><X className="w-4 h-4" /></button>
           </div>
         ) : (
-          <button onClick={() => setEditingName(true)}
-            className="flex items-center gap-2 flex-1 text-left group">
-            <span className="font-bold text-base tracking-wide">{group.name}</span>
-            <Pencil className="w-4 h-4 opacity-0 group-hover:opacity-60 transition-opacity" />
-          </button>
+          <div className="flex items-center gap-2 flex-1">
+            <button onClick={() => !isPreview && setEditingName(true)}
+              className={`flex items-center gap-2 text-left group ${isPreview ? 'cursor-default' : ''}`}>
+              <span className="font-bold text-base tracking-wide">{group.name}</span>
+              {!isPreview && <Pencil className="w-4 h-4 opacity-0 group-hover:opacity-60 transition-opacity" />}
+            </button>
+            {isPreview && (
+              <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-white/15 text-white/60">Read-only</span>
+            )}
+          </div>
         )}
 
         <div className="flex items-center gap-4 ml-auto text-sm font-semibold">
