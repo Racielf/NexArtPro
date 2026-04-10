@@ -198,6 +198,7 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                 onChange={(e) =>
                   updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)
                 }
+                onFocus={(e) => e.target.select()}
                 disabled={!isEditable}
                 className="h-7 text-xs text-center"
               />
