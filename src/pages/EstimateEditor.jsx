@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Save, Trash2, FileText, Wrench, ChevronRight } from 'lucide-react';
+import { X, Eye, Save, Trash2, ChevronRight } from 'lucide-react';
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
@@ -30,11 +30,11 @@ export default function EstimateEditor() {
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
+
   const [showSendModal, setShowSendModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDocumentOptions, setShowDocumentOptions] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
-  const [showCustomerModal, setShowCustomerModal] = useState(false);
 
   useEffect(() => { loadEstimate(); }, []);
 
@@ -48,10 +48,6 @@ export default function EstimateEditor() {
         const cls = await base44.entities.Client.filter({ id: est.client_id });
         if (cls.length) setClient(cls[0]);
       }
-      // Auto-open customer modal for new estimates without a client
-      if (isNew && !est.client_name) {
-        setShowCustomerModal(true);
-      }
     }
     setLoading(false);
   };
@@ -62,16 +58,14 @@ export default function EstimateEditor() {
     setEstimate(updatedEstimate);
     setSaving(false);
 
-    // ── LOW_MARGIN_ALERT: fire event-driven backend alert (non-admin only) ──
     const marginPct = parseFloat(updatedEstimate?.gross_margin_pct ?? updatedEstimate?.gross_margin_percent ?? 100);
-    const isAdmin   = normalizeUserRole(currentUser?.role) === 'admin';
+    const isAdmin = normalizeUserRole(currentUser?.role) === 'admin';
     if (!isNaN(marginPct) && marginPct < 25 && !isAdmin && estimateId) {
-      // Fire-and-forget — never blocks the save flow
       base44.functions.invoke('lowMarginAlert', {
-        estimate_id:     estimateId,
+        estimate_id: estimateId,
         estimate_number: updatedEstimate.estimate_number,
-        client_name:     updatedEstimate.client_name,
-        margin_pct:      marginPct,
+        client_name: updatedEstimate.client_name,
+        margin_pct: marginPct,
       }).catch(err => console.warn('[lowMarginAlert] Notification failed (non-blocking):', err?.message));
     }
   };
@@ -80,10 +74,7 @@ export default function EstimateEditor() {
     setSaving(true);
     const updated = {
       ...estimate,
-      document_config: {
-        ...(estimate.document_config || {}),
-        template,
-      },
+      document_config: { ...(estimate.document_config || {}), template },
     };
     await base44.entities.Estimate.update(estimateId, { ...updated, updated_by: 'Admin' });
     setEstimate(updated);
@@ -94,17 +85,13 @@ export default function EstimateEditor() {
     setSaving(true);
     const updated = {
       ...estimate,
-      document_config: {
-        ...(estimate.document_config || {}),
-        options: newOptions,
-      },
+      document_config: { ...(estimate.document_config || {}), options: newOptions },
     };
     await base44.entities.Estimate.update(estimateId, { ...updated, updated_by: 'Admin' });
     setEstimate(updated);
     setSaving(false);
   };
 
-  // Called from sidebar customer panel
   const handleCustomerChange = async (customerData, clientRecord) => {
     setSaving(true);
     const updated = { ...estimate, ...customerData };
@@ -116,7 +103,6 @@ export default function EstimateEditor() {
   };
 
   const handleCancel = () => {
-    // If new and no client set yet, confirm before discarding
     const isEmpty = !estimate?.client_name && !estimate?.title;
     if (isNew && isEmpty) {
       setShowDiscardConfirm(true);
@@ -149,19 +135,18 @@ export default function EstimateEditor() {
 
   const hasClient = !!estimate.client_name;
 
-  // Status badge config
   const STATUS_BADGE = {
-    draft:              { label: 'Draft',       cls: 'bg-slate-100 text-slate-600' },
-    scheduled:          { label: 'Scheduled',   cls: 'bg-blue-100 text-blue-700' },
-    sent:               { label: 'Sent',        cls: 'bg-indigo-100 text-indigo-700' },
-    viewed:             { label: 'Viewed',      cls: 'bg-violet-100 text-violet-700' },
-    approved:           { label: 'Approved',    cls: 'bg-emerald-100 text-emerald-800' },
-    signed:             { label: 'Signed',      cls: 'bg-green-100 text-green-800' },
-    converted:          { label: 'Converted',   cls: 'bg-teal-700 text-white' },
-    declined:           { label: 'Declined',    cls: 'bg-red-100 text-red-700' },
-    changes_requested:  { label: 'Changes Req.', cls: 'bg-amber-100 text-amber-800' },
-    visit_completed:    { label: 'Visited',     cls: 'bg-cyan-100 text-cyan-700' },
-    on_my_way:          { label: 'On My Way',   cls: 'bg-sky-100 text-sky-700' },
+    draft:             { label: 'Draft',        cls: 'bg-slate-100 text-slate-600' },
+    scheduled:         { label: 'Scheduled',    cls: 'bg-blue-100 text-blue-700' },
+    sent:              { label: 'Sent',         cls: 'bg-indigo-100 text-indigo-700' },
+    viewed:            { label: 'Viewed',       cls: 'bg-violet-100 text-violet-700' },
+    approved:          { label: 'Approved',     cls: 'bg-emerald-100 text-emerald-800' },
+    signed:            { label: 'Signed',       cls: 'bg-green-100 text-green-800' },
+    converted:         { label: 'Converted',    cls: 'bg-teal-700 text-white' },
+    declined:          { label: 'Declined',     cls: 'bg-red-100 text-red-700' },
+    changes_requested: { label: 'Changes Req.', cls: 'bg-amber-100 text-amber-800' },
+    visit_completed:   { label: 'Visited',      cls: 'bg-cyan-100 text-cyan-700' },
+    on_my_way:         { label: 'On My Way',    cls: 'bg-sky-100 text-sky-700' },
   };
   const statusBadge = STATUS_BADGE[estimate.status] || STATUS_BADGE.draft;
   const totalFmt = estimate.total != null
@@ -171,18 +156,12 @@ export default function EstimateEditor() {
   return (
     <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 font-inter">
 
-      {/* ── TOP BAR ── */}
+      {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
-
-        {/* Row 1: Identity + Actions */}
         <div className="flex items-center px-4 h-11 gap-3 relative">
-
-          {/* LEFT: Estimate ID + Client name */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <span className="text-xs font-bold text-slate-400 tracking-widest uppercase flex-shrink-0">EST</span>
-            <span className="text-base font-bold text-slate-900 flex-shrink-0">
-              #{estimate.estimate_number}
-            </span>
+            <span className="text-base font-bold text-slate-900 flex-shrink-0">#{estimate.estimate_number}</span>
             {hasClient && (
               <>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
@@ -191,7 +170,6 @@ export default function EstimateEditor() {
             )}
           </div>
 
-          {/* CENTER: Template selector */}
           {hasClient && (
             <div className="flex items-center gap-2 flex-shrink-0">
               <EstimateTemplateSelector
@@ -202,7 +180,6 @@ export default function EstimateEditor() {
             </div>
           )}
 
-          {/* RIGHT: Convert actions + Preview + Save indicator */}
           <div className="flex items-center gap-2 flex-shrink-0 ml-2">
             {hasClient && (
               <>
@@ -222,7 +199,6 @@ export default function EstimateEditor() {
             )}
           </div>
 
-          {/* CLOSE button — far right, ghost style */}
           <button
             onClick={handleCancel}
             title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
@@ -232,7 +208,6 @@ export default function EstimateEditor() {
           </button>
         </div>
 
-        {/* Row 2: Sticky summary mini-bar */}
         <div className="flex items-center gap-0 px-4 h-8 bg-slate-50 border-t border-slate-100 text-xs">
           <div className="flex items-center gap-1.5 pr-4 border-r border-slate-200">
             <span className="text-slate-400 font-medium">Total</span>
@@ -253,15 +228,24 @@ export default function EstimateEditor() {
         </div>
       </div>
 
-      {/* ── MAIN 2-PANEL LAYOUT ── */}
+      {/* MAIN 2-PANEL LAYOUT */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* LEFT SIDEBAR — customer panel */}
+        {/* LEFT SIDEBAR */}
         <div className="w-56 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col min-h-0">
-          <EstimateSidebarCustomer
-            estimate={estimate}
-            onCustomerChange={handleCustomerChange}
-          />
+          {isNew && !hasClient ? (
+            <NewEstimateCustomerPanel
+              estimate={estimate}
+              onCustomerSet={async (customerData, clientRecord) => {
+                await handleCustomerChange(customerData, clientRecord);
+              }}
+            />
+          ) : (
+            <EstimateSidebarCustomer
+              estimate={estimate}
+              onCustomerChange={handleCustomerChange}
+            />
+          )}
           {hasClient && (
             <div className="px-4 pb-5 pt-3 border-t border-slate-100 flex-shrink-0">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Communications</p>
@@ -270,7 +254,7 @@ export default function EstimateEditor() {
           )}
         </div>
 
-        {/* ACTIONS PANEL — only when client is set */}
+        {/* ACTIONS PANEL */}
         {hasClient && (
           <EstimateActionsPanel
             estimate={estimate}
@@ -282,11 +266,11 @@ export default function EstimateEditor() {
           />
         )}
 
-        {/* RIGHT CANVAS — always shows line items (ready to fill) */}
+        {/* RIGHT CANVAS */}
         <div className="flex-1 overflow-auto px-4 py-3">
           {!hasClient && (
             <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-center gap-2 text-sm text-amber-700">
-              <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow (schedule, send, approve).
+              <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow.
             </div>
           )}
           <EstimateGroups
@@ -297,9 +281,7 @@ export default function EstimateEditor() {
         </div>
       </div>
 
-      {/* ── MODALS (in functional order) ── */}
-
-      {/* Preview: Quick document view (triggered from toolbar) */}
+      {/* MODALS */}
       <EstimatePreviewModal
         estimate={estimate}
         open={showPreviewModal}
@@ -307,7 +289,6 @@ export default function EstimateEditor() {
         onSend={() => setShowSendModal(true)}
       />
 
-      {/* Send & Review: Full screen workflow (from actions panel) */}
       {showSendModal && (
         <EstimateSendReview
           estimate={estimate}
@@ -317,7 +298,6 @@ export default function EstimateEditor() {
         />
       )}
 
-      {/* Document Options: Configure template rendering */}
       <EstimateDocumentOptions
         open={showDocumentOptions}
         onClose={() => setShowDocumentOptions(false)}
@@ -325,28 +305,6 @@ export default function EstimateEditor() {
         onSave={handleDocumentOptionsSave}
       />
 
-      {/* Customer picker modal for new estimates */}
-      {showCustomerModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200">
-              <h2 className="text-sm font-bold text-slate-800">Select Customer</h2>
-              <button onClick={() => setShowCustomerModal(false)} className="p-1 hover:bg-slate-100 rounded-md transition-colors">
-                <X className="w-4 h-4 text-slate-400" />
-              </button>
-            </div>
-            <NewEstimateCustomerPanel
-              estimate={estimate}
-              onCustomerSet={async (customerData, clientRecord) => {
-                await handleCustomerChange(customerData, clientRecord);
-                setShowCustomerModal(false);
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Discard new estimate confirmation */}
       {showDiscardConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
