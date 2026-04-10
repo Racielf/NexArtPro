@@ -267,17 +267,15 @@ export default function Proposals() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <Button variant="outline" size="sm" className="gap-1.5"
                           onClick={e => { e.stopPropagation(); navigate(`/proposal-editor?id=${p.id}`); }}>
                           <Pencil className="w-3.5 h-3.5" /> Open
                         </Button>
-                        {p.status === 'draft' && (
-                          <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={e => { e.stopPropagation(); setDeleteModal({ open: true, proposal: p }); }}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
+                        <Button variant="ghost" size="sm" disabled={p.status !== 'draft'} className="text-red-500 hover:text-red-700 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                          onClick={e => { e.stopPropagation(); if (p.status === 'draft') setDeleteModal({ open: true, proposal: p }); }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
