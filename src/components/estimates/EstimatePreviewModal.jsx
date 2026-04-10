@@ -6,8 +6,13 @@ import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
 import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import LossPreventionModal from './internal/LossPreventionModal';
+import { validateEstimatePricing } from '@/lib/pricingValidation';
 
 export default function EstimatePreviewModal({ estimate, open, onClose, onSend }) {
+  const [lossModalOpen, setLossModalOpen] = React.useState(false);
+  const [lossValidation, setLossValidation] = React.useState({ lossItems: [], zeroProfitItems: [] });
+
   if (!estimate || !open) return null;
 
   const handlePrint = () => {
@@ -20,6 +25,19 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
   };
 
   const handleSend = () => {
+    // Loss prevention gate before opening send flow
+    const pv = validateEstimatePricing(estimate);
+    if (!pv.canProceed || pv.requiresConfirmation) {
+      setLossValidation(pv);
+      setLossModalOpen(true);
+      return;
+    }
+    onClose();
+    if (onSend) onSend();
+  };
+
+  const handleLossConfirmed = () => {
+    setLossModalOpen(false);
     onClose();
     if (onSend) onSend();
   };
@@ -45,6 +63,15 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
             <DocumentCloseButton onClick={onClose} />
           </div>
         </div>
+
+        {/* Loss Prevention Modal */}
+        <LossPreventionModal
+          open={lossModalOpen}
+          onClose={() => setLossModalOpen(false)}
+          onProceed={handleLossConfirmed}
+          lossItems={lossValidation.lossItems}
+          zeroProfitItems={lossValidation.zeroProfitItems}
+        />
 
         {/* Document Preview */}
         <div className="flex-1 overflow-auto bg-slate-200 p-6 flex justify-center min-h-0">

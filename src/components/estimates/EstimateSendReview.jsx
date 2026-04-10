@@ -11,6 +11,8 @@ import { logSend } from '@/lib/estimateAuditLog';
 import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import LossPreventionModal from './internal/LossPreventionModal';
+import { validateEstimatePricing } from '@/lib/pricingValidation';
 
 async function logDocument(estimateId, estimate, action, extra = {}) {
   await base44.entities.DocumentLog.create({
@@ -103,6 +105,8 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
    const [sentSuccess, setSentSuccess] = useState(false);
    const [sentError, setSentError] = useState(null);
    const [confirmOpen, setConfirmOpen] = useState(false);
+   const [lossModalOpen, setLossModalOpen] = useState(false);
+   const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [] });
 
   if (!open) return null;
 
@@ -128,6 +132,13 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
 
   const handleConfirmSend = () => {
     if (!recipientEmail) { toast.error('Recipient email is required'); return; }
+    // Loss prevention gate — block losses, warn zero-profit
+    const pv = validateEstimatePricing(estimate);
+    if (!pv.canProceed || pv.requiresConfirmation) {
+      setLossValidation(pv);
+      setLossModalOpen(true);
+      return;
+    }
     setConfirmOpen(true);
   };
 
@@ -385,6 +396,15 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         </div>
 
       </div>
+
+      {/* LOSS PREVENTION MODAL */}
+      <LossPreventionModal
+        open={lossModalOpen}
+        onClose={() => setLossModalOpen(false)}
+        onProceed={() => { setLossModalOpen(false); setConfirmOpen(true); }}
+        lossItems={lossValidation.lossItems}
+        zeroProfitItems={lossValidation.zeroProfitItems}
+      />
 
       {/* CONFIRM & SEND MODAL */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

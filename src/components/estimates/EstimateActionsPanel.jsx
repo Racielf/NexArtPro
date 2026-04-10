@@ -12,6 +12,8 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import MarginGuardModal from '@/components/estimates/internal/MarginGuardModal';
+import LossPreventionModal from '@/components/estimates/internal/LossPreventionModal';
+import { validateEstimatePricing } from '@/lib/pricingValidation';
 import { normalizeUserRole } from '@/lib/utils';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -162,6 +164,8 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const [finishOpen,   setFinishOpen]   = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [marginGuardOpen, setMarginGuardOpen] = useState(false);
+  const [lossModalOpen, setLossModalOpen] = useState(false);
+  const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [] });
   const [currentUser,  setCurrentUser]  = useState(null);
   const [omwActive,    setOmwActive]    = useState(false);
   const [omwMiles,     setOmwMiles]     = useState(estimate?.miles_traveled || 0);
@@ -469,6 +473,14 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         </button>
         <button onClick={() => {
             if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
+            // Loss prevention check — runs before margin guard
+            const pv = validateEstimatePricing(estimate);
+            if (!pv.canProceed || pv.requiresConfirmation) {
+              setLossValidation(pv);
+              setLossModalOpen(true);
+              return;
+            }
+            // Margin guard check
             const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
             if (!isNaN(marginPct) && marginPct < MIN_SAFE_MARGIN) {
               setMarginGuardOpen(true);
@@ -636,7 +648,25 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         </div>
       )}
 
-      {/* ── MARGIN GUARD MODAL — internal only, never in PDF/preview/send ── */}
+      {/* ── LOSS PREVENTION MODAL ── */}
+      <LossPreventionModal
+        open={lossModalOpen}
+        onClose={() => setLossModalOpen(false)}
+        onProceed={() => {
+          setLossModalOpen(false);
+          // After zero-profit acknowledged, continue to margin guard or send
+          const marginPct = parseFloat(estimate?.gross_margin_pct ?? estimate?.gross_margin_percent ?? 100);
+          if (!isNaN(marginPct) && marginPct < MIN_SAFE_MARGIN) {
+            setMarginGuardOpen(true);
+          } else {
+            onOpenSendReview?.();
+          }
+        }}
+        lossItems={lossValidation.lossItems}
+        zeroProfitItems={lossValidation.zeroProfitItems}
+      />
+
+      {/* ── MARGIN GUARD MODAL ── */}
       <MarginGuardModal
         open={marginGuardOpen}
         onClose={() => setMarginGuardOpen(false)}
