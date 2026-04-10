@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import PageHeader from '@/components/shared/PageHeader';
-import ClientFormModal from '@/components/proposals/ClientFormModal';
+import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
 import { ScrollText, Plus, Search, Pencil, Trash2, CheckCircle, Send, Clock, AlertCircle, FileText, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -56,18 +56,18 @@ export default function Proposals() {
     setShowClientModal(true);
   };
 
-  const handleClientModalSave = async (clientData) => {
+  const handleClientSelected = async (client) => {
     setCreating(true);
     const num = await nextProposalNumber();
     const created = await base44.entities.Proposal.create({
       proposal_number: num,
       status: 'draft',
       creation_mode: 'new_proposal',
-      client_id: clientData.id || '',
-      client_name: clientData.full_name || '',
-      client_email: clientData.email || '',
-      client_phone: clientData.phone || '',
-      client_address: [clientData.address, clientData.city, clientData.state].filter(Boolean).join(', '),
+      client_id: client.id || '',
+      client_name: client.full_name || '',
+      client_email: client.email || '',
+      client_phone: client.phone || '',
+      client_address: [client.address, client.city, client.state].filter(Boolean).join(', '),
       document_language: 'en',
       items: [],
       subtotal: 0,
@@ -84,7 +84,6 @@ export default function Proposals() {
       legal_terms: '',
     });
     setCreating(false);
-    setShowClientModal(false);
     navigate(`/proposal-editor?id=${created.id}&new=1`);
   };
 
@@ -170,12 +169,11 @@ export default function Proposals() {
   return (
     <div className="flex flex-col h-full">
 
-      {/* Client Form Modal */}
-      <ClientFormModal
+      {/* Customer Selection Modal */}
+      <NewProposalCustomerModal
         open={showClientModal}
-        onOpenChange={(v) => { if (!v) setShowClientModal(false); }}
-        client={null}
-        onSaved={handleClientModalSave}
+        onOpenChange={setShowClientModal}
+        onCustomerSelected={handleClientSelected}
       />
 
       {/* Delete Modal */}
