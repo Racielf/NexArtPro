@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import {
@@ -51,6 +52,7 @@ function ConvertToInvoiceBtn({ proposal, onConverted }) {
       subtotal: proposal.subtotal,
       tax_rate: proposal.tax_rate,
       tax_amount: proposal.tax_amount,
+      discount_type: 'fixed',
       discount_value: proposal.discount_value || 0,
       discount_amount: proposal.discount_value || 0,
       total: proposal.total_amount,
@@ -81,6 +83,17 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
     setLoading(true);
     const list = await base44.entities.WorkOrder.list('-created_date', 20);
     const nextNum = list.length ? Math.max(...list.map(w => w.work_order_number || 0)) + 1 : 1001;
+    const scopeItems = (proposal.items || []).map(it => ({
+      id: it.id,
+      service_name: it.service_name,
+      description: it.description,
+      quantity: it.quantity,
+      unit: it.unit,
+    }));
+    const scopeDescription = scopeItems
+      .filter(it => it.service_name)
+      .map(it => `• ${it.service_name}${it.quantity ? ` (${it.quantity}${it.unit ? ' ' + it.unit : ''})` : ''}${it.description ? ': ' + it.description : ''}`)
+      .join('\n');
     const wo = await base44.entities.WorkOrder.create({
       work_order_number: nextNum,
       client_id: proposal.client_id,
@@ -89,6 +102,8 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
       client_address: proposal.client_address,
       client_phone: proposal.client_phone,
       title: proposal.title || 'Work Order from Proposal',
+      description: scopeDescription || proposal.notes || '',
+      line_items: scopeItems,
       notes: proposal.notes,
       status: 'draft',
     });
@@ -109,6 +124,7 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
 }
 
 export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenPreview, onOpenSend }) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const status = proposal?.status || 'draft';
   const badge = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
@@ -181,16 +197,18 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
           <>
             <SectionLabel label="Convert" />
             {proposal?.invoice_id ? (
-              <div className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 font-medium">
-                <FileText className="w-3 h-3 inline mr-1" />Invoice #{proposal.invoice_number || '—'}
-              </div>
+              <button onClick={() => navigate(`/invoice-detail?id=${proposal.invoice_id}`)}
+                className="w-full text-left text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-2 font-medium flex items-center gap-1.5 transition-colors">
+                <FileText className="w-3 h-3" />Invoice #{proposal.invoice_number || '—'} →
+              </button>
             ) : (
               <ConvertToInvoiceBtn proposal={proposal} onConverted={handleConverted} />
             )}
             {proposal?.work_order_id ? (
-              <div className="text-xs text-purple-700 bg-purple-50 rounded-lg px-3 py-2 font-medium">
-                <ClipboardList className="w-3 h-3 inline mr-1" />WO #{proposal.work_order_number || '—'}
-              </div>
+              <button onClick={() => navigate(`/work-orders/${proposal.work_order_id}`)}
+                className="w-full text-left text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg px-3 py-2 font-medium flex items-center gap-1.5 transition-colors">
+                <ClipboardList className="w-3 h-3" />WO #{proposal.work_order_number || '—'} →
+              </button>
             ) : (
               <ConvertToWorkOrderBtn proposal={proposal} onConverted={handleConverted} />
             )}
@@ -202,14 +220,16 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
           <>
             <SectionLabel label="Linked Records" />
             {proposal?.invoice_id && (
-              <div className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
-                <FileText className="w-3 h-3 inline mr-1" />Invoice #{proposal.invoice_number || '—'}
-              </div>
+              <button onClick={() => navigate(`/invoice-detail?id=${proposal.invoice_id}`)}
+                className="w-full text-left text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-2 font-medium flex items-center gap-1.5 transition-colors">
+                <FileText className="w-3 h-3" />Invoice #{proposal.invoice_number || '—'} →
+              </button>
             )}
             {proposal?.work_order_id && (
-              <div className="text-xs text-purple-700 bg-purple-50 rounded-lg px-3 py-2">
-                <ClipboardList className="w-3 h-3 inline mr-1" />WO #{proposal.work_order_number || '—'}
-              </div>
+              <button onClick={() => navigate(`/work-orders/${proposal.work_order_id}`)}
+                className="w-full text-left text-xs text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg px-3 py-2 font-medium flex items-center gap-1.5 transition-colors">
+                <ClipboardList className="w-3 h-3" />WO #{proposal.work_order_number || '—'} →
+              </button>
             )}
           </>
         )}

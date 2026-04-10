@@ -176,6 +176,8 @@ export default function ProposalEditor() {
           {isNew && !hasClient ? (
             <NewEstimateCustomerPanel
               estimate={proposal}
+              docType="Proposal"
+              docNumber={proposal?.proposal_number}
               onCustomerSet={async (customerData, clientRecord) => {
                 await handleCustomerChange(customerData, clientRecord);
               }}

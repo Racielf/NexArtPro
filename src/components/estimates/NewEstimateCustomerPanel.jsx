@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, User, Plus, Phone, Mail, MapPin, ChevronRight } from 'lucide-react';
 
-export default function NewEstimateCustomerPanel({ estimate, onCustomerSet }) {
+export default function NewEstimateCustomerPanel({ estimate, onCustomerSet, docType, docNumber }) {
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState('');
   const [mode, setMode] = useState('search'); // 'search' | 'new'
@@ -53,7 +53,7 @@ export default function NewEstimateCustomerPanel({ estimate, onCustomerSet }) {
   return (
     <div className="p-4 space-y-4">
       <div>
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">New Estimate #{estimate?.estimate_number}</p>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">New {docType || 'Estimate'} #{docNumber ?? estimate?.estimate_number}</p>
         <h2 className="text-base font-bold text-slate-800">Select Customer</h2>
         <p className="text-xs text-slate-400 mt-0.5">Choose an existing customer or create a new one</p>
       </div>

@@ -232,8 +232,18 @@ export default function Proposals() {
                           <span className="font-semibold text-foreground">
                             ${(p.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
-                          {p.invoice_number && <span className="text-xs text-emerald-700 font-semibold">INV #{p.invoice_number}</span>}
-                          {p.work_order_number && <span className="text-xs text-purple-700 font-semibold">WO #{p.work_order_number}</span>}
+                          {p.invoice_number && (
+                            <button onClick={e => { e.stopPropagation(); navigate(`/invoice-detail?id=${p.invoice_id}`); }}
+                              className="text-xs text-emerald-700 font-semibold hover:underline">
+                              INV #{p.invoice_number} →
+                            </button>
+                          )}
+                          {p.work_order_number && (
+                            <button onClick={e => { e.stopPropagation(); navigate(`/work-orders/${p.work_order_id}`); }}
+                              className="text-xs text-purple-700 font-semibold hover:underline">
+                              WO #{p.work_order_number} →
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
