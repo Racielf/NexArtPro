@@ -56,24 +56,32 @@ export default function Proposals() {
     setShowClientModal(true);
   };
 
-  const handleClientModalSave = async (customer) => {
+  const handleClientModalSave = async (clientData) => {
     setCreating(true);
     const num = await nextProposalNumber();
     const created = await base44.entities.Proposal.create({
       proposal_number: num,
       status: 'draft',
       creation_mode: 'new_proposal',
-      client_id: customer.id,
-      client_name: customer.display_name || `${customer.first_name} ${customer.last_name}`,
-      client_email: customer.email,
-      client_phone: customer.phone,
-      client_address: customer.service_address,
+      client_id: clientData.id || '',
+      client_name: clientData.full_name || '',
+      client_email: clientData.email || '',
+      client_phone: clientData.phone || '',
+      client_address: [clientData.address, clientData.city, clientData.state].filter(Boolean).join(', '),
+      document_language: 'en',
       items: [],
       subtotal: 0,
       tax_rate: 0,
       tax_amount: 0,
       discount_value: 0,
       total_amount: 0,
+      total_cost: 0,
+      gross_margin: 0,
+      gross_margin_pct: 0,
+      notes: '',
+      internal_notes: '',
+      payment_terms: '',
+      legal_terms: '',
     });
     setCreating(false);
     setShowClientModal(false);
@@ -163,13 +171,12 @@ export default function Proposals() {
     <div className="flex flex-col h-full">
 
       {/* Client Form Modal */}
-      {showClientModal && (
-        <ClientFormModal
-          onSave={handleClientModalSave}
-          onClose={() => setShowClientModal(false)}
-          mode="new"
-        />
-      )}
+      <ClientFormModal
+        open={showClientModal}
+        onOpenChange={(v) => { if (!v) setShowClientModal(false); }}
+        client={null}
+        onSaved={handleClientModalSave}
+      />
 
       {/* Delete Modal */}
       {deleteModal.open && (
