@@ -34,11 +34,34 @@ export default function ProposalEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [proposalDetails, setProposalDetails] = useState({
+    scopeOfWork: '',
+    inclusions: '',
+    exclusions: '',
+    timeline: ''
+  });
   const [showSend, setShowSend] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const pdfElementRef = useRef(null);
 
   useEffect(() => { load(); }, []);
+
+  // Load proposalDetails from proposal.notes (safe JSON parse)
+  useEffect(() => {
+    if (!proposal?.notes) { setProposalDetails({ scopeOfWork: '', inclusions: '', exclusions: '', timeline: '' }); return; }
+    try {
+      const parsed = typeof proposal.notes === 'string' ? JSON.parse(proposal.notes) : proposal.notes;
+      if (parsed?.proposalDetails) {
+        setProposalDetails(parsed.proposalDetails);
+      } else {
+        // Legacy: notes is plain text, not JSON
+        setProposalDetails({ scopeOfWork: '', inclusions: '', exclusions: '', timeline: '' });
+      }
+    } catch (e) {
+      // Parse error: notes is not JSON (legacy format)
+      setProposalDetails({ scopeOfWork: '', inclusions: '', exclusions: '', timeline: '' });
+    }
+  }, [proposal?.id]);
 
   const load = async () => {
     if (!proposalId) { setLoading(false); return; }
@@ -52,6 +75,14 @@ export default function ProposalEditor() {
     
     // EstimateGroups returns estimate format, extract Proposal fields
     const proposalChanges = extractProposalChanges(estimateData);
+    
+    // 🔒 Merge proposalDetails into notes as JSON (preserve any legacy text)
+    const existingNotes = proposal?.notes ? (typeof proposal.notes === 'string' ? proposal.notes : proposal.notes) : '';
+    const notesData = {
+      proposalDetails,
+      legacyNotes: existingNotes
+    };
+    proposalChanges.notes = JSON.stringify(notesData);
     
     // 🔒 Safety validation: ensure items[] contains ONLY Proposal fields
     if (proposalChanges.items) {
@@ -246,6 +277,53 @@ export default function ProposalEditor() {
               saving={saving}
               readOnlyDiscountType={true}
             />
+            
+            {/* PROPOSAL DETAILS SECTIONS */}
+            <div className="mt-8 space-y-6 max-w-2xl">
+              {/* Scope of Work */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <label className="block text-sm font-bold text-slate-900 mb-2">Scope of Work</label>
+                <textarea
+                  value={proposalDetails.scopeOfWork}
+                  onChange={e => setProposalDetails(p => ({ ...p, scopeOfWork: e.target.value }))}
+                  placeholder="Describe the work to be performed in detail..."
+                  className="w-full h-24 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                />
+              </div>
+
+              {/* Inclusions */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <label className="block text-sm font-bold text-slate-900 mb-2">What's Included</label>
+                <textarea
+                  value={proposalDetails.inclusions}
+                  onChange={e => setProposalDetails(p => ({ ...p, inclusions: e.target.value }))}
+                  placeholder="List items included in this proposal (one per line recommended)..."
+                  className="w-full h-24 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                />
+              </div>
+
+              {/* Exclusions */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <label className="block text-sm font-bold text-slate-900 mb-2">What's Excluded</label>
+                <textarea
+                  value={proposalDetails.exclusions}
+                  onChange={e => setProposalDetails(p => ({ ...p, exclusions: e.target.value }))}
+                  placeholder="List items NOT included in this proposal..."
+                  className="w-full h-24 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                />
+              </div>
+
+              {/* Timeline */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <label className="block text-sm font-bold text-slate-900 mb-4">Project Timeline</label>
+                <textarea
+                  value={proposalDetails.timeline}
+                  onChange={e => setProposalDetails(p => ({ ...p, timeline: e.target.value }))}
+                  placeholder="e.g. Start: Jan 15, 2026 | Duration: 5 days | Completion: Jan 20, 2026"
+                  className="w-full h-20 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -253,6 +331,7 @@ export default function ProposalEditor() {
       {/* MODALS */}
       <ProposalPreviewModal
         proposal={proposal}
+        proposalDetails={proposalDetails}
         open={showPreview}
         onClose={() => setShowPreview(false)}
         onSend={() => setShowSend(true)}

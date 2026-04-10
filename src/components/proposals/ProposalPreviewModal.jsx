@@ -3,7 +3,17 @@ import { X, Printer, Send } from 'lucide-react';
 
 const fmtCurrency = (n) => `$${(parseFloat(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
-export default function ProposalPreviewModal({ proposal, open, onClose, onSend }) {
+const parseProposalDetails = (proposal) => {
+  if (!proposal?.notes) return {};
+  try {
+    const parsed = typeof proposal.notes === 'string' ? JSON.parse(proposal.notes) : proposal.notes;
+    return parsed?.proposalDetails || {};
+  } catch (e) {
+    return {};
+  }
+};
+
+export default function ProposalPreviewModal({ proposal, proposalDetails = {}, open, onClose, onSend }) {
   const printRef = useRef(null);
 
   if (!open || !proposal) return null;
@@ -92,6 +102,16 @@ export default function ProposalPreviewModal({ proposal, open, onClose, onSend }
               <h2 className="text-lg font-bold text-slate-800 mb-5 pb-3 border-b border-slate-100">{proposal.title}</h2>
             )}
 
+            {/* Scope of Work */}
+            {(proposalDetails.scopeOfWork || parseProposalDetails(proposal).scopeOfWork) && (
+              <div className="mt-8 mb-6">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Scope of Work</h3>
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {proposalDetails.scopeOfWork || parseProposalDetails(proposal).scopeOfWork}
+                </p>
+              </div>
+            )}
+
             {/* Line items */}
             <table className="w-full mb-6" style={{ borderCollapse: 'collapse' }}>
               <thead>
@@ -119,6 +139,36 @@ export default function ProposalPreviewModal({ proposal, open, onClose, onSend }
               </tbody>
             </table>
 
+            {/* Inclusions */}
+            {(proposalDetails.inclusions || parseProposalDetails(proposal).inclusions) && (
+              <div className="mt-6 mb-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">What's Included</h3>
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {proposalDetails.inclusions || parseProposalDetails(proposal).inclusions}
+                </p>
+              </div>
+            )}
+
+            {/* Exclusions */}
+            {(proposalDetails.exclusions || parseProposalDetails(proposal).exclusions) && (
+              <div className="mt-4 mb-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">What's Excluded</h3>
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {proposalDetails.exclusions || parseProposalDetails(proposal).exclusions}
+                </p>
+              </div>
+            )}
+
+            {/* Timeline */}
+            {(proposalDetails.timeline || parseProposalDetails(proposal).timeline) && (
+              <div className="mt-6 mb-6 border-t border-slate-100 pt-6">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Project Timeline</h3>
+                <p className="text-sm text-slate-700 leading-relaxed">
+                  {proposalDetails.timeline || parseProposalDetails(proposal).timeline}
+                </p>
+              </div>
+            )}
+
             {/* Totals */}
             <div className="max-w-xs ml-auto space-y-2 mb-8">
               <div className="flex justify-between text-sm text-slate-600">
@@ -141,7 +191,7 @@ export default function ProposalPreviewModal({ proposal, open, onClose, onSend }
             </div>
 
             {/* Terms */}
-            {(proposal.payment_terms || proposal.legal_terms || proposal.notes) && (
+            {(proposal.payment_terms || proposal.legal_terms) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 border-t border-slate-100 pt-6">
                 {proposal.payment_terms && (
                   <div>
@@ -155,14 +205,27 @@ export default function ProposalPreviewModal({ proposal, open, onClose, onSend }
                     <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{proposal.legal_terms}</p>
                   </div>
                 )}
-                {proposal.notes && (
-                  <div className="col-span-2">
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Notes</h3>
-                    <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{proposal.notes}</p>
-                  </div>
-                )}
               </div>
             )}
+
+            {/* Client Acceptance Block */}
+            <div className="mt-12 pt-8 border-t-2 border-slate-800">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-900 mb-6">Client Acceptance</h3>
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Authorized Signature</p>
+                  <div className="h-12 border-b-2 border-slate-800 mb-1"></div>
+                  <p className="text-[10px] text-slate-500 italic">Client or Authorized Representative</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Date</p>
+                  <div className="h-12 border-b-2 border-slate-800 mb-1"></div>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600 mt-6 leading-relaxed">
+                By signing above, you authorize and accept the terms, scope, and pricing outlined in this proposal.
+              </p>
+            </div>
           </div>
         </div>
       </div>
