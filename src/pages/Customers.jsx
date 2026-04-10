@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
-  Search, User, Phone, Mail, MapPin, Pencil, Trash2,
+  Search, User, Phone, Mail, MapPin, Pencil,
   Calendar, FileText, Plus, Building2, Home, HardHat, ChevronRight
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
