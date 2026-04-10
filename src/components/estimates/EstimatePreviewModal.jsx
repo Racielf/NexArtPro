@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Printer, Send } from 'lucide-react';
 import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
 import EstimateTemplateRenderer from './EstimateTemplateRenderer';
+import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import LossPreventionModal from './internal/LossPreventionModal';
@@ -77,19 +78,33 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
         {/* Document Preview */}
         <div className="flex-1 overflow-auto bg-slate-200 p-6 flex justify-center min-h-0">
           <div className="w-full max-w-4xl">
-            <EstimateTemplateRenderer
-              estimate={estimate}
-              template={estimate?.document_config?.template || 'pro'}
-              options={{
-                ...DEFAULT_OPTIONS,
-                showPrices: true,
-                showBreakdown: true,
-                showTerms: true,
-                showSignatures: true,
-                hideInternalNotes: true,
-              }}
-              documentType="estimate"
-            />
+            {(estimate?.document_type === 'BID' || estimate?.document_type === 'PROPOSAL') ? (
+              <DocumentTypeRenderer
+                estimate={estimate}
+                options={{
+                  ...DEFAULT_OPTIONS,
+                  showPrices: true,
+                  showBreakdown: true,
+                  showTerms: true,
+                  showSignatures: true,
+                  hideInternalNotes: true,
+                }}
+              />
+            ) : (
+              <EstimateTemplateRenderer
+                estimate={estimate}
+                template={estimate?.document_config?.template || 'pro'}
+                options={{
+                  ...DEFAULT_OPTIONS,
+                  showPrices: true,
+                  showBreakdown: true,
+                  showTerms: true,
+                  showSignatures: true,
+                  hideInternalNotes: true,
+                }}
+                documentType="estimate"
+              />
+            )}
           </div>
         </div>
       </DialogContent>

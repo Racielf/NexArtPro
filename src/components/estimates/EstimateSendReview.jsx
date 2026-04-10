@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link, Mail, Minimize2, Columns2, Briefcase, Zap, Crown, List } from 'lucide-react';
+import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
@@ -388,19 +389,33 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         {/* RIGHT — LIVE PREVIEW */}
         <div className="flex-1 overflow-y-auto p-8 flex justify-center min-h-0">
           <div className="w-full max-w-3xl shadow-xl rounded-sm bg-white">
-            <EstimateTemplateRenderer
-              estimate={estimate}
-              template={currentTemplate}
-              options={{
-                ...DEFAULT_OPTIONS,
-                showPrices: visibility.materials !== false,
-                showBreakdown: visibility.services !== false,
-                showTerms: true,
-                showSignatures: true,
-                hideInternalNotes: true,
-              }}
-              documentType="estimate"
-            />
+            {(estimate?.document_type === 'BID' || estimate?.document_type === 'PROPOSAL') ? (
+              <DocumentTypeRenderer
+                estimate={estimate}
+                options={{
+                  ...DEFAULT_OPTIONS,
+                  showPrices: visibility.materials !== false,
+                  showBreakdown: visibility.services !== false,
+                  showTerms: true,
+                  showSignatures: true,
+                  hideInternalNotes: true,
+                }}
+              />
+            ) : (
+              <EstimateTemplateRenderer
+                estimate={estimate}
+                template={currentTemplate}
+                options={{
+                  ...DEFAULT_OPTIONS,
+                  showPrices: visibility.materials !== false,
+                  showBreakdown: visibility.services !== false,
+                  showTerms: true,
+                  showSignatures: true,
+                  hideInternalNotes: true,
+                }}
+                documentType="estimate"
+              />
+            )}
           </div>
         </div>
 
