@@ -1,5 +1,4 @@
-
-     import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
@@ -158,20 +157,19 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
                 value={item.service_name || ''}
                 onChange={(value) => updateItem(item.id, 'service_name', value)}
                 onSelect={(selected) => {
-                  patchItem(item.id, {
-                    service_name: selected.name || '',
-                    unit: selected.unit || item.unit || 'ea',
-                    unit_price:
-                      selected.unit_price !== undefined
-                        ? selected.unit_price
-                        : item.unit_price || 0,
-                    description: selected.description || item.description || '',
-                  });
+                                   patchItem(item.id, {
+                                     ...(selected.unit && !item.unit ? { unit: selected.unit } : {}),
+                                     unit_price:
+                                       selected.unit_price !== undefined
+                                         ? selected.unit_price
+                                         : item.unit_price || 0,
+                                     description: selected.description || item.description || '',
+                                   });
 
-                  setTimeout(() => {
-                    qtyRefs.current[item.id]?.focus();
-                  }, 0);
-                }}
+                                   setTimeout(() => {
+                                     qtyRefs.current[item.id]?.focus();
+                                   }, 0);
+                                 }}
                 placeholder="Service name"
                 className={`h-7 text-xs border border-slate-200 rounded px-2 ${
                   !isEditable ? 'opacity-60 cursor-not-allowed' : ''
@@ -365,4 +363,4 @@ export default function ProposalLineItems({ proposal, onSave, locked }) {
       </div>
     </div>
   );
-} 
+}
