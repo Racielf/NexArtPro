@@ -20,6 +20,7 @@ export default function WorkOrders() {
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({});
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   useEffect(() => { loadData(); }, []);
 
@@ -51,14 +52,49 @@ export default function WorkOrders() {
     String(w.work_order_number).includes(search)
   );
 
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(w => w.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    const idsArray = Array.from(selectedIds);
+    await Promise.all(idsArray.map(id => handleDelete(id)));
+    setSelectedIds(new Set());
+    toast.success(`${idsArray.length} work order(s) deleted`);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader title="Work Orders" subtitle={`${workOrders.length} total`} />
 
       <div className="p-6 space-y-4 flex-1">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search work orders..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+        <div className="flex items-center gap-3">
+          {filtered.length > 0 && (
+            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === filtered.length && filtered.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-medium text-slate-600">Select all</span>
+            </label>
+          )}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search work orders..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          </div>
         </div>
 
         {loading ? (
@@ -71,10 +107,28 @@ export default function WorkOrders() {
           </div>
         ) : (
           <div className="space-y-3">
+            {selectedIds.size > 0 && (
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
+                <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5" onClick={() => {
+                  if (confirm(`Delete ${selectedIds.size} work order(s)?`)) handleDeleteSelected();
+                }}>
+                  <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+                </Button>
+              </div>
+            )}
             {filtered.map(wo => (
               <Card key={wo.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/work-orders/${wo.id}`)}>
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(wo.id)}
+                        onChange={() => toggleSelect(wo.id)}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </label>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-purple-600">WO#{wo.work_order_number}</span>
@@ -101,9 +155,6 @@ export default function WorkOrders() {
                     <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openEdit(wo)}>
                         <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => handleDelete(wo.id)}>
-                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>

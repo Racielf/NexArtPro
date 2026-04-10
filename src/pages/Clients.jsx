@@ -25,6 +25,7 @@ export default function Clients() {
   const [form, setForm] = useState(emptyClient);
   const [expandedComm, setExpandedComm] = useState(null);
   const [expandedDocs, setExpandedDocs] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   useEffect(() => { loadClients(); }, []);
 
@@ -64,14 +65,49 @@ export default function Clients() {
     c.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(c => c.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    const idsArray = Array.from(selectedIds);
+    await Promise.all(idsArray.map(id => handleDelete(id)));
+    setSelectedIds(new Set());
+    toast.success(`${idsArray.length} client(s) deleted`);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader title="Clients" subtitle={`${clients.length} total clients`} actionLabel="New Client" onAction={openCreate} />
 
       <div className="p-6 space-y-4 flex-1">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by name, phone or email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+        <div className="flex items-center gap-3">
+          {filtered.length > 0 && (
+            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === filtered.length && filtered.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-medium text-slate-600">Select all</span>
+            </label>
+          )}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search by name, phone or email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          </div>
         </div>
 
         {loading ? (
@@ -84,10 +120,28 @@ export default function Clients() {
           </div>
         ) : (
           <div className="grid gap-3">
+            {selectedIds.size > 0 && (
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
+                <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5" onClick={() => {
+                  if (confirm(`Delete ${selectedIds.size} client(s)?`)) handleDeleteSelected();
+                }}>
+                  <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+                </Button>
+              </div>
+            )}
             {filtered.map(client => (
               <Card key={client.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
+                    <label className="flex-shrink-0 mt-1" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(client.id)}
+                        onChange={() => toggleSelect(client.id)}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </label>
                     <div className="flex items-start gap-4 flex-1">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <User className="w-5 h-5 text-primary" />
@@ -135,9 +189,6 @@ export default function Clients() {
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openEdit(client)} title="Edit client">
                         <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => handleDelete(client.id)} title="Delete">
-                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>

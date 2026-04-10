@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
-import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight } from 'lucide-react';
+import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2 } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 export default function Invoices() {
@@ -15,6 +15,7 @@ export default function Invoices() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   useEffect(() => { loadData(); }, []);
 
@@ -100,6 +101,29 @@ export default function Invoices() {
     String(i.invoice_number).includes(search)
   );
 
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(i => i.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    const idsArray = Array.from(selectedIds);
+    await Promise.all(idsArray.map(id => base44.entities.Invoice.delete(id)));
+    setSelectedIds(new Set());
+    setInvoices(invoices.filter(i => !selectedIds.has(i.id)));
+    toast.success(`${idsArray.length} invoice(s) deleted`);
+  };
+
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
   const totalPending = invoices.filter(i => i.status === 'sent').reduce((s, i) => s + (i.total || 0), 0);
 
@@ -134,9 +158,22 @@ export default function Invoices() {
           </Card>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search invoices..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+        <div className="flex items-center gap-3">
+          {filtered.length > 0 && (
+            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === filtered.length && filtered.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-medium text-slate-600">Select all</span>
+            </label>
+          )}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search invoices..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          </div>
         </div>
 
         {loading ? (
@@ -148,10 +185,28 @@ export default function Invoices() {
           </div>
         ) : (
           <div className="space-y-3">
+            {selectedIds.size > 0 && (
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
+                <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5" onClick={() => {
+                  if (confirm(`Delete ${selectedIds.size} invoice(s)?`)) handleDeleteSelected();
+                }}>
+                  <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+                </Button>
+              </div>
+            )}
             {filtered.map(inv => (
               <Card key={inv.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(inv.id)}
+                        onChange={() => toggleSelect(inv.id)}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </label>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                          <span className="font-bold text-primary">INV#{inv.invoice_number}</span>
