@@ -457,7 +457,8 @@ function NotesSection({ label, placeholder, value, onChange, accent }) {
 }
 
 // ─── Main EstimateGroups Component ────────────────────────────────────────────
-export default function EstimateGroups({ estimate, onSave, saving }) {
+// readOnlyDiscountType: if true, disables discount type selector (Proposal mode)
+export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false }) {
   const [groups, setGroups] = useState(() => {
     if (estimate?.groups?.length) return estimate.groups;
     if (estimate?.line_items?.length) {
@@ -781,11 +782,17 @@ export default function EstimateGroups({ estimate, onSave, saving }) {
             <div className="flex items-center justify-between gap-3 py-2">
               <span className="text-slate-600">Discount</span>
               <div className="flex items-center gap-1.5">
-                <select value={discountType} onChange={e => setDiscountType(e.target.value)}
-                  className="h-8 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600">
-                  <option value="percent">%</option>
-                  <option value="fixed">$</option>
-                </select>
+                {readOnlyDiscountType ? (
+                  <div className="h-8 px-2 flex items-center text-xs text-slate-500 font-medium bg-slate-50 rounded border border-slate-200">
+                    {discountType === 'percent' ? '%' : '$'}
+                  </div>
+                ) : (
+                  <select value={discountType} onChange={e => setDiscountType(e.target.value)}
+                    className="h-8 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600">
+                    <option value="percent">%</option>
+                    <option value="fixed">$</option>
+                  </select>
+                )}
                 <Input type="number" value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
                   className="h-8 w-20 text-right text-sm border-slate-200" min={0} />
               </div>

@@ -244,6 +244,7 @@ export default function ProposalEditor() {
               estimate={createEstimateProxy(proposal)}
               onSave={handleSave}
               saving={saving}
+              readOnlyDiscountType={true}
             />
           </div>
         </div>
