@@ -99,7 +99,7 @@ export default function Dashboard() {
       .reduce((s, i) => s + (i.total || 0), 0);
     const outstanding = invoices
       .filter(i => ['sent', 'overdue'].includes(i.status))
-      .reduce((s, i) => s + (i.total || 0), 0);
+      .reduce((s, i) => s + Math.max((i.total || 0) - (i.amount_paid || 0), 0), 0);
 
     setTodayAppointments(todayAppts);
     setActiveWorkOrders(active.slice(0, 6));

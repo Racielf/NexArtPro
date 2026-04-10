@@ -43,7 +43,7 @@ export default function Reports() {
   const { invoices, workOrders, workers, expenses } = data;
 
   const revenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
-  const unpaidTotal = invoices.filter(i => ['sent', 'overdue'].includes(i.status)).reduce((s, i) => s + (i.total || 0), 0);
+  const unpaidTotal = invoices.filter(i => ['sent', 'overdue'].includes(i.status)).reduce((s, i) => s + Math.max((i.total || 0) - (i.amount_paid || 0), 0), 0);
   const unpaidCount = invoices.filter(i => ['sent', 'overdue'].includes(i.status)).length;
   const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
   const profit = revenue - totalExpenses;
@@ -138,7 +138,7 @@ export default function Reports() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
           <p className="text-sm font-bold text-slate-800 mb-4">Work Order Status Breakdown</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {['draft', 'assigned', 'in_progress', 'completed'].map(status => {
+           {['draft', 'assigned', 'scheduled', 'on_the_way', 'in_progress', 'completed', 'invoiced'].map(status => {
               const count = workOrders.filter(w => w.status === status).length;
               return (
                 <div key={status} className="bg-slate-50 rounded-lg border border-slate-100 p-4 text-center">
