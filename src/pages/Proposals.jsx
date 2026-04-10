@@ -32,6 +32,7 @@ export default function Proposals() {
   const [showFromEstimate, setShowFromEstimate] = useState(false);
   const [estimateSearch, setEstimateSearch] = useState('');
   const [showClientModal, setShowClientModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   useEffect(() => { load(); }, []);
 
@@ -117,8 +118,33 @@ export default function Proposals() {
     if (!p) return;
     await base44.entities.Proposal.delete(p.id);
     setProposals(proposals.filter(x => x.id !== p.id));
+    setSelectedIds(prev => { const s = new Set(prev); s.delete(p.id); return s; });
     setDeleteModal({ open: false, proposal: null });
     toast.success(`Proposal #${p.proposal_number} deleted`);
+  };
+
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(p => p.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    const idsArray = Array.from(selectedIds);
+    await Promise.all(idsArray.map(id => base44.entities.Proposal.delete(id)));
+    setProposals(proposals.filter(p => !selectedIds.has(p.id)));
+    setSelectedIds(new Set());
+    setDeleteModal({ open: false, proposal: null });
+    toast.success(`${idsArray.length} proposal(s) deleted`);
   };
 
   const filtered = proposals.filter(p =>
@@ -149,11 +175,18 @@ export default function Proposals() {
       {deleteModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-            <h2 className="text-base font-bold mb-2">Delete Proposal?</h2>
-            <p className="text-sm text-slate-500 mb-4">Proposal #{deleteModal.proposal?.proposal_number} will be permanently deleted.</p>
+            <h2 className="text-base font-bold mb-2">Delete {deleteModal.proposal ? 'Proposal' : 'Proposals'}?</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              {deleteModal.proposal 
+                ? `Proposal #${deleteModal.proposal.proposal_number} will be permanently deleted.`
+                : `${selectedIds.size} proposal(s) will be permanently deleted.`}
+            </p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, proposal: null })}>Cancel</Button>
-              <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={handleDelete}>Delete</Button>
+              <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" 
+                onClick={deleteModal.proposal ? handleDelete : handleDeleteSelected}>
+                Delete
+              </Button>
             </div>
           </div>
         </div>
@@ -201,6 +234,17 @@ export default function Proposals() {
       <div className="p-6 space-y-4 flex-1">
         {/* Toolbar */}
         <div className="flex items-center gap-3">
+          {filtered.length > 0 && (
+            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === filtered.length && filtered.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-medium text-slate-600">Select all</span>
+            </label>
+          )}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search proposals…" value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
@@ -209,6 +253,17 @@ export default function Proposals() {
             <ChevronDown className="w-3.5 h-3.5" /> From Estimate
           </Button>
         </div>
+
+        {/* Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+            <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
+            <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5"
+              onClick={() => setDeleteModal({ open: true, proposal: null })}>
+              <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+            </Button>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-16 text-muted-foreground">Loading…</div>
@@ -231,10 +286,18 @@ export default function Proposals() {
               const cfg = STATUS_CONFIG[p.status] || STATUS_CONFIG.draft;
               const Icon = cfg.icon;
               return (
-                <Card key={p.id} className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => navigate(`/proposal-editor?id=${p.id}`)}>
+                <Card key={p.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-3">
+                      <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(p.id)}
+                          onChange={() => toggleSelect(p.id)}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                      </label>
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/proposal-editor?id=${p.id}`)}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-primary">#{p.proposal_number}</span>
@@ -266,6 +329,7 @@ export default function Proposals() {
                             </button>
                           )}
                         </div>
+                      </div>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Button variant="outline" size="sm" className="gap-1.5"
