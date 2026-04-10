@@ -235,50 +235,33 @@ export default function InvoiceDetail() {
             )}
           </div>
 
-          {/* Total */}
-          <div className="px-4 py-4 bg-slate-50 border-b border-slate-100">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Total Due</p>
-            <div className="flex items-baseline gap-1">
-              <DollarSign className="w-3.5 h-3.5 text-primary" />
-              <span className="text-2xl font-bold text-primary">{(invoice.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            </div>
-            {invoice.status === 'paid' && (
-              <p className="text-xs text-green-600 font-bold mt-1">✓ PAID</p>
-            )}
+          {/* Payment Status */}
+          <div className="px-4 py-4 bg-slate-50 border-b border-slate-100 space-y-3">
+           <div>
+             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Total</p>
+             <p className="text-2xl font-bold text-slate-900">${(invoice.total || 0).toFixed(2)}</p>
+           </div>
+           {invoice.amount_paid > 0 && (
+             <div>
+               <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Amount Paid</p>
+               <p className="text-lg font-semibold text-green-600">${(invoice.amount_paid || 0).toFixed(2)}</p>
+             </div>
+           )}
+           {invoice.amount_paid > 0 && invoice.amount_paid < invoice.total && (
+             <div>
+               <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Balance Due</p>
+               <p className="text-lg font-semibold text-amber-600">${(invoice.total - invoice.amount_paid).toFixed(2)}</p>
+               <span className="inline-block mt-2 px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">Partial</span>
+             </div>
+           )}
+           {invoice.status === 'paid' && (
+             <p className="text-xs text-green-600 font-bold">✓ PAID IN FULL</p>
+           )}
           </div>
+          </div>
+          </div>
+          </div>
+          </>
 
-          {/* Notes */}
-          <div className="px-4 py-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Notes</p>
-            <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Payment notes..." rows={3}
-              className="text-sm resize-none border-slate-200" />
-            <button onClick={handleSaveNotes} disabled={saving}
-              className="mt-2 text-xs text-primary font-semibold hover:underline disabled:opacity-50">
-              {saving ? 'Saving...' : 'Save notes'}
-            </button>
-          </div>
-        </div>
-
-        {/* RIGHT PANEL — Invoice document */}
-        <div className="flex-1 overflow-auto p-8 flex justify-center bg-slate-200">
-          <div className="w-full max-w-3xl shadow-xl rounded-sm bg-white">
-            <EstimateTemplateRenderer
-              estimate={invoice}
-              template={invoice.document_config?.template || 'pro'}
-              options={{
-                ...DEFAULT_OPTIONS,
-                showPrices: true,
-                showBreakdown: true,
-                showTerms: true,
-                showSignatures: false,
-                hideInternalNotes: true,
-              }}
-              documentType="invoice"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-    </>
   );
 }

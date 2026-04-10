@@ -154,39 +154,30 @@ export default function Invoices() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-primary">INV#{inv.invoice_number}</span>
-                        <h3 className="font-semibold text-foreground">{inv.client_name}</h3>
-                        <StatusBadge status={inv.status} />
+                         <span className="font-bold text-primary">INV#{inv.invoice_number}</span>
+                         <h3 className="font-semibold text-foreground">{inv.client_name}</h3>
+                         {inv.amount_paid > 0 && inv.amount_paid < inv.total ? (
+                           <span className="inline-block px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">Partial</span>
+                         ) : (
+                           <StatusBadge status={inv.status} />
+                         )}
+                       </div>
+                       <div className="flex items-center gap-4 mt-2 flex-wrap text-sm">
+                         {inv.client_address && (
+                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                             <MapPin className="w-3 h-3" />{inv.client_address}
+                           </span>
+                         )}
+                         <span className="font-semibold text-foreground">${(inv.total || 0).toFixed(2)}</span>
+                         {inv.amount_paid > 0 && (
+                           <span className="text-xs text-green-600 font-medium">Paid: ${(inv.amount_paid || 0).toFixed(2)}</span>
+                         )}
+                         {inv.amount_paid > 0 && inv.amount_paid < inv.total && (
+                           <span className="text-xs text-amber-600 font-medium">Due: ${(inv.total - inv.amount_paid).toFixed(2)}</span>
+                         )}
+                         {inv.due_date && <span className="text-xs text-muted-foreground">Due: {inv.due_date}</span>}
+                       </div>
                       </div>
-                      <div className="flex items-center gap-4 mt-1 flex-wrap">
-                        {inv.client_address && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <MapPin className="w-3 h-3" />{inv.client_address}
-                          </span>
-                        )}
-                        <span className="text-sm font-semibold text-foreground">
-                          ${(inv.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
-                        {inv.due_date && <span className="text-xs text-muted-foreground">Due: {inv.due_date}</span>}
-                        {inv.paid_at && <span className="text-xs text-green-600">Paid {new Date(inv.paid_at).toLocaleDateString()}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 flex-wrap justify-end" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => handlePrint(inv)} title="Print">
-                        <Printer className="w-4 h-4" />
-                      </Button>
-                      {inv.status === 'draft' && (
-                        <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50" onClick={() => handleSend(inv)}>
-                          <Send className="w-3 h-3 mr-1" />Send
-                        </Button>
-                      )}
-                      {inv.status === 'sent' && (
-                        <Button size="sm" variant="outline" className="border-green-300 text-green-600 hover:bg-green-50" onClick={() => handleMarkPaid(inv)}>
-                          <CheckCircle className="w-3 h-3 mr-1" />Mark Paid
-                        </Button>
-                      )}
-                      <ChevronRight className="w-4 h-4 text-slate-300" />
-                    </div>
                   </div>
                 </CardContent>
               </Card>
