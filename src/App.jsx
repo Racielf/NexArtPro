@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-d
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import { isAdmin } from '@/lib/roleUtils';
+
 import AppLayout from './components/layout/AppLayout';
 import PublicHome from './pages/PublicHome';
 import Services from './pages/Services';
