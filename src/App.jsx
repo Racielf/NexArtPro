@@ -117,7 +117,7 @@ const AuthenticatedApp = () => {
         <Route path="/profitability" element={<ProfitabilityDashboard />} />
         <Route path="/proposals" element={<Proposals />} />
         <Route path="/proposal-editor" element={<ProposalEditor />} />
-        <Route path="/settings" element={isAdmin() ? <Settings /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/settings" element={<Settings />} />
 
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />
