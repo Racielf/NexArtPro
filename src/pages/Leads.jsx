@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/shared/PageHeader';
-import { Search, Phone, Mail, MapPin, Calendar, ChevronRight } from 'lucide-react';
+import { Search, Phone, Mail, MapPin, Calendar, ChevronRight, Trash2 } from 'lucide-react';
 
 const statusConfig = {
   new: { label: 'New', bg: 'bg-blue-100', text: 'text-blue-700' },
@@ -17,6 +17,7 @@ export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   useEffect(() => {
     loadLeads();
@@ -46,6 +47,28 @@ export default function Leads() {
     new: leads.filter(l => l.status === 'new').length,
     contacted: leads.filter(l => l.status === 'contacted').length,
     converted: leads.filter(l => l.status === 'converted').length,
+  };
+
+  const toggleSelect = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(l => l.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    const idsArray = Array.from(selectedIds);
+    await Promise.all(idsArray.map(id => base44.entities.Lead.delete(id)));
+    setSelectedIds(new Set());
+    setLeads(leads.filter(l => !selectedIds.has(l.id)));
   };
 
   return (
@@ -81,6 +104,19 @@ export default function Leads() {
           />
         </div>
 
+        {/* Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+            <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
+            <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5"
+              onClick={() => {
+                if (confirm(`Delete ${selectedIds.size} lead(s)?`)) handleDeleteSelected();
+              }}>
+              <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+            </Button>
+          </div>
+        )}
+
         {/* Table */}
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">Loading leads...</div>
@@ -101,6 +137,14 @@ export default function Leads() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === filtered.length && filtered.length > 0}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left font-semibold text-slate-700">Name</th>
                     <th className="px-6 py-3 text-left font-semibold text-slate-700">Contact</th>
                     <th className="px-6 py-3 text-left font-semibold text-slate-700">Service</th>
@@ -118,6 +162,15 @@ export default function Leads() {
 
                     return (
                       <tr key={lead.id || i} className="border-b border-slate-100 hover:bg-slate-50 transition">
+                        <td className="px-3 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(lead.id)}
+                            onChange={() => toggleSelect(lead.id)}
+                            className="w-4 h-4 cursor-pointer"
+                            onClick={e => e.stopPropagation()}
+                          />
+                        </td>
                         <td className="px-6 py-4 font-medium text-slate-900">{lead.name}</td>
                         <td className="px-6 py-4">
                           <div className="space-y-1 text-xs">
