@@ -180,6 +180,7 @@ export default function PublicProposalView() {
               <div className="flex justify-between text-2xl font-black text-white pt-3 border-t-2 border-primary bg-primary rounded-xl px-4 py-3 mt-3">
                 <span>Total Amount</span><span>{fmtCurrency(proposal.total_amount)}</span>
               </div>
+              <p className="text-xs text-slate-400 mt-3 italic">This proposal includes all labor, materials, and project management required to complete the work as described.</p>
             </div>
           </div>
         </div>
