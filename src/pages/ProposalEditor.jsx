@@ -5,8 +5,9 @@ import { toast } from 'sonner';
 import { X, Eye, Save, ChevronRight, Trash2 } from 'lucide-react';
 import ProposalSidebarCustomer from '@/components/proposals/ProposalSidebarCustomer';
 import ProposalActionsPanel from '@/components/proposals/ProposalActionsPanel';
-import ProposalLineItems from '@/components/proposals/ProposalLineItems';
+import EstimateGroups from '@/components/estimates/EstimateGroups';
 import ProposalPreviewModal from '@/components/proposals/ProposalPreviewModal';
+import { createEstimateProxy, extractProposalChanges } from '@/components/proposals/ProposalEstimateGroupsAdapter';
 import ProposalSendModal from '@/components/proposals/ProposalSendModal';
 import CommTimeline from '@/components/shared/CommTimeline';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
@@ -46,19 +47,12 @@ export default function ProposalEditor() {
     setLoading(false);
   };
 
-  const handleSave = async (updatedProposal) => {
+  const handleSave = async (estimateData) => {
     setSaving(true);
     
-    // Coerce string numbers to actual numbers in items
-    const sanitized = { ...updatedProposal };
-    if (sanitized.items && Array.isArray(sanitized.items)) {
-      sanitized.items = sanitized.items.map(item => ({
-        ...item,
-        quantity: item.quantity != null ? parseFloat(item.quantity) || 0 : 0,
-        unit_price: item.unit_price != null ? parseFloat(item.unit_price) || 0 : 0,
-        line_total: item.line_total != null ? parseFloat(item.line_total) || 0 : 0,
-      }));
-    }
+    // EstimateGroups returns estimate format, extract Proposal fields
+    const proposalChanges = extractProposalChanges(estimateData);
+    const sanitized = { ...proposal, ...proposalChanges };
     
     await base44.entities.Proposal.update(proposalId, sanitized);
     setProposal(sanitized);
@@ -229,11 +223,10 @@ export default function ProposalEditor() {
             </div>
           )}
           <div ref={pdfElementRef}>
-            <ProposalLineItems
-              proposal={proposal}
+            <EstimateGroups
+              estimate={createEstimateProxy(proposal)}
               onSave={handleSave}
               saving={saving}
-              locked={isLocked}
             />
           </div>
         </div>
