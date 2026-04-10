@@ -13,6 +13,7 @@ import CommTimeline from '@/components/shared/CommTimeline';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
+import { DOC_TYPE_OPTIONS } from '@/lib/documentTypeConfig';
 
 const STATUS_BADGE = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -273,7 +274,17 @@ export default function ProposalEditor() {
             </div>
           )}
           <div ref={pdfElementRef}>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-3 mb-3 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Type</span>
+                <select
+                  value="PROPOSAL"
+                  disabled
+                  className="h-7 text-xs font-semibold border border-slate-200 rounded px-2 bg-slate-50 text-slate-700 cursor-not-allowed"
+                >
+                  {DOC_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
               <button
                 onClick={() => setIsPreview(!isPreview)}
                 className="px-3 py-1 text-xs bg-slate-800 text-white rounded"

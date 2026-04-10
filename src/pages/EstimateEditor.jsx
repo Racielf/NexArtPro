@@ -16,7 +16,7 @@ import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrder
 import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
-import { getDocTypeConfig, DOC_TYPE_OPTIONS, validateDocTypeFields } from '@/lib/documentTypeConfig';
+import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 
@@ -317,23 +317,8 @@ export default function EstimateEditor() {
               <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow.
             </div>
           )}
-          {/* Document Type Switcher + Bid Fields */}
+          {/* Bid fields + view toggle */}
           <div className="flex items-center gap-3 mb-3 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Type</span>
-              <select
-                value={estimate.document_type || 'PROPOSAL'}
-                onChange={async (e) => {
-                  const newType = e.target.value;
-                  const updated = { ...estimate, document_type: newType };
-                  setEstimate(updated);
-                  await base44.entities.Estimate.update(estimateId, { document_type: newType });
-                }}
-                className="h-7 text-xs font-semibold border border-slate-200 rounded px-2 bg-white text-slate-700"
-              >
-                {DOC_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
             {estimate.document_type === 'BID' && (
               <div className="flex items-center gap-2">
                 <input
