@@ -84,7 +84,9 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
     setQuery(name);
     setOpen(false);
     setFocused(false);
-    onChange(name);
+    // NOTE: Do NOT call onChange(name) here — onSelect builds the full item.
+    // Calling onChange first would trigger a state update with stale pricing (zeros),
+    // which can race with onSelect and overwrite the correct prices.
     onSelect({
       name,
       description: result.svcEntry?.description || '',
@@ -103,7 +105,7 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
     const temp = buildTempService(trimmed);
     setOpen(false);
     setFocused(false);
-    onChange(trimmed);
+    // NOTE: Same as handleSelect — skip onChange to avoid stale-price race.
     onSelect({
       name: trimmed,
       description: '',

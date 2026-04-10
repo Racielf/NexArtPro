@@ -37,6 +37,9 @@ const emptyItem = () => ({
 
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box', 'gal'];
 
+// Shared grid template — single source of truth for header + row alignment
+const GRID_COLS = 'minmax(20px,20px) minmax(120px,2fr) minmax(50px,60px) minmax(60px,80px) minmax(90px,120px) minmax(60px,80px) minmax(60px,1fr) minmax(80px,110px) minmax(24px,28px)';
+
 // calcTotals is now delegated to estimateEngine.js (Decimal.js-backed pure functions)
 
 // ─── Single Line Item Row ──────────────────────────────────────────────────────
@@ -69,9 +72,9 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
 
   return (
     <div className={`border-b border-slate-100 last:border-0 transition-colors ${isFixed ? 'bg-emerald-50/60 ring-1 ring-inset ring-emerald-300' : expanded ? 'bg-blue-50/20' : 'hover:bg-slate-50/60'}`}>
-      {/* Main row — grid: grip | service(2fr) | qty(55px) | unit(80px) | price(110px) | book(80px) | [cost] | total(110px) | remove */}
+      {/* Main row — shared grid template */}
       <div className="grid items-center gap-2 px-4 py-2.5"
-        style={{ gridTemplateColumns: '20px 2fr 55px 80px 110px 80px 1fr 110px 28px' }}>
+        style={{ gridTemplateColumns: GRID_COLS }}>
 
         {/* Grip */}
         <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing flex justify-center">
@@ -85,16 +88,18 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
             onChange={v => update('service_name', v)}
             onSelect={picked => {
                 setExpanded(true);
-                const pickedPrice = picked.unit_price || 0;
+                const pickedPrice = parseFloat(picked.unit_price) || 0;
+                const pickedCost  = parseFloat(picked.unit_cost)  || 0;
+                const qty = parseFloat(item.quantity) || 1;
                 const updated = {
                   ...item,
                   service_name: picked.name,
-                  description:  item.description || picked.description || '',
+                  description:  picked.description || item.description || '',
                   unit:         picked.unit || item.unit,
                   unit_price:   pickedPrice,
-                  unit_cost:    picked.unit_cost ?? item.unit_cost,
+                  unit_cost:    pickedCost,
                   book_price:   pickedPrice,
-                  line_total:   (parseFloat(item.quantity) || 1) * pickedPrice,
+                  line_total:   calculateLineTotal(qty, pickedPrice),
                 };
                 onUpdate(updated);
               }}
@@ -119,6 +124,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         </select>
 
         {/* Price — primary editable field + variance badge + smart price suggestions */}
+        <div className="min-w-0 overflow-hidden">
         {(() => {
           const book         = parseFloat(item.book_price) || 0;
           const real         = parseFloat(item.unit_price) || 0;
@@ -269,12 +275,13 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                     </button>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })()}
+                )}
+                </div>
+                );
+                })()}
+                </div>
 
-        {/* Book Price — secondary reference, visually muted */}
+                {/* Book Price — secondary reference, visually muted */}
         {!isPreview && (() => {
           const book = parseFloat(item.book_price) || 0;
           if (book === 0) return <div className="text-right text-xs text-slate-200">—</div>;
@@ -404,7 +411,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
       {!group.collapsed && (
         <>
           <div className="grid text-[10px] text-slate-400 font-semibold uppercase tracking-wide px-4 py-2 bg-slate-50 border-b border-slate-100"
-            style={{ gridTemplateColumns: '20px 2fr 55px 80px 110px 80px 1fr 110px 28px' }}>
+            style={{ gridTemplateColumns: GRID_COLS }}>
             <div />
             <div>Service</div>
             <div className="text-center text-slate-500">Qty</div>
