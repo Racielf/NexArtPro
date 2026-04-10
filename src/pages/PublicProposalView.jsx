@@ -124,6 +124,14 @@ export default function PublicProposalView() {
           )}
         </div>
 
+        {/* Project Description */}
+        {proposal.notes && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-6 mb-6">
+            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Project Summary</h2>
+            <p className="text-base text-slate-700 leading-relaxed">{proposal.notes}</p>
+          </div>
+        )}
+
         {/* Services */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
@@ -169,8 +177,8 @@ export default function PublicProposalView() {
                   <span>Tax ({proposal.tax_rate}%)</span><span>{fmtCurrency(proposal.tax_amount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-lg font-bold text-slate-900 pt-2 border-t border-slate-300">
-                <span>Total</span><span className="text-primary">{fmtCurrency(proposal.total_amount)}</span>
+              <div className="flex justify-between text-2xl font-black text-white pt-3 border-t-2 border-primary bg-primary rounded-xl px-4 py-3 mt-3">
+                <span>Total Amount</span><span>{fmtCurrency(proposal.total_amount)}</span>
               </div>
             </div>
           </div>
@@ -194,16 +202,20 @@ export default function PublicProposalView() {
           </div>
         )}
 
-        {proposal.notes && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Notes</h3>
-            <p className="text-sm text-slate-700 whitespace-pre-wrap">{proposal.notes}</p>
-          </div>
-        )}
+        {/* Closing CTA Section */}
+        <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 mb-6">
+          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Next Steps</h3>
+          <p className="text-slate-700 font-medium mb-4">To move forward with this project, please review the proposal above and accept to confirm your commitment.</p>
+          {proposal.payment_terms && (
+            <div className="bg-white rounded-lg p-3 border border-slate-100 text-xs text-slate-600">
+              <span className="font-semibold text-slate-700">Payment Terms:</span> {proposal.payment_terms}
+            </div>
+          )}
+        </div>
 
         {/* Accept block */}
         {!accepted && proposal.status === 'sent' && (
-          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 text-center">
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary rounded-2xl p-8 text-center shadow-lg">
             <h3 className="text-lg font-bold text-slate-900 mb-1">Ready to proceed?</h3>
             <p className="text-sm text-slate-500 mb-4">By accepting this proposal, you agree to the terms and pricing above.</p>
             {!showConfirm ? (
