@@ -87,16 +87,20 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
     // NOTE: Do NOT call onChange(name) here — onSelect builds the full item.
     // Calling onChange first would trigger a state update with stale pricing (zeros),
     // which can race with onSelect and overwrite the correct prices.
-    onSelect({
+    const picked = {
       name,
       description: result.svcEntry?.description || '',
       unit: unitDisplay(result.unit),
-      unit_price: result.base_price ?? 0,
-      unit_cost:  result.estimated_cost ?? 0,
+      // Normalize to Number; use null sentinel when source has no pricing data
+      // so the consumer can decide whether to overwrite or preserve existing values.
+      unit_price: result.base_price != null ? Number(result.base_price) : null,
+      unit_cost:  result.estimated_cost != null ? Number(result.estimated_cost) : null,
       category:   result.category,
       _service_id: result.id,
       _from_picker: true,
-    });
+    };
+    console.log('[SmartServicePicker] SERVICE PICKED:', picked);
+    onSelect(picked);
   };
 
   const handleCreateNew = () => {

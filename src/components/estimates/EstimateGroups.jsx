@@ -49,11 +49,13 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   const committedRef = React.useRef({ unit_price: item.unit_price, unit_cost: item.unit_cost });
 
   const update = (field, value) => {
-    const updated = { ...item, [field]: value };
+    const numericFields = new Set(['quantity', 'unit_price', 'unit_cost', 'book_price']);
+    const safeValue = numericFields.has(field) ? (parseFloat(value) || 0) : value;
+    const updated = { ...item, [field]: safeValue };
     // Always recalculate line_total using the decimal engine to avoid float errors
     updated.line_total = calculateLineTotal(
-      field === 'quantity'   ? value : updated.quantity,
-      field === 'unit_price' ? value : updated.unit_price
+      field === 'quantity'   ? safeValue : updated.quantity,
+      field === 'unit_price' ? safeValue : updated.unit_price
     );
     onUpdate(updated);
   };
@@ -88,9 +90,12 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
             onChange={v => update('service_name', v)}
             onSelect={picked => {
                 setExpanded(true);
-                const pickedPrice = parseFloat(picked.unit_price) || 0;
-                const pickedCost  = parseFloat(picked.unit_cost)  || 0;
+                // Null means "source has no data" — preserve existing value.
+                // A number (including 0) means "source explicitly set this".
+                const pickedPrice = picked.unit_price !== null ? Number(picked.unit_price) : (parseFloat(item.unit_price) || 0);
+                const pickedCost  = picked.unit_cost  !== null ? Number(picked.unit_cost)  : (parseFloat(item.unit_cost)  || 0);
                 const qty = parseFloat(item.quantity) || 1;
+                const lineTotal = calculateLineTotal(qty, pickedPrice);
                 const updated = {
                   ...item,
                   service_name: picked.name,
@@ -99,8 +104,9 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   unit_price:   pickedPrice,
                   unit_cost:    pickedCost,
                   book_price:   pickedPrice,
-                  line_total:   calculateLineTotal(qty, pickedPrice),
+                  line_total:   lineTotal,
                 };
+                console.log('[EstimateGroups] onSelect applied:', { pickedPrice, pickedCost, lineTotal, unit: updated.unit, name: updated.service_name });
                 onUpdate(updated);
               }}
             placeholder="Service name"
@@ -371,6 +377,8 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-3">
+      {/* Responsive scroll wrapper for narrow screens */}
+      <div className="overflow-x-auto">
       {/* Group header */}
       <div className="flex items-center gap-3 px-6 py-3 bg-slate-800 text-white">
         <button onClick={() => onUpdate({ ...group, collapsed: !group.collapsed })}
@@ -446,6 +454,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
           </div>
         </>
       )}
+      </div>{/* end overflow-x-auto */}
     </div>
   );
 }
