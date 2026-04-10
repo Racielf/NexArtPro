@@ -89,7 +89,7 @@ export default function ClientFormModal({ open, onOpenChange, client = null, onS
               onChange={e => setSearchTerm(e.target.value)}
               className="h-8 text-sm"
             />
-            <div className="max-h-48 overflow-y-auto space-y-1 border border-slate-200 rounded-lg p-2">
+            <div className="max-h-72 overflow-y-auto space-y-1 border border-slate-200 rounded-lg p-2">
               {filteredClients.length === 0 ? (
                 <p className="text-xs text-slate-400 py-4 text-center">No customers found</p>
               ) : (
