@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceAuditLog from '@/components/estimates/internal/PriceAuditLog';
+import { normalizeLineItem, normalizeGroups, resolveAndNormalizeGroups } from '@/lib/lineItemNormalizer';
 import { usePriceAuditLog } from '@/hooks/usePriceAuditLog';
 import { calculateLineTotal, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
 import { logChange } from '@/lib/estimateAuditLog';
@@ -29,20 +30,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
 
-const emptyItem = () => ({
-  id: uid(),
-  service_id: null,
-  service_name: '',
-  description: '',
-  category: '',
-  quantity: 1,
-  unit: 'ea',
-  unit_price: 0,
-  unit_cost: 0,
-  book_price: 0,
-  line_total: 0,
-  taxable: true,
-});
+const emptyItem = () => normalizeLineItem({ id: uid() });
 
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
 
@@ -483,15 +471,8 @@ function NotesSection({ label, placeholder, value, onChange, accent }) {
 // readOnlyDiscountType: if true, disables discount type selector (Proposal mode)
 export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false, currentUser }) {
   const [groups, setGroups] = useState(() => {
-    if (estimate?.groups?.length) return estimate.groups;
-    if (estimate?.line_items?.length) {
-      return [{ id: uid(), name: 'General', collapsed: false, items: estimate.line_items.map(li => ({
-        id: uid(), service_name: li.name || '', description: li.description || '',
-        quantity: li.quantity || 1, unit: 'ea', unit_price: li.unit_price || 0,
-        unit_cost: li.unit_cost || 0, book_price: li.book_price || 0, line_total: li.total_price || 0, taxable: true,
-      })) }];
-    }
-    return DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] }));
+    const resolved = resolveAndNormalizeGroups(estimate);
+    return resolved.length ? resolved : DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] }));
   });
 
   const [taxRate, setTaxRate] = useState(estimate?.tax_rate || 0);
@@ -541,15 +522,8 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   // Sync when estimate id changes
   useEffect(() => {
     if (!estimate?.id) return;
-    setGroups(estimate.groups?.length ? estimate.groups :
-      estimate.line_items?.length ? [{
-        id: uid(), name: 'General', collapsed: false,
-        items: estimate.line_items.map(li => ({
-          id: uid(), service_name: li.name || '', description: li.description || '',
-          quantity: li.quantity || 1, unit: 'ea', unit_price: li.unit_price || 0,
-          unit_cost: li.unit_cost || 0, book_price: li.book_price || 0, line_total: li.total_price || 0, taxable: true,
-        }))
-      }] : DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] })));
+    const resolved = resolveAndNormalizeGroups(estimate);
+    setGroups(resolved.length ? resolved : DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] })));
     setTaxRate(estimate.tax_rate || 0);
     setDiscountType(estimate.discount_type || 'percent');
     setDiscountValue(estimate.discount_value || 0);

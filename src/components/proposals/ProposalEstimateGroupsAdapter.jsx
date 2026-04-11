@@ -2,6 +2,7 @@
  * Adapter: Proposal items[] ↔ EstimateGroups format
  * 
  * HARDENED VERSION: Prevents field contamination, NaN, and unsafe conversions.
+ * Uses normalizeLineItem for canonical shape compliance.
  * 
  * Proposal.items[] persists: id, service_name, description, quantity, unit,
  * book_price, unit_price, unit_cost, line_total
@@ -11,6 +12,8 @@
  * 
  * Fields NOT persisted to Proposal: taxable, _service_id, _from_picker, _is_new
  */
+
+import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 
 // ─── SAFE CONVERSION UTILITIES ────────────────────────────────────────────────
 
@@ -44,19 +47,7 @@ export function mapItemsToGroups(items = []) {
       id: 'default-group',
       name: 'Services',
       collapsed: false,
-      items: (items || []).map(item => ({
-        id: item.id,
-        service_name: toSafeString(item.service_name),
-        description: toSafeString(item.description),
-        quantity: toSafeNumber(item.quantity, 1),
-        unit: toSafeString(item.unit, 'ea'),
-        book_price: toSafeNumber(item.book_price, 0),
-        unit_price: toSafeNumber(item.unit_price, 0),
-        unit_cost: toSafeNumber(item.unit_cost, 0),
-        line_total: toSafeNumber(item.line_total, 0),
-        // EstimateGroups render-only field (NOT persisted)
-        taxable: item.taxable ?? true,
-      })),
+      items: (items || []).map(item => normalizeLineItem(item)),
     },
   ];
 }

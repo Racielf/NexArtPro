@@ -5,6 +5,7 @@ import DocumentSummary from '../documents/DocumentSummary';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CompanyLogoBlock from '../documents/CompanyLogoBlock';
 import useCompanyConfig from '@/hooks/useCompanyConfig';
+import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 
 /**
  * EstimateTemplateRenderer — Universal document renderer with 6 distinct templates
@@ -145,20 +146,12 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   const showPrices = isWorkOrder ? false : opts.showPrices;
 
   const groups = estimate.groups?.length
-    ? estimate.groups
+    ? estimate.groups.map(g => ({ ...g, items: (g.items || []).map(normalizeLineItem) }))
     : estimate.line_items?.length
       ? [{
         id: 'legacy',
         name: null,
-        items: estimate.line_items.map(li => ({
-          id: li.id,
-          service_name: li.name || li.service_name || '',
-          description: li.description || '',
-          quantity: li.quantity || 1,
-          unit: li.unit || 'ea',
-          unit_price: li.unit_price || 0,
-          line_total: li.total_price || li.line_total || 0,
-        })),
+        items: estimate.line_items.map(li => normalizeLineItem(li)),
       }]
       : [];
 

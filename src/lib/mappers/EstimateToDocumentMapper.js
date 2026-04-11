@@ -3,6 +3,7 @@
  * Sin lógica visual, sin condicionales de visibilidad.
  * Sanitiza datos internos (internal_notes).
  */
+import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 
 export function EstimateToDocumentMapper(estimate) {
   if (!estimate) {
@@ -11,36 +12,21 @@ export function EstimateToDocumentMapper(estimate) {
 
   // Mapear grupos o fallback a legacy line_items
   const groups = estimate.groups?.length
-    ? estimate.groups.map(g => ({
-        id: g.id,
-        name: g.name,
-        items: (g.items || []).map(item => ({
-          id: item.id,
-          service_name: item.service_name || '',
-          description: item.description || '',
-          quantity: item.quantity || 1,
-          unit: item.unit || 'ea',
-          unit_price: item.unit_price || 0,
-          line_total: item.line_total || 0,
-          taxable: item.taxable !== false,
-        })),
-        subtotal: (g.items || []).reduce((s, i) => s + (i.line_total || 0), 0),
-      }))
+    ? estimate.groups.map(g => {
+        const items = (g.items || []).map(item => normalizeLineItem(item));
+        return {
+          id: g.id,
+          name: g.name,
+          items,
+          subtotal: items.reduce((s, i) => s + (i.line_total || 0), 0),
+        };
+      })
     : estimate.line_items?.length
     ? [{
         id: 'legacy',
         name: 'Services',
-        items: estimate.line_items.map((li, idx) => ({
-          id: li.id || `item-${idx}`,
-          service_name: li.name || li.service_name || '',
-          description: li.description || '',
-          quantity: li.quantity || 1,
-          unit: li.unit || 'ea',
-          unit_price: li.unit_price || 0,
-          line_total: li.line_total || li.total_price || 0,
-          taxable: li.taxable !== false,
-        })),
-        subtotal: estimate.line_items.reduce((s, li) => s + (li.line_total || li.total_price || 0), 0),
+        items: estimate.line_items.map(li => normalizeLineItem(li)),
+        subtotal: estimate.line_items.reduce((s, li) => s + (parseFloat(li.line_total) || parseFloat(li.total_price) || 0), 0),
       }]
     : [];
 

@@ -18,6 +18,7 @@ import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButto
 // documentTypeConfig used internally by EstimateActionsPanel
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
+import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -64,18 +65,12 @@ export default function EstimateEditor() {
   const handleSave = async (updatedEstimate) => {
     setSaving(true);
     
-    // Coerce string numbers to actual numbers in groups
+    // Normalize all line items before persisting
     const sanitized = { ...updatedEstimate };
     if (sanitized.groups && Array.isArray(sanitized.groups)) {
       sanitized.groups = sanitized.groups.map(group => ({
         ...group,
-        items: (group.items || []).map(item => ({
-          ...item,
-          quantity: item.quantity != null ? parseFloat(item.quantity) || 0 : 0,
-          unit_price: item.unit_price != null ? parseFloat(item.unit_price) || 0 : 0,
-          unit_cost: item.unit_cost != null ? parseFloat(item.unit_cost) || 0 : 0,
-          line_total: item.line_total != null ? parseFloat(item.line_total) || 0 : 0,
-        })),
+        items: (group.items || []).map(item => normalizeLineItem(item)),
       }));
     }
     
