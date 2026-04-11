@@ -61,10 +61,22 @@ export default function NewProposalCustomerModal({ open, onOpenChange, onCustome
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent showCloseButton={false} className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-3 pr-12">
-          <DialogTitle>Select Customer</DialogTitle>
-          <DialogDescription>Choose an existing customer or create a new one for this proposal.</DialogDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <DialogTitle>Select Customer</DialogTitle>
+              <DialogDescription className="mt-1">Choose an existing customer or create a new one for this proposal.</DialogDescription>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="-mt-1 -mr-7 w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </DialogHeader>
 
         {/* Tabs */}
