@@ -91,11 +91,11 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
       name,
       description: result.svcEntry?.description || '',
       unit: unitDisplay(result.unit),
-      // Normalize to Number; use null sentinel when source has no pricing data
-      // so the consumer can decide whether to overwrite or preserve existing values.
-      unit_price: result.base_price != null ? Number(result.base_price) : null,
-      unit_cost:  result.estimated_cost != null ? Number(result.estimated_cost) : null,
+      // unit_price drives estimate totals, unit_cost drives margin
+      unit_price: result.unit_price != null ? Number(result.unit_price) : (result.base_price != null ? Number(result.base_price) : null),
+      unit_cost:  result.unit_cost != null ? Number(result.unit_cost) : (result.estimated_cost != null ? Number(result.estimated_cost) : null),
       category:   result.category,
+      type:       result.type || 'service',
       _service_id: result.id,
       _from_picker: true,
     };
@@ -171,8 +171,8 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
 
                   {/* Price */}
                   <div className="flex-shrink-0 text-right">
-                    {r.base_price !== null
-                      ? <span className="text-sm font-bold text-slate-800">${parseFloat(r.base_price).toFixed(2)}</span>
+                    {(r.unit_price ?? r.base_price) !== null
+                      ? <span className="text-sm font-bold text-slate-800">${parseFloat(r.unit_price ?? r.base_price).toFixed(2)}</span>
                       : <span className="text-xs text-slate-300">no price</span>
                     }
                     <p className="text-[10px] text-slate-400">/{unitDisplay(r.unit)}</p>

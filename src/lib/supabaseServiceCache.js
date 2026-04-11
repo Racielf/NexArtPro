@@ -43,7 +43,13 @@ async function fetchPriceBookFromSupabase() {
     .order('display_name');
 
   if (error) throw error;
-  return data || [];
+  // Normalize: ensure unit_price/unit_cost exist (map from legacy base_price/estimated_cost)
+  return (data || []).map(row => ({
+    ...row,
+    type: row.type || 'service',
+    unit_price: row.unit_price ?? row.base_price ?? null,
+    unit_cost: row.unit_cost ?? row.estimated_cost ?? null,
+  }));
 }
 
 // ── Cache management ───────────────────────────────────────────────────────

@@ -78,7 +78,8 @@ export function searchServices(query, limit = 12) {
     // 2 = active service + pb without price
     // 3 = active service, no pb
     let tier = 3;
-    if (pb && pb.is_active && pb.base_price !== null && pb.base_price !== undefined && pb.base_price !== '') tier = 1;
+    const hasPrice = (pb?.unit_price ?? pb?.base_price) != null && (pb?.unit_price ?? pb?.base_price) !== '';
+    if (pb && pb.is_active && hasPrice) tier = 1;
     else if (pb && pb.is_active) tier = 2;
 
     results.push({
@@ -86,8 +87,13 @@ export function searchServices(query, limit = 12) {
       name: svc.name,
       category: svc.category,
       unit: pb?.unit || svc.default_unit || 'each',
-      base_price: (pb?.base_price !== null && pb?.base_price !== undefined && pb?.base_price !== '') ? pb.base_price : null,
-      estimated_cost: pb?.estimated_cost ?? null,
+      // New fields: unit_price/unit_cost from PB (preferred), fallback to legacy base_price/estimated_cost
+      unit_price: pb?.unit_price ?? pb?.base_price ?? null,
+      unit_cost: pb?.unit_cost ?? pb?.estimated_cost ?? null,
+      // Keep legacy aliases for backward compat
+      base_price: pb?.unit_price ?? pb?.base_price ?? null,
+      estimated_cost: pb?.unit_cost ?? pb?.estimated_cost ?? null,
+      type: pb?.type || 'service',
       source: pb ? 'pricebook' : 'catalog',
       svcEntry: svc,
       pbEntry: pb || null,
