@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Building2, FileText, Wrench, BookOpen,
-  ClipboardList, CreditCard, Settings, ShieldCheck
+  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked
 } from 'lucide-react';
 
 const sections = [
@@ -13,6 +13,7 @@ const sections = [
   { id: 'payments',  label: 'Payments',              icon: CreditCard },
   { id: 'team',      label: 'Team & Access',         icon: ShieldCheck },
   { id: 'general',   label: 'General',               icon: Settings },
+  { id: 'manual',    label: 'Manual del Sistema',    icon: BookMarked },
 ];
 
 export default function SettingsSidebar({ active, onChange }) {
