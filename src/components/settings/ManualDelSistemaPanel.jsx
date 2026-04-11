@@ -1,6 +1,7 @@
 import React from 'react';
 import SettingsSection from '@/components/settings/SettingsSection';
 import SettingsCard from '@/components/settings/SettingsCard';
+import ApproveDeclineIllustration from '@/components/settings/manual/ApproveDeclineIllustration';
 
 export default function ManualDelSistemaPanel() {
   return (
@@ -15,6 +16,9 @@ export default function ManualDelSistemaPanel() {
 
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-slate-700">Approve / Decline</h4>
+
+            {/* Illustration — replace with real screenshot later */}
+            <ApproveDeclineIllustration />
 
             <ul className="list-disc list-inside text-sm text-slate-600 space-y-1.5 pl-1">
               <li>
