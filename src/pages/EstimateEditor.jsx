@@ -3,7 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Save, Trash2, Send } from 'lucide-react';
+import { X, Eye, Save, Trash2, Send, ChevronRight } from 'lucide-react';
+import EstimateTemplateSelector from '@/components/estimates/EstimateTemplateSelector';
+import EstimateDocumentOptions from '@/components/estimates/EstimateDocumentOptions';
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
@@ -38,6 +40,7 @@ export default function EstimateEditor() {
   const [jobNumber, setJobNumber] = useState('');
   const [planReference, setPlanReference] = useState('');
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
+  const [showDocumentOptions, setShowDocumentOptions] = useState(false);
 
   useEffect(() => { loadEstimate(); }, []);
 
@@ -112,6 +115,26 @@ export default function EstimateEditor() {
     if (customerData.client_name) toast.success('Customer saved');
   };
 
+  const handleTemplateChange = async (templateKey) => {
+    const updatedConfig = { ...(estimate.document_config || {}), template: templateKey };
+    const updated = { ...estimate, document_config: updatedConfig };
+    setEstimate(updated);
+    await base44.entities.Estimate.update(estimateId, { document_config: updatedConfig });
+  };
+
+  const handleDocumentOptionsSave = async (newOptions) => {
+    const updatedConfig = { ...(estimate.document_config || {}), options: newOptions };
+    const updated = { ...estimate, document_config: updatedConfig };
+    setEstimate(updated);
+    await base44.entities.Estimate.update(estimateId, { document_config: updatedConfig });
+  };
+
+  const handleLanguageChange = async (lang) => {
+    const updated = { ...estimate, document_language: lang };
+    setEstimate(updated);
+    await base44.entities.Estimate.update(estimateId, { document_language: lang });
+  };
+
   const handleCancel = () => {
     const isEmpty = !estimate?.client_name && !estimate?.title;
     if (isNew && isEmpty) {
@@ -169,7 +192,7 @@ export default function EstimateEditor() {
       {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
         <div className="flex items-center px-4 h-12 gap-3">
-          {/* Left: Document title */}
+          {/* Left: Document title + template selector */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <h1 className="text-base font-bold text-slate-900 flex-shrink-0">
               Estimate <span className="text-primary">#{estimate.estimate_number}</span>
@@ -177,6 +200,14 @@ export default function EstimateEditor() {
             {hasClient && (
               <span className="text-sm text-slate-500 truncate hidden sm:inline">· {estimate.client_name}</span>
             )}
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0 hidden md:block" />
+            <div className="hidden md:block">
+              <EstimateTemplateSelector
+                currentTemplate={estimate.document_config?.template || 'professional'}
+                onTemplateChange={handleTemplateChange}
+                onShowOptions={() => setShowDocumentOptions(true)}
+              />
+            </div>
           </div>
 
           {/* Right: Status + Actions */}
@@ -342,6 +373,15 @@ export default function EstimateEditor() {
         />
       )}
 
+      <EstimateDocumentOptions
+        open={showDocumentOptions}
+        onClose={() => setShowDocumentOptions(false)}
+        options={estimate.document_config?.options}
+        onSave={handleDocumentOptionsSave}
+        language={estimate.document_language || 'en'}
+        onLanguageChange={handleLanguageChange}
+      />
+
       <NewProposalCustomerModal
         open={showNewCustomerModal || (isNew && !hasClient)}
         onOpenChange={(v) => {
@@ -363,9 +403,9 @@ export default function EstimateEditor() {
       {showDiscardConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-            <h2 className="text-base font-bold text-slate-900 mb-2">Discard this bid?</h2>
+            <h2 className="text-base font-bold text-slate-900 mb-2">Discard this estimate?</h2>
             <p className="text-sm text-slate-500 mb-6">
-              This bid hasn't been saved yet. Cancelling will delete it permanently.
+              This estimate hasn't been saved yet. Cancelling will delete it permanently.
             </p>
             <div className="flex gap-2 justify-end">
               <button
@@ -379,7 +419,7 @@ export default function EstimateEditor() {
                 className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Discard Bid
+                Discard Estimate
               </button>
             </div>
           </div>
