@@ -104,15 +104,15 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
     // Calling onChange first would trigger a state update with stale pricing (zeros),
     // which can race with onSelect and overwrite the correct prices.
     const picked = {
+      service_id: result.id || null,
       name,
       description: result.description || result.svcEntry?.description || '',
       unit: unitDisplay(result.unit),
       unit_price: result.unit_price != null ? Number(result.unit_price) : (result.base_price != null ? Number(result.base_price) : null),
       unit_cost:  result.unit_cost != null ? Number(result.unit_cost) : (result.estimated_cost != null ? Number(result.estimated_cost) : null),
-      category:   result.category,
+      category:   result.category || 'Misc',
       type:       result.type || 'service',
-      service_id: result.source === 'entity' ? result.id : null,
-      _service_id: result.id,
+      source:     result.source || 'catalog',
       _from_picker: true,
     };
     console.log('[SmartServicePicker] SERVICE PICKED:', picked);
@@ -127,13 +127,15 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
     setFocused(false);
     // NOTE: Same as handleSelect — skip onChange to avoid stale-price race.
     onSelect({
+      service_id: null,
       name: trimmed,
       description: '',
       unit: 'ea',
       unit_price: 0,
       unit_cost: 0,
       category: 'Misc',
-      _service_id: temp.id,
+      type: 'service',
+      source: 'custom',
       _from_picker: true,
       _is_new: true,
     });

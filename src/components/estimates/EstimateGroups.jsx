@@ -107,10 +107,10 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 const lineTotal = calculateLineTotal(q, pickedPrice);
                 const updated = {
                   ...item,
-                  service_id:   picked._service_id || picked.service_id || null,
+                  service_id:   picked.service_id ?? null,
                   service_name: picked.name,
                   description:  picked.description || item.description || '',
-                  category:     picked.category || item.category || '',
+                  category:     picked.category || item.category || 'Misc',
                   unit:         picked.unit || item.unit,
                   unit_price:   pickedPrice,
                   unit_cost:    pickedCost,
