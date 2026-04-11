@@ -350,22 +350,22 @@ export default function Settings() {
   };
 
   return (
-    <div className="h-full bg-slate-50 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-100 px-8 py-5 flex-shrink-0 sticky top-0 z-10">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Header — sticky */}
+      <div className="bg-white border-b border-slate-100 px-8 py-5 sticky top-0 z-20">
         <h1 className="text-xl font-bold text-slate-900">Settings</h1>
         <p className="text-sm text-slate-400 mt-0.5">Manage your account and application preferences</p>
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-64 flex-shrink-0 bg-white border-r border-slate-100 p-4 overflow-y-auto">
+      <div className="flex flex-1">
+        {/* Sidebar — fixed position */}
+        <div className="w-64 flex-shrink-0 sticky top-[73px] h-[calc(100vh-73px)] bg-white border-r border-slate-100 p-4 overflow-y-auto">
           <SettingsSidebar active={activeSection} onChange={setActiveSection} />
         </div>
 
         {/* Main Panel */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-10 py-8 pb-16">
+        <div className="flex-1 px-10 py-8 pb-16">
           {panels[activeSection]}
         </div>
       </div>
