@@ -352,7 +352,7 @@ export default function Settings() {
   return (
     <div className="h-full bg-slate-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-slate-100 px-8 py-5 flex-shrink-0">
+      <div className="bg-white border-b border-slate-100 px-8 py-5 flex-shrink-0 sticky top-0 z-10">
         <h1 className="text-xl font-bold text-slate-900">Settings</h1>
         <p className="text-sm text-slate-400 mt-0.5">Manage your account and application preferences</p>
       </div>
