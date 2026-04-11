@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { searchServices, buildTempService } from './serviceSearch';
-import { searchBase44Services } from './serviceSearchBase44';
+import { buildTempService } from './serviceSearch';
+import { searchServicesUnified } from './serviceSearchUnified';
 import { Plus, BookOpen, Tag, Database } from 'lucide-react';
 
 const UNIT_DISPLAY = {
@@ -54,25 +54,14 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
   // Sync external value changes (e.g. reset on new item)
   useEffect(() => { setQuery(value || ''); }, [value]);
 
-  // Search whenever query changes — merge seed/Supabase + Base44 entity results
+  // Search whenever query changes — unified search across seed + Base44
   useEffect(() => {
     if (!focused || query.trim().length < 1) { setResults([]); setOpen(false); return; }
     let cancelled = false;
-    const seedHits = searchServices(query);
-    // Show seed results immediately
-    setResults(seedHits);
-    setOpen(seedHits.length > 0 || query.trim().length >= 2);
-    // Then async merge Base44 entity results
-    searchBase44Services(query).then(entityHits => {
+    searchServicesUnified(query).then(hits => {
       if (cancelled) return;
-      if (entityHits.length === 0) return;
-      // Deduplicate by name (seed results take priority)
-      const seedNames = new Set(seedHits.map(r => r.name.toLowerCase()));
-      const unique = entityHits.filter(r => !seedNames.has(r.name.toLowerCase()));
-      if (unique.length > 0) {
-        setResults(prev => [...prev, ...unique]);
-        setOpen(true);
-      }
+      setResults(hits);
+      setOpen(hits.length > 0 || query.trim().length >= 2);
     });
     return () => { cancelled = true; };
   }, [query, focused]);
@@ -106,16 +95,15 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
     const picked = {
       service_id: result.id || null,
       name,
-      description: result.description || result.svcEntry?.description || '',
+      description: result.description || '',
       unit: unitDisplay(result.unit),
-      unit_price: result.unit_price != null ? Number(result.unit_price) : (result.base_price != null ? Number(result.base_price) : null),
-      unit_cost:  result.unit_cost != null ? Number(result.unit_cost) : (result.estimated_cost != null ? Number(result.estimated_cost) : null),
+      unit_price: result.unit_price != null ? Number(result.unit_price) : null,
+      unit_cost:  result.unit_cost != null ? Number(result.unit_cost) : null,
       category:   result.category || 'Misc',
       type:       result.type || 'service',
-      source:     result.source || 'catalog',
+      source:     result.source || 'seed',
       _from_picker: true,
     };
-    console.log('[SmartServicePicker] SERVICE PICKED:', picked);
     onSelect(picked);
   };
 
@@ -170,9 +158,9 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
                 >
                   {/* Icon */}
                   <div className="flex-shrink-0 mt-0.5">
-                    {r.source === 'entity'
+                    {r.source === 'base44'
                       ? <Database className="w-3.5 h-3.5 text-emerald-400" />
-                      : r.source === 'pricebook'
+                      : r.source === 'seed'
                         ? <BookOpen className="w-3.5 h-3.5 text-blue-400" />
                         : <Tag className="w-3.5 h-3.5 text-slate-300" />
                     }
@@ -191,8 +179,8 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
 
                   {/* Price */}
                   <div className="flex-shrink-0 text-right">
-                    {(r.unit_price ?? r.base_price) !== null
-                      ? <span className="text-sm font-bold text-slate-800">${parseFloat(r.unit_price ?? r.base_price).toFixed(2)}</span>
+                    {r.unit_price !== null
+                      ? <span className="text-sm font-bold text-slate-800">${parseFloat(r.unit_price).toFixed(2)}</span>
                       : <span className="text-xs text-slate-300">no price</span>
                     }
                     <p className="text-[10px] text-slate-400">/{unitDisplay(r.unit)}</p>
