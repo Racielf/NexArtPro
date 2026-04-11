@@ -103,6 +103,8 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 // Null = source has no data → preserve existing. Number = explicit.
                 const pickedPrice = picked.unit_price !== null ? Number(picked.unit_price) : price;
                 const pickedCost  = picked.unit_cost  !== null ? Number(picked.unit_cost)  : cost;
+                // book_price: use picker's price if explicit, else preserve existing
+                const pickedBook  = picked.unit_price !== null ? Number(picked.unit_price) : book;
                 const q = qty || 1;
                 const lineTotal = calculateLineTotal(q, pickedPrice);
                 const updated = {
@@ -111,10 +113,10 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   service_name: picked.name,
                   description:  picked.description || item.description || '',
                   category:     picked.category || item.category || 'Misc',
-                  unit:         picked.unit || item.unit,
+                  unit:         picked.unit || item.unit || 'ea',
                   unit_price:   pickedPrice,
                   unit_cost:    pickedCost,
-                  book_price:   pickedPrice,
+                  book_price:   pickedBook,
                   line_total:   lineTotal,
                 };
                 onUpdate(updated);
