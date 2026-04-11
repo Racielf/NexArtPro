@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import { isAdmin } from '@/lib/roleUtils';
+import useCompanyConfig from '@/hooks/useCompanyConfig';
 import { logout } from '@/lib/sessionManager';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
@@ -65,18 +66,25 @@ const navGroups = [
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const cc = useCompanyConfig();
 
   return (
     <div className="w-56 min-h-screen bg-gray-900 flex flex-col">
       {/* Logo */}
       <div className="p-5 border-b border-gray-700">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Wrench className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <p className="text-white font-bold text-sm">{appConfig.appName}</p>
-            <p className="text-gray-400 text-xs">{appConfig.company.displayName}</p>
+        <div className="flex items-center gap-2.5">
+          {cc.logo_url ? (
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-white flex items-center justify-center">
+              <img src={cc.logo_url} alt="Logo" className="w-full h-full object-contain" />
+            </div>
+          ) : (
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+              <Wrench className="w-4 h-4 text-white" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-white font-bold text-sm truncate">{cc.name || appConfig.appName}</p>
+            <p className="text-gray-400 text-xs truncate">{cc.displayName || appConfig.company.displayName}</p>
           </div>
         </div>
       </div>
