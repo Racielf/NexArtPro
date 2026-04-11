@@ -303,7 +303,6 @@ export default function Proposals() {
                         />
                       </label>
                       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/proposal-editor?id=${p.id}`)}>
-                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-primary">#{p.proposal_number}</span>
                           <span className="font-semibold text-foreground">
@@ -334,7 +333,6 @@ export default function Proposals() {
                             </button>
                           )}
                         </div>
-                      </div>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Button variant="outline" size="sm" className="gap-1.5"
