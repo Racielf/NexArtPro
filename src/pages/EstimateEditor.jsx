@@ -40,6 +40,7 @@ export default function EstimateEditor() {
   const [jobNumber, setJobNumber] = useState('');
   const [planReference, setPlanReference] = useState('');
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
+  const [dismissedCustomerModal, setDismissedCustomerModal] = useState(false);
   const [showDocumentOptions, setShowDocumentOptions] = useState(false);
 
   useEffect(() => { loadEstimate(); }, []);
@@ -269,7 +270,7 @@ export default function EstimateEditor() {
               </div>
               <p className="text-xs font-medium text-slate-500 mb-2">No customer yet</p>
               <button
-                onClick={() => setShowNewCustomerModal(true)}
+                onClick={() => { setDismissedCustomerModal(false); setShowNewCustomerModal(true); }}
                 className="text-xs font-semibold text-primary hover:underline"
               >
                 + Select or Create Customer
@@ -383,9 +384,10 @@ export default function EstimateEditor() {
       />
 
       <NewProposalCustomerModal
-        open={showNewCustomerModal || (isNew && !hasClient)}
+        open={showNewCustomerModal || (isNew && !hasClient && !dismissedCustomerModal)}
         onOpenChange={(v) => {
           setShowNewCustomerModal(v);
+          if (!v) setDismissedCustomerModal(true);
         }}
         onCustomerSelected={async (client) => {
           const customerData = {
