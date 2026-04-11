@@ -1,44 +1,27 @@
 /**
  * logoStorage.js
- * Uploads company logos to Supabase Storage and returns a public URL.
+ * Uploads company logos using Base44's built-in UploadFile integration.
  */
-import { supabase } from '@/lib/supabaseClient';
-
-const BUCKET = 'company-assets';
-const FOLDER = 'logos';
+import { base44 } from '@/api/base44Client';
 
 /**
- * Upload an optimized logo blob to Supabase Storage.
+ * Upload an optimized logo blob to Base44 storage.
  * Returns the public URL of the uploaded file.
  */
 export async function uploadLogoToStorage(blob) {
-  // Generate a unique, safe filename
+  // Convert Blob to File if needed (UploadFile expects a File)
   const ext = blob.type === 'image/png' ? 'png'
     : blob.type === 'image/webp' ? 'webp'
     : blob.type === 'image/svg+xml' ? 'svg'
     : 'jpg';
-  const filename = `${FOLDER}/logo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const fileName = `logo_${Date.now()}.${ext}`;
+  const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
 
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .upload(filename, blob, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: blob.type || 'image/jpeg',
-    });
+  const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-  if (error) {
-    throw new Error(error.message || 'Storage upload failed');
+  if (!file_url) {
+    throw new Error('Upload succeeded but no URL was returned');
   }
 
-  // Build public URL
-  const { data: urlData } = supabase.storage
-    .from(BUCKET)
-    .getPublicUrl(data.path);
-
-  if (!urlData?.publicUrl) {
-    throw new Error('Failed to get public URL for uploaded logo');
-  }
-
-  return urlData.publicUrl;
+  return file_url;
 }
