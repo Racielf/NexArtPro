@@ -238,6 +238,10 @@
       "type": "string",
       "description": "Internal note when manually approved"
     },
+    "declined_at": {
+      "type": "string",
+      "description": "Timestamp when estimate was declined"
+    },
     "declined_reason": {
       "type": "string"
     },
