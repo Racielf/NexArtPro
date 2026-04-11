@@ -8,6 +8,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { loadCompanySettings, saveCompanySettings } from '@/lib/companySettings';
 import { validateImageFile, optimizeImage } from '@/lib/imageOptimizer';
+import { uploadLogoToStorage } from '@/lib/logoStorage';
 
 const inputCls = 'w-64 text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';
 
@@ -57,9 +58,9 @@ export default function CompanyPanel() {
     setLogoError('');
     try {
       const optimized = await optimizeImage(file);
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: optimized });
-      set('logo_url', file_url);
-      setPreviewUrl(file_url);
+      const publicUrl = await uploadLogoToStorage(optimized);
+      set('logo_url', publicUrl);
+      setPreviewUrl(publicUrl);
     } catch (err) {
       setLogoError('Failed to upload logo: ' + (err.message || 'Unknown error'));
     } finally {
