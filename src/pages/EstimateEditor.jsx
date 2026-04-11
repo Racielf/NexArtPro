@@ -3,20 +3,15 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Save, Trash2, Send, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { X, Eye, Save, Trash2, Send } from 'lucide-react';
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
 import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
-import EstimateTemplateSelector from '@/components/estimates/EstimateTemplateSelector';
-import EstimateDocumentOptions from '@/components/estimates/EstimateDocumentOptions';
-import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrderButton';
-import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
-import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
-import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
+// documentTypeConfig used internally by EstimateActionsPanel
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 
@@ -36,7 +31,6 @@ export default function EstimateEditor() {
 
   const [showSendModal, setShowSendModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [showDocumentOptions, setShowDocumentOptions] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
   const [jobNumber, setJobNumber] = useState('');
@@ -94,36 +88,6 @@ export default function EstimateEditor() {
     }
   };
 
-  const handleTemplateChange = async (template) => {
-    setSaving(true);
-    const updated = {
-      ...estimate,
-      document_config: { ...(estimate.document_config || {}), template },
-    };
-    await base44.entities.Estimate.update(estimateId, { ...updated, updated_by: 'Admin' });
-    setEstimate(updated);
-    setSaving(false);
-  };
-
-  const handleDocumentOptionsSave = async (newOptions) => {
-    setSaving(true);
-    const updated = {
-      ...estimate,
-      document_config: { ...(estimate.document_config || {}), options: newOptions },
-    };
-    await base44.entities.Estimate.update(estimateId, { ...updated, updated_by: 'Admin' });
-    setEstimate(updated);
-    setSaving(false);
-  };
-
-  const handleLanguageChange = async (newLang) => {
-    setSaving(true);
-    const updated = { ...estimate, document_language: newLang };
-    await base44.entities.Estimate.update(estimateId, { document_language: newLang });
-    setEstimate(updated);
-    setSaving(false);
-  };
-
   const handleCustomerChange = async (customerData, clientRecord) => {
     setSaving(true);
     const updated = { ...estimate, ...customerData };
@@ -177,7 +141,6 @@ export default function EstimateEditor() {
   );
 
   const hasClient = !!estimate.client_name;
-  const docConfig = getDocTypeConfig(estimate.document_type);
 
   const STATUS_BADGE = {
     draft:             { label: 'Draft',        cls: 'bg-slate-100 text-slate-600' },
@@ -367,21 +330,12 @@ export default function EstimateEditor() {
         />
       )}
 
-      <EstimateDocumentOptions
-        open={showDocumentOptions}
-        onClose={() => setShowDocumentOptions(false)}
-        options={estimate?.document_config?.options || DEFAULT_OPTIONS}
-        onSave={handleDocumentOptionsSave}
-        language={estimate?.document_language || 'en'}
-        onLanguageChange={handleLanguageChange}
-      />
-
       {showDiscardConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-            <h2 className="text-base font-bold text-slate-900 mb-2">Discard this {docConfig.label.toLowerCase()}?</h2>
+            <h2 className="text-base font-bold text-slate-900 mb-2">Discard this bid?</h2>
             <p className="text-sm text-slate-500 mb-6">
-              This {docConfig.label.toLowerCase()} hasn't been saved yet. Cancelling will delete it permanently.
+              This bid hasn't been saved yet. Cancelling will delete it permanently.
             </p>
             <div className="flex gap-2 justify-end">
               <button
@@ -395,7 +349,7 @@ export default function EstimateEditor() {
                 className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Discard {docConfig.label}
+                Discard Bid
               </button>
             </div>
           </div>

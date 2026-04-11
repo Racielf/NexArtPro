@@ -10,7 +10,7 @@
  *   line_total  = quantity * unit_price
  *   line_margin = ((unit_price - unit_cost) / unit_price) * 100
  */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -18,10 +18,9 @@ import {
   Pencil, Check, X, Eye, EyeOff, BookOpen, LayoutTemplate
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
-import PriceDisciplineGuard from '@/components/estimates/internal/PriceDisciplineGuard';
 import PriceAuditLog from '@/components/estimates/internal/PriceAuditLog';
 import { usePriceAuditLog } from '@/hooks/usePriceAuditLog';
-import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
+import { calculateLineTotal, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
 import { logChange } from '@/lib/estimateAuditLog';
 import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
 import { logFieldChange } from '@/lib/pricingAuditService';
@@ -505,7 +504,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [legalTerms, setLegalTerms] = useState(estimate?.legal_terms || '');
   const [showCost, setShowCost] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
-  const [approvalMode, setApprovalMode] = useState('one');
   const [fixedItemIds, setFixedItemIds] = useState(new Set());
   const { priceLog, addLog, clearLog } = usePriceAuditLog();
 
@@ -598,31 +596,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
   const addGroup = () => setGroups(prev => [...prev, { id: uid(), name: 'New Group', collapsed: false, items: [] }]);
 
-  // Fix Low Margin Items — internal only
-  const handleFixLowMargin = () => {
-    const confirmed = window.confirm('Only items below 30% margin will be adjusted. Continue?');
-    if (!confirmed) return;
-
-    const adjustedIds = new Set();
-    setGroups(prev => prev.map(group => ({
-      ...group,
-      items: (group.items || []).map(item => {
-        const c  = parseFloat(item.unit_cost)  || 0;
-        const p = parseFloat(item.unit_price) || 0;
-        if (c <= 0) return item;
-        const meta = getNegotiationMeta(c, p);
-        if (meta.status === 'healthy') return item;
-        const newPrice = parseFloat((c / 0.70).toFixed(2));
-        adjustedIds.add(item.id);
-        const newLineTotal = parseFloat(((parseFloat(item.quantity) || 1) * newPrice).toFixed(2));
-        return { ...item, unit_price: newPrice, line_total: newLineTotal, _autoAdjusted: true };
-      }),
-    })));
-
-    setFixedItemIds(adjustedIds);
-    setTimeout(() => setFixedItemIds(new Set()), 4000);
-  };
-
   // Live reactive calculation
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
           totalCost, grossMargin, grossMarginPct,
@@ -693,122 +666,32 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         <Plus className="w-4 h-4" />Add work group
       </button>
 
-      {/* ── PRICE DISCIPLINE GUARD (internal only) ── */}
-      {!isPreview && <PriceDisciplineGuard groups={groups} minVarianceThreshold={-0.20} />}
-
       {/* ── TOTALS CARD ── */}
       <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
         <div className="flex gap-8 flex-wrap justify-between">
 
-          {/* ── INTERNAL AUDIT VIEW — admin only ── */}
+          {/* ── INTERNAL COST SUMMARY — visible when Cost toggle is on ── */}
           {showCost && !isPreview && (() => {
-            const healthColor =
-              grossMarginPct > 40  ? { text: '#10b981', bg: 'rgba(16,185,129,0.07)',  border: 'rgba(16,185,129,0.18)' } :
-              grossMarginPct >= 25 ? { text: '#f59e0b', bg: 'rgba(245,158,11,0.07)',  border: 'rgba(245,158,11,0.18)' } :
-                                     { text: '#ef4444', bg: 'rgba(239,68,68,0.07)',   border: 'rgba(239,68,68,0.18)'  };
-
-            const AuditCard = ({ label, value, color, bg, border, sub }) => (
-              <div style={{
-                background: bg || 'rgba(241,245,249,0.7)',
-                border: `1px solid ${border || '#e2e8f0'}`,
-                borderRadius: 12,
-                padding: '12px 16px',
-                minWidth: 120,
-                flex: 1,
-              }}>
-                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94a3b8', marginBottom: 4 }}>
-                  {label}
-                </p>
-                <p style={{ fontSize: 18, fontWeight: 700, color: color || '#1e293b', lineHeight: 1.2 }}>
-                  {value}
-                </p>
-                {sub && <p style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>{sub}</p>}
-              </div>
-            );
-
-            const marginState =
-              grossMarginPct >= 40 ? 'healthy' :
-              grossMarginPct >= 30 ? 'warning' : 'critical';
-
             return (
-              <div style={{ minWidth: 200 }}>
-                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#d97706', marginBottom: 10 }}>
-                  🔒 Internal Audit View
-                </p>
-
-                {marginState === 'critical' && (
-                  <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 8,
-                    background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.22)',
-                    borderRadius: 8, padding: '7px 10px', marginBottom: 10,
-                  }}>
-                    <span style={{ fontSize: 13, lineHeight: 1.4, flexShrink: 0 }}>⚠️</span>
-                    <p style={{ fontSize: 10, fontWeight: 600, color: '#b91c1c', lineHeight: 1.45, margin: 0 }}>
-                      Low margin alert: this estimate is below the 30% target.
-                    </p>
+              <div className="space-y-2" style={{ minWidth: 200 }}>
+                <p className="text-[9px] font-bold tracking-widest uppercase text-amber-600">🔒 Internal Cost View</p>
+                <div className="flex gap-3 flex-wrap">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Total Cost</p>
+                    <p className="text-base font-bold text-slate-700">{fmt(totalCost)}</p>
                   </div>
-                )}
-
-                {marginState === 'warning' && (
-                  <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 8,
-                    background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.22)',
-                    borderRadius: 8, padding: '7px 10px', marginBottom: 10,
-                  }}>
-                    <span style={{ fontSize: 13, lineHeight: 1.4, flexShrink: 0 }}>⚠</span>
-                    <p style={{ fontSize: 10, fontWeight: 600, color: '#92400e', lineHeight: 1.45, margin: 0 }}>
-                      Margin below 40% target. Consider adjusting pricing.
-                    </p>
+                  <div className={`border rounded-lg px-4 py-3 flex-1 min-w-[100px] ${
+                    grossMarginPct >= 30 ? 'bg-emerald-50/50 border-emerald-200' :
+                    grossMarginPct >= 20 ? 'bg-amber-50/50 border-amber-200' :
+                    'bg-red-50/50 border-red-200'
+                  }`}>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Gross Margin</p>
+                    <p className={`text-base font-bold ${
+                      grossMarginPct >= 30 ? 'text-emerald-700' :
+                      grossMarginPct >= 20 ? 'text-amber-600' : 'text-red-600'
+                    }`}>{fmt(grossMargin)} ({grossMarginPct.toFixed(1)}%)</p>
                   </div>
-                )}
-
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <AuditCard label="Total Cost" value={fmt(totalCost)} />
-                  <AuditCard label="Gross Margin" value={fmt(grossMargin)}
-                    color={healthColor.text} bg={healthColor.bg} border={healthColor.border} />
-                  <AuditCard label="Margin %" value={`${grossMarginPct.toFixed(1)}%`}
-                    color={healthColor.text} bg={healthColor.bg} border={healthColor.border}
-                    sub={marginState === 'healthy' ? '✓ Healthy' : marginState === 'warning' ? '⚠ Below target' : '✗ Low margin'} />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleFixLowMargin}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    marginTop: 10, padding: '6px 12px', borderRadius: 8,
-                    fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)',
-                    color: '#4f46e5', transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; }}
-                >
-                  🛡️ Fix Low Margin Items
-                </button>
-
-                {totalBookValue > 0 && (
-                  <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(241,245,249,0.9)', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                      <div>
-                        <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Book Value</p>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>{fmt(totalBookValue)}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>vs Book</p>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: totalVariance >= 0 ? '#10b981' : '#ef4444' }}>
-                          {totalVariance >= 0 ? '+' : ''}{fmt(totalVariance)}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Book Margin</p>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: marginPercentage >= 15 ? '#10b981' : marginPercentage >= 0 ? '#f59e0b' : '#ef4444' }}>
-                          {marginPercentage >= 0 ? '+' : ''}{marginPercentage.toFixed(1)}%
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })()}
