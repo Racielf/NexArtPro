@@ -10,7 +10,7 @@ import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCusto
 import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
-import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
+import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
 import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrderButton';
 import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
 // documentTypeConfig used internally by EstimateActionsPanel
@@ -37,6 +37,7 @@ export default function EstimateEditor() {
   const [isPreview, setIsPreview] = useState(false);
   const [jobNumber, setJobNumber] = useState('');
   const [planReference, setPlanReference] = useState('');
+  const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
 
   useEffect(() => { loadEstimate(); }, []);
 
@@ -171,7 +172,7 @@ export default function EstimateEditor() {
           {/* Left: Document title */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <h1 className="text-base font-bold text-slate-900 flex-shrink-0">
-              Bid <span className="text-primary">#{estimate.estimate_number}</span>
+              Estimate <span className="text-primary">#{estimate.estimate_number}</span>
             </h1>
             {hasClient && (
               <span className="text-sm text-slate-500 truncate hidden sm:inline">· {estimate.client_name}</span>
@@ -231,12 +232,18 @@ export default function EstimateEditor() {
         {/* LEFT SIDEBAR */}
         <div className="w-56 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col min-h-0">
           {isNew && !hasClient ? (
-            <NewEstimateCustomerPanel
-              estimate={estimate}
-              onCustomerSet={async (customerData, clientRecord) => {
-                await handleCustomerChange(customerData, clientRecord);
-              }}
-            />
+            <div className="flex flex-col items-center justify-center flex-1 px-4 py-8 text-center">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <span className="text-lg">👤</span>
+              </div>
+              <p className="text-xs font-medium text-slate-500 mb-2">No customer yet</p>
+              <button
+                onClick={() => setShowNewCustomerModal(true)}
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                + Select or Create Customer
+              </button>
+            </div>
           ) : (
             <EstimateSidebarCustomer
               estimate={estimate}
@@ -334,6 +341,24 @@ export default function EstimateEditor() {
           onSent={() => { loadEstimate(); setShowSendModal(false); }}
         />
       )}
+
+      <NewProposalCustomerModal
+        open={showNewCustomerModal || (isNew && !hasClient)}
+        onOpenChange={(v) => {
+          setShowNewCustomerModal(v);
+        }}
+        onCustomerSelected={async (client) => {
+          const customerData = {
+            client_id: client.id || '',
+            client_name: client.full_name || '',
+            client_email: client.email || '',
+            client_phone: client.phone || '',
+            client_address: [client.address, client.city, client.state].filter(Boolean).join(', '),
+          };
+          await handleCustomerChange(customerData, client);
+          setShowNewCustomerModal(false);
+        }}
+      />
 
       {showDiscardConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
