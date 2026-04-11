@@ -69,9 +69,10 @@ export default function WorkOrders() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await Promise.all(idsArray.map(id => handleDelete(id)));
+    await Promise.all(idsArray.map(id => base44.entities.WorkOrder.delete(id)));
+    setWorkOrders(prev => prev.filter(w => !selectedIds.has(w.id)));
     setSelectedIds(new Set());
-    toast.success(`${idsArray.length} work order(s) deleted`);
+    toast.success(`${idsArray.length} work order${idsArray.length === 1 ? '' : 's'} deleted`);
   };
 
   return (
@@ -111,7 +112,7 @@ export default function WorkOrders() {
               <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                 <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
                 <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5" onClick={() => {
-                  if (confirm(`Delete ${selectedIds.size} work order(s)?`)) handleDeleteSelected();
+                  if (confirm(`Delete ${selectedIds.size} work order${selectedIds.size === 1 ? '' : 's'}?`)) handleDeleteSelected();
                 }}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete Selected
                 </Button>
