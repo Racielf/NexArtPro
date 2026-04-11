@@ -18,6 +18,7 @@ export default function CompanyPanel() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [logoError, setLogoError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
   const fileRef = useRef(null);
@@ -44,22 +45,23 @@ export default function CompanyPanel() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setLogoError('');
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      toast.error(validation.error);
+      setLogoError(validation.error);
       if (fileRef.current) fileRef.current.value = '';
       return;
     }
 
     setUploading(true);
+    setLogoError('');
     try {
       const optimized = await optimizeImage(file);
       const { file_url } = await base44.integrations.Core.UploadFile({ file: optimized });
       set('logo_url', file_url);
       setPreviewUrl(file_url);
-      toast.success('Logo uploaded — click Save to persist');
     } catch (err) {
-      toast.error('Failed to upload logo: ' + (err.message || 'Unknown error'));
+      setLogoError('Failed to upload logo: ' + (err.message || 'Unknown error'));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -69,6 +71,7 @@ export default function CompanyPanel() {
   const handleRemoveLogo = () => {
     set('logo_url', '');
     setPreviewUrl('');
+    setLogoError('');
     setSaveSuccess(false);
     setSaveError('');
   };
@@ -136,45 +139,67 @@ export default function CompanyPanel() {
               onChange={handleFileSelect}
             />
 
-            {/* Preview */}
-            {previewUrl ? (
+            {/* Uploading state — no preview yet */}
+            {uploading && !previewUrl && (
+              <div className="w-40 h-28 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                <span className="text-xs font-medium text-blue-600">Processing logo…</span>
+              </div>
+            )}
+
+            {/* Preview thumbnail */}
+            {previewUrl && (
               <div className="relative group">
-                <div className="w-40 h-28 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
+                <div className="relative w-40 h-28 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
                   <img
                     src={previewUrl}
                     alt="Company logo"
                     className="max-w-full max-h-full object-contain"
                   />
+                  {/* Uploading overlay when replacing */}
+                  {uploading && (
+                    <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center gap-1 rounded-lg">
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                      <span className="text-[10px] font-medium text-blue-600">Replacing…</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-1.5 mt-1.5">
                   <button
                     onClick={() => fileRef.current?.click()}
                     disabled={uploading}
-                    className="text-[11px] font-medium text-blue-500 hover:text-blue-600 transition"
+                    className="text-[11px] font-medium text-blue-500 hover:text-blue-600 transition disabled:opacity-50"
                   >
                     Replace
                   </button>
                   <span className="text-slate-300">·</span>
                   <button
                     onClick={handleRemoveLogo}
-                    className="text-[11px] font-medium text-red-500 hover:text-red-600 transition"
+                    disabled={uploading}
+                    className="text-[11px] font-medium text-red-500 hover:text-red-600 transition disabled:opacity-50"
                   >
                     Remove
                   </button>
                 </div>
               </div>
-            ) : (
+            )}
+
+            {/* Upload button — no preview and not uploading */}
+            {!previewUrl && !uploading && (
               <button
                 onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 text-sm text-blue-500 font-medium hover:text-blue-600 transition border border-blue-200 rounded-lg px-4 py-2 bg-blue-50 disabled:opacity-50"
+                className="flex items-center gap-2 text-sm text-blue-500 font-medium hover:text-blue-600 transition border border-blue-200 rounded-lg px-4 py-2 bg-blue-50"
               >
-                {uploading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</>
-                ) : (
-                  <><Upload className="w-4 h-4" /> Upload Logo</>
-                )}
+                <Upload className="w-4 h-4" /> Upload Logo
               </button>
+            )}
+
+            {/* Logo error */}
+            {logoError && (
+              <div className="flex items-center gap-1.5 text-xs text-red-600 mt-1">
+                <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{logoError}</span>
+              </div>
             )}
           </div>
         </SettingsRow>
