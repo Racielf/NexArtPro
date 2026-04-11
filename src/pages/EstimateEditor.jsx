@@ -11,6 +11,8 @@ import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
+import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrderButton';
+import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
 // documentTypeConfig used internally by EstimateActionsPanel
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
@@ -202,6 +204,9 @@ export default function EstimateEditor() {
               <Send className="w-3.5 h-3.5" />
               Review & Send
             </button>
+
+            <ConvertToWorkOrderButton estimate={estimate} onConverted={loadEstimate} />
+            <ConvertToInvoiceButton estimate={estimate} onConverted={loadEstimate} />
 
             {saving && (
               <span className="text-xs text-slate-400 flex items-center gap-1">
