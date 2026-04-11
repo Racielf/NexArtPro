@@ -61,7 +61,7 @@ export default function NewProposalCustomerModal({ open, onOpenChange, onCustome
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent showCloseButton={false} className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-3">
           <DialogTitle>Select Customer</DialogTitle>
           <DialogDescription>Choose an existing customer or create a new one for this proposal.</DialogDescription>
