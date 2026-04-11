@@ -326,9 +326,14 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     await base44.entities.Estimate.update(estimate.id, {
       status: 'approved',
       approved_at: new Date().toISOString(),
+      approved_by: currentUser?.email || null,
+      approval_note: declineReason.trim() || null,
+      declined_at: null,
+      declined_reason: null,
     });
     await logComm({ event_type: 'estimate_approved', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Approved`, status: 'delivered' });
     setApprovalOpen(false);
+    setDeclineReason('');
     toast.success('Estimate approved!');
     onStatusChange('approved');
   };
@@ -339,6 +344,10 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       status: 'declined',
       declined_at: new Date().toISOString(),
       declined_reason: declineReason.trim(),
+      approved_at: null,
+      approved_by: null,
+      approval_note: null,
+      signed_at: null,
     });
     await logComm({ event_type: 'estimate_declined', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Declined`, status: 'delivered' });
     setApprovalOpen(false);
