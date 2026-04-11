@@ -103,10 +103,10 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 // Null = source has no data → preserve existing. Number = explicit.
                 const pickedPrice = picked.unit_price !== null ? Number(picked.unit_price) : price;
                 const pickedCost  = picked.unit_cost  !== null ? Number(picked.unit_cost)  : cost;
-                // book_price: use picker's price if explicit, else preserve existing
-                const pickedBook  = picked.unit_price !== null ? Number(picked.unit_price) : book;
-                const q = qty || 1;
-                const lineTotal = calculateLineTotal(q, pickedPrice);
+                // book_price: prefer explicit book_price from picker, fallback to unit_price, then existing
+                const pickedBook  = picked.book_price !== null && picked.book_price !== undefined
+                  ? Number(picked.book_price)
+                  : (picked.unit_price !== null ? Number(picked.unit_price) : book);
                 const updated = {
                   ...item,
                   service_id:   picked.service_id ?? null,

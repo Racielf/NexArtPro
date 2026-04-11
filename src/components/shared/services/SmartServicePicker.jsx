@@ -102,6 +102,7 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
       unit: unitDisplay(result.unit),
       unit_price: result.unit_price != null ? Number(result.unit_price) : null,
       unit_cost:  result.unit_cost != null ? Number(result.unit_cost) : null,
+      book_price: result.book_price != null ? Number(result.book_price) : null,
       category:   result.category || 'Misc',
       type:       result.type || 'service',
       source:     result.source || 'seed',

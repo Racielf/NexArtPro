@@ -58,7 +58,7 @@ export async function searchBase44Services(query, limit = 8) {
       unit_cost: svc.unit_cost ?? null,
       book_price: svc.book_price ?? null,
       type: svc.type || 'service',
-      source: 'entity',
+      source: 'base44',
       _score: score,
     };
   }).filter(Boolean);
