@@ -31,8 +31,10 @@ const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [
 
 const emptyItem = () => ({
   id: uid(),
+  service_id: null,
   service_name: '',
   description: '',
+  category: '',
   quantity: 1,
   unit: 'ea',
   unit_price: 0,
@@ -117,15 +119,16 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 const lineTotal = calculateLineTotal(q, pickedPrice);
                 const updated = {
                   ...item,
+                  service_id:   picked._service_id || picked.service_id || null,
                   service_name: picked.name,
                   description:  picked.description || item.description || '',
+                  category:     picked.category || item.category || '',
                   unit:         picked.unit || item.unit,
-                  unit_price:   pickedPrice,   // auto-fill from book
-                  unit_cost:    pickedCost,     // load if available
-                  book_price:   pickedPrice,    // internal reference
+                  unit_price:   pickedPrice,
+                  unit_cost:    pickedCost,
+                  book_price:   pickedPrice,
                   line_total:   lineTotal,
                 };
-                console.log('[EstimateGroups] onSelect applied:', { pickedPrice, pickedCost, lineTotal, unit: updated.unit, name: updated.service_name });
                 onUpdate(updated);
               }}
             placeholder="Service name"

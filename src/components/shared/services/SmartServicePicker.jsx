@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { searchServices, buildTempService } from './serviceSearch';
-import { Plus, BookOpen, Tag } from 'lucide-react';
+import { searchBase44Services } from './serviceSearchBase44';
+import { Plus, BookOpen, Tag, Database } from 'lucide-react';
 
 const UNIT_DISPLAY = {
   each: 'ea', sqft: 'sqft', linear_ft: 'ln ft', room: 'room', wall: 'wall',
@@ -53,12 +54,27 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
   // Sync external value changes (e.g. reset on new item)
   useEffect(() => { setQuery(value || ''); }, [value]);
 
-  // Search whenever query changes
+  // Search whenever query changes — merge seed/Supabase + Base44 entity results
   useEffect(() => {
     if (!focused || query.trim().length < 1) { setResults([]); setOpen(false); return; }
-    const hits = searchServices(query);
-    setResults(hits);
-    setOpen(hits.length > 0 || query.trim().length >= 2);
+    let cancelled = false;
+    const seedHits = searchServices(query);
+    // Show seed results immediately
+    setResults(seedHits);
+    setOpen(seedHits.length > 0 || query.trim().length >= 2);
+    // Then async merge Base44 entity results
+    searchBase44Services(query).then(entityHits => {
+      if (cancelled) return;
+      if (entityHits.length === 0) return;
+      // Deduplicate by name (seed results take priority)
+      const seedNames = new Set(seedHits.map(r => r.name.toLowerCase()));
+      const unique = entityHits.filter(r => !seedNames.has(r.name.toLowerCase()));
+      if (unique.length > 0) {
+        setResults(prev => [...prev, ...unique]);
+        setOpen(true);
+      }
+    });
+    return () => { cancelled = true; };
   }, [query, focused]);
 
   // Close on outside click
@@ -89,13 +105,13 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
     // which can race with onSelect and overwrite the correct prices.
     const picked = {
       name,
-      description: result.svcEntry?.description || '',
+      description: result.description || result.svcEntry?.description || '',
       unit: unitDisplay(result.unit),
-      // unit_price drives estimate totals, unit_cost drives margin
       unit_price: result.unit_price != null ? Number(result.unit_price) : (result.base_price != null ? Number(result.base_price) : null),
       unit_cost:  result.unit_cost != null ? Number(result.unit_cost) : (result.estimated_cost != null ? Number(result.estimated_cost) : null),
       category:   result.category,
       type:       result.type || 'service',
+      service_id: result.source === 'entity' ? result.id : null,
       _service_id: result.id,
       _from_picker: true,
     };
@@ -152,9 +168,11 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
                 >
                   {/* Icon */}
                   <div className="flex-shrink-0 mt-0.5">
-                    {r.source === 'pricebook'
-                      ? <BookOpen className="w-3.5 h-3.5 text-blue-400" />
-                      : <Tag className="w-3.5 h-3.5 text-slate-300" />
+                    {r.source === 'entity'
+                      ? <Database className="w-3.5 h-3.5 text-emerald-400" />
+                      : r.source === 'pricebook'
+                        ? <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+                        : <Tag className="w-3.5 h-3.5 text-slate-300" />
                     }
                   </div>
 
