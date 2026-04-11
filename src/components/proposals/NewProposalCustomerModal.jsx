@@ -21,20 +21,29 @@ export default function NewProposalCustomerModal({ open, onOpenChange, onCustome
       setSearch('');
       setForm({ full_name: '', phone: '', email: '', address: '', city: '', state: '', zip: '' });
       setLoading(true);
-      base44.entities.Client.list('-created_date', 100)
+      base44.entities.Customer.list('-created_date', 100)
         .then(setClients)
         .finally(() => setLoading(false));
     }
   }, [open]);
 
-  const filtered = clients.filter(c =>
-    c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone?.includes(search) ||
-    c.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = clients.filter(c => {
+    const q = search.toLowerCase();
+    const name = c.display_name || [c.first_name, c.last_name].filter(Boolean).join(' ');
+    return (
+      name.toLowerCase().includes(q) ||
+      c.phone?.includes(search) ||
+      c.email?.toLowerCase().includes(q)
+    );
+  });
 
-  const handleSelectClient = (client) => {
-    onCustomerSelected(client);
+  const handleSelectClient = (customer) => {
+    // Normalize Customer entity fields to the shape callers expect
+    const normalized = {
+      ...customer,
+      full_name: customer.display_name || [customer.first_name, customer.last_name].filter(Boolean).join(' '),
+    };
+    onCustomerSelected(normalized);
     onOpenChange(false);
   };
 
@@ -42,18 +51,23 @@ export default function NewProposalCustomerModal({ open, onOpenChange, onCustome
     if (!form.full_name.trim()) { toast.error('Name is required'); return; }
     if (!form.phone.trim()) { toast.error('Phone is required'); return; }
     setSaving(true);
-    const created = await base44.entities.Client.create({
-      full_name: form.full_name.trim(),
+    const nameParts = form.full_name.trim().split(/\s+/);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    const created = await base44.entities.Customer.create({
+      first_name: firstName,
+      last_name: lastName,
+      display_name: form.full_name.trim(),
       phone: form.phone.trim(),
       email: form.email.trim(),
-      address: form.address.trim(),
+      service_address: form.address.trim(),
       city: form.city.trim(),
       state: form.state.trim(),
       zip: form.zip.trim(),
     });
     setSaving(false);
     toast.success('Customer created');
-    onCustomerSelected({ ...created, id: created.id });
+    onCustomerSelected({ ...created, full_name: created.display_name || form.full_name.trim() });
     onOpenChange(false);
   };
 
@@ -143,7 +157,7 @@ export default function NewProposalCustomerModal({ open, onOpenChange, onCustome
                           <User className="w-4 h-4 text-slate-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{c.full_name}</p>
+                          <p className="text-sm font-semibold text-slate-900 truncate">{c.display_name || [c.first_name, c.last_name].filter(Boolean).join(' ')}</p>
                           <div className="flex gap-3 text-[11px] text-slate-500">
                             {c.phone && <span>{c.phone}</span>}
                             {c.email && <span className="truncate">{c.email}</span>}
