@@ -10,12 +10,12 @@ import {
   Search, UserPlus, Check, X
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import CustomerFormModal from '@/components/customers/CustomerFormModal';
+import ClientFormModal from '@/components/proposals/ClientFormModal';
 
 export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) {
   const [editing, setEditing] = useState(!estimate?.client_name);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [linkedCustomer, setLinkedCustomer] = useState(null);
+  const [linkedClient, setLinkedClient] = useState(null);
   const [form, setForm] = useState({
     client_name: estimate?.client_name || '',
     client_email: estimate?.client_email || '',
@@ -32,14 +32,14 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
     base44.entities.Client.list('-created_date', 50).then(setClients).catch(() => {});
   }, []);
 
-  // Load linked Customer entity when client_id changes
+  // Load linked Client entity when client_id changes
   useEffect(() => {
     if (estimate?.client_id) {
-      base44.entities.Customer.filter({ id: estimate.client_id }).then(res => {
-        setLinkedCustomer(res[0] || null);
+      base44.entities.Client.filter({ id: estimate.client_id }).then(res => {
+        setLinkedClient(res[0] || null);
       }).catch(() => {});
     } else {
-      setLinkedCustomer(null);
+      setLinkedClient(null);
     }
   }, [estimate?.client_id]);
 
@@ -104,12 +104,9 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
           </button>
           <button
             onClick={() => {
-              if (estimate?.client_id && linkedCustomer) {
-                setShowCustomerModal(true);
-              } else {
-                setEditing(v => !v);
-                setShowSearch(false);
-              }
+              setShowCustomerModal(true);
+              setEditing(false);
+              setShowSearch(false);
             }}
             className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition-colors" title="Edit contact">
             <Pencil className="w-3.5 h-3.5" />
@@ -286,23 +283,31 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
         </div>
       )}
 
-      {/* Customer edit modal (only when linked to a Customer record) */}
-      <CustomerFormModal
+      {/* Customer edit modal — uses Client entity (same as proposals) */}
+      <ClientFormModal
         open={showCustomerModal}
         onOpenChange={setShowCustomerModal}
-        customer={linkedCustomer}
-        onSaved={(updated) => {
-          setLinkedCustomer(updated);
-          // Sync the visible form fields with updated customer data
-          const addr = [updated.service_address, updated.city, updated.state, updated.zip].filter(Boolean).join(', ');
+        client={linkedClient || (form.client_name ? {
+          id: estimate?.client_id || null,
+          full_name: form.client_name,
+          phone: form.client_phone,
+          email: form.client_email,
+          address: form.client_address?.split(',')[0]?.trim() || '',
+          city: form.client_address?.split(',')[1]?.trim() || '',
+          state: form.client_address?.split(',')[2]?.trim() || '',
+        } : null)}
+        onSaved={(saved) => {
+          setLinkedClient(saved);
+          const addr = [saved.address, saved.city, saved.state, saved.zip].filter(Boolean).join(', ');
           const updatedFields = {
-            client_name: updated.display_name || `${updated.first_name} ${updated.last_name}`,
-            client_email: updated.email || '',
-            client_phone: updated.phone || '',
-            client_address: addr || form.client_address,
+            client_id: saved.id,
+            client_name: saved.full_name || '',
+            client_email: saved.email || '',
+            client_phone: saved.phone || '',
+            client_address: addr,
           };
           setForm(f => ({ ...f, ...updatedFields }));
-          onCustomerChange({ ...updatedFields, client_id: updated.id }, updated);
+          onCustomerChange(updatedFields, saved);
         }}
       />
     </div>
