@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Search, Plus, User, ChevronRight } from 'lucide-react';
+import { Search, Plus, User, ChevronRight, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function NewProposalCustomerModal({ open, onOpenChange, onCustomerSelected }) {
@@ -62,9 +62,15 @@ export default function NewProposalCustomerModal({ open, onOpenChange, onCustome
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3">
+        <DialogHeader className="px-5 pt-5 pb-3 relative">
           <DialogTitle>Select Customer</DialogTitle>
           <DialogDescription>Choose an existing customer or create a new one for this proposal.</DialogDescription>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute right-5 top-5 w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </DialogHeader>
 
         {/* Tabs */}
