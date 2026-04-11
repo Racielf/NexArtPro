@@ -24,7 +24,6 @@ import { usePriceAuditLog } from '@/hooks/usePriceAuditLog';
 import { calculateLineTotal, calculateVariance, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
 import { logChange } from '@/lib/estimateAuditLog';
 import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
-import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { logFieldChange } from '@/lib/pricingAuditService';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
