@@ -48,7 +48,7 @@ import ClientPortal from './pages/ClientPortal';
 
 
 const ProtectedRoute = ({ children }) => {
-  const { isLoadingAuth } = useAuth();
+  const { isLoadingAuth, isAuthenticated } = useAuth();
 
   if (isLoadingAuth) {
     return (
@@ -58,10 +58,15 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
+  // Accept base44 real auth OR legacy local_auth
   const localAuth = sessionStorage.getItem('local_auth') === 'true';
-
-  if (!localAuth) {
+  if (!isAuthenticated && !localAuth) {
     return <Navigate to="/team-access" replace />;
+  }
+
+  // Mark session so other components know auth is active
+  if (isAuthenticated) {
+    sessionStorage.setItem('base44_authenticated', 'true');
   }
 
   return children;
@@ -81,6 +86,12 @@ const AuthenticatedApp = () => {
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
+    } else if (authError.type === 'auth_required') {
+      // Only redirect if no local_auth fallback
+      const localAuth = sessionStorage.getItem('local_auth') === 'true';
+      if (!localAuth) {
+        return <Navigate to="/team-access" replace />;
+      }
     }
   }
 

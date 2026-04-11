@@ -78,12 +78,14 @@ export default function Dashboard() {
         base44.entities.WorkOrder.list('-created_date', 100),
         base44.entities.Invoice.list('-created_date', 100),
       ]);
-    } catch {
-      if (sessionStorage.getItem('local_auth') === 'true') {
+    } catch (err) {
+      // Only swallow errors for pure local_auth sessions (no base44 real auth)
+      const isBase44Auth = sessionStorage.getItem('base44_authenticated') === 'true';
+      if (!isBase44Auth && sessionStorage.getItem('local_auth') === 'true') {
         setLoading(false);
         return;
       }
-      throw arguments[0];
+      throw err;
     }
 
     const todayAppts = appts.filter(a => (a.appointment_date || a.scheduled_date) === today);

@@ -14,4 +14,5 @@ export function clearLocalSession() {
   sessionStorage.removeItem('local_auth');
   sessionStorage.removeItem('user_role');
   sessionStorage.removeItem('team_access_granted');
+  sessionStorage.removeItem('base44_authenticated');
 }
