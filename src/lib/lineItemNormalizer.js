@@ -20,6 +20,9 @@ const safeNum = (v, fallback = 0) => {
   return isNaN(n) ? fallback : n;
 };
 
+/** Like safeNum but clamps to >= 0 (prices, quantities must never be negative) */
+const safeNonNeg = (v, fallback = 0) => Math.max(0, safeNum(v, fallback));
+
 const safeStr = (v, fallback = '') =>
   typeof v === 'string' ? v : (v != null ? String(v) : fallback);
 
@@ -28,19 +31,26 @@ const safeStr = (v, fallback = '') =>
  * Legacy aliases (e.g. `name`, `total_price`) are resolved automatically.
  */
 export function normalizeLineItem(raw = {}) {
-  const quantity   = safeNum(raw.quantity, 1);
-  const unit_price = safeNum(raw.unit_price, 0);
-  const unit_cost  = safeNum(raw.unit_cost, 0);
-  const book_price = safeNum(raw.book_price, 0);
+  const quantity   = safeNonNeg(raw.quantity, 1);
+  const unit_price = safeNonNeg(raw.unit_price, 0);
+  const unit_cost  = safeNonNeg(raw.unit_cost, 0);
+  const book_price = safeNonNeg(raw.book_price, 0);
   // line_total: use stored value if valid, otherwise recalculate
-  const storedTotal = safeNum(raw.line_total) || safeNum(raw.total_price);
+  const storedTotal = safeNonNeg(raw.line_total) || safeNonNeg(raw.total_price);
   const line_total  = storedTotal || (quantity * unit_price);
+
+  // service_name: resolve legacy alias 'name', guard empty
+  const resolvedName = safeStr(raw.service_name || raw.name);
+
+  // service_id: preserve string IDs, reject non-string truthy garbage
+  const rawSid = raw.service_id;
+  const service_id = (typeof rawSid === 'string' && rawSid.length > 0) ? rawSid : null;
 
   return {
     ...raw,
     id:           raw.id || Math.random().toString(36).slice(2, 10),
-    service_id:   raw.service_id ?? null,
-    service_name: safeStr(raw.service_name || raw.name),
+    service_id,
+    service_name: resolvedName || '(unnamed)',
     category:     safeStr(raw.category) || 'Misc',
     description:  safeStr(raw.description),
     quantity,
@@ -48,7 +58,7 @@ export function normalizeLineItem(raw = {}) {
     unit_price,
     unit_cost,
     book_price,
-    line_total:   safeNum(line_total, 0),
+    line_total:   safeNonNeg(line_total, 0),
     taxable:      raw.taxable !== false,
   };
 }
