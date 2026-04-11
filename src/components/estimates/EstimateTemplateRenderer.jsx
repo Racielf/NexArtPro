@@ -3,6 +3,8 @@ import DocumentHeader from '../documents/DocumentHeader';
 import DocumentFooter from '../documents/DocumentFooter';
 import DocumentSummary from '../documents/DocumentSummary';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import CompanyLogoBlock from '../documents/CompanyLogoBlock';
+import useCompanyConfig from '@/hooks/useCompanyConfig';
 
 /**
  * EstimateTemplateRenderer — Universal document renderer with 6 distinct templates
@@ -120,6 +122,7 @@ const TEMPLATE_STYLES = {
 };
 
 export default function EstimateTemplateRenderer({ estimate, template = 'standard', options = {}, documentType = 'estimate' }) {
+  const cc = useCompanyConfig();
   if (!estimate) return null;
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -198,11 +201,14 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       {/* ── HEADER: Logo + Company + Document info ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, paddingBottom: 16, borderBottom: '2px solid #222' }}>
         {/* Company / Logo left */}
-         <div>
-           <div style={{ fontSize: 20, fontWeight: 'bold', color: '#111', marginBottom: 4 }}>{appConfig.company.name}</div>
-           <div style={{ fontSize: 10, color: '#555', lineHeight: 1.7 }}>
-             {appConfig.company.address}<br />
-             {appConfig.company.email} &nbsp;·&nbsp; {appConfig.company.phone}
+         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+           {cc.logo_url && <CompanyLogoBlock logoUrl={cc.logo_url} size={40} borderColor="#222" bgColor="#f5f5f5" />}
+           <div>
+             <div style={{ fontSize: 20, fontWeight: 'bold', color: '#111', marginBottom: 4 }}>{cc.name || appConfig.company.name}</div>
+             <div style={{ fontSize: 10, color: '#555', lineHeight: 1.7 }}>
+               {cc.address || appConfig.company.address}<br />
+               {cc.email || appConfig.company.email} &nbsp;·&nbsp; {cc.phone || appConfig.company.phone}
+             </div>
            </div>
          </div>
         {/* Document number + date right */}
@@ -358,19 +364,14 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-              <div style={{ width: 48, height: 48, background: '#1e293b', borderRadius: 10, border: '2px solid #38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg viewBox="0 0 40 40" width="28" height="28" fill="none">
-                  <path d="M8 28L20 12L32 28" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
+              <CompanyLogoBlock logoUrl={cc.logo_url} size={48} />
               <div>
-                 <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>{appConfig.company.name}</div>
+                 <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>{cc.name || appConfig.company.name}</div>
                  <div style={{ color: '#64748b', fontSize: 11 }}>{appConfig.company.tagline}</div>
                </div>
               </div>
               <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.8 }}>
-               {appConfig.company.address}<br />{appConfig.company.email}<br />{appConfig.company.phone}
+               {cc.address || appConfig.company.address}<br />{cc.email || appConfig.company.email}<br />{cc.phone || appConfig.company.phone}
               </div>
           </div>
 
@@ -668,9 +669,12 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
     <div style={{ fontFamily: 'Georgia, serif', fontSize: 12, color: '#2d2d2d', background: 'white', padding: '50px' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40, paddingBottom: 30, borderBottom: '2px solid #d4a574' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {cc.logo_url && <CompanyLogoBlock logoUrl={cc.logo_url} size={44} borderColor="#d4a574" bgColor="#faf8f3" />}
         <div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 5 }}>{appConfig.company.name}</div>
+          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 5 }}>{cc.name || appConfig.company.name}</div>
           <div style={{ fontSize: 11, color: '#7a7a7a', letterSpacing: 2, textTransform: 'uppercase' }}>{appConfig.company.tagline}</div>
+        </div>
         </div>
         <DocumentHeader
           estimate={estimate}
@@ -929,17 +933,11 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
 
             {/* LEFT — Logo + Company */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {/* Logo placeholder */}
-              <div style={{ width: 52, height: 52, background: '#1e293b', borderRadius: 12, border: '2px solid #38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg viewBox="0 0 40 40" width="30" height="30" fill="none">
-                  <path d="M8 28L20 12L32 28" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
+              <CompanyLogoBlock logoUrl={cc.logo_url} size={52} />
               <div>
-                 <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1 }}>{appConfig.company.name}</div>
-                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{appConfig.company.tagline} · {appConfig.company.city}</div>
-                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>{appConfig.company.email} · {appConfig.company.phone}</div>
+                 <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1 }}>{cc.name || appConfig.company.name}</div>
+                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{appConfig.company.tagline} · {cc.address || appConfig.company.city}</div>
+                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>{cc.email || appConfig.company.email} · {cc.phone || appConfig.company.phone}</div>
                </div>
             </div>
 

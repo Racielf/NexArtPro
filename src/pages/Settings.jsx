@@ -8,6 +8,7 @@ import { Plus, Search, ShieldCheck } from 'lucide-react';
 import ServicesCatalogSection from '@/components/settings/services/ServicesCatalogSection';
 import PriceBookSection from '@/components/settings/pricebook/PriceBookSection';
 import { base44 } from '@/api/base44Client';
+import CompanyPanel from '@/components/settings/CompanyPanel';
 import { normalizeUserRole } from '@/lib/utils';
 import { getUsers, createUser, toggleUserActive } from '@/lib/userStore';
 import ManualDelSistemaPanel from '@/components/settings/ManualDelSistemaPanel';
@@ -17,35 +18,6 @@ const inputCls = 'w-64 text-sm border border-slate-200 rounded-lg px-3 py-1.5 te
 const selectCls = 'w-64 text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';
 
 // ─── Section panels ───────────────────────────────────────────────────────────
-
-function CompanyPanel({ state, set }) {
-  return (
-    <SettingsSection title="Company" description="Your business information shown on documents and emails.">
-      <SettingsCard>
-        <SettingsRow label="Company Name" description="Appears on all documents">
-          <input className={inputCls} value={state.name} onChange={e => set({ ...state, name: e.target.value })} placeholder="FSM Pro LLC" />
-        </SettingsRow>
-        <SettingsRow label="Email">
-          <input className={inputCls} type="email" value={state.email} onChange={e => set({ ...state, email: e.target.value })} placeholder="info@company.com" />
-        </SettingsRow>
-        <SettingsRow label="Phone">
-          <input className={inputCls} value={state.phone} onChange={e => set({ ...state, phone: e.target.value })} placeholder="(503) 555-0100" />
-        </SettingsRow>
-        <SettingsRow label="Address">
-          <input className={inputCls} value={state.address} onChange={e => set({ ...state, address: e.target.value })} placeholder="123 Main St, Portland OR" />
-        </SettingsRow>
-        <SettingsRow label="License Number">
-          <input className={inputCls} value={state.license} onChange={e => set({ ...state, license: e.target.value })} placeholder="#CCB-000000" />
-        </SettingsRow>
-        <SettingsRow label="Logo" description="Upload your company logo" last>
-          <button className="text-sm text-blue-500 font-medium hover:text-blue-600 transition border border-blue-200 rounded-lg px-4 py-1.5 bg-blue-50">
-            Upload Logo
-          </button>
-        </SettingsRow>
-      </SettingsCard>
-    </SettingsSection>
-  );
-}
 
 function DocumentsPanel({ state, set }) {
   return (
@@ -332,15 +304,14 @@ export default function Settings() {
       .catch(() => {});
   }, []);
 
-  // Local state per section (mock — no backend yet)
-  const [company, setCompany] = useState({ name: 'FSM Pro', email: 'info@fsmpro.com', phone: '(503) 555-0100', address: 'Portland, OR 97201', license: '' });
+  // Local state per section
   const [documents, setDocuments] = useState({ template: 'pro', showLogo: true, showStatus: true, estimateFormat: 'EST-{number}', invoiceFormat: 'INV-{number}', defaultNotes: '' });
   const [labor, setLabor] = useState({ payPolicy: 'employee_unpaid_break', breakMinutes: 30, breakPaid: false, allowManualAdjustments: true });
   const [payments, setPayments] = useState({ methods: ['Cash', 'Check', 'Card', 'Zelle'], autoReceipt: false });
   const [general, setGeneral] = useState({ timezone: 'America/Los_Angeles', dateFormat: 'MM/DD/YYYY', currency: 'USD' });
 
   const panels = {
-    company:   <CompanyPanel   state={company}   set={setCompany}   />,
+    company:   <CompanyPanel />,
     documents: <DocumentsPanel state={documents} set={setDocuments} />,
     services:  <ServicesPanel />,
     pricebook: <PriceBookPanel />,

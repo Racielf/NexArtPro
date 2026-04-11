@@ -19,6 +19,10 @@ export const APP_CONFIG = {
     displayName: "R.C Art Construction",        // Short name (UI/sidebar)
     city: "Portland, OR",
     email: "info@rcartconstruction.com",
+    phone: "",
+    address: "",
+    license: "",
+    logo_url: "",
     tagline: "Professional Art Services",
   },
   

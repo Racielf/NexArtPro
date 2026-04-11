@@ -1,5 +1,6 @@
 import React from 'react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import useCompanyConfig from '@/hooks/useCompanyConfig';
 import { tb, tList, tReplace } from '@/lib/documentTranslations';
 import { COLORS, FONT, SPACE, S } from './pdf/PDFStyles';
 import PDFHeader from './pdf/PDFHeader';
@@ -29,6 +30,7 @@ const formatDate = (d, lang) => {
 };
 
 export default function ProposalDocumentRenderer({ estimate, options = {}, lang: langProp }) {
+  const cc = useCompanyConfig();
   if (!estimate) return null;
 
   const lang = langProp || estimate?.document_language || 'en';
@@ -78,6 +80,7 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
         expDate={expDate}
         variant="proposal"
         accent={ACCENT}
+        logoUrl={cc.logo_url}
       />
 
       <div style={{ padding: `0 ${SPACE.page}px` }}>

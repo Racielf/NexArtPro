@@ -1,12 +1,13 @@
 import React from 'react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import { COLORS, FONT, SPACE } from './PDFStyles';
+import CompanyLogoBlock from '@/components/documents/CompanyLogoBlock';
 
 /**
  * PDFHeader — Shared document header.
  * Renders differently for PROPOSAL (white bg, accent border) vs BID (dark bg).
  */
-export default function PDFHeader({ docLabel, number, date, expDate, variant = 'proposal', accent }) {
+export default function PDFHeader({ docLabel, number, date, expDate, variant = 'proposal', accent, logoUrl }) {
   const isBid = variant === 'bid';
   const accentColor = accent || (isBid ? COLORS.bid.accentBlue : COLORS.proposal.accent);
 
@@ -17,12 +18,7 @@ export default function PDFHeader({ docLabel, number, date, expDate, variant = '
           {/* Company */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
-              <div style={{ width: 44, height: 44, background: '#1e293b', borderRadius: 10, border: `2px solid ${accentColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg viewBox="0 0 40 40" width="26" height="26" fill="none">
-                  <path d="M8 28L20 12L32 28" stroke={accentColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
+              <CompanyLogoBlock logoUrl={logoUrl} size={44} borderColor={accentColor} bgColor="#1e293b" />
               <div>
                 <div style={{ fontWeight: FONT.weight.extrabold, fontSize: FONT.size['2xl'], letterSpacing: '-0.3px' }}>{appConfig.company.name}</div>
                 <div style={{ color: COLORS.text.muted, fontSize: FONT.size.xs }}>{appConfig.company.tagline}</div>
@@ -50,7 +46,10 @@ export default function PDFHeader({ docLabel, number, date, expDate, variant = '
     <div style={{ padding: `${SPACE.pageTop}px ${SPACE.page}px ${SPACE['2xl']}px`, borderBottom: `4px solid ${accentColor}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={{ fontSize: FONT.size['5xl'], fontWeight: FONT.weight.extrabold, color: COLORS.text.primary, letterSpacing: '-0.5px', marginBottom: 2 }}>{appConfig.company.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 4 }}>
+            {logoUrl && <CompanyLogoBlock logoUrl={logoUrl} size={48} borderColor={accentColor} bgColor="#f8fafc" />}
+            <div style={{ fontSize: FONT.size['5xl'], fontWeight: FONT.weight.extrabold, color: COLORS.text.primary, letterSpacing: '-0.5px' }}>{appConfig.company.name}</div>
+          </div>
           <div style={{ fontSize: FONT.size.sm, color: COLORS.text.muted, marginBottom: SPACE.lg }}>
             {appConfig.company.tagline}
           </div>
