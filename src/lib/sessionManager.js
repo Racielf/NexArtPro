@@ -14,7 +14,6 @@ export function logout(navigate) {
     window.location.href = '/team-access';
   }
 }
-}
 
 export function useInactivityTimeout() {
   const navigate = useNavigate();
