@@ -55,15 +55,18 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
   useEffect(() => { setQuery(value || ''); }, [value]);
 
   // Search whenever query changes — unified search across seed + Base44
+  // Debounced to avoid rapid-fire API calls on fast typing
   useEffect(() => {
     if (!focused || query.trim().length < 1) { setResults([]); setOpen(false); return; }
     let cancelled = false;
-    searchServicesUnified(query).then(hits => {
-      if (cancelled) return;
-      setResults(hits);
-      setOpen(hits.length > 0 || query.trim().length >= 2);
-    });
-    return () => { cancelled = true; };
+    const timer = setTimeout(() => {
+      searchServicesUnified(query).then(hits => {
+        if (cancelled) return;
+        setResults(hits);
+        setOpen(hits.length > 0 || query.trim().length >= 2);
+      });
+    }, 150);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [query, focused]);
 
   // Close on outside click
