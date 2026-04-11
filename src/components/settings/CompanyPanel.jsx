@@ -3,7 +3,7 @@ import SettingsSection from '@/components/settings/SettingsSection';
 import SettingsCard from '@/components/settings/SettingsCard';
 import SettingsRow from '@/components/settings/SettingsRow';
 import { Button } from '@/components/ui/button';
-import { Upload, Save, Trash2, Loader2, CheckCircle, ImageIcon } from 'lucide-react';
+import { Upload, Save, Trash2, Loader2, CheckCircle, XCircle, ImageIcon } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { loadCompanySettings, saveCompanySettings } from '@/lib/companySettings';
@@ -18,6 +18,8 @@ export default function CompanyPanel() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -29,7 +31,11 @@ export default function CompanyPanel() {
     });
   }, []);
 
-  const set = (field, value) => setState(prev => ({ ...prev, [field]: value }));
+  const set = (field, value) => {
+    setSaveSuccess(false);
+    setSaveError('');
+    setState(prev => ({ ...prev, [field]: value }));
+  };
 
   const isDirty = JSON.stringify(state) !== JSON.stringify(original);
 
@@ -63,6 +69,8 @@ export default function CompanyPanel() {
   const handleRemoveLogo = () => {
     set('logo_url', '');
     setPreviewUrl('');
+    setSaveSuccess(false);
+    setSaveError('');
   };
 
   // ── Save ───────────────────────────────────────────────────
@@ -72,12 +80,14 @@ export default function CompanyPanel() {
       return;
     }
     setSaving(true);
+    setSaveSuccess(false);
+    setSaveError('');
     try {
       await saveCompanySettings(state);
       setOriginal(state);
-      toast.success('Company settings saved');
+      setSaveSuccess(true);
     } catch (err) {
-      toast.error('Failed to save: ' + (err.message || 'Unknown error'));
+      setSaveError(err.message || 'Failed to save changes');
     } finally {
       setSaving(false);
     }
@@ -183,12 +193,17 @@ export default function CompanyPanel() {
             <><Save className="w-4 h-4" /> Save Company Settings</>
           )}
         </Button>
-        {!isDirty && original && (
+        {saveSuccess && !isDirty && (
           <span className="flex items-center gap-1.5 text-xs text-green-600">
             <CheckCircle className="w-3.5 h-3.5" /> All changes saved
           </span>
         )}
-        {isDirty && (
+        {saveError && (
+          <span className="flex items-center gap-1.5 text-xs text-red-600">
+            <XCircle className="w-3.5 h-3.5" /> {saveError}
+          </span>
+        )}
+        {isDirty && !saveError && (
           <span className="text-xs text-amber-600 font-medium">Unsaved changes</span>
         )}
       </div>
