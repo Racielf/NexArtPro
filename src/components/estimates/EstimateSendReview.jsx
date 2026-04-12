@@ -240,19 +240,18 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       const clientAttachments = Array.isArray(estimate?.attachments)
         ? estimate.attachments.filter(a => a.intent === 'send_to_client')
         : [];
-      let attachmentSection = '';
-      if (clientAttachments.length > 0) {
-        attachmentSection = '\n\n📎 Attached documents:\n' +
-          clientAttachments.map(a => `• ${a.file_name || 'Document'}: ${a.file_url}`).join('\n');
-      }
-      const fullMessage = `${message}\n\nView & approve your estimate here:\n${clientLink}${attachmentSection}`;
 
       // 2. Send email first — must succeed before marking as sent
       const emailRes = await base44.functions.invoke('sendEstimateEmail', {
         to: recipientEmail,
         subject,
-        body: fullMessage,
+        message,
+        client_link: clientLink,
+        client_name: estimate?.client_name || '',
+        estimate_number: estimate?.estimate_number || '',
+        total: estimate?.total || 0,
         from_name: appConfig.appName || 'RC Art Construction',
+        attachments: clientAttachments.map(a => ({ file_name: a.file_name, file_url: a.file_url })),
       });
       if (emailRes.data?.error) throw new Error(emailRes.data.error);
 
