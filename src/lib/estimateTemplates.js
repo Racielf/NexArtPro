@@ -1,39 +1,30 @@
 /**
- * Estimate Template System
- * Defines 6 professional templates with different layouts & styles
- * Used by EstimateTemplateRenderer for Preview, Review & Send, Print/PDF
+ * Estimate Template System (v2)
+ *
+ * 3 structurally distinct templates:
+ *   clean       — Modern professional contractor estimate
+ *   premium     — Presentation-level formal proposal
+ *   modern_card — Contemporary SaaS-style card layout
+ *
+ * Legacy keys are preserved for backward compat but map to new templates
+ * in EstimateTemplateRenderer.
  */
 
 export const TEMPLATES = {
-  minimal: {
-    name: 'Minimal',
-    description: 'Clean, simple, focused on essentials',
-    key: 'minimal',
+  clean: {
+    name: 'Clean',
+    description: 'Modern professional — balanced, minimal, highly readable',
+    key: 'clean',
   },
-  compact: {
-    name: 'Compact',
-    description: 'Space-efficient, single column',
-    key: 'compact',
+  premium: {
+    name: 'Premium',
+    description: 'Formal presentation — serif, warm tones, elegant spacing',
+    key: 'premium',
   },
-  professional: {
-    name: 'Professional',
-    description: 'Classic dark header, full details',
-    key: 'professional',
-  },
-  modern: {
+  modern_card: {
     name: 'Modern',
-    description: 'Contemporary design with accent colors',
-    key: 'modern',
-  },
-  executive: {
-    name: 'Executive',
-    description: 'Premium look, comprehensive info',
-    key: 'executive',
-  },
-  detailed: {
-    name: 'Detailed',
-    description: 'Maximum detail, full breakdown',
-    key: 'detailed',
+    description: 'Contemporary card layout — modular, SaaS-style sections',
+    key: 'modern_card',
   },
 };
 
@@ -47,16 +38,16 @@ export const DEFAULT_OPTIONS = {
   showBreakdown: true,
   showTerms: true,
   showSignatures: true,
-  showProjectDates: true,       // Show project start/end dates
-  showDeposit: true,            // Show deposit & remaining balance section
-  hideInternalNotes: true,      // CRITICAL: Never show internal notes to client
+  showProjectDates: true,
+  showDeposit: true,
+  hideInternalNotes: true,
 };
 
 /**
- * Get template by key
+ * Get template by key (supports legacy keys)
  */
 export function getTemplate(key) {
-  return TEMPLATES[key] || TEMPLATES.professional;
+  return TEMPLATES[key] || TEMPLATES.clean;
 }
 
 /**
