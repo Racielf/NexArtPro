@@ -15,10 +15,8 @@
  * This is designed to be called fire-and-forget from the line item flow.
  * It never blocks the estimate editor UX.
  */
-import { base44 } from '@/api/base44Client';
+import { loadServices, loadPriceBook, createService, createPriceBookEntry } from '@/lib/servicePersistence';
 import { buildServiceIndex, findBestMatch } from '@/lib/serviceReconciler';
-import { invalidateCatalogCache } from '@/lib/catalogCache';
-import { invalidateBase44ServiceCache } from '@/components/shared/services/serviceSearchBase44';
 
 // Prevent duplicate concurrent persists for the same name
 const _pendingNames = new Set();
@@ -40,47 +38,63 @@ export async function persistNewServiceToCatalog(item) {
 
   try {
     // 1. Load existing services for duplicate check
-    const existingServices = await base44.entities.Service.list('name', 500);
-    const index = buildServiceIndex(existingServices.map(s => ({ id: s.id, name: s.name, aliases: [] })));
-    const match = findBestMatch(name, index, { threshold: 0.60, ambiguityGap: 0.12 });
+    const existingServices = await loadServices();
+    const svcIndex = buildServiceIndex(existingServices.map(s => ({ id: s.id, name: s.name, aliases: [] })));
+    const svcMatch = findBestMatch(name, svcIndex, { threshold: 0.60, ambiguityGap: 0.12 });
 
-    if (match) {
-      // Confident match found — reuse existing, don't create duplicate
-      return { service_id: match.service.id, created: false };
+    let serviceId = null;
+
+    if (svcMatch) {
+      // Confident match found — reuse existing service, don't create duplicate
+      serviceId = svcMatch.service.id;
+    } else {
+      // No match — create new Service record
+      const safePrice = parseFloat(item.unit_price) || 0;
+      const safeCost = parseFloat(item.unit_cost) || 0;
+
+      const newService = await createService({
+        name,
+        category: item.category || 'Misc',
+        unit: item.unit || 'ea',
+        description: item.description || '',
+        unit_price: safePrice,
+        unit_cost: safeCost,
+        type: 'service',
+        is_active: true,
+      });
+
+      serviceId = newService.id;
     }
 
-    // 2. No match — create new Service record
-    const newService = await base44.entities.Service.create({
-      name,
-      category: item.category || 'Misc',
-      unit: item.unit || 'ea',
-      description: item.description || '',
-      unit_price: item.unit_price ?? 0,
-      unit_cost: item.unit_cost ?? 0,
-      type: 'service',
-      is_active: true,
-    });
+    // 2. Check PriceBookEntry — only create if no match exists
+    const existingPB = await loadPriceBook();
+    const pbAsServices = existingPB.map(pb => ({ id: pb.id, name: pb.display_name, aliases: [] }));
+    const pbIndex = buildServiceIndex(pbAsServices);
+    const pbMatch = findBestMatch(name, pbIndex, { threshold: 0.60, ambiguityGap: 0.12 });
 
-    // 3. Create linked PriceBookEntry
-    await base44.entities.PriceBookEntry.create({
-      display_name: name,
-      service_id: newService.id,
-      type: 'service',
-      category: item.category || 'Misc',
-      unit: item.unit || 'ea',
-      unit_price: item.unit_price ?? 0,
-      unit_cost: item.unit_cost ?? 0,
-      book_price: item.unit_price ?? 0,
-      is_active: true,
-      needs_review: true,
-      source: 'manual',
-    });
+    if (!pbMatch) {
+      const safePrice = parseFloat(item.unit_price) || 0;
+      const safeCost = parseFloat(item.unit_cost) || 0;
 
-    // 4. Invalidate caches so the new service is immediately searchable
-    invalidateBase44ServiceCache();
-    await invalidateCatalogCache();
+      await createPriceBookEntry({
+        display_name: name,
+        service_id: serviceId || '',
+        type: 'service',
+        category: item.category || 'Misc',
+        unit: item.unit || 'ea',
+        unit_price: safePrice,
+        unit_cost: safeCost,
+        book_price: safePrice,
+        is_active: true,
+        needs_review: true,
+        source: 'manual',
+      }, existingServices || []);
+    }
 
-    return { service_id: newService.id, created: true };
+    // Cache invalidation is handled inside createService / createPriceBookEntry
+    // via invalidateAllCaches() in servicePersistence.js
+
+    return { service_id: serviceId, created: !svcMatch };
   } catch (err) {
     console.warn('[persistNewService] Failed (non-blocking):', err?.message);
     return { service_id: null, created: false };
