@@ -9,6 +9,7 @@ const labelCls = 'block text-xs font-semibold text-slate-500 uppercase tracking-
 
 const EMPTY = {
   display_name: '',
+  service_id: '',
   type: 'service',
   category: '',
   unit: 'sqft',
@@ -194,6 +195,14 @@ export default function PriceBookForm({ entry, onSave, onClose }) {
                 </div>
               )}
               <p className="text-[10px] text-slate-300 pt-0.5">Reference only — your prices are never changed automatically</p>
+            </div>
+          )}
+
+          {/* Service Link */}
+          {form.service_id && (
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+              <span className="text-xs text-emerald-700 font-medium">Linked to service: <code className="bg-emerald-100 px-1 rounded text-[10px]">{form.service_id}</code></span>
             </div>
           )}
 

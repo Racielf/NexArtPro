@@ -9,6 +9,7 @@
  * editor never breaks (degraded mode with console warning).
  */
 import { supabase } from '@/lib/supabaseClient';
+import { base44 } from '@/api/base44Client';
 import { SERVICES_SEED } from '@/components/settings/services/servicesSeed';
 import { PRICE_BOOK_SEED } from '@/components/settings/pricebook/priceBookSeed';
 
@@ -25,6 +26,13 @@ let _initPromise = null;
 // ── Supabase fetchers ──────────────────────────────────────────────────────
 
 async function fetchServicesFromSupabase() {
+  // Try Base44 entity first (persistent admin source of truth)
+  try {
+    const b44Data = await base44.entities.Service.filter({ is_active: true }, 'name', 500);
+    if (b44Data && b44Data.length > 0) return b44Data;
+  } catch (e) {
+    // Fallback to Supabase direct
+  }
   const { data, error } = await supabase
     .from('services')
     .select('*')
@@ -36,6 +44,20 @@ async function fetchServicesFromSupabase() {
 }
 
 async function fetchPriceBookFromSupabase() {
+  // Try Base44 PriceBookEntry entity first (persistent admin source of truth)
+  try {
+    const b44Data = await base44.entities.PriceBookEntry.filter({ is_active: true }, 'display_name', 500);
+    if (b44Data && b44Data.length > 0) {
+      return b44Data.map(row => ({
+        ...row,
+        type: row.type || 'service',
+        unit_price: row.unit_price ?? 0,
+        unit_cost: row.unit_cost ?? 0,
+      }));
+    }
+  } catch (e) {
+    // Fallback to Supabase direct
+  }
   const { data, error } = await supabase
     .from('price_book')
     .select('*')
@@ -43,7 +65,6 @@ async function fetchPriceBookFromSupabase() {
     .order('display_name');
 
   if (error) throw error;
-  // Normalize: ensure unit_price/unit_cost exist (map from legacy base_price/estimated_cost)
   return (data || []).map(row => ({
     ...row,
     type: row.type || 'service',

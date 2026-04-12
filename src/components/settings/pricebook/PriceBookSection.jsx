@@ -1,19 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, Search } from 'lucide-react';
-import { PRICE_BOOK_SEED } from './priceBookSeed';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Plus, Search, Loader2 } from 'lucide-react';
 import { PRICE_BOOK_CATEGORIES, ITEM_TYPES } from './priceBookCategories';
 import PriceBookTable from './PriceBookTable';
 import PriceBookForm from './PriceBookForm';
 import PriceBookImport from './PriceBookImport';
+import { loadPriceBook, createPriceBookEntry, updatePriceBookEntry, importPriceBookEntries, loadServices } from '@/lib/servicePersistence';
 
 const STATUS_FILTERS = ['All', 'Active', 'Inactive', 'Needs Review', 'Priced', 'Unpriced'];
 
-function genId() {
-  return `pb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-}
+// genId no longer needed — Base44 generates IDs on create
 
 export default function PriceBookSection() {
-  const [entries, setEntries] = useState(() => [...PRICE_BOOK_SEED]);
+  const [entries, setEntries] = useState([]);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [typeFilter, setTypeFilter]     = useState('All');
@@ -21,6 +21,16 @@ export default function PriceBookSection() {
   const [showForm, setShowForm]   = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [showMarket, setShowMarket]     = useState(true);
+
+  // Load from persistent source on mount
+  useEffect(() => {
+    Promise.all([loadPriceBook(), loadServices()])
+      .then(([pbData, svcData]) => {
+        setEntries(pbData);
+        setServices(svcData);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   // ── Derived categories from actual data ──
   const usedCategories = useMemo(() => {
@@ -56,81 +66,57 @@ export default function PriceBookSection() {
   const openEdit = (e) => { setEditingEntry(e); setShowForm(true); };
   const closeForm = () => { setShowForm(false); setEditingEntry(null); };
 
-  const handleSave = (form) => {
+  const handleSave = async (form) => {
+    const payload = {
+      display_name: form.display_name,
+      service_id: form.service_id || '',
+      type: form.type || 'service',
+      category: form.category || 'Misc',
+      unit: form.unit || 'each',
+      unit_price: form.unit_price ?? 0,
+      unit_cost: form.unit_cost ?? 0,
+      book_price: form.book_price ?? 0,
+      markup: form.markup ?? 0,
+      notes: form.notes || '',
+      is_active: form.is_active !== false,
+      needs_review: form.needs_review || false,
+    };
     if (editingEntry) {
-      setEntries(prev => prev.map(e => e.id === form.id ? { ...form } : e));
+      await updatePriceBookEntry(form.id, payload, services);
+      setEntries(prev => prev.map(e => e.id === form.id ? { ...e, ...payload } : e));
     } else {
-      setEntries(prev => [...prev, {
-        ...form,
-        id: genId(),
-        source: 'manual',
-        _original_display_name: form.display_name,
-        _original_unit_price: form.unit_price,
-        _original_unit_cost: form.unit_cost,
-        _original_book_price: form.book_price,
-        _original_notes: form.notes,
-        _original_unit: form.unit,
-      }]);
+      const created = await createPriceBookEntry({ ...payload, source: 'manual' }, services);
+      setEntries(prev => [...prev, created]);
     }
     closeForm();
   };
 
-  const toggleActive = (id) => setEntries(prev => prev.map(e => e.id === id ? { ...e, is_active: !e.is_active } : e));
-  const toggleReview = (id) => setEntries(prev => prev.map(e => e.id === id ? { ...e, needs_review: !e.needs_review } : e));
-  const handleInlinePriceUpdate = (id, field, value) => setEntries(prev => prev.map(e =>
-    e.id === id ? { ...e, [field]: value, updated_date: new Date().toISOString() } : e
-  ));
+  const toggleActive = async (id) => {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    await updatePriceBookEntry(id, { is_active: !entry.is_active }, services);
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, is_active: !e.is_active } : e));
+  };
+  const toggleReview = async (id) => {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    await updatePriceBookEntry(id, { needs_review: !entry.needs_review }, services);
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, needs_review: !e.needs_review } : e));
+  };
+  const handleInlinePriceUpdate = async (id, field, value) => {
+    await updatePriceBookEntry(id, { [field]: value }, services);
+    setEntries(prev => prev.map(e =>
+      e.id === id ? { ...e, [field]: value } : e
+    ));
+  };
 
   // ── CSV Import ──
-  const handleCsvImport = (rows) => {
-    let added = 0, updated = 0, skipped = 0;
-    setEntries(prev => {
-      const next = [...prev];
-      rows.forEach(row => {
-        const name = (row.service_name || '').trim();
-        if (!name) { skipped++; return; }
-        const idx = next.findIndex(e => e.display_name?.toLowerCase() === name.toLowerCase());
-        if (idx >= 0) {
-          next[idx] = {
-            ...next[idx],
-            ...(row.unit_price != null && { unit_price: row.unit_price }),
-            ...(row.unit_cost != null && { unit_cost: row.unit_cost }),
-            ...(row.book_price != null && { book_price: row.book_price }),
-            ...(row.category && { category: row.category }),
-            ...(row.uom && { unit: row.uom }),
-            ...(row.type && { type: row.type }),
-            ...(row.notes && { notes: row.notes }),
-            needs_review: false,
-          };
-          updated++;
-        } else {
-          next.push({
-            id: genId(),
-            display_name: name,
-            type: row.type || 'service',
-            category: row.category || 'Misc',
-            unit: row.uom || 'each',
-            unit_price: row.unit_price ?? row.book_price ?? null,
-            unit_cost: row.unit_cost ?? null,
-            book_price: row.book_price ?? null,
-            markup: null,
-            notes: row.notes || '',
-            is_active: true,
-            needs_review: true,
-            source: 'csv_import',
-            _original_display_name: name,
-            _original_unit_price: row.unit_price ?? null,
-            _original_unit_cost: row.unit_cost ?? null,
-            _original_book_price: row.book_price ?? null,
-            _original_notes: row.notes || '',
-            _original_unit: row.uom || 'each',
-          });
-          added++;
-        }
-      });
-      return next;
-    });
-    return { added, updated, skipped };
+  const handleCsvImport = async (rows) => {
+    const result = await importPriceBookEntries(rows, entries, services);
+    // Reload all entries from persistent source
+    const refreshed = await loadPriceBook();
+    setEntries(refreshed);
+    return result;
   };
 
   // ── Stats ──
@@ -141,6 +127,15 @@ export default function PriceBookSection() {
   const serviceCount = entries.filter(e => e.type === 'service').length;
   const materialCount = entries.filter(e => e.type === 'material').length;
   const laborCount = entries.filter(e => e.type === 'labor').length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-3 text-slate-400">
+        <Loader2 className="w-5 h-5 animate-spin" />
+        <span className="text-sm font-medium">Loading price book…</span>
+      </div>
+    );
+  }
 
   return (
     <div>

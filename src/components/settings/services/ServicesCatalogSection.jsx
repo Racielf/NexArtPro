@@ -1,22 +1,29 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, Search, SlidersHorizontal } from 'lucide-react';
-import { SERVICES_SEED, CATEGORIES } from './servicesSeed';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Plus, Search, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { CATEGORIES } from './servicesSeed';
 import ServicesTable from './ServicesTable';
 import ServiceForm from './ServiceForm';
+import { loadServices, createService, updateService } from '@/lib/servicePersistence';
 
 const FILTERS = ['All', 'Active', 'Inactive', 'Needs Review'];
 
-function genId() {
-  return `svc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
+// genId no longer needed — Base44 generates IDs on create
 
 export default function ServicesCatalogSection() {
-  const [services, setServices] = useState(() => SERVICES_SEED);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
-  const [editingService, setEditingService] = useState(null);   // null = closed, false = new, object = edit
+  const [editingService, setEditingService] = useState(null);
   const [showForm, setShowForm] = useState(false);
+
+  // Load from persistent source on mount
+  useEffect(() => {
+    loadServices()
+      .then(data => setServices(data))
+      .finally(() => setLoading(false));
+  }, []);
 
   // ── Filtered list ────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -30,11 +37,10 @@ export default function ServicesCatalogSection() {
       if (categoryFilter !== 'All' && s.category !== categoryFilter) return false;
       // Search
       if (q) {
-        const inName    = s.name.toLowerCase().includes(q);
-        const inCat     = s.category.toLowerCase().includes(q);
-        const inAliases = s.aliases.some(a => a.includes(q));
-        const inDesc    = s.description?.toLowerCase().includes(q);
-        if (!inName && !inCat && !inAliases && !inDesc) return false;
+        const inName    = (s.name || '').toLowerCase().includes(q);
+        const inCat     = (s.category || '').toLowerCase().includes(q);
+        const inDesc    = (s.description || '').toLowerCase().includes(q);
+        if (!inName && !inCat && !inDesc) return false;
       }
       return true;
     });
@@ -45,22 +51,52 @@ export default function ServicesCatalogSection() {
   const openEdit = (svc) => { setEditingService(svc); setShowForm(true); };
   const closeForm = () => { setShowForm(false); setEditingService(null); };
 
-  const handleSave = (form) => {
+  const handleSave = async (form) => {
     if (editingService) {
-      setServices(prev => prev.map(s => s.id === form.id ? { ...form } : s));
+      await updateService(form.id, {
+        name: form.name,
+        category: form.category,
+        description: form.description,
+        unit: form.default_unit || form.unit || 'each',
+        is_active: form.is_active,
+      });
+      setServices(prev => prev.map(s => s.id === form.id ? { ...s, ...form } : s));
     } else {
-      setServices(prev => [...prev, { ...form, id: genId(), created_from: 'manual' }]);
+      const created = await createService({
+        name: form.name,
+        category: form.category,
+        description: form.description || '',
+        unit: form.default_unit || form.unit || 'each',
+        type: 'service',
+        is_active: true,
+      });
+      setServices(prev => [...prev, created]);
     }
     closeForm();
   };
 
-  const toggleActive = (id) => {
+  const toggleActive = async (id) => {
+    const svc = services.find(s => s.id === id);
+    if (!svc) return;
+    await updateService(id, { is_active: !svc.is_active });
     setServices(prev => prev.map(s => s.id === id ? { ...s, is_active: !s.is_active } : s));
   };
 
-  const toggleReview = (id) => {
+  const toggleReview = async (id) => {
+    const svc = services.find(s => s.id === id);
+    if (!svc) return;
+    // needs_review is UI-only, not on entity — just toggle local
     setServices(prev => prev.map(s => s.id === id ? { ...s, needs_review: !s.needs_review } : s));
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-3 text-slate-400">
+        <Loader2 className="w-5 h-5 animate-spin" />
+        <span className="text-sm font-medium">Loading services catalog…</span>
+      </div>
+    );
+  }
 
   // ── Stats bar ─────────────────────────────────────────────────
   const total    = services.length;
