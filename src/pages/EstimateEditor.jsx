@@ -3,7 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Trash2, Send, ChevronRight } from 'lucide-react';
+import { X, Eye, Trash2, Send, ChevronRight, ChevronDown, ClipboardList, FileText } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import SaveStateIndicator from '@/components/shared/SaveStateIndicator';
 import EstimateTemplateSelector from '@/components/estimates/EstimateTemplateSelector';
 import EstimateDocumentOptions from '@/components/estimates/EstimateDocumentOptions';
@@ -237,19 +239,30 @@ export default function EstimateEditor() {
               Client View
             </button>
 
-            <button
-              onClick={() => {
-                if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
-                setShowSendModal(true);
-              }}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
-            >
-              <Send className="w-3.5 h-3.5" />
-              Review & Send
-            </button>
-
-            <ConvertToWorkOrderButton estimate={estimate} onConverted={loadEstimate} />
-            <ConvertToInvoiceButton estimate={estimate} onConverted={loadEstimate} />
+            <div className="flex items-center">
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
+                  setShowSendModal(true);
+                }}
+                className="rounded-r-none gap-1.5 h-8 px-3 text-xs font-medium"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Review & Send
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="rounded-l-none border-l border-primary-foreground/20 h-8 px-1.5">
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <ConvertToWorkOrderButton estimate={estimate} onConverted={loadEstimate} asDropdownItem />
+                  <ConvertToInvoiceButton estimate={estimate} onConverted={loadEstimate} asDropdownItem />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
 

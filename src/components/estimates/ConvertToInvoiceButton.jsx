@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { FileText, Loader2 } from 'lucide-react';
 import { prepareDownstreamDocument } from '@/lib/downstreamItemMapper';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
@@ -11,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
  * Shows only when estimate is approved or signed.
  * Converts estimate → Invoice and navigates to the invoice detail page.
  */
-export default function ConvertToInvoiceButton({ estimate, onConverted }) {
+export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdownItem = false }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -73,46 +74,30 @@ export default function ConvertToInvoiceButton({ estimate, onConverted }) {
 
   const enabled = !!estimate.client_name && !loading;
 
+  if (asDropdownItem) {
+    return (
+      <DropdownMenuItem
+        onClick={handleConvert}
+        disabled={!enabled}
+        className="gap-2 cursor-pointer"
+      >
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+        Convert to Invoice
+      </DropdownMenuItem>
+    );
+  }
+
   return (
-    <button
+    <Button
       onClick={handleConvert}
       disabled={!enabled}
+      variant="outline"
+      size="sm"
+      className="gap-1.5"
       title={!estimate.client_name ? 'Customer required' : 'Convert to Invoice'}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '7px 14px',
-        fontSize: '13px',
-        fontWeight: 600,
-        borderRadius: '6px',
-        border: '1px solid transparent',
-        cursor: enabled ? 'pointer' : 'not-allowed',
-        fontFamily: 'Inter, system-ui, sans-serif',
-        letterSpacing: '0.3px',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        backgroundColor: enabled ? '#10b981' : '#cbd5e1',
-        color: 'white',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
-        opacity: enabled ? 1 : 0.7,
-      }}
-      onMouseEnter={e => {
-        if (!enabled) return;
-        e.currentTarget.style.backgroundColor = '#059669';
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(16,185,129,0.25)';
-        e.currentTarget.style.transform = 'translateY(-1px)';
-      }}
-      onMouseLeave={e => {
-        if (!enabled) return;
-        e.currentTarget.style.backgroundColor = '#10b981';
-        e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
-        e.currentTarget.style.transform = 'translateY(0)';
-      }}
-      onMouseDown={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-      onMouseUp={e => { if (enabled) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(16,185,129,0.25)'; } }}
     >
-      {loading ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <FileText style={{ width: 14, height: 14 }} />}
+      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
       Convert to Invoice
-    </button>
+    </Button>
   );
 }
