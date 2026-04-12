@@ -17,8 +17,8 @@ export default function EstimateDocumentOptions({
   language = 'en',
   onLanguageChange,
 }) {
-  const [localOptions, setLocalOptions] = useState(options);
-  const [localLang, setLocalLang] = useState(language);
+  const [localOptions, setLocalOptions] = useState({ ...DEFAULT_OPTIONS, ...options });
+  const [localLang, setLocalLang] = useState(language || 'en');
 
   const toggleOption = (key) => {
     setLocalOptions(prev => ({ ...prev, [key]: !prev[key] }));
