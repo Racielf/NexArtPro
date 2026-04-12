@@ -9,7 +9,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { logComm, logCommFailed } from '@/lib/commTracking';
-import { logSend } from '@/lib/estimateAuditLog';
+import { logSend, logBelowCostOverride } from '@/lib/estimateAuditLog';
 import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
@@ -162,6 +162,39 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
 
   // In Estimate flow, always use Estimate label — only BID overrides
   const docConfig = estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE');
+
+  // Handler when user confirms override of below-cost pricing warning
+  const handleProceedAfterPricingWarning = async () => {
+    setLossModalOpen(false);
+
+    const lossItems = Array.isArray(lossValidation?.lossItems) ? lossValidation.lossItems : [];
+
+    if (lossItems.length > 0) {
+      const totalLoss = lossItems.reduce(
+        (sum, item) =>
+          sum + ((Number(item.loss_per_unit) || 0) * (Number(item.quantity) || 0)),
+        0
+      );
+
+      const currentUser = await base44.auth.me().catch(() => null);
+
+      if (currentUser) {
+        await logBelowCostOverride({
+          estimate_id: estimate.id,
+          estimate_number: estimate.estimate_number,
+          user: currentUser,
+          totalLoss,
+          lossItemsCount: lossItems.length,
+          metadata: {
+            client_email: recipientEmail,
+            client_name: estimate?.client_name || '',
+          },
+        }).catch(err => console.warn('[audit] below-cost override log failed:', err?.message));
+      }
+    }
+
+    setConfirmOpen(true);
+  };
 
   // Proceeds past attachment check to pricing validation
   const proceedToPricingValidation = () => {
@@ -501,7 +534,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       <LossPreventionModal
         open={lossModalOpen}
         onClose={() => setLossModalOpen(false)}
-        onProceed={() => { setLossModalOpen(false); setConfirmOpen(true); }}
+        onProceed={handleProceedAfterPricingWarning}
         lossItems={lossValidation.lossItems}
         zeroProfitItems={lossValidation.zeroProfitItems}
         materialsWithoutCost={lossValidation.materialsWithoutCost}

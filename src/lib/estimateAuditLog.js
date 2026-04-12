@@ -130,6 +130,34 @@ export async function logSend({
 }
 
 /**
+ * logBelowCostOverride — Log when user confirms sending despite below-cost items
+ */
+export async function logBelowCostOverride({
+  estimate_id,
+  estimate_number,
+  user,
+  totalLoss = 0,
+  lossItemsCount = 0,
+  metadata = {},
+}) {
+  return logChange({
+    estimate_id,
+    estimate_number,
+    user,
+    action: 'below_cost_override_confirmed',
+    field: 'below_cost_override',
+    old_value: 'pending',
+    new_value: 'confirmed',
+    metadata: {
+      note: `Below-cost send override confirmed. Estimated loss: $${Number(totalLoss || 0).toFixed(2)} across ${lossItemsCount} item(s)`,
+      total_loss: Number(totalLoss || 0),
+      loss_items_count: Number(lossItemsCount || 0),
+      ...metadata,
+    },
+  });
+}
+
+/**
  * fetchAuditLog — Retrieve audit history for an estimate
  */
 export async function fetchAuditLog(estimate_id) {
