@@ -9,6 +9,7 @@
  * { id, name, category, unit, unit_price, unit_cost, description, type, source }
  */
 import { searchServices } from './serviceSearch';
+import { ensureCatalogReady } from '@/lib/catalogCache';
 
 // ─── Adapters ──────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,9 @@ function normalizeResult(r) {
 export async function searchServicesUnified(query, limit = 15) {
   const q = (query || '').trim();
   if (!q) return [];
+
+  // Ensure live Base44 data (incl. seed-gap merge) is loaded before searching
+  await ensureCatalogReady();
 
   // Single authoritative search — cache is backed by Base44 entities
   try {

@@ -24,6 +24,7 @@ let _priceBookFetchedAt = 0;
 let _servicesFetching = null;
 let _priceBookFetching = null;
 let _initPromise = null;
+let _initResolved = false;
 
 // ── Data fetchers ──────────────────────────────────────────────────────────
 
@@ -52,8 +53,14 @@ async function fetchServices() {
 
 // Background seed-gap check — runs at most once per session
 let _seedGapChecked = false;
+let _seedGapPromise = null;
 async function _checkSeedGaps(liveServices) {
   if (_seedGapChecked) return;
+  _seedGapPromise = _doSeedGapCheck(liveServices);
+  return _seedGapPromise;
+}
+
+async function _doSeedGapCheck(liveServices) {
   _seedGapChecked = true;
   try {
     // Quick category check: do we have all seed categories?
@@ -91,6 +98,8 @@ async function _checkSeedGaps(liveServices) {
     }
   } catch (err) {
     console.warn('[CatalogCache] Seed gap check failed (non-blocking):', err?.message);
+  } finally {
+    _seedGapPromise = null;
   }
 }
 
@@ -172,11 +181,33 @@ async function refreshPriceBook() {
 /**
  * Initialize cache — call once at app startup or before first search.
  * Returns a promise that resolves when both datasets are loaded.
+ * After resolving, seed-gap merge is also guaranteed complete.
  */
 export async function initCatalogCache() {
   if (_initPromise) return _initPromise;
-  _initPromise = Promise.all([refreshServices(), refreshPriceBook()]);
+  _initPromise = Promise.all([refreshServices(), refreshPriceBook()]).then(async () => {
+    // Wait for seed-gap merge to complete before marking init done
+    if (_seedGapPromise) await _seedGapPromise;
+    _initResolved = true;
+  });
   return _initPromise;
+}
+
+/**
+ * Returns true only after initCatalogCache has fully resolved
+ * (including seed-gap merge). Use to gate picker readiness.
+ */
+export function isCatalogReady() {
+  return _initResolved;
+}
+
+/**
+ * Await catalog readiness. If init was already called, returns that promise.
+ * If not, triggers init. Suitable for calling before first search.
+ */
+export async function ensureCatalogReady() {
+  if (_initResolved) return;
+  return initCatalogCache();
 }
 
 // Re-export under old name for backward compat (avoid breaking any missed references)
@@ -185,12 +216,14 @@ export const initServiceCache = initCatalogCache;
 /**
  * Get cached services array (synchronous after init).
  * If cache is stale, triggers background refresh and returns current cache.
- * If cache is empty (first call before init), returns seed as fallback.
+ * If cache is empty (first call before init), triggers init and returns seed as fallback.
  */
 export function getServices() {
   if (!_servicesCache) {
     _servicesCache = SERVICES_SEED;
-    refreshServices();
+    // Trigger full init (not just services) so seed-gap merge also runs
+    if (!_initPromise) initCatalogCache();
+    else refreshServices();
   } else if (isStale(_servicesFetchedAt)) {
     refreshServices();
   }
@@ -213,11 +246,16 @@ export function getPriceBook() {
 
 /**
  * Force-refresh both caches immediately (e.g., after admin edits).
+ * Returns a promise that resolves when fresh data is loaded.
  */
 export async function invalidateCatalogCache() {
   _servicesFetchedAt = 0;
   _priceBookFetchedAt = 0;
-  return Promise.all([refreshServices(), refreshPriceBook()]);
+  _seedGapChecked = false; // Allow re-check after import
+  const result = await Promise.all([refreshServices(), refreshPriceBook()]);
+  // Wait for any triggered seed-gap merge
+  if (_seedGapPromise) await _seedGapPromise;
+  return result;
 }
 
 // Re-export under old name for backward compat
