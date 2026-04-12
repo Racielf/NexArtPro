@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { normalizeLineItem, normalizeGroups } from '@/lib/lineItemNormalizer';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 export default function WorkOrderGroups({ workOrder, onSave, saving }) {
-  const [groups, setGroups] = useState(workOrder?.groups || []);
+  const [groups, setGroups] = useState(() => normalizeGroups(workOrder?.groups || []));
 
   const handleAddGroup = () => {
     const newGroup = {
@@ -31,17 +32,7 @@ export default function WorkOrderGroups({ workOrder, onSave, saving }) {
 
   const handleAddItem = (groupId) => {
     setGroups(g => g.map(gr => gr.id === groupId ? {
-      ...gr, items: [...gr.items, {
-        id: `i${Date.now()}`,
-        service_name: '',
-        description: '',
-        quantity: 1,
-        unit: 'ea',
-        unit_price: 0,
-        unit_cost: 0,
-        line_total: 0,
-        taxable: false,
-      }]
+      ...gr, items: [...gr.items, normalizeLineItem({ id: `i${Date.now()}` })]
     } : gr));
   };
 

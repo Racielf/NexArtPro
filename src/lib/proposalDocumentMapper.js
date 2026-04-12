@@ -45,19 +45,22 @@ export function mapProposalToEstimate(proposal, proposalDetails, language) {
   // Resolve language: explicit param > proposal field > 'en'
   const resolvedLang = language || proposal?.document_language || 'en';
 
-  // Map flat items[] → groups[] (client-safe: no unit_cost, book_price)
+  // Map flat items[] → groups[] (client-safe: structural fields preserved, no cost data)
   const groups = [{
     id: 'proposal-items',
     name: null, // single unnamed group — renderers handle gracefully
     items: (proposal.items || []).map(item => ({
       id: item.id,
-      service_name: item.service_name || '',
+      service_id: (typeof item.service_id === 'string' && item.service_id.length > 0) ? item.service_id : null,
+      service_name: item.service_name || item.name || '(unnamed)',
+      category: item.category || 'Misc',
       description: item.description || '',
       quantity: parseFloat(item.quantity) || 1,
       unit: item.unit || 'ea',
       unit_price: parseFloat(item.unit_price) || 0,
-      line_total: parseFloat(item.line_total) || 0,
-      // Explicitly NO: unit_cost, book_price, margin
+      line_total: parseFloat(item.line_total) || parseFloat(item.total_price) || 0,
+      taxable: item.taxable !== false,
+      // Explicitly NO: unit_cost, book_price, margin (client-facing doc)
     })),
   }];
 

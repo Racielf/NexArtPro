@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router-dom';
+import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 import { Button } from '@/components/ui/button';
 import {
   ArrowLeft, Pencil, Eye, Printer, Send, CheckCircle2,
@@ -89,14 +90,9 @@ export default function WorkOrderDetail() {
   );
 
   // Build items list: from groups first, then fall back to flat line_items
-  const groupItems = (workOrder.groups || []).flatMap(g => g.items || []);
-  const flatItems = (workOrder.line_items || []).map(li => ({
-    id: li.id || li.service_name,
-    service_name: li.service_name || li.name || li.description,
-    description: li.description,
-    quantity: li.quantity,
-    unit_price: li.unit_price,
-  }));
+  // Normalize all items to canonical shape (handles legacy aliases like name→service_name)
+  const groupItems = (workOrder.groups || []).flatMap(g => (g.items || []).map(normalizeLineItem));
+  const flatItems = (workOrder.line_items || []).map(li => normalizeLineItem(li));
   const allItems = groupItems.length > 0 ? groupItems : flatItems;
 
   return (

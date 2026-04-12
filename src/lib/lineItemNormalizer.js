@@ -78,6 +78,15 @@ export function normalizeGroups(groups = []) {
 }
 
 /**
+ * Strip transient UI-only fields before persistence.
+ * Keeps all canonical fields intact.
+ */
+export function sanitizeForPersistence(item) {
+  const { _from_picker, _is_new, _score, ...clean } = item;
+  return clean;
+}
+
+/**
  * Build normalized groups from an estimate that may have groups[] or legacy line_items[].
  */
 export function resolveAndNormalizeGroups(estimate) {

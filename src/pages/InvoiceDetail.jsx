@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -73,8 +74,9 @@ export default function InvoiceDetail() {
 
   const handlePrint = () => {
     const inv = invoice;
-    // Resolve line items from groups or flat
-    const allItems = inv.groups?.flatMap(g => g.items || []) || inv.line_items || [];
+    // Resolve line items from groups or flat — normalize for legacy alias handling
+    const rawItems = inv.groups?.flatMap(g => g.items || []) || inv.line_items || [];
+    const allItems = rawItems.map(normalizeLineItem);
     const content = `<html><head><title>Invoice #${inv.invoice_number}</title>
     <style>body{font-family:Arial,sans-serif;padding:40px;color:#111}h1{color:#1a56db}table{width:100%;border-collapse:collapse;margin:20px 0}th{background:#1f2937;color:white;padding:10px;text-align:left}td{padding:10px;border-bottom:1px solid #eee}.total{font-size:18px;font-weight:bold;color:#1a56db}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}</style></head><body>
     <div style="display:flex;justify-content:space-between;align-items:start">
@@ -134,7 +136,7 @@ export default function InvoiceDetail() {
     </div>
   );
 
-  const allItems = invoice.groups?.flatMap(g => g.items || []) || invoice.line_items || [];
+  const allItems = (invoice.groups?.flatMap(g => g.items || []) || invoice.line_items || []).map(normalizeLineItem);
 
   return (
     <>

@@ -13,7 +13,7 @@
  * Fields NOT persisted to Proposal: taxable, _service_id, _from_picker, _is_new
  */
 
-import { normalizeLineItem } from '@/lib/lineItemNormalizer';
+import { normalizeLineItem, sanitizeForPersistence } from '@/lib/lineItemNormalizer';
 
 // ─── SAFE CONVERSION UTILITIES ────────────────────────────────────────────────
 
@@ -61,19 +61,25 @@ export function mapItemsToGroups(items = []) {
  */
 export function mapGroupsToItems(groups = []) {
   return (groups || []).flatMap(group =>
-    (group.items || []).map(item => ({
-      id: item.id,
-      service_id: (typeof item.service_id === 'string' && item.service_id.length > 0) ? item.service_id : null,
-      service_name: toSafeString(item.service_name) || '(unnamed)',
-      category: toSafeString(item.category) || 'Misc',
-      description: toSafeString(item.description),
-      quantity: toSafeNumber(item.quantity, 1),
-      unit: toSafeString(item.unit, 'ea'),
-      book_price: toSafeNumber(item.book_price, 0),
-      unit_price: toSafeNumber(item.unit_price, 0),
-      unit_cost: toSafeNumber(item.unit_cost, 0),
-      line_total: calculateSafeLineTotal(item),
-    }))
+    (group.items || []).map(item => {
+      // Normalize first to handle legacy aliases, then strip UI-only fields
+      const normalized = normalizeLineItem(item);
+      const clean = sanitizeForPersistence(normalized);
+      return {
+        id: clean.id,
+        service_id: clean.service_id,
+        service_name: clean.service_name,
+        category: clean.category,
+        description: clean.description,
+        quantity: clean.quantity,
+        unit: clean.unit,
+        unit_price: clean.unit_price,
+        unit_cost: clean.unit_cost,
+        book_price: clean.book_price,
+        line_total: clean.line_total,
+        taxable: clean.taxable,
+      };
+    })
   );
 }
 
