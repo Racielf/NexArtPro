@@ -117,13 +117,33 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
 
   const clientLink = `${window.location.origin}/client-estimate?id=${estimate?.id}`;
 
+  const currentOptions = {
+    showPrices: visibility.materials !== false,
+    showBreakdown: visibility.services !== false,
+    showBusinessLogo: visibility.businessLogo !== false,
+    showBusinessName: visibility.businessName !== false,
+    showBusinessAddress: visibility.businessAddress !== false,
+    showEstimateNumber: visibility.estimateNumber !== false,
+    showEstimateName: visibility.estimateName !== false,
+    showNotes: visibility.estimateMessage !== false,
+    showCustomerName: visibility.customerName !== false,
+    showDocumentDate: visibility.estimateDate !== false,
+    showExpirationDate: visibility.expirationDate !== false,
+    showProjectStartDate: visibility.serviceDate !== false,
+    showProjectEndDate: visibility.serviceDate !== false,
+    showTechnicianName: visibility.technicianName !== false,
+    showTerms: true,
+    showSignatures: true,
+    hideInternalNotes: true,
+  };
+
   const handlePrint = () => {
-    printEstimate(estimate, visibility);
+    printEstimate(estimate, currentOptions, currentTemplate);
     logDocument(estimate.id, estimate, 'printed');
   };
 
   const handleDownload = () => {
-    downloadEstimate(estimate, visibility);
+    downloadEstimate(estimate, currentOptions, currentTemplate);
     logDocument(estimate.id, estimate, 'downloaded');
   };
 

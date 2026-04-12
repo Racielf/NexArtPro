@@ -17,13 +17,20 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
 
   if (!estimate || !open) return null;
 
+  const previewOptions = {
+    ...DEFAULT_OPTIONS,
+    ...(estimate?.document_config?.options || {}),
+    hideInternalNotes: true,
+  };
+  const previewTemplate = estimate?.document_config?.template || 'clean';
+
   const handlePrint = () => {
-    printEstimate(estimate);
+    printEstimate(estimate, previewOptions, previewTemplate);
     onClose();
   };
 
   const handleDownload = () => {
-    downloadEstimate(estimate);
+    downloadEstimate(estimate, previewOptions, previewTemplate);
   };
 
   const handleSend = () => {

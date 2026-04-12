@@ -8,11 +8,15 @@ import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 /**
  * Resolves the correct React element for rendering based on document_type.
- * BID/PROPOSAL → DocumentTypeRenderer (structured sections)
- * Legacy/other → EstimateTemplateRenderer (template-based)
+ * BID → BidDocumentRenderer (structured sections)
+ * All other → EstimateTemplateRenderer (template-based)
+ *
+ * @param {Object} estimate — The estimate record
+ * @param {Object} [overrideOptions] — Visibility options (from Review & Send toggles)
+ * @param {string} [overrideTemplate] — Template key (from Review & Send selector)
  */
-function resolveRendererElement(estimate) {
-  const mergedOpts = { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options, hideInternalNotes: true };
+function resolveRendererElement(estimate, overrideOptions, overrideTemplate) {
+  const mergedOpts = { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options, ...overrideOptions, hideInternalNotes: true };
   const lang = estimate?.document_language || 'en';
 
   if (estimate?.document_type === 'BID') {
@@ -23,9 +27,11 @@ function resolveRendererElement(estimate) {
     });
   }
 
+  const template = overrideTemplate || estimate?.document_config?.template || 'clean';
+
   return React.createElement(EstimateTemplateRenderer, {
     estimate,
-    template: estimate?.document_config?.template || 'clean',
+    template,
     options: mergedOpts,
     documentType: 'estimate',
   });
@@ -67,12 +73,15 @@ function createIframeDoc(estimate, rootId) {
 
 /**
  * Renders document into a hidden iframe and triggers window.print().
+ * @param {Object} estimate
+ * @param {Object} [options] — Visibility overrides from Review & Send
+ * @param {string} [template] — Template override from Review & Send
  */
-export function printEstimate(estimate, visibility) {
+export function printEstimate(estimate, options, template) {
   const { iframe, container } = createIframeDoc(estimate, 'print-root');
   const root = createRoot(container);
 
-  root.render(resolveRendererElement(estimate));
+  root.render(resolveRendererElement(estimate, options, template));
 
   setTimeout(() => {
     iframe.contentWindow.focus();
@@ -86,12 +95,15 @@ export function printEstimate(estimate, visibility) {
 
 /**
  * Generates and downloads a PDF file of the document.
+ * @param {Object} estimate
+ * @param {Object} [options] — Visibility overrides from Review & Send
+ * @param {string} [template] — Template override from Review & Send
  */
-export async function downloadEstimate(estimate, visibility) {
+export async function downloadEstimate(estimate, options, template) {
   const { iframe, container } = createIframeDoc(estimate, 'pdf-root');
   const root = createRoot(container);
 
-  root.render(resolveRendererElement(estimate));
+  root.render(resolveRendererElement(estimate, options, template));
 
   setTimeout(async () => {
     try {
