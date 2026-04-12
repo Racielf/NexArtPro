@@ -25,6 +25,7 @@ import { calculateLineTotal, runEstimateEngine, suggestPriceFromCost, getNegotia
 import { logChange } from '@/lib/estimateAuditLog';
 import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
 import { logFieldChange } from '@/lib/pricingAuditService';
+import ConcreteMetrics from '@/components/estimates/internal/ConcreteMetrics';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -142,6 +143,9 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
               {item.description ? 'edit details' : '+ add description'}
             </button>
           )}
+
+          {/* === INTERNAL-ONLY: concrete metrics === */}
+          {!isPreview && <ConcreteMetrics item={item} />}
 
           {/* === INTERNAL-ONLY: line margin + loss prevention + negotiation helpers ===
               Rule 8: placed inside Service column, below description.
