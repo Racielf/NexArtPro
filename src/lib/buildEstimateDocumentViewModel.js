@@ -59,6 +59,20 @@ function getLineItemColumns(documentType) {
   return { description: true, quantity: true, unit: true, price: true, total: true };
 }
 
+// ─── Terms array builder ───────────────────────────────────────────────────────
+const TERMS_CONFIG = [
+  { key: 'exclusions', label: 'Exclusions' },
+  { key: 'paymentTerms', label: 'Payment Terms' },
+  { key: 'warrantyTerms', label: 'Warranty' },
+  { key: 'legalTerms', label: 'Terms & Conditions' },
+];
+
+function buildTermsArray(textObj) {
+  return TERMS_CONFIG
+    .filter(t => textObj[t.key])
+    .map(t => ({ key: t.key, label: t.label, value: textObj[t.key] }));
+}
+
 // ─── Groups resolution (groups[] or legacy line_items[] fallback) ──────────────
 function resolveGroups(estimate) {
   if (estimate?.groups?.length) {
@@ -114,6 +128,9 @@ export function buildEstimateDocumentViewModel({
 
   const docTypeLabel = isWorkOrder ? 'WORK ORDER' : isInvoice ? 'INVOICE' : 'ESTIMATE';
 
+  // Resolve best document number for display
+  const documentNumber = estimate.estimate_number || estimate.invoice_number || estimate.work_order_number || null;
+
   const meta = {
     documentType,
     documentTypeLabel: docTypeLabel,
@@ -121,7 +138,9 @@ export function buildEstimateDocumentViewModel({
     today,
     expirationDate,
     status: estimate.status || 'draft',
+    statusLabel: (estimate.status || 'draft').replace(/_/g, ' ').toUpperCase(),
     statusStyle,
+    documentNumber,
     estimateNumber: estimate.estimate_number || null,
     invoiceNumber: estimate.invoice_number || null,
     workOrderNumber: estimate.work_order_number || null,
@@ -215,6 +234,9 @@ export function buildEstimateDocumentViewModel({
   // ─── Columns ─────────────────────────────────────────────────────────────
   const columns = getLineItemColumns(documentType);
 
+  // ─── Pre-built terms array for templates ─────────────────────────────────
+  const termsArray = buildTermsArray(text);
+
   return {
     meta,
     company,
@@ -225,5 +247,6 @@ export function buildEstimateDocumentViewModel({
     totals,
     text,
     columns,
+    termsArray,
   };
 }

@@ -2,112 +2,40 @@ import React from 'react';
 import DocumentHeader from '../documents/DocumentHeader';
 import DocumentFooter from '../documents/DocumentFooter';
 import DocumentSummary from '../documents/DocumentSummary';
-import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CompanyLogoBlock from '../documents/CompanyLogoBlock';
 import useCompanyConfig from '@/hooks/useCompanyConfig';
 import { buildEstimateDocumentViewModel } from '@/lib/buildEstimateDocumentViewModel';
 
 /**
  * EstimateTemplateRenderer — Universal document renderer with 6 distinct templates
- * 
- * ARCHITECTURE:
- * - Common setup (data resolution, calculations, column logic)
- * - Template config (visual styles per template)
- * - Render helpers (reusable sections: header, client, project, items, summary, footer)
- * - 6 Template functions (each = composition of helpers with specific config)
- * 
+ *
+ * ARCHITECTURE (Phase 11):
+ * - buildEstimateDocumentViewModel() centralizes ALL domain/business prep
+ * - Templates consume ONLY the view model (vm.*) — never raw estimate fields
+ * - Child components (DocumentHeader, DocumentSummary, DocumentFooter) receive
+ *   vm-derived props; DocumentHeader still receives raw `estimate` for its own
+ *   internal contract (reads estimate_number, status)
+ *
  * Templates:
- * 1. minimal - Clean, sparse, B&W, minimal styling
- * 2. standard - Corporate, clean, balanced
- * 3. modern - Contemporary, colored accents, rounded
- * 4. executive - Premium, elegant, serif, gold accents
- * 5. compact - Space-efficient, sidebar layout
- * 6. pro - Premium, cards, shadows, gradients
- * 
- * Document Types:
- * - estimate: Shows prices, deposit, terms, signatures
- * - invoice: Shows prices, tax, discount (no deposit)
- * - workorder: Hides all prices, focuses on tasks and execution
+ * 1. minimal  — Clean, sparse, B&W
+ * 2. standard — Corporate, clean, balanced
+ * 3. modern   — Contemporary, colored accents
+ * 4. executive — Premium, serif, gold accents
+ * 5. compact  — Space-efficient, sidebar layout
+ * 6. pro      — Premium, cards, shadows, gradients
  */
 
 // ═══════════════════════════════════════════════════════════════════════
-// NOTE: Domain/business preparation logic has been moved to
-// lib/buildEstimateDocumentViewModel.js — templates consume the view model.
-// ═══════════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════════
-// TEMPLATE CONFIG (visual styles per template)
+// TEMPLATE CONFIG (visual styles — no domain logic)
 // ═══════════════════════════════════════════════════════════════════════
 
 const TEMPLATE_STYLES = {
-  minimal: {
-    font: 'Arial, sans-serif',
-    fontSize: 11,
-    padding: '40px',
-    headerStyle: { marginBottom: 30 },
-    headerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 2 },
-    headerNum: { fontSize: 14, color: '#666' },
-    tableHeader: { background: 'transparent', border: '1px solid #000' },
-    tableRow: { border: '1px solid #ddd' },
-    blockBg: '#f5f5f5',
-    blockBorder: 'none',
-  },
-  standard: {
-    font: 'Inter, Arial, sans-serif',
-    fontSize: 13,
-    padding: '52px',
-    headerBg: '#0f172a',
-    headerColor: 'white',
-    tableHeader: { background: '#f8fafc', border: '2px solid #e2e8f0' },
-    tableRow: { border: '1px solid #f1f5f9' },
-    blockBg: '#f8fafc',
-    blockBorder: '1px solid #e2e8f0',
-    accent: '#38bdf8',
-  },
-  modern: {
-    font: 'system-ui, -apple-system, sans-serif',
-    fontSize: 12,
-    padding: '40px',
-    accentColor: '#7c3aed',
-    tableHeader: { background: '#f9fafb', border: 'none' },
-    tableRow: { borderBottom: '1px solid #e5e7eb' },
-    blockBg: '#f0f9ff',
-    blockBorder: '1px solid #7c3aed',
-    rounded: 8,
-  },
-  executive: {
-    font: 'Georgia, serif',
-    fontSize: 12,
-    padding: '50px',
-    color: '#2d2d2d',
-    accentColor: '#d4a574',
-    tableHeader: { background: '#f5f5f5', borderBottom: '2px solid #d4a574' },
-    tableRow: { borderBottom: '1px solid #e0e0e0' },
-    blockBg: '#faf8f3',
-    blockBorder: '4px solid #d4a574',
-  },
-  compact: {
-    font: 'Arial, sans-serif',
-    fontSize: 12,
-    layout: 'flex',
-    sidebarWidth: '35%',
-    sidebarBg: '#f0f0f0',
-    mainFlex: 1,
-    tableHeader: { background: '#f0f0f0', borderBottom: '2px solid #999' },
-    tableRow: { borderBottom: '1px solid #ddd' },
-  },
-  pro: {
-    font: 'Inter, Arial, sans-serif',
-    fontSize: 13,
-    padding: '44px',
-    accentColor: '#0f172a',
-    tableHeader: { background: '#f8fafc', borderBottom: '2px solid #e2e8f0' },
-    tableRow: { borderBottom: '1px solid #f1f5f9' },
-    blockBg: 'white',
-    blockBorder: '1px solid #e2e8f0',
-    blockShadow: '0 4px 6px rgba(0,0,0,0.07)',
-    rounded: 12,
-  },
+  minimal: { font: 'Arial, sans-serif', fontSize: 11, padding: '40px' },
+  standard: { font: 'Inter, Arial, sans-serif', fontSize: 13, padding: '52px', headerBg: '#0f172a' },
+  modern: { font: 'system-ui, -apple-system, sans-serif', fontSize: 12, padding: '40px', accentColor: '#7c3aed' },
+  executive: { font: 'Georgia, serif', fontSize: 12, padding: '50px', accentColor: '#d4a574' },
+  compact: { font: 'Arial, sans-serif', fontSize: 12, sidebarWidth: '35%', sidebarBg: '#f0f0f0' },
+  pro: { font: 'Inter, Arial, sans-serif', fontSize: 13, padding: '44px', accentColor: '#0f172a' },
 };
 
 export default function EstimateTemplateRenderer({ estimate, template = 'standard', options = {}, documentType = 'estimate' }) {
@@ -115,7 +43,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   if (!estimate) return null;
 
   // ═══════════════════════════════════════════════════════════════════════
-  // VIEW MODEL — all domain/business prep centralized here
+  // VIEW MODEL — the single source of all render data
   // ═══════════════════════════════════════════════════════════════════════
   const vm = buildEstimateDocumentViewModel({
     estimate,
@@ -126,81 +54,79 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   });
   if (!vm) return null;
 
-  // ─── Alias view model fields to local variables for template compatibility ───
-  // This avoids rewriting every template JSX reference while still consuming
-  // the centralized view model. Templates will be refactored in Phase 12/13.
-  const opts = vm.visibility;
-  const { isWorkOrder, isInvoice, isEstimate, showPrices } = vm.visibility;
-  const groups = vm.groups;
-  const today = vm.meta.today;
-  const expDate = vm.meta.expirationDate;
-  const startDate = vm.project.startDate;
-  const endDate = vm.project.endDate;
-  const total = vm.totals.total;
-  const depositPct = vm.totals.depositPercent;
-  const depositAmount = vm.totals.depositAmount;
-  const remaining = vm.totals.remaining;
-  const statusStyle = vm.meta.statusStyle;
-  const docTypeLabel = vm.meta.documentTypeLabel;
-  const lineCols = vm.columns;
-  const hasProjectDates_ = vm.project.hasProjectDates;
-  const safeTemplate = vm.meta.template;
+  // Destructure for template convenience (pure aliases, no recomputation)
+  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray } = vm;
+  const { isWorkOrder, isInvoice, isEstimate, showPrices } = opts;
 
   // ═══════════════════════════════════════════════════════════════════════
-  // RENDER HELPERS (reusable sections)
+  // SHARED HELPERS for DocumentSummary props
   // ═══════════════════════════════════════════════════════════════════════
+  const summaryProps = {
+    estimate, // backward compat for DocumentSummary internal fallback
+    documentType,
+    showPrices,
+    showDeposit: opts.showDeposit,
+    total: totals.total,
+    subtotal: totals.subtotal,
+    depositPct: totals.depositPercent,
+    depositAmount: totals.depositAmount,
+    remaining: totals.remaining,
+    isEstimate,
+    discountAmount: totals.discountAmount,
+    taxRate: totals.taxRate,
+    taxAmount: totals.taxAmount,
+  };
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // TEMPLATE: MINIMAL
+  // ═══════════════════════════════════════════════════════════════════════
   const renderMinimalTemplate = () => (
     <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#222', padding: '40px', background: 'white', lineHeight: 1.6, maxWidth: 760 }}>
 
-      {/* ── HEADER: Logo + Company + Document info ── */}
+      {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, paddingBottom: 16, borderBottom: '2px solid #222' }}>
-        {/* Company / Logo left */}
-         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-           {cc.logo_url && <CompanyLogoBlock logoUrl={cc.logo_url} size={40} borderColor="#222" bgColor="#f5f5f5" />}
-           <div>
-             <div style={{ fontSize: 20, fontWeight: 'bold', color: '#111', marginBottom: 4 }}>{cc.name || appConfig.company.name}</div>
-             <div style={{ fontSize: 10, color: '#555', lineHeight: 1.7 }}>
-               {cc.address || appConfig.company.address}<br />
-               {cc.email || appConfig.company.email} &nbsp;·&nbsp; {cc.phone || appConfig.company.phone}
-             </div>
-           </div>
-         </div>
-        {/* Document number + date right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {company.logoUrl && <CompanyLogoBlock logoUrl={company.logoUrl} size={40} borderColor="#222" bgColor="#f5f5f5" />}
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 'bold', color: '#111', marginBottom: 4 }}>{company.name}</div>
+            <div style={{ fontSize: 10, color: '#555', lineHeight: 1.7 }}>
+              {company.address}<br />
+              {company.email} &nbsp;·&nbsp; {company.phone}
+            </div>
+          </div>
+        </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 16, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{docTypeLabel}</div>
-          <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 4 }}>#{estimate.estimate_number || estimate.invoice_number || '—'}</div>
-          <div style={{ fontSize: 10, color: '#555' }}>{today}</div>
-          {expDate && <div style={{ fontSize: 10, color: '#555' }}>Expires: {expDate}</div>}
+          <div style={{ fontSize: 16, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{meta.documentTypeLabel}</div>
+          <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 4 }}>#{meta.documentNumber || '—'}</div>
+          <div style={{ fontSize: 10, color: '#555' }}>{meta.today}</div>
+          {meta.expirationDate && <div style={{ fontSize: 10, color: '#555' }}>Expires: {meta.expirationDate}</div>}
         </div>
       </div>
 
-      {/* ── BILL TO + PROJECT DATES ── */}
+      {/* BILL TO + PROJECT DATES */}
       <div style={{ display: 'flex', gap: 40, marginBottom: 24 }}>
-        {/* Bill To */}
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, color: '#888', marginBottom: 6 }}>Bill To</div>
-          <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 3 }}>{estimate.client_name}</div>
-          {estimate.client_address && <div style={{ color: '#444', fontSize: 11 }}>{estimate.client_address}</div>}
-          {estimate.client_email && <div style={{ color: '#555', fontSize: 10 }}>{estimate.client_email}</div>}
-          {estimate.client_phone && <div style={{ color: '#555', fontSize: 10 }}>{estimate.client_phone}</div>}
+          <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 3 }}>{client.name}</div>
+          {client.address && <div style={{ color: '#444', fontSize: 11 }}>{client.address}</div>}
+          {client.email && <div style={{ color: '#555', fontSize: 10 }}>{client.email}</div>}
+          {client.phone && <div style={{ color: '#555', fontSize: 10 }}>{client.phone}</div>}
         </div>
-        {/* Project dates — optional */}
-        {opts.showProjectDates && (startDate || endDate) && (
+        {opts.showProjectDates && project.hasProjectDates && (
           <div>
             <div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, color: '#888', marginBottom: 6 }}>Project Schedule</div>
-            {startDate && <div style={{ fontSize: 11, marginBottom: 3 }}><span style={{ color: '#888' }}>Start: </span>{startDate}</div>}
-            {endDate && <div style={{ fontSize: 11 }}><span style={{ color: '#888' }}>End: </span>{endDate}</div>}
+            {project.startDate && <div style={{ fontSize: 11, marginBottom: 3 }}><span style={{ color: '#888' }}>Start: </span>{project.startDate}</div>}
+            {project.endDate && <div style={{ fontSize: 11 }}><span style={{ color: '#888' }}>End: </span>{project.endDate}</div>}
           </div>
         )}
       </div>
 
-      {/* ── Project title ── */}
-      {estimate.title && (
-        <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 16 }}>{estimate.title}</div>
+      {/* Project title */}
+      {project.title && (
+        <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 16 }}>{project.title}</div>
       )}
 
-      {/* ── LINE ITEMS ── */}
+      {/* LINE ITEMS */}
       {opts.showBreakdown && groups.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           {groups.map((group, gi) => (
@@ -228,9 +154,9 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                         </td>
                       )}
                       {lineCols.quantity && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11 }}>{item.quantity}</td>}
-                      {lineCols.unit && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
-                      {lineCols.price && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
-                      {lineCols.total && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11, fontWeight: 'bold' }}>${(parseFloat(item.line_total) || 0).toFixed(2)}</td>}
+                      {lineCols.unit && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11 }}>{item.unit}</td>}
+                      {lineCols.price && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11 }}>${item.unit_price.toFixed(2)}</td>}
+                      {lineCols.total && <td style={{ textAlign: 'right', padding: '7px 8px', fontSize: 11, fontWeight: 'bold' }}>${item.line_total.toFixed(2)}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -240,57 +166,39 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         </div>
       )}
 
-      {/* ── TOTALS ── */}
-      <DocumentSummary
-        estimate={estimate}
-        documentType={documentType}
-        showPrices={showPrices}
-        showDeposit={opts.showDeposit}
-        total={total}
-        subtotal={estimate.subtotal || 0}
-        depositPct={depositPct}
-        depositAmount={depositAmount}
-        remaining={remaining}
-        isEstimate={isEstimate}
-        variant="minimal"
-        style={{ marginTop: 4, paddingTop: 10, borderTop: '1px solid #bbb' }}
-      />
+      {/* TOTALS */}
+      <DocumentSummary {...summaryProps} variant="minimal" style={{ marginTop: 4, paddingTop: 10, borderTop: '1px solid #bbb' }} />
 
-      {/* ── DEPOSIT CALLOUT (si aplica) ── */}
-      {isEstimate && depositPct > 0 && opts.showDeposit && (
+      {/* DEPOSIT CALLOUT */}
+      {isEstimate && totals.depositPercent > 0 && opts.showDeposit && (
         <div style={{ marginTop: 16, padding: '10px 14px', background: '#f0f7ff', border: '1px solid #bfdbfe', borderRadius: 4 }}>
           <div style={{ fontSize: 10, fontWeight: 'bold', color: '#1d4ed8', marginBottom: 3 }}>DEPOSIT REQUIRED TO START</div>
           <div style={{ fontSize: 13, fontWeight: 'bold', color: '#1e40af' }}>
-            ${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} ({depositPct}%)
+            ${totals.depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} ({totals.depositPercent}%)
           </div>
           <div style={{ fontSize: 10, color: '#555', marginTop: 3 }}>
-            Remaining balance of ${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })} due upon completion.
+            Remaining balance of ${totals.remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })} due upon completion.
           </div>
         </div>
       )}
 
-      {/* ── PROJECT NOTES (al final, para el cliente) ── */}
-      {estimate.notes && (
+      {/* NOTES */}
+      {text.notes && (
         <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #ddd' }}>
           <div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, color: '#888', marginBottom: 6 }}>Notes for Client</div>
-          <div style={{ fontSize: 11, color: '#444', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{estimate.notes}</div>
+          <div style={{ fontSize: 11, color: '#444', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{text.notes}</div>
         </div>
       )}
 
-      {/* ── TERMS (si aplica) ── */}
-      {opts.showTerms && [
-        { field: 'exclusions', label: 'Exclusions' },
-        { field: 'payment_terms', label: 'Payment Terms' },
-        { field: 'warranty_terms', label: 'Warranty' },
-        { field: 'legal_terms', label: 'Terms & Conditions' },
-      ].filter(s => estimate[s.field]).map(s => (
-        <div key={s.field} style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #eee' }}>
-          <div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, color: '#888', marginBottom: 4 }}>{s.label}</div>
-          <div style={{ fontSize: 10, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{estimate[s.field]}</div>
+      {/* TERMS */}
+      {opts.showTerms && termsArray.map(t => (
+        <div key={t.key} style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #eee' }}>
+          <div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, color: '#888', marginBottom: 4 }}>{t.label}</div>
+          <div style={{ fontSize: 10, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{t.value}</div>
         </div>
       ))}
 
-      {/* ── SIGNATURES ── */}
+      {/* SIGNATURES */}
       {opts.showSignatures && !isWorkOrder && (
         <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
           <div>
@@ -304,14 +212,17 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         </div>
       )}
 
-      {/* ── FOOTER ── */}
+      {/* FOOTER */}
       <div style={{ marginTop: 32, paddingTop: 10, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#aaa' }}>
-        <span>{appConfig.company.name} · {appConfig.company.city}</span>
-        <span>{today}</span>
+        <span>{company.name} · {company.city}</span>
+        <span>{meta.today}</span>
       </div>
     </div>
   );
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // TEMPLATE: STANDARD
+  // ═══════════════════════════════════════════════════════════════════════
   const renderStandardTemplate = () => (
     <div id="estimate-document" style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: 13, lineHeight: 1.5, background: 'white', color: '#0f172a', minWidth: 640 }}>
       {/* HEADER */}
@@ -319,23 +230,22 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-              <CompanyLogoBlock logoUrl={cc.logo_url} size={48} />
+              <CompanyLogoBlock logoUrl={company.logoUrl} size={48} />
               <div>
-                 <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>{cc.name || appConfig.company.name}</div>
-                 <div style={{ color: '#64748b', fontSize: 11 }}>{appConfig.company.tagline}</div>
-               </div>
+                <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>{company.name}</div>
+                <div style={{ color: '#64748b', fontSize: 11 }}>{company.tagline}</div>
               </div>
-              <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.8 }}>
-               {cc.address || appConfig.company.address}<br />{cc.email || appConfig.company.email}<br />{cc.phone || appConfig.company.phone}
-              </div>
+            </div>
+            <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.8 }}>
+              {company.address}<br />{company.email}<br />{company.phone}
+            </div>
           </div>
-
           <DocumentHeader
             estimate={estimate}
             documentType={documentType}
-            today={today}
-            expDate={expDate}
-            statusStyle={statusStyle}
+            today={meta.today}
+            expDate={meta.expirationDate}
+            statusStyle={meta.statusStyle}
             showStatus={true}
             variant="standard"
             style={{ textAlign: 'right', color: 'white' }}
@@ -347,24 +257,24 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{ padding: '28px 52px', borderRight: '1px solid #e2e8f0' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>Bill To</div>
-          <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>{estimate.client_name}</div>
-          {estimate.client_address && <div style={{ color: '#475569', fontSize: 13, marginBottom: 4 }}>{estimate.client_address}</div>}
-          {estimate.client_email && <div style={{ color: '#64748b', fontSize: 12, marginBottom: 3 }}>✉ {estimate.client_email}</div>}
-          {estimate.client_phone && <div style={{ color: '#64748b', fontSize: 12 }}>📞 {estimate.client_phone}</div>}
+          <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>{client.name}</div>
+          {client.address && <div style={{ color: '#475569', fontSize: 13, marginBottom: 4 }}>{client.address}</div>}
+          {client.email && <div style={{ color: '#64748b', fontSize: 12, marginBottom: 3 }}>✉ {client.email}</div>}
+          {client.phone && <div style={{ color: '#64748b', fontSize: 12 }}>📞 {client.phone}</div>}
         </div>
         <div style={{ padding: '28px 52px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>Project Details</div>
-          {estimate.title && <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14, marginBottom: 10 }}>{estimate.title}</div>}
-          {opts.showProjectDates && hasProjectDates_ && (
+          {project.title && <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14, marginBottom: 10 }}>{project.title}</div>}
+          {opts.showProjectDates && project.hasProjectDates && (
             <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
-              {startDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Start</div><div style={{ color: '#334155', fontSize: 12 }}>{startDate}</div></div>}
-              {endDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>End</div><div style={{ color: '#334155', fontSize: 12 }}>{endDate}</div></div>}
+              {project.startDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Start</div><div style={{ color: '#334155', fontSize: 12 }}>{project.startDate}</div></div>}
+              {project.endDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>End</div><div style={{ color: '#334155', fontSize: 12 }}>{project.endDate}</div></div>}
             </div>
           )}
-          {estimate.assigned_to && (
+          {project.assignedTo && (
             <div>
               <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Assigned To</div>
-              <div style={{ color: '#334155', fontSize: 12 }}>{estimate.assigned_to}</div>
+              <div style={{ color: '#334155', fontSize: 12 }}>{project.assignedTo}</div>
             </div>
           )}
         </div>
@@ -374,7 +284,6 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       {opts.showBreakdown && groups.length > 0 && (
         <div style={{ padding: '28px 52px 0' }}>
           {groups.map((group, gi) => {
-            const groupTotal = (group.items || []).reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0);
             const showGroupHeader = group.name && groups.length > 1;
             const th = { textAlign: 'right', padding: '9px 12px', fontWeight: 600, color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid #e2e8f0', borderTop: '1px solid #e2e8f0' };
             const thLeft = { ...th, textAlign: 'left' };
@@ -386,7 +295,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                 {showGroupHeader && (
                   <div style={{ background: '#1e293b', color: 'white', fontWeight: 700, fontSize: 12, padding: '8px 14px', borderRadius: '6px 6px 0 0', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>{group.name}</span>
-                    {lineCols.total && <span style={{ color: '#94a3b8', fontSize: 11 }}>${groupTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>}
+                    {lineCols.total && <span style={{ color: '#94a3b8', fontSize: 11 }}>${group.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>}
                   </div>
                 )}
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -406,19 +315,19 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                     {(group.items || []).map((item, idx) => (
                       <tr key={item.id || idx}>
                         {lineCols.description && <td style={tdLeft}>
-                          <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{item.service_name || item.name}</div>
+                          <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{item.service_name}</div>
                           {item.description && <div style={{ color: '#64748b', fontSize: 11, marginTop: 3 }}>{item.description}</div>}
                         </td>}
-                        {lineCols.quantity && <td style={td}>{parseFloat(item.quantity) % 1 === 0 ? parseInt(item.quantity) : (item.quantity || 0)}</td>}
-                        {lineCols.unit && <td style={td}>{item.unit || 'ea'}</td>}
-                        {lineCols.price && <td style={td}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
-                        {lineCols.total && <td style={{ ...td, fontWeight: 700, color: '#0f172a' }}>${(parseFloat(item.line_total || item.total_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
+                        {lineCols.quantity && <td style={td}>{parseFloat(item.quantity) % 1 === 0 ? parseInt(item.quantity) : item.quantity}</td>}
+                        {lineCols.unit && <td style={td}>{item.unit}</td>}
+                        {lineCols.price && <td style={td}>${item.unit_price.toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ ...td, fontWeight: 700, color: '#0f172a' }}>${item.line_total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
                       </tr>
                     ))}
                     {showGroupHeader && lineCols.total && (
                       <tr style={{ background: '#f8fafc' }}>
                         <td colSpan={Object.values(lineCols).filter(Boolean).length - 1} style={{ ...tdLeft, fontWeight: 600, color: '#334155', fontSize: 12, padding: '8px 12px', borderBottom: 'none' }}>Subtotal — {group.name}</td>
-                        <td style={{ ...td, fontWeight: 700, color: '#334155', borderBottom: 'none', padding: '8px 12px' }}>${groupTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td style={{ ...td, fontWeight: 700, color: '#334155', borderBottom: 'none', padding: '8px 12px' }}>${group.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       </tr>
                     )}
                   </tbody>
@@ -430,47 +339,30 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       )}
 
       {/* TOTALS */}
-      <DocumentSummary
-        estimate={estimate}
-        documentType={documentType}
-        showPrices={showPrices}
-        showDeposit={opts.showDeposit}
-        total={total}
-        subtotal={estimate.subtotal || 0}
-        depositPct={depositPct}
-        depositAmount={depositAmount}
-        remaining={remaining}
-        isEstimate={isEstimate}
-        variant="standard"
-      />
+      <DocumentSummary {...summaryProps} variant="standard" />
 
       {/* DEPOSIT CALLOUT */}
-      {isEstimate && depositPct > 0 && opts.showDeposit && (
+      {isEstimate && totals.depositPercent > 0 && opts.showDeposit && (
         <div style={{ margin: '0 52px', padding: '14px 18px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Deposit Required to Start Work</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#1e40af' }}>${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 'normal', color: '#3b82f6' }}>({depositPct}%)</span></div>
-          <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>Remaining balance: ${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })} — due upon project completion.</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#1e40af' }}>${totals.depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 'normal', color: '#3b82f6' }}>({totals.depositPercent}%)</span></div>
+          <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>Remaining balance: ${totals.remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })} — due upon project completion.</div>
         </div>
       )}
 
-      {/* NOTES — moved to end, for client */}
-      {estimate.notes && (
+      {/* NOTES */}
+      {text.notes && (
         <div style={{ padding: '20px 52px', borderTop: '1px solid #e2e8f0' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>Notes for Client</div>
-          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate.notes}</p>
+          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>
         </div>
       )}
 
       {/* TERMS */}
-      {opts.showTerms && [
-        { field: 'exclusions', label: 'Exclusions' },
-        { field: 'payment_terms', label: 'Payment Terms' },
-        { field: 'warranty_terms', label: 'Warranty' },
-        { field: 'legal_terms', label: 'Terms & Conditions' },
-      ].filter(s => estimate[s.field]).map(s => (
-        <div key={s.field} style={{ margin: '0 52px', borderTop: '1px solid #e2e8f0', padding: '20px 0' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>{s.label}</div>
-          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate[s.field]}</p>
+      {opts.showTerms && termsArray.map(t => (
+        <div key={t.key} style={{ margin: '0 52px', borderTop: '1px solid #e2e8f0', padding: '20px 0' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>{t.label}</div>
+          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{t.value}</p>
         </div>
       ))}
 
@@ -490,9 +382,9 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
 
       {/* FOOTER */}
       <DocumentFooter
-        today={today}
-        companyName={appConfig.company.name}
-        licenseNumber={appConfig.company.license}
+        today={meta.today}
+        companyName={company.name}
+        licenseNumber={company.license}
         variant="standard"
         showDate={false}
         showCompany={true}
@@ -501,6 +393,9 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
     </div>
   );
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // TEMPLATE: MODERN
+  // ═══════════════════════════════════════════════════════════════════════
   const renderModernTemplate = () => {
     const accentColor = '#7c3aed';
     return (
@@ -510,9 +405,9 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
           <DocumentHeader
             estimate={estimate}
             documentType={documentType}
-            today={today}
-            expDate={expDate}
-            statusStyle={statusStyle}
+            today={meta.today}
+            expDate={meta.expirationDate}
+            statusStyle={meta.statusStyle}
             showStatus={false}
             variant="modern"
             style={{ color: '#111' }}
@@ -523,34 +418,34 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 30, marginBottom: 30 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 'bold', color: accentColor, textTransform: 'uppercase', marginBottom: 8 }}>Bill To</div>
-            <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 5 }}>{estimate.client_name}</div>
+            <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 5 }}>{client.name}</div>
             <div style={{ fontSize: 11, color: '#666', lineHeight: 1.8 }}>
-              {estimate.client_address && <div>{estimate.client_address}</div>}
-              {estimate.client_email && <div>{estimate.client_email}</div>}
-              {estimate.client_phone && <div>{estimate.client_phone}</div>}
+              {client.address && <div>{client.address}</div>}
+              {client.email && <div>{client.email}</div>}
+              {client.phone && <div>{client.phone}</div>}
             </div>
           </div>
           <div>
-            {estimate.title && (
+            {project.title && (
               <div>
                 <div style={{ fontSize: 11, fontWeight: 'bold', color: accentColor, textTransform: 'uppercase', marginBottom: 8 }}>Project</div>
-                <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 10 }}>{estimate.title}</div>
+                <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 10 }}>{project.title}</div>
               </div>
             )}
             {showPrices && (
               <div style={{ background: '#f3f4f6', padding: '15px', borderRadius: 8 }}>
                 <div style={{ fontSize: 10, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', marginBottom: 8 }}>Amount Due</div>
-                <div style={{ fontSize: 24, fontWeight: 'bold', color: accentColor }}>${total.toFixed(2)}</div>
+                <div style={{ fontSize: 24, fontWeight: 'bold', color: accentColor }}>${totals.total.toFixed(2)}</div>
               </div>
             )}
           </div>
         </div>
 
         {/* Notes */}
-        {estimate.notes && (
+        {text.notes && (
           <div style={{ background: '#f0f9ff', border: `1px solid ${accentColor}`, borderRadius: 8, padding: 15, marginBottom: 30 }}>
             <div style={{ fontWeight: 'bold', marginBottom: 8 }}>Notes</div>
-            <div style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{estimate.notes}</div>
+            <div style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{text.notes}</div>
           </div>
         )}
 
@@ -578,9 +473,9 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                           {item.description && <div style={{ fontSize: 10, color: '#6b7280', marginTop: 3 }}>{item.description}</div>}
                         </td>}
                         {lineCols.quantity && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.quantity}</td>}
-                        {lineCols.unit && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
-                        {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
-                        {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: accentColor }}>${(item.line_total || 0).toFixed(2)}</td>}
+                        {lineCols.unit && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.unit}</td>}
+                        {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${item.unit_price.toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: accentColor }}>${item.line_total.toFixed(2)}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -591,102 +486,75 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         )}
 
         {/* Totals */}
-        <DocumentSummary
-          estimate={estimate}
-          documentType={documentType}
-          showPrices={showPrices}
-          total={total}
-          subtotal={estimate.subtotal || 0}
-          depositPct={depositPct}
-          depositAmount={depositAmount}
-          remaining={remaining}
-          isEstimate={isEstimate}
-          variant="modern"
-          style={{ marginBottom: 30 }}
-        />
+        <DocumentSummary {...summaryProps} variant="modern" style={{ marginBottom: 30 }} />
 
         {/* Footer */}
-        <DocumentFooter
-          today={today}
-          companyName={appConfig.company.name}
-          licenseNumber=""
-          variant="modern"
-          showDate={true}
-          showCompany={true}
-          showLicense={false}
-          style={{ borderTop: `2px solid ${accentColor}`, paddingTop: 20, marginTop: 20, textAlign: 'center' }}
-        />
+        <DocumentFooter today={meta.today} companyName={company.name} licenseNumber="" variant="modern" showDate={true} showCompany={true} showLicense={false} style={{ borderTop: `2px solid ${accentColor}`, paddingTop: 20, marginTop: 20, textAlign: 'center' }} />
       </div>
     );
   };
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // TEMPLATE: EXECUTIVE
+  // ═══════════════════════════════════════════════════════════════════════
   const renderExecutiveTemplate = () => (
     <div style={{ fontFamily: 'Georgia, serif', fontSize: 12, color: '#2d2d2d', background: 'white', padding: '50px' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40, paddingBottom: 30, borderBottom: '2px solid #d4a574' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {cc.logo_url && <CompanyLogoBlock logoUrl={cc.logo_url} size={44} borderColor="#d4a574" bgColor="#faf8f3" />}
-        <div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 5 }}>{cc.name || appConfig.company.name}</div>
-          <div style={{ fontSize: 11, color: '#7a7a7a', letterSpacing: 2, textTransform: 'uppercase' }}>{appConfig.company.tagline}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {company.logoUrl && <CompanyLogoBlock logoUrl={company.logoUrl} size={44} borderColor="#d4a574" bgColor="#faf8f3" />}
+          <div>
+            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 5 }}>{company.name}</div>
+            <div style={{ fontSize: 11, color: '#7a7a7a', letterSpacing: 2, textTransform: 'uppercase' }}>{company.tagline}</div>
+          </div>
         </div>
-        </div>
-        <DocumentHeader
-          estimate={estimate}
-          documentType={documentType}
-          today={null}
-          expDate={null}
-          statusStyle={statusStyle}
-          showStatus={false}
-          variant="executive"
-          style={{ textAlign: 'right' }}
-        />
+        <DocumentHeader estimate={estimate} documentType={documentType} today={null} expDate={null} statusStyle={meta.statusStyle} showStatus={false} variant="executive" style={{ textAlign: 'right' }} />
       </div>
 
       {/* Client & Details */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginBottom: 40 }}>
         <div>
           <div style={{ fontSize: 10, fontWeight: 'bold', color: '#7a7a7a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Prepared For</div>
-          <div style={{ fontSize: 16, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 8 }}>{estimate.client_name}</div>
+          <div style={{ fontSize: 16, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 8 }}>{client.name}</div>
           <div style={{ fontSize: 11, color: '#555', lineHeight: 1.8 }}>
-            {estimate.client_address && <div>{estimate.client_address}</div>}
-            {estimate.client_email && <div>{estimate.client_email}</div>}
-            {estimate.client_phone && <div>{estimate.client_phone}</div>}
+            {client.address && <div>{client.address}</div>}
+            {client.email && <div>{client.email}</div>}
+            {client.phone && <div>{client.phone}</div>}
           </div>
         </div>
         <div>
           <div style={{ fontSize: 10, fontWeight: 'bold', color: '#7a7a7a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Document Details</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
             <span>Date:</span>
-            <span style={{ fontWeight: 'bold' }}>{today}</span>
+            <span style={{ fontWeight: 'bold' }}>{meta.today}</span>
           </div>
-          {expDate && (
+          {meta.expirationDate && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
               <span>Expiration:</span>
-              <span style={{ fontWeight: 'bold' }}>{expDate}</span>
+              <span style={{ fontWeight: 'bold' }}>{meta.expirationDate}</span>
             </div>
           )}
           {showPrices && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 15, paddingTop: 15, borderTop: '1px solid #d4a574', fontSize: 13 }}>
               <span style={{ fontWeight: 'bold', color: '#d4a574' }}>Total Amount:</span>
-              <span style={{ fontWeight: 'bold', color: '#1a1a1a', fontSize: 16 }}>${total.toFixed(2)}</span>
+              <span style={{ fontWeight: 'bold', color: '#1a1a1a', fontSize: 16 }}>${totals.total.toFixed(2)}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* Title */}
-      {estimate.title && (
+      {project.title && (
         <div style={{ marginBottom: 30 }}>
-          <div style={{ fontSize: 14, fontWeight: 'bold', color: '#1a1a1a' }}>{estimate.title}</div>
+          <div style={{ fontSize: 14, fontWeight: 'bold', color: '#1a1a1a' }}>{project.title}</div>
         </div>
       )}
 
       {/* Notes */}
-      {estimate.notes && (
+      {text.notes && (
         <div style={{ marginBottom: 30, padding: '20px', background: '#faf8f3', borderLeft: '4px solid #d4a574' }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8, color: '#1a1a1a' }}>Summary</div>
-          <div style={{ fontSize: 11, lineHeight: 1.8, color: '#555', whiteSpace: 'pre-wrap' }}>{estimate.notes}</div>
+          <div style={{ fontSize: 11, lineHeight: 1.8, color: '#555', whiteSpace: 'pre-wrap' }}>{text.notes}</div>
         </div>
       )}
 
@@ -714,9 +582,9 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                         {item.description && <div style={{ fontSize: 10, color: '#7a7a7a', marginTop: 3 }}>{item.description}</div>}
                       </td>}
                       {lineCols.quantity && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.quantity}</td>}
-                      {lineCols.unit && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
-                      {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
-                      {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: '#d4a574' }}>${(parseFloat(item.line_total) || 0).toFixed(2)}</td>}
+                      {lineCols.unit && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.unit}</td>}
+                      {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${item.unit_price.toFixed(2)}</td>}
+                      {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: '#d4a574' }}>${item.line_total.toFixed(2)}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -727,92 +595,54 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       )}
 
       {/* Totals */}
-      <DocumentSummary
-        estimate={estimate}
-        documentType={documentType}
-        showPrices={showPrices}
-        total={total}
-        subtotal={estimate.subtotal || 0}
-        depositPct={depositPct}
-        depositAmount={depositAmount}
-        remaining={remaining}
-        isEstimate={isEstimate}
-        variant="executive"
-        style={{ marginBottom: 40 }}
-      />
+      <DocumentSummary {...summaryProps} variant="executive" style={{ marginBottom: 40 }} />
 
       {/* Footer */}
-      <DocumentFooter
-        today={today}
-        companyName={appConfig.company.name}
-        licenseNumber=""
-        variant="executive"
-        showDate={true}
-        showCompany={false}
-        showLicense={false}
-        style={{ paddingTop: 20, borderTop: '2px solid #d4a574', textAlign: 'center', marginTop: 40 }}
-      />
+      <DocumentFooter today={meta.today} companyName={company.name} licenseNumber="" variant="executive" showDate={true} showCompany={false} showLicense={false} style={{ paddingTop: 20, borderTop: '2px solid #d4a574', textAlign: 'center', marginTop: 40 }} />
     </div>
   );
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // TEMPLATE: COMPACT
+  // ═══════════════════════════════════════════════════════════════════════
   const renderCompactTemplate = () => (
     <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#222', background: 'white', display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
       <div style={{ width: '35%', background: '#f0f0f0', padding: '30px', borderRight: '1px solid #ddd' }}>
-        <DocumentHeader
-          estimate={estimate}
-          documentType={documentType}
-          today={null}
-          expDate={null}
-          statusStyle={statusStyle}
-          showStatus={false}
-          variant="compact"
-        />
+        <DocumentHeader estimate={estimate} documentType={documentType} today={null} expDate={null} statusStyle={meta.statusStyle} showStatus={false} variant="compact" />
 
         <div style={{ fontSize: 10, fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginBottom: 8 }}>Bill To</div>
-        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{estimate.client_name}</div>
+        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{client.name}</div>
         <div style={{ fontSize: 11, color: '#555', marginBottom: 15 }}>
-          {estimate.client_address && <div>{estimate.client_address}</div>}
-          {estimate.client_email && <div>{estimate.client_email}</div>}
+          {client.address && <div>{client.address}</div>}
+          {client.email && <div>{client.email}</div>}
         </div>
 
-        {estimate.title && (
+        {project.title && (
           <div>
             <div style={{ fontSize: 10, fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginBottom: 5 }}>Project</div>
-            <div style={{ marginBottom: 15 }}>{estimate.title}</div>
+            <div style={{ marginBottom: 15 }}>{project.title}</div>
           </div>
         )}
 
         <div style={{ background: 'white', padding: '12px', borderRadius: 4, marginTop: 20 }}>
           <div style={{ fontSize: 10, fontWeight: 'bold', color: '#666', marginBottom: 8 }}>SUMMARY</div>
-          <DocumentSummary
-            estimate={estimate}
-            documentType={documentType}
-            showPrices={showPrices}
-            total={total}
-            subtotal={estimate.subtotal || 0}
-            depositPct={depositPct}
-            depositAmount={depositAmount}
-            remaining={remaining}
-            isEstimate={isEstimate}
-            variant="compact"
-            style={{}}
-          />
+          <DocumentSummary {...summaryProps} variant="compact" style={{}} />
         </div>
 
-        {estimate.status && (
-          <div style={{ marginTop: 20, padding: '8px', background: statusStyle.bg, color: statusStyle.color, borderRadius: 4, textAlign: 'center', fontSize: 10, fontWeight: 'bold' }}>
-            {estimate.status.toUpperCase()}
+        {meta.status && (
+          <div style={{ marginTop: 20, padding: '8px', background: meta.statusStyle.bg, color: meta.statusStyle.color, borderRadius: 4, textAlign: 'center', fontSize: 10, fontWeight: 'bold' }}>
+            {meta.statusLabel}
           </div>
         )}
       </div>
 
       {/* Main */}
       <div style={{ flex: 1, padding: '30px' }}>
-        {estimate.notes && (
+        {text.notes && (
           <div style={{ marginBottom: 20, padding: '15px', background: '#f9f9f9', borderLeft: '3px solid #0066cc' }}>
             <div style={{ fontWeight: 'bold', marginBottom: 8 }}>Notes</div>
-            <div style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{estimate.notes}</div>
+            <div style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{text.notes}</div>
           </div>
         )}
 
@@ -840,9 +670,9 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                           {item.description && <div style={{ fontSize: 10, color: '#666' }}>{item.description}</div>}
                         </td>}
                         {lineCols.quantity && <td style={{ textAlign: 'center', padding: '6px', fontSize: 11 }}>{item.quantity}</td>}
-                        {lineCols.unit && <td style={{ textAlign: 'center', padding: '6px', fontSize: 11 }}>{item.unit || 'ea'}</td>}
-                        {lineCols.price && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
-                        {lineCols.total && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11, fontWeight: 'bold' }}>${(parseFloat(item.line_total) || 0).toFixed(2)}</td>}
+                        {lineCols.unit && <td style={{ textAlign: 'center', padding: '6px', fontSize: 11 }}>{item.unit}</td>}
+                        {lineCols.price && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11 }}>${item.unit_price.toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ textAlign: 'right', padding: '6px', fontSize: 11, fontWeight: 'bold' }}>${item.line_total.toFixed(2)}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -853,28 +683,27 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         )}
 
         {/* Terms */}
-        {opts.showTerms && estimate.payment_terms && (
+        {opts.showTerms && text.paymentTerms && (
           <div style={{ marginTop: 20, padding: '12px', background: '#f9f9f9', fontSize: 11 }}>
             <div style={{ fontWeight: 'bold', marginBottom: 5 }}>Payment Terms</div>
-            <div>{estimate.payment_terms}</div>
+            <div>{text.paymentTerms}</div>
           </div>
         )}
       </div>
     </div>
   );
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // TEMPLATE: PRO
+  // ═══════════════════════════════════════════════════════════════════════
   const renderProTemplate = () => {
     const PRO_ACCENT = '#1e40af';
     const PRO_ACCENT_LIGHT = '#dbeafe';
     const PRO_DARK = '#0f172a';
 
     const card = (extra = {}) => ({
-      background: 'white',
-      borderRadius: 10,
-      border: '1px solid #e2e8f0',
-      boxShadow: '0 2px 8px rgba(15,23,42,0.07)',
-      overflow: 'hidden',
-      ...extra,
+      background: 'white', borderRadius: 10, border: '1px solid #e2e8f0',
+      boxShadow: '0 2px 8px rgba(15,23,42,0.07)', overflow: 'hidden', ...extra,
     });
 
     const label = { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8', marginBottom: 6 };
@@ -882,133 +711,121 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
     return (
       <div style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: 13, lineHeight: 1.55, background: '#f1f5f9', color: PRO_DARK, minWidth: 680, padding: '40px' }}>
 
-        {/* ══ HEADER CARD ══ */}
+        {/* HEADER CARD */}
         <div style={{ ...card(), background: PRO_DARK, color: 'white', padding: '32px 36px', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-
-            {/* LEFT — Logo + Company */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <CompanyLogoBlock logoUrl={cc.logo_url} size={52} />
+              <CompanyLogoBlock logoUrl={company.logoUrl} size={52} />
               <div>
-                 <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1 }}>{cc.name || appConfig.company.name}</div>
-                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{appConfig.company.tagline} · {cc.address || appConfig.company.city}</div>
-                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>{cc.email || appConfig.company.email} · {cc.phone || appConfig.company.phone}</div>
-               </div>
+                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1 }}>{company.name}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{company.tagline} · {company.address || company.city}</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>{company.email} · {company.phone}</div>
+              </div>
             </div>
-
-            {/* RIGHT — Document title + number + date */}
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px', color: 'white', lineHeight: 1 }}>{docTypeLabel}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#38bdf8', marginTop: 6 }}>#{estimate.estimate_number || estimate.invoice_number || '—'}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{today}</div>
-              {expDate && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Expires: {expDate}</div>}
-              {estimate.status && (
+              <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px', color: 'white', lineHeight: 1 }}>{meta.documentTypeLabel}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#38bdf8', marginTop: 6 }}>#{meta.documentNumber || '—'}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{meta.today}</div>
+              {meta.expirationDate && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Expires: {meta.expirationDate}</div>}
+              {meta.status && meta.status !== 'draft' && (
                 <div style={{ display: 'inline-block', marginTop: 8, padding: '3px 10px', borderRadius: 20, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}>
-                  {estimate.status.replace('_', ' ')}
+                  {meta.statusLabel}
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* ══ CLIENT + PROJECT DETAILS ══ */}
+        {/* CLIENT + PROJECT */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-          {/* Prepared For */}
           <div style={{ ...card(), padding: '22px 24px' }}>
             <div style={label}>Prepared For</div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: PRO_DARK, marginBottom: 6 }}>{estimate.client_name}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: PRO_DARK, marginBottom: 6 }}>{client.name}</div>
             <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.75 }}>
-              {estimate.client_address && <div>{estimate.client_address}</div>}
-              {estimate.client_email && <div>✉ {estimate.client_email}</div>}
-              {estimate.client_phone && <div>📞 {estimate.client_phone}</div>}
+              {client.address && <div>{client.address}</div>}
+              {client.email && <div>✉ {client.email}</div>}
+              {client.phone && <div>📞 {client.phone}</div>}
             </div>
           </div>
 
-          {/* Project info + optional dates */}
           <div style={{ ...card(), padding: '22px 24px' }}>
             <div style={label}>Project Details</div>
-            {estimate.title && <div style={{ fontWeight: 700, fontSize: 14, color: PRO_DARK, marginBottom: 10 }}>{estimate.title}</div>}
-            {opts.showProjectDates && (startDate || endDate) && (
-              <div style={{ display: 'flex', gap: 20, marginTop: estimate.title ? 4 : 0 }}>
-                {startDate && (
+            {project.title && <div style={{ fontWeight: 700, fontSize: 14, color: PRO_DARK, marginBottom: 10 }}>{project.title}</div>}
+            {opts.showProjectDates && project.hasProjectDates && (
+              <div style={{ display: 'flex', gap: 20, marginTop: project.title ? 4 : 0 }}>
+                {project.startDate && (
                   <div>
                     <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: 3 }}>Start Date</div>
-                    <div style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{startDate}</div>
+                    <div style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{project.startDate}</div>
                   </div>
                 )}
-                {endDate && (
+                {project.endDate && (
                   <div>
                     <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: 3 }}>Completion</div>
-                    <div style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{endDate}</div>
+                    <div style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{project.endDate}</div>
                   </div>
                 )}
               </div>
             )}
-            {!estimate.title && !opts.showProjectDates && (
+            {!project.title && !opts.showProjectDates && (
               <div style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No project details specified</div>
             )}
           </div>
         </div>
 
-        {/* ══ SERVICES TABLE CARD ══ */}
+        {/* SERVICES TABLE */}
         {opts.showBreakdown && groups.length > 0 && (
           <div style={{ ...card(), marginBottom: 24 }}>
-            {groups.map((group, gi) => {
-              const groupTotal = (group.items || []).reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0);
-              return (
-                <div key={group.id || gi}>
-                  {/* Group header bar */}
-                  {group.name && (
-                    <div style={{ background: PRO_DARK, color: 'white', padding: '10px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{group.name}</span>
-                      {lineCols.total && <span style={{ fontSize: 12, color: '#94a3b8' }}>${groupTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>}
-                    </div>
-                  )}
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                        {lineCols.description && <th style={{ textAlign: 'left', padding: '11px 24px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Description</th>}
-                        {lineCols.quantity && <th style={{ textAlign: 'center', padding: '11px 12px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 60 }}>Qty</th>}
-                        {lineCols.unit && <th style={{ textAlign: 'center', padding: '11px 12px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 60 }}>Unit</th>}
-                        {lineCols.price && <th style={{ textAlign: 'right', padding: '11px 20px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 110 }}>Unit Price</th>}
-                        {lineCols.total && <th style={{ textAlign: 'right', padding: '11px 24px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 120 }}>Total</th>}
+            {groups.map((group, gi) => (
+              <div key={group.id || gi}>
+                {group.name && (
+                  <div style={{ background: PRO_DARK, color: 'white', padding: '10px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{group.name}</span>
+                    {lineCols.total && <span style={{ fontSize: 12, color: '#94a3b8' }}>${group.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>}
+                  </div>
+                )}
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                      {lineCols.description && <th style={{ textAlign: 'left', padding: '11px 24px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Description</th>}
+                      {lineCols.quantity && <th style={{ textAlign: 'center', padding: '11px 12px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 60 }}>Qty</th>}
+                      {lineCols.unit && <th style={{ textAlign: 'center', padding: '11px 12px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 60 }}>Unit</th>}
+                      {lineCols.price && <th style={{ textAlign: 'right', padding: '11px 20px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 110 }}>Unit Price</th>}
+                      {lineCols.total && <th style={{ textAlign: 'right', padding: '11px 24px', fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', width: 120 }}>Total</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(group.items || []).map((item, idx) => (
+                      <tr key={item.id || idx} style={{ background: idx % 2 === 0 ? 'white' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                        {lineCols.description && (
+                          <td style={{ padding: '13px 24px' }}>
+                            <div style={{ fontWeight: 600, color: PRO_DARK, fontSize: 13 }}>{item.service_name}</div>
+                            {item.description && <div style={{ color: '#64748b', fontSize: 11, marginTop: 3, lineHeight: 1.5 }}>{item.description}</div>}
+                          </td>
+                        )}
+                        {lineCols.quantity && <td style={{ textAlign: 'center', padding: '13px 12px', color: '#475569', fontSize: 13 }}>{item.quantity}</td>}
+                        {lineCols.unit && <td style={{ textAlign: 'center', padding: '13px 12px', color: '#475569', fontSize: 12 }}>{item.unit}</td>}
+                        {lineCols.price && <td style={{ textAlign: 'right', padding: '13px 20px', color: '#475569', fontSize: 13 }}>${item.unit_price.toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ textAlign: 'right', padding: '13px 24px', color: PRO_DARK, fontSize: 13, fontWeight: 700 }}>${item.line_total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {(group.items || []).map((item, idx) => (
-                        <tr key={item.id || idx} style={{ background: idx % 2 === 0 ? 'white' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                          {lineCols.description && (
-                            <td style={{ padding: '13px 24px' }}>
-                              <div style={{ fontWeight: 600, color: PRO_DARK, fontSize: 13 }}>{item.service_name || item.name}</div>
-                              {item.description && <div style={{ color: '#64748b', fontSize: 11, marginTop: 3, lineHeight: 1.5 }}>{item.description}</div>}
-                            </td>
-                          )}
-                          {lineCols.quantity && <td style={{ textAlign: 'center', padding: '13px 12px', color: '#475569', fontSize: 13 }}>{item.quantity}</td>}
-                          {lineCols.unit && <td style={{ textAlign: 'center', padding: '13px 12px', color: '#475569', fontSize: 12 }}>{item.unit || 'ea'}</td>}
-                          {lineCols.price && <td style={{ textAlign: 'right', padding: '13px 20px', color: '#475569', fontSize: 13 }}>${(parseFloat(item.unit_price) || 0).toFixed(2)}</td>}
-                          {lineCols.total && <td style={{ textAlign: 'right', padding: '13px 24px', color: PRO_DARK, fontSize: 13, fontWeight: 700 }}>${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* ══ TOTALS + DEPOSIT ══ */}
+        {/* TOTALS + DEPOSIT */}
         {showPrices && (
-          <div style={{ display: 'grid', gridTemplateColumns: isEstimate && depositPct > 0 && opts.showDeposit ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 24 }}>
-
-            {/* Resumen financiero */}
+          <div style={{ display: 'grid', gridTemplateColumns: isEstimate && totals.depositPercent > 0 && opts.showDeposit ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 24 }}>
             <div style={{ ...card(), padding: '22px 24px' }}>
               <div style={label}>Financial Summary</div>
               {[
-                { show: true, l: 'Subtotal', v: estimate.subtotal || 0 },
-                { show: (estimate.discount_amount || 0) > 0, l: 'Discount', v: -(estimate.discount_amount || 0), color: '#dc2626' },
-                { show: (estimate.tax_rate || 0) > 0, l: `Tax (${estimate.tax_rate}%)`, v: estimate.tax_amount || 0 },
-                { show: true, l: 'TOTAL', v: total, bold: true, big: true },
+                { show: true, l: 'Subtotal', v: totals.subtotal },
+                { show: totals.discountAmount > 0, l: 'Discount', v: -totals.discountAmount, color: '#dc2626' },
+                { show: totals.taxRate > 0, l: `Tax (${totals.taxRate}%)`, v: totals.taxAmount },
+                { show: true, l: 'TOTAL', v: totals.total, bold: true, big: true },
               ].filter(r => r.show).map((row, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: row.bold ? `2px solid ${PRO_ACCENT_LIGHT}` : '1px solid #f1f5f9', fontSize: row.big ? 16 : 13, fontWeight: row.bold ? 800 : 400, color: row.color || (row.bold ? PRO_DARK : '#475569') }}>
                   <span>{row.l}</span>
@@ -1017,60 +834,49 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
               ))}
             </div>
 
-            {/* Depósito (solo si aplica y está habilitado) */}
-            {isEstimate && depositPct > 0 && opts.showDeposit && (
+            {isEstimate && totals.depositPercent > 0 && opts.showDeposit && (
               <div style={{ ...card(), padding: '22px 24px', background: PRO_ACCENT_LIGHT, border: `1.5px solid ${PRO_ACCENT}` }}>
                 <div style={{ ...label, color: PRO_ACCENT }}>Payment Schedule</div>
                 <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${PRO_ACCENT}30` }}>
                   <div style={{ fontSize: 11, color: PRO_ACCENT, marginBottom: 4, fontWeight: 600 }}>Deposit to Start Work</div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: PRO_ACCENT, lineHeight: 1 }}>${depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                  <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 3 }}>{depositPct}% of total</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: PRO_ACCENT, lineHeight: 1 }}>${totals.depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                  <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 3 }}>{totals.depositPercent}% of total</div>
                 </div>
                 <div>
                   <div style={{ fontSize: 11, color: '#334155', marginBottom: 3, fontWeight: 600 }}>Remaining Upon Completion</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: PRO_DARK }}>${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: PRO_DARK }}>${totals.remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* ══ TERMS ══ */}
-        {opts.showTerms && [
-          { field: 'exclusions', label: 'Exclusions' },
-          { field: 'payment_terms', label: 'Payment Terms' },
-          { field: 'warranty_terms', label: 'Warranty' },
-          { field: 'legal_terms', label: 'Terms & Conditions' },
-        ].filter(s => estimate[s.field]).length > 0 && (
+        {/* TERMS */}
+        {opts.showTerms && termsArray.length > 0 && (
           <div style={{ ...card(), padding: '22px 24px', marginBottom: 24 }}>
-            {[
-              { field: 'exclusions', label: 'Exclusions' },
-              { field: 'payment_terms', label: 'Payment Terms' },
-              { field: 'warranty_terms', label: 'Warranty' },
-              { field: 'legal_terms', label: 'Terms & Conditions' },
-            ].filter(s => estimate[s.field]).map((s, i, arr) => (
-              <div key={s.field} style={{ paddingBottom: i < arr.length - 1 ? 14 : 0, marginBottom: i < arr.length - 1 ? 14 : 0, borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                <div style={label}>{s.label}</div>
-                <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate[s.field]}</p>
+            {termsArray.map((t, i) => (
+              <div key={t.key} style={{ paddingBottom: i < termsArray.length - 1 ? 14 : 0, marginBottom: i < termsArray.length - 1 ? 14 : 0, borderBottom: i < termsArray.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                <div style={label}>{t.label}</div>
+                <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{t.value}</p>
               </div>
             ))}
           </div>
         )}
 
-        {/* ══ NOTES FOR CLIENT — al final ══ */}
-        {estimate.notes && (
+        {/* NOTES */}
+        {text.notes && (
           <div style={{ ...card(), padding: '22px 24px', marginBottom: 24, borderLeft: `4px solid ${PRO_ACCENT}` }}>
             <div style={label}>Notes for Client</div>
-            <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{estimate.notes}</p>
+            <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>
           </div>
         )}
 
-        {/* ══ SIGNATURES ══ */}
+        {/* SIGNATURES */}
         {opts.showSignatures && !isWorkOrder && (
           <div style={{ ...card(), padding: '28px 36px', marginBottom: 24 }}>
             <div style={label}>Authorization & Signatures</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, marginTop: 8 }}>
-              {[{ title: 'Contractor Signature', sub: `${appConfig.company.name} · Authorized Representative` }, { title: 'Client Signature & Date', sub: estimate.client_name || 'Client' }].map((sig, i) => (
+              {[{ title: 'Contractor Signature', sub: `${company.name} · Authorized Representative` }, { title: 'Client Signature & Date', sub: client.name || 'Client' }].map((sig, i) => (
                 <div key={i}>
                   <div style={{ height: 52, borderBottom: `2px solid ${PRO_DARK}`, marginBottom: 8 }} />
                   <div style={{ fontSize: 11, fontWeight: 600, color: PRO_DARK }}>{sig.title}</div>
@@ -1081,13 +887,12 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
           </div>
         )}
 
-        {/* ══ FOOTER — en cada "página" (sutil, 8pt) ══ */}
+        {/* FOOTER */}
         <div style={{ textAlign: 'center', padding: '14px 0 0', borderTop: '1px solid #e2e8f0', opacity: 0.35 }}>
           <div style={{ fontSize: 8, color: '#475569', letterSpacing: '0.06em' }}>
-            {appConfig.company.name} &nbsp;·&nbsp; {appConfig.company.address} &nbsp;·&nbsp; License {appConfig.company.license} &nbsp;·&nbsp; {today}
+            {company.name} &nbsp;·&nbsp; {company.address} &nbsp;·&nbsp; License {company.license} &nbsp;·&nbsp; {meta.today}
           </div>
         </div>
-
       </div>
     );
   };
@@ -1095,21 +900,13 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER SELECTION
   // ═══════════════════════════════════════════════════════════════════════
-
-  switch (safeTemplate) {
-    case 'minimal':
-      return renderMinimalTemplate();
-    case 'standard':
-      return renderStandardTemplate();
-    case 'modern':
-      return renderModernTemplate();
-    case 'executive':
-      return renderExecutiveTemplate();
-    case 'compact':
-      return renderCompactTemplate();
-    case 'pro':
-      return renderProTemplate();
-    default:
-      return renderStandardTemplate();
+  switch (meta.template) {
+    case 'minimal':   return renderMinimalTemplate();
+    case 'standard':  return renderStandardTemplate();
+    case 'modern':    return renderModernTemplate();
+    case 'executive': return renderExecutiveTemplate();
+    case 'compact':   return renderCompactTemplate();
+    case 'pro':       return renderProTemplate();
+    default:          return renderStandardTemplate();
   }
 }

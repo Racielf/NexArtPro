@@ -34,9 +34,19 @@ export default function DocumentSummary({
   variant = 'standard',
   style = {},
   className = '',
+  // New vm-based props (preferred over raw estimate reads)
+  discountAmount,
+  taxRate,
+  taxAmount,
 }) {
   // LÓGICA DE NEGOCIO: No renderiza si no aplica
   const isWorkOrder = documentType === 'workorder';
+
+  // Resolve values: prefer explicit props, fallback to estimate for backward compat
+  const resolvedDiscountAmount = discountAmount ?? estimate?.discount_amount ?? 0;
+  const resolvedTaxRate = taxRate ?? estimate?.tax_rate ?? 0;
+  const resolvedTaxAmount = taxAmount ?? estimate?.tax_amount ?? 0;
+
   if (isWorkOrder || !showPrices) {
     return null;
   }
@@ -84,14 +94,14 @@ export default function DocumentSummary({
     },
     {
       label: 'Discount',
-      value: -estimate.discount_amount,
-      show: estimate.discount_amount > 0,
+      value: -resolvedDiscountAmount,
+      show: resolvedDiscountAmount > 0,
       color: '#dc2626',
     },
     {
-      label: `Tax (${estimate.tax_rate}%)`,
-      value: estimate.tax_amount,
-      show: estimate.tax_rate > 0,
+      label: `Tax (${resolvedTaxRate}%)`,
+      value: resolvedTaxAmount,
+      show: resolvedTaxRate > 0,
     },
     {
       label: 'TOTAL',
