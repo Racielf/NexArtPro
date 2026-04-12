@@ -28,6 +28,7 @@ import { logFieldChange } from '@/lib/pricingAuditService';
 import ConcreteMetrics from '@/components/estimates/internal/ConcreteMetrics';
 import MaterialsSection from '@/components/estimates/MaterialsSection';
 import OtherCostsSection from '@/components/estimates/OtherCostsSection';
+import { persistNewServiceToCatalog } from '@/lib/persistNewService';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -131,6 +132,22 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   line_total:   lineTotal,
                 };
                 onUpdate(updated);
+
+                // Fire-and-forget: persist new manual services to catalog
+                if (picked._is_new && picked.source === 'custom') {
+                  persistNewServiceToCatalog({
+                    service_name: picked.name,
+                    category: picked.category || 'Misc',
+                    unit: picked.unit || 'ea',
+                    description: picked.description || '',
+                    unit_price: safePrice,
+                    unit_cost: safeCost,
+                  }).then(result => {
+                    if (result.service_id && !updated.service_id) {
+                      onUpdate({ ...updated, service_id: result.service_id });
+                    }
+                  });
+                }
               }}
             placeholder="Service name"
             className="h-8 w-full text-sm font-semibold border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-1 focus:ring-primary/30 transition"
