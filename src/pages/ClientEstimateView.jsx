@@ -14,6 +14,13 @@ import BidDocumentRenderer from '@/components/documents/BidDocumentRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import {
+  notifyEstimateViewed,
+  notifyEstimateApproved,
+  notifyEstimateSigned,
+  notifyEstimateDeclined,
+  notifyEstimateChangesRequested,
+} from '@/lib/businessNotifications';
 
 export default function ClientEstimateView() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -39,6 +46,8 @@ export default function ClientEstimateView() {
             viewed_at: new Date().toISOString(),
           });
           setEstimate(e => ({ ...e, status: 'viewed', viewed_at: new Date().toISOString() }));
+          // Notify business
+          notifyEstimateViewed(est).catch(err => console.warn('[notify] viewed failed:', err?.message));
         }
       }
       setLoading(false);
@@ -63,6 +72,8 @@ export default function ClientEstimateView() {
       status: 'delivered',
     });
     setEstimate(e => ({ ...e, status: 'approved', approved_at: new Date().toISOString() }));
+    // Notify business
+    notifyEstimateApproved(estimate).catch(err => console.warn('[notify] approved failed:', err?.message));
     setActing(false);
     toast.success('Estimate approved! We will be in touch soon.');
   };
@@ -80,6 +91,8 @@ export default function ClientEstimateView() {
       status: 'delivered',
     });
     setEstimate(e => ({ ...e, status: 'declined' }));
+    // Notify business
+    notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
     setActing(false);
     toast.success('Estimate declined. Thank you for letting us know.');
   };
@@ -104,6 +117,8 @@ export default function ClientEstimateView() {
       status: 'delivered',
     });
     setEstimate(e => ({ ...e, status: 'signed', signed_at: new Date().toISOString(), signer_name: signerName }));
+    // Notify business with signed document link
+    notifyEstimateSigned(estimate, { signerName, signerEmail }).catch(err => console.warn('[notify] signed failed:', err?.message));
     setActing(false);
     toast.success('Estimate signed successfully!');
   };
@@ -140,6 +155,8 @@ export default function ClientEstimateView() {
       preview: note.substring(0, 80),
     });
     setEstimate(e => ({ ...e, status: 'changes_requested', changes_requested_note: note }));
+    // Notify business
+    notifyEstimateChangesRequested(estimate, note).catch(err => console.warn('[notify] changes failed:', err?.message));
     setActing(false);
     toast.success('Change request sent! We\'ll review and send a revised estimate.');
   };
