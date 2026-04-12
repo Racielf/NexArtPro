@@ -216,6 +216,7 @@ export function buildEstimateDocumentViewModel({
     showEstimateNumber: options.showEstimateNumber !== false,
     showEstimateName: options.showEstimateName !== false,
     showNotes: options.showNotes !== false,
+    showMaterials: options.showMaterials !== false,
     showCustomerName: options.showCustomerName !== false,
     showExpirationDate: options.showExpirationDate !== false,
     showTechnicianName: options.showTechnicianName !== false,
@@ -254,6 +255,7 @@ export function buildEstimateDocumentViewModel({
     paymentTerms: safeStr(estimate.payment_terms),
     warrantyTerms: safeStr(estimate.warranty_terms),
     legalTerms: safeStr(estimate.legal_terms),
+    materialsNotes: safeStr(estimate.materials_notes),
   };
 
   // ─── Columns ─────────────────────────────────────────────────────────────

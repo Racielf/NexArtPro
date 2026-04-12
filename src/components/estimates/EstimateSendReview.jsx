@@ -59,7 +59,7 @@ const VISIBILITY_LABELS = {
   serviceDate: 'Service date',
   technicianName: 'Technician name',
   services: 'Services',
-  materials: 'Materials',
+  materialsSection: 'Materials section',
 };
 
 function SectionAccordion({ title, icon, children, defaultOpen = true }) {
@@ -118,7 +118,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
   const clientLink = `${window.location.origin}/client-estimate?id=${estimate?.id}`;
 
   const currentOptions = {
-    showPrices: visibility.materials !== false,
+    showPrices: visibility.services !== false,
     showBreakdown: visibility.services !== false,
     showBusinessLogo: visibility.businessLogo !== false,
     showBusinessName: visibility.businessName !== false,
@@ -126,6 +126,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     showEstimateNumber: visibility.estimateNumber !== false,
     showEstimateName: visibility.estimateName !== false,
     showNotes: visibility.estimateMessage !== false,
+    showMaterials: visibility.materialsSection !== false,
     showCustomerName: visibility.customerName !== false,
     showDocumentDate: visibility.estimateDate !== false,
     showExpirationDate: visibility.expirationDate !== false,
@@ -465,7 +466,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
               template={currentTemplate}
               options={{
                 ...DEFAULT_OPTIONS,
-                showPrices: visibility.materials !== false,
+                showPrices: visibility.services !== false,
                 showBreakdown: visibility.services !== false,
                 showBusinessLogo: visibility.businessLogo !== false,
                 showBusinessName: visibility.businessName !== false,
@@ -473,6 +474,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
                 showEstimateNumber: visibility.estimateNumber !== false,
                 showEstimateName: visibility.estimateName !== false,
                 showNotes: visibility.estimateMessage !== false,
+                showMaterials: visibility.materialsSection !== false,
                 showCustomerName: visibility.customerName !== false,
                 showDocumentDate: visibility.estimateDate !== false,
                 showExpirationDate: visibility.expirationDate !== false,

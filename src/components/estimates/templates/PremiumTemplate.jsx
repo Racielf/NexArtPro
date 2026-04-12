@@ -183,6 +183,14 @@ export default function PremiumTemplate({ vm }) {
         </div>
       )}
 
+      {/* ─── MATERIALS ───────────────────────────────────────── */}
+      {opts.showMaterials && text.materialsNotes && (
+        <div style={{ padding: `20px ${P}px`, borderBottom: `1px solid ${BORDER}` }}>
+          <div style={sectionLabel}>Materials</div>
+          <p style={{ color: '#555', fontSize: 12, lineHeight: 1.8, whiteSpace: 'pre-wrap', margin: 0 }}>{text.materialsNotes}</p>
+        </div>
+      )}
+
       {/* ─── TERMS ──────────────────────────────────────────── */}
       {opts.showTerms && termsArray.length > 0 && (
         <div style={{ padding: `0 ${P}px 20px` }}>

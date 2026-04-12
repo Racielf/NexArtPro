@@ -183,6 +183,14 @@ export default function ModernCardTemplate({ vm }) {
         </div>
       )}
 
+      {/* ─── MATERIALS CARD ──────────────────────────────────── */}
+      {opts.showMaterials && text.materialsNotes && (
+        <div style={{ ...card(), padding: '22px 24px', marginBottom: 20, borderLeft: '4px solid #16a34a' }}>
+          <div style={sectionLabel}>Materials</div>
+          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.materialsNotes}</p>
+        </div>
+      )}
+
       {/* ─── TERMS CARD ─────────────────────────────────────── */}
       {opts.showTerms && termsArray.length > 0 && (
         <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>

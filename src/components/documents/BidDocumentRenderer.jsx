@@ -143,6 +143,13 @@ export default function BidDocumentRenderer({ estimate, options = {}, lang: lang
           </PDFSectionBlock>
         )}
 
+        {/* ═══ 5c. MATERIALS ═══ */}
+        {estimate.materials_notes && (
+          <PDFSectionBlock title="Materials" accent={SECTION_COLOR} spacing="tight">
+            <p style={S.body}>{estimate.materials_notes}</p>
+          </PDFSectionBlock>
+        )}
+
         {/* ═══ 6. INCLUSIONS ═══ */}
         <PDFSectionBlock title={T('inclusions')} titleEs={esTitle('inclusions')} accent={SECTION_COLOR} spacing="tight">
           {estimate.payment_terms ? (

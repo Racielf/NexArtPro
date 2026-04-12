@@ -505,6 +505,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [warrantyTerms, setWarrantyTerms] = useState(estimate?.warranty_terms || '');
   const [paymentTerms, setPaymentTerms] = useState(estimate?.payment_terms || '');
   const [legalTerms, setLegalTerms] = useState(estimate?.legal_terms || '');
+  const [materialsNotes, setMaterialsNotes] = useState(estimate?.materials_notes || '');
   const [showCost, setShowCost] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [fixedItemIds, setFixedItemIds] = useState(new Set());
@@ -554,6 +555,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     setWarrantyTerms(estimate.warranty_terms || '');
     setPaymentTerms(estimate.payment_terms || '');
     setLegalTerms(estimate.legal_terms || '');
+    setMaterialsNotes(estimate.materials_notes || '');
   }, [estimate?.id]);
 
   // Debounced auto-save
@@ -577,6 +579,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         warranty_terms: warrantyTerms,
         payment_terms: paymentTerms,
         legal_terms: legalTerms,
+        materials_notes: materialsNotes,
         subtotal: result.subtotal,
         discount_amount: result.discountAmount,
         tax_amount: result.taxAmount,
@@ -588,7 +591,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms]);
+  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, materialsNotes]);
 
   const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
@@ -767,6 +770,10 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
           <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent />
           <NotesSection label="Exclusions" placeholder="What is NOT included in this estimate…" value={exclusions} onChange={setExclusions} />
           <NotesSection label="Payment Terms" placeholder="e.g. 50% deposit, balance on completion…" value={paymentTerms} onChange={setPaymentTerms} />
+        </div>
+
+        <div className="mt-4">
+          <NotesSection label="Materials" placeholder="e.g. concrete, wire mesh, gravel, supplier notes…" value={materialsNotes} onChange={setMaterialsNotes} />
         </div>
 
         <button onClick={() => setShowTerms(v => !v)}

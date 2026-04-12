@@ -49,6 +49,7 @@ export default function EstimateDocumentOptions({
             { key: 'showDocumentDate', label: 'Show document date', desc: 'Display the document creation date' },
             { key: 'showProjectStartDate', label: 'Show project start date', desc: 'Display when the project is expected to start' },
             { key: 'showProjectEndDate', label: 'Show project end date', desc: 'Display when the project is expected to complete' },
+            { key: 'showMaterials', label: 'Show materials section', desc: 'Display materials list in the document' },
             { key: 'showTerms', label: 'Show terms & conditions', desc: 'Include payment, warranty, legal terms' },
             { key: 'showSignatures', label: 'Show signature blocks', desc: 'Include signature lines for approval' },
           ].map(({ key, label, desc }) => (

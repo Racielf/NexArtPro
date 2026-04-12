@@ -170,6 +170,14 @@ export default function CleanTemplate({ vm }) {
         </div>
       )}
 
+      {/* ─── MATERIALS ───────────────────────────────────────── */}
+      {opts.showMaterials && text.materialsNotes && (
+        <div style={{ padding: `16px ${P}px`, borderTop: `1px solid ${BORDER}` }}>
+          <div style={sectionLabel}>Materials</div>
+          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.materialsNotes}</p>
+        </div>
+      )}
+
       {/* ─── TERMS ──────────────────────────────────────────── */}
       {opts.showTerms && termsArray.map(t => (
         <div key={t.key} style={{ padding: `14px ${P}px`, borderTop: `1px solid ${BORDER}` }}>

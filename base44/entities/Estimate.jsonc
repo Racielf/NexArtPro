@@ -255,6 +255,10 @@
     "legal_terms": {
       "type": "string"
     },
+    "materials_notes": {
+      "type": "string",
+      "description": "Client-facing materials information (concrete, mesh, gravel, suppliers, etc.)"
+    },
     "sent_at": {
       "type": "string"
     },
@@ -354,6 +358,10 @@
               "type": "boolean",
               "default": true,
               "description": "CRITICAL: Always true to prevent internal notes from showing to client"
+            },
+            "showMaterials": {
+              "type": "boolean",
+              "default": true
             }
           }
         }
