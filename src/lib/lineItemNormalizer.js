@@ -104,6 +104,41 @@ export function normalizeGroups(groups = []) {
 }
 
 /**
+ * Normalize a single material item to canonical shape.
+ * Resolves legacy aliases: cost → unit_cost, price → unit_price, total → line_total.
+ * Always recalculates line_total from quantity * unit_price.
+ */
+export function normalizeMaterial(raw = {}) {
+  const quantity   = safeNonNeg(raw.quantity, 1);
+  const unit_price = safeNonNeg(raw.unit_price ?? raw.price, 0);
+  const unit_cost  = safeNonNeg(raw.unit_cost ?? raw.cost, 0);
+  const computed   = quantity * unit_price;
+  const line_total = computed > 0
+    ? computed
+    : (safeNonNeg(raw.line_total) || safeNonNeg(raw.total) || 0);
+
+  return {
+    ...raw,
+    id:          raw.id || Math.random().toString(36).slice(2, 10),
+    name:        safeStr(raw.name || raw.material_name),
+    description: safeStr(raw.description),
+    quantity,
+    unit:        safeStr(raw.unit, 'ea'),
+    unit_price,
+    unit_cost,
+    line_total:  safeNonNeg(line_total, 0),
+  };
+}
+
+/**
+ * Normalize an entire materials array.
+ * Safe to call on already-normalized data (idempotent).
+ */
+export function normalizeMaterials(materials = []) {
+  return (materials || []).map(normalizeMaterial);
+}
+
+/**
  * Strip transient UI-only fields before persistence.
  * Keeps all canonical fields intact.
  */

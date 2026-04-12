@@ -22,7 +22,7 @@ import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButto
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
-import { normalizeLineItem } from '@/lib/lineItemNormalizer';
+import { normalizeLineItem, normalizeMaterials } from '@/lib/lineItemNormalizer';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -74,13 +74,16 @@ export default function EstimateEditor() {
     setSaveError(false);
     setDirty(false);
     
-    // Normalize all line items before persisting
+    // Normalize all line items and materials before persisting
     const sanitized = { ...updatedEstimate };
     if (sanitized.groups && Array.isArray(sanitized.groups)) {
       sanitized.groups = sanitized.groups.map(group => ({
         ...group,
         items: (group.items || []).map(item => normalizeLineItem(item)),
       }));
+    }
+    if (sanitized.materials && Array.isArray(sanitized.materials)) {
+      sanitized.materials = normalizeMaterials(sanitized.materials);
     }
     
     try {

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceAuditLog from '@/components/estimates/internal/PriceAuditLog';
-import { normalizeLineItem, normalizeGroups, resolveAndNormalizeGroups } from '@/lib/lineItemNormalizer';
+import { normalizeLineItem, normalizeGroups, resolveAndNormalizeGroups, normalizeMaterials } from '@/lib/lineItemNormalizer';
 import { usePriceAuditLog } from '@/hooks/usePriceAuditLog';
 import { calculateLineTotal, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
 import { logChange } from '@/lib/estimateAuditLog';
@@ -517,7 +517,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [warrantyTerms, setWarrantyTerms] = useState(estimate?.warranty_terms || '');
   const [paymentTerms, setPaymentTerms] = useState(estimate?.payment_terms || '');
   const [legalTerms, setLegalTerms] = useState(estimate?.legal_terms || '');
-  const [materials, setMaterials] = useState(estimate?.materials || []);
+  const [materials, setMaterials] = useState(() => normalizeMaterials(estimate?.materials || []));
   const [otherCosts, setOtherCosts] = useState(estimate?.other_costs || []);
   const showCost = true; // Materials cost always tracked internally
   const [showTerms, setShowTerms] = useState(false);
@@ -568,7 +568,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     setWarrantyTerms(estimate.warranty_terms || '');
     setPaymentTerms(estimate.payment_terms || '');
     setLegalTerms(estimate.legal_terms || '');
-    setMaterials(estimate.materials || []);
+    setMaterials(normalizeMaterials(estimate.materials || []));
     setOtherCosts(estimate.other_costs || []);
   }, [estimate?.id]);
 
