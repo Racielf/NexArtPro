@@ -183,6 +183,42 @@
         }
       }
     },
+    "other_costs": {
+      "type": "array",
+      "description": "Job-level internal costs not in line items (labor help, gas, permits, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "other_costs_total": {
+      "type": "number",
+      "default": 0,
+      "description": "Sum of other_costs amounts (internal)"
+    },
+    "net_profit": {
+      "type": "number",
+      "default": 0,
+      "description": "gross_margin - other_costs_total (internal)"
+    },
+    "net_profit_pct": {
+      "type": "number",
+      "default": 0,
+      "description": "net_profit / total * 100 (internal)"
+    },
     "line_items": {
       "type": "array",
       "description": "Legacy flat line items (kept for backward compat)",

@@ -27,6 +27,7 @@ import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditH
 import { logFieldChange } from '@/lib/pricingAuditService';
 import ConcreteMetrics from '@/components/estimates/internal/ConcreteMetrics';
 import MaterialsSection from '@/components/estimates/MaterialsSection';
+import OtherCostsSection from '@/components/estimates/OtherCostsSection';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -507,6 +508,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [paymentTerms, setPaymentTerms] = useState(estimate?.payment_terms || '');
   const [legalTerms, setLegalTerms] = useState(estimate?.legal_terms || '');
   const [materials, setMaterials] = useState(estimate?.materials || []);
+  const [otherCosts, setOtherCosts] = useState(estimate?.other_costs || []);
   const [showCost, setShowCost] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [fixedItemIds, setFixedItemIds] = useState(new Set());
@@ -557,6 +559,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     setPaymentTerms(estimate.payment_terms || '');
     setLegalTerms(estimate.legal_terms || '');
     setMaterials(estimate.materials || []);
+    setOtherCosts(estimate.other_costs || []);
   }, [estimate?.id]);
 
   // Debounced auto-save
@@ -564,13 +567,17 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     // Signal parent that local changes exist before debounce fires
     if (onDirty) onDirty();
     const t = setTimeout(() => {
-      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials });
+      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts });
 
       onSave({
         ...estimate,
         groups: result.groups,
         materials: result.materials,
         materials_subtotal: result.materialsSubtotal,
+        other_costs: otherCosts,
+        other_costs_total: result.otherCostsTotal,
+        net_profit: result.netProfit,
+        net_profit_pct: result.netProfitPct,
         tax_rate: taxRate,
         discount_type: discountType,
         discount_value: discountValue,
@@ -593,7 +600,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, materials]);
+  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, materials, otherCosts]);
 
   const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
@@ -602,8 +609,9 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   // Live reactive calculation
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
           totalCost, grossMargin, grossMarginPct,
-          totalVariance, totalBookValue, marginPercentage, materialsSubtotal } =
-    runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials });
+          totalVariance, totalBookValue, marginPercentage, materialsSubtotal,
+          otherCostsTotal, netProfit, netProfitPct } =
+    runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts });
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
@@ -674,6 +682,13 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         <MaterialsSection materials={materials} onChange={setMaterials} showCost={showCost} />
       </div>
 
+      {/* ── OTHER COSTS SECTION (internal only) ── */}
+      {!isPreview && (
+        <div className="mb-4">
+          <OtherCostsSection otherCosts={otherCosts} onChange={setOtherCosts} />
+        </div>
+      )}
+
       {/* ── TOTALS CARD ── */}
       <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
         <div className="flex gap-8 flex-wrap justify-between">
@@ -704,6 +719,31 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
                     <p className={`text-base font-bold ${marginStatus.text}`}>{fmt(grossMargin)} ({grossMarginPct.toFixed(1)}%)</p>
                   </div>
                 </div>
+                {otherCostsTotal > 0 && (() => {
+                  const netStatus = netProfitPct >= 60
+                    ? { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Good' }
+                    : netProfitPct >= 40
+                    ? { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-400', label: 'Warning' }
+                    : { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-500', label: 'Low' };
+                  return (
+                    <div className="flex gap-3 flex-wrap mt-2">
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-amber-500 mb-1">Other Costs</p>
+                        <p className="text-base font-bold text-amber-700">-{fmt(otherCostsTotal)}</p>
+                      </div>
+                      <div className={`border rounded-lg px-4 py-3 flex-1 min-w-[100px] ${netStatus.bg} ${netStatus.border}`}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Net Profit</p>
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[8px] font-bold ${netStatus.bg} ${netStatus.border} ${netStatus.text}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${netStatus.dot}`} />
+                            {netStatus.label}
+                          </span>
+                        </div>
+                        <p className={`text-base font-bold ${netStatus.text}`}>{fmt(netProfit)} ({netProfitPct.toFixed(1)}%)</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })()}

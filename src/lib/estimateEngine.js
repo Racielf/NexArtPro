@@ -180,6 +180,7 @@ export function runEstimateEngine(groups = [], {
   discountValue = 0,
   depositPercent = 0,
   materials = [],
+  otherCosts = [],
 } = {}) {
   // Flatten all items across groups and recalculate each line_total
   const allItems = [];
@@ -239,6 +240,15 @@ export function runEstimateEngine(groups = [], {
     ? toMoney(D(grossMargin).dividedBy(D(grandTotal)).times(100))
     : 0;
 
+  // Other costs (job-level internal expenses)
+  const otherCostsTotal = toMoney(
+    (otherCosts || []).reduce((acc, c) => acc.plus(D(c.amount)), new Decimal(0))
+  );
+  const netProfit = toMoney(D(grossMargin).minus(D(otherCostsTotal)));
+  const netProfitPct = grandTotal > 0
+    ? toMoney(D(netProfit).dividedBy(D(grandTotal)).times(100))
+    : 0;
+
   // marginPercentage: variance vs book (how much above/below book price we're selling)
   const marginPercentage = totalBookValue > 0
     ? toMoney(D(totalVariance).dividedBy(D(totalBookValue)).times(100))
@@ -262,5 +272,8 @@ export function runEstimateEngine(groups = [], {
     marginPercentage,
     grossMargin,
     grossMarginPct,
+    otherCostsTotal,
+    netProfit,
+    netProfitPct,
   };
 }
