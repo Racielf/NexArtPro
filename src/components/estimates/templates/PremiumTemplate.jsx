@@ -142,6 +142,41 @@ export default function PremiumTemplate({ vm }) {
         </div>
       )}
 
+      {/* ─── MATERIALS ───────────────────────────────────────── */}
+      {opts.showMaterials && vm.materials && vm.materials.length > 0 && (
+        <div style={{ padding: `24px ${P}px 0` }}>
+          <div style={{ fontWeight: 'bold', fontSize: 13, color: DARK, paddingBottom: 6, borderBottom: `2px solid #166534`, marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+            <span>Materials</span>
+            {showPrices && <span style={{ color: MUTED, fontWeight: 400, fontSize: 12 }}>${vm.materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>}
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#faf8f3' }}>
+                <th style={{ textAlign: 'left', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, borderBottom: `1px solid ${BORDER}` }}>Material</th>
+                <th style={{ textAlign: 'center', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, width: 55, borderBottom: `1px solid ${BORDER}` }}>Qty</th>
+                <th style={{ textAlign: 'center', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, width: 45, borderBottom: `1px solid ${BORDER}` }}>Unit</th>
+                {showPrices && <th style={{ textAlign: 'right', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, width: 90, borderBottom: `1px solid ${BORDER}` }}>Price</th>}
+                {showPrices && <th style={{ textAlign: 'right', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, width: 100, borderBottom: `1px solid ${BORDER}` }}>Amount</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {vm.materials.map((m, idx) => (
+                <tr key={m.id || idx} style={{ borderBottom: '1px solid #ede8df' }}>
+                  <td style={{ padding: '10px 10px' }}>
+                    <div style={{ fontWeight: 'bold', color: DARK }}>{m.name}</div>
+                    {m.description && <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{m.description}</div>}
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{m.quantity}</td>
+                  <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{m.unit}</td>
+                  {showPrices && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${m.unit_price.toFixed(2)}</td>}
+                  {showPrices && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: ACCENT }}>${m.line_total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* ─── TOTALS ─────────────────────────────────────────── */}
       {showPrices && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: `16px ${P}px 24px` }}>
@@ -180,41 +215,6 @@ export default function PremiumTemplate({ vm }) {
         <div style={{ padding: `20px ${P}px`, borderBottom: `1px solid ${BORDER}`, background: ACCENT_LIGHT }}>
           <div style={sectionLabel}>Project Notes</div>
           <p style={{ color: '#555', fontSize: 12, lineHeight: 1.8, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>
-        </div>
-      )}
-
-      {/* ─── MATERIALS ───────────────────────────────────────── */}
-      {opts.showMaterials && vm.materials && vm.materials.length > 0 && (
-        <div style={{ padding: `24px ${P}px 0` }}>
-          <div style={{ fontWeight: 'bold', fontSize: 13, color: DARK, paddingBottom: 6, borderBottom: `2px solid #166534`, marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
-            <span>Materials</span>
-            {showPrices && <span style={{ color: MUTED, fontWeight: 400, fontSize: 12 }}>${vm.materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>}
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#faf8f3' }}>
-                <th style={{ textAlign: 'left', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, borderBottom: `1px solid ${BORDER}` }}>Material</th>
-                <th style={{ textAlign: 'center', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, width: 55, borderBottom: `1px solid ${BORDER}` }}>Qty</th>
-                <th style={{ textAlign: 'center', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, width: 45, borderBottom: `1px solid ${BORDER}` }}>Unit</th>
-                {showPrices && <th style={{ textAlign: 'right', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, width: 90, borderBottom: `1px solid ${BORDER}` }}>Price</th>}
-                {showPrices && <th style={{ textAlign: 'right', padding: '9px 10px', fontSize: 10, fontWeight: 'bold', color: DARK, width: 100, borderBottom: `1px solid ${BORDER}` }}>Amount</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {vm.materials.map((m, idx) => (
-                <tr key={m.id || idx} style={{ borderBottom: '1px solid #ede8df' }}>
-                  <td style={{ padding: '10px 10px' }}>
-                    <div style={{ fontWeight: 'bold', color: DARK }}>{m.name}</div>
-                    {m.description && <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{m.description}</div>}
-                  </td>
-                  <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{m.quantity}</td>
-                  <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{m.unit}</td>
-                  {showPrices && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${m.unit_price.toFixed(2)}</td>}
-                  {showPrices && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: ACCENT }}>${m.line_total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
 
