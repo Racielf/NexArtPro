@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Save, Send, Trash2 } from 'lucide-react';
+import { X, Eye, Send, Trash2 } from 'lucide-react';
+import SaveStateIndicator from '@/components/shared/SaveStateIndicator';
 import ProposalSidebarCustomer from '@/components/proposals/ProposalSidebarCustomer';
 import ProposalActionsPanel from '@/components/proposals/ProposalActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
@@ -35,6 +36,9 @@ export default function ProposalEditor() {
   const [proposal, setProposal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+  const [saveError, setSaveError] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [proposalDetails, setProposalDetails] = useState({
     scopeOfWork: '',
@@ -78,6 +82,8 @@ export default function ProposalEditor() {
 
   const handleSave = async (estimateData) => {
     setSaving(true);
+    setSaveError(false);
+    setDirty(false);
     
     // EstimateGroups returns estimate format — adapter handles field filtering
     // unit_cost is now persisted for shared pricing intelligence
@@ -93,8 +99,11 @@ export default function ProposalEditor() {
     try {
       await base44.entities.Proposal.update(proposalId, sanitized);
       setProposal(sanitized);
+      setSavedAt(Date.now());
     } catch (err) {
-      console.error('Error saving proposal:', err);
+      console.error('[ProposalEditor] Save failed:', err);
+      setSaveError(true);
+      setDirty(true);
     } finally {
       setSaving(false);
     }
@@ -209,11 +218,7 @@ export default function ProposalEditor() {
               Send to Client
             </button>
 
-            {saving && (
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Save className="w-3 h-3 animate-pulse" />
-              </span>
-            )}
+            <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
 
             <button
               onClick={handleCancel}
@@ -292,6 +297,7 @@ export default function ProposalEditor() {
               readOnlyDiscountType={true}
               isPreview={isPreview}
               currentUser={currentUser}
+              onDirty={() => setDirty(true)}
             />
             
             {/* PROPOSAL DETAILS SECTIONS */}

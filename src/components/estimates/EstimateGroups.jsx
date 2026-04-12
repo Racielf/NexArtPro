@@ -484,7 +484,7 @@ function NotesSection({ label, placeholder, value, onChange, accent }) {
 
 // ─── Main EstimateGroups Component ────────────────────────────────────────────
 // readOnlyDiscountType: if true, disables discount type selector (Proposal mode)
-export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false, currentUser }) {
+export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false, currentUser, onDirty }) {
   const [groups, setGroups] = useState(() => {
     const resolved = resolveAndNormalizeGroups(estimate);
     return resolved.length ? resolved : DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] }));
@@ -554,6 +554,8 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
 
   // Debounced auto-save
   useEffect(() => {
+    // Signal parent that local changes exist before debounce fires
+    if (onDirty) onDirty();
     const t = setTimeout(() => {
       const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
 

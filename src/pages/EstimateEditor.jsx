@@ -3,7 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Save, Trash2, Send, ChevronRight } from 'lucide-react';
+import { X, Eye, Trash2, Send, ChevronRight } from 'lucide-react';
+import SaveStateIndicator from '@/components/shared/SaveStateIndicator';
 import EstimateTemplateSelector from '@/components/estimates/EstimateTemplateSelector';
 import EstimateDocumentOptions from '@/components/estimates/EstimateDocumentOptions';
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
@@ -30,6 +31,9 @@ export default function EstimateEditor() {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+  const [saveError, setSaveError] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
@@ -64,6 +68,8 @@ export default function EstimateEditor() {
 
   const handleSave = async (updatedEstimate) => {
     setSaving(true);
+    setSaveError(false);
+    setDirty(false);
     
     // Normalize all line items before persisting
     const sanitized = { ...updatedEstimate };
@@ -74,9 +80,17 @@ export default function EstimateEditor() {
       }));
     }
     
-    await base44.entities.Estimate.update(estimateId, { ...sanitized, updated_by: 'Admin' });
-    setEstimate(sanitized);
-    setSaving(false);
+    try {
+      await base44.entities.Estimate.update(estimateId, { ...sanitized, updated_by: 'Admin' });
+      setEstimate(sanitized);
+      setSavedAt(Date.now());
+    } catch (err) {
+      console.error('[EstimateEditor] Save failed:', err);
+      setSaveError(true);
+      setDirty(true);
+    } finally {
+      setSaving(false);
+    }
 
     const marginPct = parseFloat(updatedEstimate?.gross_margin_pct ?? updatedEstimate?.gross_margin_percent ?? 100);
     const isAdmin = normalizeUserRole(currentUser?.role) === 'admin';
@@ -236,11 +250,7 @@ export default function EstimateEditor() {
             <ConvertToWorkOrderButton estimate={estimate} onConverted={loadEstimate} />
             <ConvertToInvoiceButton estimate={estimate} onConverted={loadEstimate} />
 
-            {saving && (
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Save className="w-3 h-3 animate-pulse" />
-              </span>
-            )}
+            <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
 
             <button
               onClick={handleCancel}
@@ -344,6 +354,7 @@ export default function EstimateEditor() {
             saving={saving}
             isPreview={isPreview}
             currentUser={currentUser}
+            onDirty={() => setDirty(true)}
           />
           {/* Persisted pricing audit trail — internal only */}
           {!isPreview && estimate?.id && (
