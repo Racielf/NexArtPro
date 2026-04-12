@@ -680,24 +680,28 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
 
           {/* ── INTERNAL COST SUMMARY — visible when Cost toggle is on ── */}
           {showCost && !isPreview && (() => {
+            const marginStatus = grossMarginPct >= 60
+              ? { label: 'Good', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' }
+              : grossMarginPct >= 40
+              ? { label: 'Warning', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-400' }
+              : { label: 'Low', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-500' };
             return (
               <div className="space-y-2" style={{ minWidth: 200 }}>
-                <p className="text-[9px] font-bold tracking-widest uppercase text-amber-600">🔒 Internal Cost View</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-[9px] font-bold tracking-widest uppercase text-amber-600">🔒 Internal Cost View</p>
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold ${marginStatus.bg} ${marginStatus.border} ${marginStatus.text}`}>
+                    <span className={`w-2 h-2 rounded-full ${marginStatus.dot}`} />
+                    {marginStatus.label} — {grossMarginPct.toFixed(1)}%
+                  </span>
+                </div>
                 <div className="flex gap-3 flex-wrap">
                   <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
                     <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Total Cost</p>
                     <p className="text-base font-bold text-slate-700">{fmt(totalCost)}</p>
                   </div>
-                  <div className={`border rounded-lg px-4 py-3 flex-1 min-w-[100px] ${
-                    grossMarginPct >= 30 ? 'bg-emerald-50/50 border-emerald-200' :
-                    grossMarginPct >= 20 ? 'bg-amber-50/50 border-amber-200' :
-                    'bg-red-50/50 border-red-200'
-                  }`}>
+                  <div className={`border rounded-lg px-4 py-3 flex-1 min-w-[100px] ${marginStatus.bg} ${marginStatus.border}`}>
                     <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Gross Margin</p>
-                    <p className={`text-base font-bold ${
-                      grossMarginPct >= 30 ? 'text-emerald-700' :
-                      grossMarginPct >= 20 ? 'text-amber-600' : 'text-red-600'
-                    }`}>{fmt(grossMargin)} ({grossMarginPct.toFixed(1)}%)</p>
+                    <p className={`text-base font-bold ${marginStatus.text}`}>{fmt(grossMargin)} ({grossMarginPct.toFixed(1)}%)</p>
                   </div>
                 </div>
               </div>
