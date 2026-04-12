@@ -740,6 +740,10 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
                     <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Gross Profit</p>
                     <p className={`text-base font-bold ${marginStatus.text}`}>{fmt(grossMargin)} ({grossMarginPct.toFixed(1)}%)</p>
                   </div>
+                  <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-primary/70 mb-1">Client Total</p>
+                    <p className="text-base font-bold text-primary">{fmt(total)}</p>
+                  </div>
                 </div>
               </div>
             );
