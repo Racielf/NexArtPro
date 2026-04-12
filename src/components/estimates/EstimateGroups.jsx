@@ -715,6 +715,11 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
                   </span>
                 </div>
                 <div className="flex gap-3 flex-wrap">
+                  {/* Labor Total = sum of all service line items (groups) */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-blue-500 mb-1">Labor Total</p>
+                    <p className="text-base font-bold text-blue-700">{fmt(subtotal - materialsSubtotal)}</p>
+                  </div>
                   {materialsSubtotal > 0 && (
                     <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
                       <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-500 mb-1">Materials Cost</p>
