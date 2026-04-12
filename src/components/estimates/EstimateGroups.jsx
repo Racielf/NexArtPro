@@ -40,7 +40,7 @@ const GRID_COLS = 'minmax(20px,24px) minmax(180px,3fr) minmax(48px,60px) minmax(
 
 // ─── Single Line Item Row ──────────────────────────────────────────────────────
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false }) {
-  const [expanded, setExpanded] = useState(!item.service_name);
+  const [expanded, setExpanded] = useState(!item.service_name || !item.description);
   const committedRef = React.useRef({ unit_price: item.unit_price, unit_cost: item.unit_cost });
 
   const update = (field, value) => {
@@ -134,8 +134,13 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           />
 
           {/* Description — always visible below service name */}
-          {item.description && (
+          {!expanded && item.description && (
             <p className="text-[11px] text-slate-400 px-2 leading-snug truncate mt-0.5">{item.description}</p>
+          )}
+          {!expanded && (
+            <button onClick={() => setExpanded(true)} className="text-[10px] text-primary/60 hover:text-primary px-2 mt-0.5 font-medium">
+              {item.description ? 'edit details' : '+ add description'}
+            </button>
           )}
 
           {/* === INTERNAL-ONLY: line margin + loss prevention + negotiation helpers ===
