@@ -1,23 +1,37 @@
 import { getServices, getPriceBook } from '@/lib/supabaseServiceCache';
+import { autolinkServiceIds } from '@/lib/autolinkServiceIds';
 
 // Normalize text for comparison
 const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 /**
  * Resolve price book → service_id links.
- * Supabase rows should already have service_id set.
- * For seed fallback rows that use _service_name_ref, resolve by name match.
+ * Uses autolinkServiceIds for normalized name matching.
  * Re-resolves on every call since the underlying cache can refresh.
  */
+let _lastAutolinkLogged = 0;
+
 function getResolved() {
   const services = getServices();
   const priceBook = getPriceBook();
-  return priceBook.map(pb => {
-    if (pb.service_id) return pb;
-    // Fallback: match by name for legacy seed data
-    const match = services.find(s => s.name === (pb._service_name_ref || pb.display_name));
-    return { ...pb, service_id: match?.id || null };
-  });
+  const { linked, stats, unmatched, duplicates } = autolinkServiceIds(services, priceBook);
+
+  // Log stats at most once per minute to avoid console spam
+  const now = Date.now();
+  if (now - _lastAutolinkLogged > 60_000) {
+    _lastAutolinkLogged = now;
+    if (stats.newlyLinked > 0 || stats.unmatched > 0 || stats.duplicateServices > 0) {
+      console.info('[Autolink]', `${stats.newlyLinked} linked, ${stats.alreadyLinked} existing, ${stats.unmatched} unmatched, ${stats.duplicateServices} duplicate services`);
+      if (unmatched.length > 0) {
+        console.warn('[Autolink] Unmatched PB entries:', unmatched.map(u => u.name));
+      }
+      if (duplicates.length > 0) {
+        console.warn('[Autolink] Duplicate service names:', duplicates.map(d => d.name));
+      }
+    }
+  }
+
+  return linked;
 }
 
 /**
