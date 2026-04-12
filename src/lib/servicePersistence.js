@@ -13,7 +13,18 @@ import { base44 } from '@/api/base44Client';
 import { SERVICES_SEED } from '@/components/settings/services/servicesSeed';
 import { PRICE_BOOK_SEED } from '@/components/settings/pricebook/priceBookSeed';
 import { invalidateServiceCache } from '@/lib/supabaseServiceCache';
+import { invalidateBase44ServiceCache } from '@/components/shared/services/serviceSearchBase44';
 import { autolinkServiceIds } from '@/lib/autolinkServiceIds';
+
+/**
+ * Invalidate all caches after a write operation.
+ * Clears both the supabaseServiceCache (used by search) and
+ * the Base44 service cache (used by searchBase44 if still referenced).
+ */
+function invalidateAllCaches() {
+  invalidateServiceCache();
+  invalidateBase44ServiceCache();
+}
 
 // ── Services ───────────────────────────────────────────────────────────────
 
@@ -43,13 +54,13 @@ export async function loadServices() {
 
 export async function createService(data) {
   const result = await base44.entities.Service.create(data);
-  invalidateServiceCache();
+  invalidateAllCaches();
   return result;
 }
 
 export async function updateService(id, data) {
   const result = await base44.entities.Service.update(id, data);
-  invalidateServiceCache();
+  invalidateAllCaches();
   return result;
 }
 
@@ -95,14 +106,14 @@ export async function createPriceBookEntry(data, services = []) {
   // Resolve service_id if not already set
   const resolved = resolveServiceId(data, services);
   const result = await base44.entities.PriceBookEntry.create(resolved);
-  invalidateServiceCache();
+  invalidateAllCaches();
   return result;
 }
 
 export async function updatePriceBookEntry(id, data, services = []) {
   const resolved = resolveServiceId(data, services);
   const result = await base44.entities.PriceBookEntry.update(id, resolved);
-  invalidateServiceCache();
+  invalidateAllCaches();
   return result;
 }
 
@@ -165,7 +176,7 @@ export async function importPriceBookEntries(rows, existingEntries, services) {
     }
   }
 
-  invalidateServiceCache();
+  invalidateAllCaches();
   return { added, updated, skipped };
 }
 

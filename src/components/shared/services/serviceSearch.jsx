@@ -78,7 +78,8 @@ export function searchServices(query, limit = 12) {
     const nameScore  = score(svc.name);
     const catScore   = score(svc.category) * 0.6;
     const descScore  = score(svc.description) * 0.4;
-    const aliasScore = Math.max(0, ...((svc.aliases || []).map(a => score(a) * 0.8)));
+    const aliases = svc.aliases || [];
+    const aliasScore = aliases.length > 0 ? Math.max(0, ...aliases.map(a => score(a) * 0.8)) : 0;
 
     const pb = pbByServiceId[svc.id];
     const pbNameScore  = pb ? score(pb.display_name) : 0;
@@ -100,7 +101,7 @@ export function searchServices(query, limit = 12) {
       id: svc.id,
       name: svc.name,
       category: svc.category,
-      unit: pb?.unit || svc.default_unit || 'each',
+      unit: pb?.unit || svc.unit || svc.default_unit || 'each',
       // New fields: unit_price/unit_cost from PB (preferred), fallback to legacy base_price/estimated_cost
       unit_price: pb?.unit_price ?? pb?.base_price ?? null,
       unit_cost: pb?.unit_cost ?? pb?.estimated_cost ?? null,
