@@ -10,7 +10,7 @@ import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
  * All other documents (PROPOSAL, default) → EstimateTemplateRenderer
  *   which respects the selected template (clean / premium / modern_card)
  */
-export default function DocumentTypeRenderer({ estimate, options = {}, lang }) {
+export default function DocumentTypeRenderer({ estimate, options = {}, lang, template }) {
   if (!estimate) return null;
 
   const resolvedLang = lang || estimate?.document_language || 'en';
@@ -20,10 +20,12 @@ export default function DocumentTypeRenderer({ estimate, options = {}, lang }) {
     return <BidDocumentRenderer estimate={estimate} options={mergedOpts} lang={resolvedLang} />;
   }
 
+  const resolvedTemplate = template || estimate?.document_config?.template || 'clean';
+
   return (
     <EstimateTemplateRenderer
       estimate={estimate}
-      template={estimate?.document_config?.template || 'clean'}
+      template={resolvedTemplate}
       options={mergedOpts}
       documentType="estimate"
     />

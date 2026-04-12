@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link, Mail, Minimize2, Columns2, Briefcase, Zap, Crown, List } from 'lucide-react';
+import { Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link, Mail } from 'lucide-react';
+import { getTemplateOptions } from '@/lib/estimateTemplates';
 import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -97,7 +98,7 @@ function ToggleRow({ label, checked, onChange }) {
 
 export default function EstimateSendReview({ estimate, open, onClose, onSent }) {
    const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
-   const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'pro');
+   const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'clean');
    const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
    const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from ${appConfig.appName}`);
    const [message, setMessage] = useState(
@@ -286,33 +287,23 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
           <SectionAccordion title="Layout" icon={<Eye className="w-3.5 h-3.5" />}>
             <p className="text-xs text-slate-400 mb-3">Select document template</p>
             <div className="space-y-2">
-              {[
-                { id: 'minimal', name: 'Minimal', desc: 'Clean & simple', icon: Minimize2 },
-                { id: 'compact', name: 'Compact', desc: 'Sidebar layout', icon: Columns2 },
-                { id: 'professional', name: 'Professional', desc: 'Corporate style', icon: Briefcase },
-                { id: 'modern', name: 'Modern', desc: 'Contemporary', icon: Zap },
-                { id: 'executive', name: 'Executive', desc: 'Premium elegant', icon: Crown },
-                { id: 'detailed', name: 'Detailed', desc: 'Comprehensive', icon: List },
-              ].map(template => (
+              {getTemplateOptions().map(template => (
                 <button
-                   key={template.id}
-                   onClick={() => setCurrentTemplate(template.id)}
+                   key={template.value}
+                   onClick={() => setCurrentTemplate(template.value)}
                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
-                     currentTemplate === template.id
+                     currentTemplate === template.value
                        ? 'border-primary bg-primary/5'
                        : 'border-slate-200 hover:border-slate-300 bg-white'
                    }`}
                  >
-                   <template.icon className={`w-4 h-4 flex-shrink-0 ${
-                     currentTemplate === template.id ? 'text-primary' : 'text-slate-400'
-                   }`} />
                    <div className="text-left flex-1 min-w-0">
-                     <p className={`text-xs font-semibold ${currentTemplate === template.id ? 'text-primary' : 'text-slate-800'}`}>
-                       {template.name}
+                     <p className={`text-xs font-semibold ${currentTemplate === template.value ? 'text-primary' : 'text-slate-800'}`}>
+                       {template.label}
                      </p>
-                     <p className="text-[11px] text-slate-400">{template.desc}</p>
+                     <p className="text-[11px] text-slate-400">{template.description}</p>
                    </div>
-                   {currentTemplate === template.id && (
+                   {currentTemplate === template.value && (
                      <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
                      </div>
@@ -389,33 +380,18 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         {/* RIGHT — LIVE PREVIEW */}
         <div className="flex-1 overflow-y-auto p-8 flex justify-center min-h-0">
           <div className="w-full max-w-3xl shadow-xl rounded-sm bg-white">
-            {(estimate?.document_type === 'BID' || estimate?.document_type === 'PROPOSAL') ? (
-              <DocumentTypeRenderer
-                estimate={estimate}
-                options={{
-                  ...DEFAULT_OPTIONS,
-                  showPrices: visibility.materials !== false,
-                  showBreakdown: visibility.services !== false,
-                  showTerms: true,
-                  showSignatures: true,
-                  hideInternalNotes: true,
-                }}
-              />
-            ) : (
-              <EstimateTemplateRenderer
-                estimate={estimate}
-                template={currentTemplate}
-                options={{
-                  ...DEFAULT_OPTIONS,
-                  showPrices: visibility.materials !== false,
-                  showBreakdown: visibility.services !== false,
-                  showTerms: true,
-                  showSignatures: true,
-                  hideInternalNotes: true,
-                }}
-                documentType="estimate"
-              />
-            )}
+            <DocumentTypeRenderer
+              estimate={estimate}
+              template={currentTemplate}
+              options={{
+                ...DEFAULT_OPTIONS,
+                showPrices: visibility.materials !== false,
+                showBreakdown: visibility.services !== false,
+                showTerms: true,
+                showSignatures: true,
+                hideInternalNotes: true,
+              }}
+            />
           </div>
         </div>
 
