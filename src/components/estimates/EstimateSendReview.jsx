@@ -232,12 +232,11 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     setSending(true);
     setSentError(null);
     try {
+      // 1. Build payload
       const documentConfig = {
         template: currentTemplate,
         options: currentOptions,
       };
-      await markEstimateSent(estimate.id, { documentConfig });
-      // Build attachment links for client-sendable files
       const clientAttachments = Array.isArray(estimate?.attachments)
         ? estimate.attachments.filter(a => a.intent === 'send_to_client')
         : [];
@@ -247,7 +246,8 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
           clientAttachments.map(a => `• ${a.file_name || 'Document'}: ${a.file_url}`).join('\n');
       }
       const fullMessage = `${message}\n\nView & approve your estimate here:\n${clientLink}${attachmentSection}`;
-      try {
+
+      // 2. Send email first — must succeed before marking as sent
       const emailRes = await base44.functions.invoke('sendEstimateEmail', {
         to: recipientEmail,
         subject,
@@ -255,8 +255,12 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         from_name: appConfig.appName || 'RC Art Construction',
       });
       if (emailRes.data?.error) throw new Error(emailRes.data.error);
+
+      // 3. Email confirmed — now mark estimate as sent
+      await markEstimateSent(estimate.id, { documentConfig });
+
+      // 4. Write logs
       await logDocument(estimate.id, estimate, 'sent_email', { recipient_email: recipientEmail, subject, secure_link: clientLink });
-      // ── Audit log: estimate sent ──
       const currentUser = await base44.auth.me().catch(() => null);
       if (currentUser) {
         await logSend({
@@ -267,32 +271,31 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         }).catch(err => console.warn('[audit] send log failed:', err?.message));
       }
       await logComm({
-          event_type: 'estimate_sent',
-          client_id: estimate.client_id || '',
-          client_name: estimate.client_name,
-          client_email: recipientEmail,
-          estimate_id: estimate.id,
-          appointment_id: estimate.appointment_id || '',
-          subject,
-          preview: `Total: $${(estimate.total || 0).toFixed(2)}`,
-        });
-        setSentSuccess(true);
-        toast.success('Estimate sent successfully!');
-      } catch (error) {
-        await logCommFailed({
-          event_type: 'estimate_sent',
-          client_name: estimate.client_name,
-          client_email: recipientEmail,
-          estimate_id: estimate.id,
-          subject,
-        });
-        const errMsg = error?.message || 'Failed to send email';
-        setSentError(errMsg);
-        toast.error(errMsg);
-      }
+        event_type: 'estimate_sent',
+        client_id: estimate.client_id || '',
+        client_name: estimate.client_name,
+        client_email: recipientEmail,
+        estimate_id: estimate.id,
+        appointment_id: estimate.appointment_id || '',
+        subject,
+        preview: `Total: $${(estimate.total || 0).toFixed(2)}`,
+      });
+
+      // 5. Success UI
+      setSentSuccess(true);
+      toast.success('Estimate sent successfully!');
     } catch (error) {
-      setSentError('Failed to update estimate. Please try again.');
-      toast.error('Failed to update estimate');
+      // On failure: do NOT mark as sent, log failed comm, show real error
+      await logCommFailed({
+        event_type: 'estimate_sent',
+        client_name: estimate.client_name,
+        client_email: recipientEmail,
+        estimate_id: estimate.id,
+        subject,
+      }).catch(() => {});
+      const errMsg = error?.message || 'Failed to send email';
+      setSentError(errMsg);
+      toast.error(errMsg);
     } finally {
       setSending(false);
     }
