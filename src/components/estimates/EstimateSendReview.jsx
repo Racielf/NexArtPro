@@ -43,6 +43,7 @@ const DEFAULT_VISIBILITY = {
   serviceDate: true,
   technicianName: true,
   services: true,
+  prices: true,
   materialsSection: true,
 };
 
@@ -59,6 +60,7 @@ const VISIBILITY_LABELS = {
   serviceDate: 'Service date',
   technicianName: 'Technician name',
   services: 'Services',
+  prices: 'Prices & totals',
   materialsSection: 'Materials section',
 };
 
@@ -118,7 +120,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
   const clientLink = `${window.location.origin}/client-estimate?id=${estimate?.id}`;
 
   const currentOptions = {
-    showPrices: visibility.services !== false,
+    showPrices: visibility.prices !== false,
     showBreakdown: visibility.services !== false,
     showBusinessLogo: visibility.businessLogo !== false,
     showBusinessName: visibility.businessName !== false,
@@ -464,27 +466,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
             <DocumentTypeRenderer
               estimate={estimate}
               template={currentTemplate}
-              options={{
-                ...DEFAULT_OPTIONS,
-                showPrices: visibility.services !== false,
-                showBreakdown: visibility.services !== false,
-                showBusinessLogo: visibility.businessLogo !== false,
-                showBusinessName: visibility.businessName !== false,
-                showBusinessAddress: visibility.businessAddress !== false,
-                showEstimateNumber: visibility.estimateNumber !== false,
-                showEstimateName: visibility.estimateName !== false,
-                showNotes: visibility.estimateMessage !== false,
-                showMaterials: visibility.materialsSection !== false,
-                showCustomerName: visibility.customerName !== false,
-                showDocumentDate: visibility.estimateDate !== false,
-                showExpirationDate: visibility.expirationDate !== false,
-                showProjectStartDate: visibility.serviceDate !== false,
-                showProjectEndDate: visibility.serviceDate !== false,
-                showTechnicianName: visibility.technicianName !== false,
-                showTerms: true,
-                showSignatures: true,
-                hideInternalNotes: true,
-              }}
+              options={currentOptions}
             />
           </div>
         </div>

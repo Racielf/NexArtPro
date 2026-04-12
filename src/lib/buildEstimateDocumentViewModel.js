@@ -52,11 +52,11 @@ function resolveTemplate(template) {
 }
 
 // ─── Column visibility by document type ────────────────────────────────────────
-function getLineItemColumns(documentType) {
+function getLineItemColumns(documentType, showPrices = true) {
   if (documentType === 'workorder') {
     return { description: true, quantity: true, unit: true, price: false, total: false };
   }
-  return { description: true, quantity: true, unit: true, price: true, total: true };
+  return { description: true, quantity: true, unit: true, price: showPrices, total: showPrices };
 }
 
 // ─── Terms array builder ───────────────────────────────────────────────────────
@@ -271,7 +271,7 @@ export function buildEstimateDocumentViewModel({
   const materialsSubtotal = materialsItems.reduce((s, m) => s + m.line_total, 0);
 
   // ─── Columns ─────────────────────────────────────────────────────────────
-  const columns = getLineItemColumns(documentType);
+  const columns = getLineItemColumns(documentType, showPrices);
 
   // ─── Pre-built terms array for templates ─────────────────────────────────
   const termsArray = buildTermsArray(text);

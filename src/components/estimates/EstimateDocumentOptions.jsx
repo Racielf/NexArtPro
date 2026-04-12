@@ -43,15 +43,24 @@ export default function EstimateDocumentOptions({
           <p className="text-xs text-slate-500">Choose what appears in the document sent to clients.</p>
 
           {[
-            { key: 'showPrices', label: 'Show prices & totals', desc: 'Display line totals and amount' },
-            { key: 'showBreakdown', label: 'Show service breakdown', desc: 'Display itemized services' },
-            { key: 'showDeposit', label: 'Show deposit & balance', desc: 'Show deposit required and remaining balance' },
-            { key: 'showDocumentDate', label: 'Show document date', desc: 'Display the document creation date' },
-            { key: 'showProjectStartDate', label: 'Show project start date', desc: 'Display when the project is expected to start' },
-            { key: 'showProjectEndDate', label: 'Show project end date', desc: 'Display when the project is expected to complete' },
-            { key: 'showMaterials', label: 'Show materials section', desc: 'Display materials list in the document' },
-            { key: 'showTerms', label: 'Show terms & conditions', desc: 'Include payment, warranty, legal terms' },
-            { key: 'showSignatures', label: 'Show signature blocks', desc: 'Include signature lines for approval' },
+            { key: 'showBusinessLogo', label: 'Business logo', desc: 'Display your company logo' },
+            { key: 'showBusinessName', label: 'Business name', desc: 'Display your company name' },
+            { key: 'showBusinessAddress', label: 'Business address', desc: 'Display your company address and contact info' },
+            { key: 'showEstimateNumber', label: 'Estimate number', desc: 'Display the estimate/document number' },
+            { key: 'showEstimateName', label: 'Estimate name', desc: 'Display the project title' },
+            { key: 'showCustomerName', label: 'Customer name', desc: 'Display the client name' },
+            { key: 'showNotes', label: 'Notes / message', desc: 'Display customer-facing notes' },
+            { key: 'showDocumentDate', label: 'Document date', desc: 'Display the document creation date' },
+            { key: 'showExpirationDate', label: 'Expiration date', desc: 'Display when the estimate expires' },
+            { key: 'showProjectStartDate', label: 'Project start date', desc: 'Display when the project is expected to start' },
+            { key: 'showProjectEndDate', label: 'Project end date', desc: 'Display when the project is expected to complete' },
+            { key: 'showTechnicianName', label: 'Technician / assigned to', desc: 'Display the assigned team member' },
+            { key: 'showBreakdown', label: 'Service breakdown', desc: 'Display itemized services' },
+            { key: 'showPrices', label: 'Prices & totals', desc: 'Display unit prices, line totals, and grand total' },
+            { key: 'showDeposit', label: 'Deposit & balance', desc: 'Show deposit required and remaining balance' },
+            { key: 'showMaterials', label: 'Materials section', desc: 'Display the structured materials list' },
+            { key: 'showTerms', label: 'Terms & conditions', desc: 'Include payment, warranty, legal terms' },
+            { key: 'showSignatures', label: 'Signature blocks', desc: 'Include signature lines for approval' },
           ].map(({ key, label, desc }) => (
             <label key={key} className="flex items-start gap-3 p-2.5 rounded hover:bg-slate-50 cursor-pointer transition-colors">
               <div className="flex-shrink-0 mt-0.5">

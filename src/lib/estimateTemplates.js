@@ -43,6 +43,16 @@ export const DEFAULT_OPTIONS = {
   showProjectEndDate: true,
   showDeposit: true,
   hideInternalNotes: true,
+  showBusinessLogo: true,
+  showBusinessName: true,
+  showBusinessAddress: true,
+  showEstimateNumber: true,
+  showEstimateName: true,
+  showNotes: true,
+  showMaterials: true,
+  showCustomerName: true,
+  showExpirationDate: true,
+  showTechnicianName: true,
 };
 
 /**
