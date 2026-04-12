@@ -73,7 +73,7 @@ export default function ClientEstimateView() {
 
   const handleApprove = async () => {
     setActing(true);
-    const updates = await approveEstimate(estimateId, { approvedBy: estimate.client_name });
+    const updates = await approveEstimate(estimateId, { approvedBy: estimate.client_name, estimate });
     setEstimate(e => ({ ...e, ...updates }));
     // Notify business
     notifyEstimateApproved(estimate).catch(err => console.warn('[notify] approved failed:', err?.message));
@@ -94,7 +94,7 @@ export default function ClientEstimateView() {
   const handleSign = async ({ base64, signerName, signerEmail }) => {
     setShowSignPad(false);
     setActing(true);
-    const updates = await signEstimate(estimateId, { signerName, signerEmail, signatureBase64: base64 });
+    const updates = await signEstimate(estimateId, { signerName, signerEmail, signatureBase64: base64, estimate });
     setEstimate(e => ({ ...e, ...updates }));
     // Notify business with signed document link
     notifyEstimateSigned(estimate, { signerName, signerEmail }).catch(err => console.warn('[notify] signed failed:', err?.message));

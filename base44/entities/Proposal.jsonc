@@ -127,6 +127,10 @@
     "viewed_at": {
       "type": "string"
     },
+    "last_viewed_at": {
+      "type": "string",
+      "description": "Timestamp of most recent client view"
+    },
     "view_count": {
       "type": "number",
       "default": 0
@@ -140,8 +144,25 @@
     "accepted_ip": {
       "type": "string"
     },
+    "accepted_user_agent": {
+      "type": "string",
+      "description": "Client browser user agent at acceptance"
+    },
     "accepted_by_name": {
       "type": "string"
+    },
+    "signature_on_file": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a signature was captured at acceptance"
+    },
+    "signature_image_base64": {
+      "type": "string",
+      "description": "Client signature image if drawn"
+    },
+    "acceptance_proof": {
+      "type": "object",
+      "description": "Immutable acceptance proof snapshot \u2014 client-safe commercial/legal record"
     },
     "rejected_at": {
       "type": "string"

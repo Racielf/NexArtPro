@@ -207,7 +207,7 @@
     },
     "materials": {
       "type": "array",
-      "description": "Optional structured materials items (concrete, mesh, gravel, etc.)",
+      "description": "Optional structured materials items",
       "items": {
         "type": "object",
         "properties": {
@@ -240,7 +240,7 @@
     },
     "other_costs": {
       "type": "array",
-      "description": "Job-level internal costs not in line items (labor help, gas, permits, etc.)",
+      "description": "Job-level internal costs not in line items",
       "items": {
         "type": "object",
         "properties": {
@@ -431,6 +431,15 @@
     },
     "signature_image_base64": {
       "type": "string"
+    },
+    "signature_on_file": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a signature was captured at acceptance"
+    },
+    "acceptance_proof": {
+      "type": "object",
+      "description": "Immutable acceptance proof snapshot \u2014 client-safe commercial/legal record of acceptance event"
     },
     "scheduled_date": {
       "type": "string",

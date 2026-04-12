@@ -13,6 +13,7 @@
  * Those remain in the calling components for flexibility.
  */
 import { base44 } from '@/api/base44Client';
+import { buildEstimateAcceptanceProof } from '@/lib/documentAcceptance';
 
 // ─── Sales stage derivation ────────────────────────────────────────────────
 const STATUS_TO_STAGE = {
@@ -110,18 +111,31 @@ export async function markEstimateViewed(estimateId, currentEstimate) {
 /**
  * Approve estimate (without signature).
  */
-export async function approveEstimate(estimateId, { approvedBy }) {
+export async function approveEstimate(estimateId, { approvedBy, estimate }) {
   const ts = now();
+
+  let acceptanceProof = null;
+  if (estimate) {
+    acceptanceProof = await buildEstimateAcceptanceProof(estimate, {
+      acceptanceMethod: 'approve_only',
+      signerName: approvedBy,
+    });
+  }
+
   const payload = {
     status: 'approved',
     approved_at: ts,
     approved_by: approvedBy,
+    signature_on_file: false,
     sales_stage: deriveSalesStage('approved'),
     last_client_event: 'approved',
     follow_up_status: 'completed',
     follow_up_stage: 'won',
     next_follow_up_at: null,
   };
+  if (acceptanceProof) {
+    payload.acceptance_proof = acceptanceProof;
+  }
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
@@ -129,20 +143,34 @@ export async function approveEstimate(estimateId, { approvedBy }) {
 /**
  * Sign estimate (with digital signature).
  */
-export async function signEstimate(estimateId, { signerName, signerEmail, signatureBase64 }) {
+export async function signEstimate(estimateId, { signerName, signerEmail, signatureBase64, estimate }) {
   const ts = now();
+
+  let acceptanceProof = null;
+  if (estimate) {
+    acceptanceProof = await buildEstimateAcceptanceProof(estimate, {
+      acceptanceMethod: 'drawn',
+      signerName,
+      signerEmail,
+    });
+  }
+
   const payload = {
     status: 'signed',
     signed_at: ts,
     signer_name: signerName,
     signer_email: signerEmail,
     signature_image_base64: signatureBase64,
+    signature_on_file: true,
     sales_stage: deriveSalesStage('signed'),
     last_client_event: 'signed',
     follow_up_status: 'completed',
     follow_up_stage: 'won',
     next_follow_up_at: null,
   };
+  if (acceptanceProof) {
+    payload.acceptance_proof = acceptanceProof;
+  }
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
@@ -180,7 +208,7 @@ export async function requestEstimateChanges(estimateId, { note, currentVersion 
     last_client_event: 'changes_requested',
     follow_up_status: 'action_required',
     follow_up_stage: 'revision',
-    next_follow_up_at: now(), // Immediate action needed
+    next_follow_up_at: now(),
   };
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;

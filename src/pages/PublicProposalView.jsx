@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle, MapPin, Mail, Phone, Loader2 } from 'lucide-react';
+import { trackProposalView, acceptProposal } from '@/lib/documentAcceptance';
 
 export default function PublicProposalView() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -21,13 +22,9 @@ export default function PublicProposalView() {
       setProposal(p);
       if (p?.status === 'accepted') setAccepted(true);
       setLoading(false);
-      // Track view
+      // Track view via centralized acceptance service
       if (p && !['accepted', 'converted_to_invoice', 'converted_to_work_order'].includes(p.status)) {
-        const now = new Date().toISOString();
-        base44.entities.Proposal.update(p.id, {
-          viewed_at: p.viewed_at || now,
-          view_count: (p.view_count || 0) + 1,
-        }).catch(() => {});
+        trackProposalView(p.id, p).catch(() => {});
       }
     });
   }, []);
@@ -39,26 +36,13 @@ export default function PublicProposalView() {
     setError('');
     setAccepting(true);
 
-    // Get IP via public API
-    let ip = 'unknown';
-    try {
-      const r = await fetch('https://api.ipify.org?format=json');
-      const d = await r.json();
-      ip = d.ip;
-    } catch {}
-
-    // Generate invoice number
-    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-
-    await base44.entities.Proposal.update(proposalId, {
-      ...proposal,
-      status: 'accepted',
-      accepted_at: new Date().toISOString(),
-      accepted_ip: ip,
-      accepted_by_name: name.trim(),
-      invoice_number: invoiceNumber,
+    const updates = await acceptProposal(proposalId, proposal, {
+      acceptanceMethod: 'typed',
+      signerName: name.trim(),
+      signerEmail: proposal.client_email,
     });
 
+    setProposal(p => ({ ...p, ...updates }));
     setAccepted(true);
     setAccepting(false);
     setShowConfirm(false);

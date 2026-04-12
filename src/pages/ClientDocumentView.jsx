@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Eye, Lock, Download, CheckCircle } from 'lucide-react';
+import { trackProposalView, acceptProposal, buildEstimateAcceptanceProof } from '@/lib/documentAcceptance';
+import { markEstimateViewed, approveEstimate } from '@/lib/estimateSalesLifecycle';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
 import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
@@ -41,15 +43,27 @@ export default function ClientDocumentView() {
       ]);
 
       if (proposals.length > 0) {
-        setDocument(proposals[0]);
+        const p = proposals[0];
+        setDocument(p);
         setDocType('proposal');
+        // Track view
+        if (!['accepted', 'converted_to_invoice', 'converted_to_work_order'].includes(p.status)) {
+          trackProposalView(p.id, p).catch(() => {});
+        }
         setLoading(false);
         return;
       }
 
       if (estimates.length > 0) {
-        setDocument(estimates[0]);
+        const est = estimates[0];
+        setDocument(est);
         setDocType('estimate');
+        // Track view via lifecycle
+        if (est.status === 'sent' || est.status === 'viewed') {
+          markEstimateViewed(est.id, est).then(updates => {
+            setDocument(prev => ({ ...prev, ...updates }));
+          }).catch(() => {});
+        }
         setLoading(false);
         return;
       }
@@ -82,27 +96,14 @@ export default function ClientDocumentView() {
 
     setAccepting(true);
     try {
-      const clientIP = await fetch('https://api.ipify.org?format=json')
-        .then(r => r.json())
-        .then(d => d.ip)
-        .catch(() => 'unknown');
-
-      await base44.entities.Proposal.update(document.id, {
-        status: 'accepted',
-        accepted_at: new Date().toISOString(),
-        accepted_by_name: clientName,
-        accepted_ip: clientIP,
-        signature_image_base64: signature,
+      const updates = await acceptProposal(document.id, document, {
+        acceptanceMethod: 'drawn',
+        signerName: clientName,
+        signerEmail: document.client_email,
+        signatureBase64: signature,
       });
 
-      setDocument(prev => ({
-        ...prev,
-        status: 'accepted',
-        accepted_at: new Date().toISOString(),
-        accepted_by_name: clientName,
-        signature_image_base64: signature,
-      }));
-
+      setDocument(prev => ({ ...prev, ...updates }));
       toast.success('Proposal accepted successfully');
     } catch (err) {
       toast.error('Failed to accept proposal');
@@ -114,17 +115,11 @@ export default function ClientDocumentView() {
   const handleApproveEstimate = async () => {
     setAccepting(true);
     try {
-      await base44.entities.Estimate.update(document.id, {
-        status: 'approved',
-        approved_at: new Date().toISOString(),
+      const updates = await approveEstimate(document.id, {
+        approvedBy: document.client_name,
+        estimate: document,
       });
-
-      setDocument(prev => ({
-        ...prev,
-        status: 'approved',
-        approved_at: new Date().toISOString(),
-      }));
-
+      setDocument(prev => ({ ...prev, ...updates }));
       toast.success('Estimate approved');
     } catch (err) {
       toast.error('Failed to approve estimate');
