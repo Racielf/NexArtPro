@@ -28,6 +28,7 @@ import {
   declineEstimate,
   requestEstimateChanges,
 } from '@/lib/estimateSalesLifecycle';
+import ClientAttachmentsSection from '@/components/estimates/ClientAttachmentsSection';
 
 export default function ClientEstimateView() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -246,6 +247,9 @@ export default function ClientEstimateView() {
 
           </div>
         </div>
+
+        {/* Client Attachments — only send_to_client files */}
+        <ClientAttachmentsSection attachments={estimate.attachments} />
 
         {/* CTA */}
         {canAct && (
