@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { X, Printer, Download, Send, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
-import EstimatePreview from '@/components/estimates/EstimatePreview';
+import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
+import BidDocumentRenderer from '@/components/documents/BidDocumentRenderer';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import SendEstimateModal from '@/components/estimates/SendEstimateModal';
 
 export default function SendEstimate() {
@@ -147,8 +149,20 @@ export default function SendEstimate() {
 
         {/* RIGHT: PREVIEW */}
         <div className="flex-1 overflow-auto bg-slate-100 p-6">
-          <div className="max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-xl border border-slate-200">
-            <EstimatePreview estimate={estimate} />
+          <div id="estimate-print-area" className="max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-white">
+            {estimate?.document_type === 'BID' ? (
+              <BidDocumentRenderer
+                estimate={estimate}
+                options={{ ...DEFAULT_OPTIONS, ...(estimate?.document_config?.options || {}), hideInternalNotes: true }}
+              />
+            ) : (
+              <EstimateTemplateRenderer
+                estimate={estimate}
+                template={estimate?.document_config?.template || 'clean'}
+                options={{ ...DEFAULT_OPTIONS, ...(estimate?.document_config?.options || {}), hideInternalNotes: true }}
+                documentType="estimate"
+              />
+            )}
           </div>
         </div>
       </div>

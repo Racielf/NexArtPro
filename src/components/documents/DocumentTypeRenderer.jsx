@@ -1,29 +1,31 @@
 import React from 'react';
 import BidDocumentRenderer from './BidDocumentRenderer';
-import ProposalDocumentRenderer from './ProposalDocumentRenderer';
+import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 /**
- * DocumentTypeRenderer — Presentation router for BID vs PROPOSAL
+ * DocumentTypeRenderer — Unified entry point for document rendering.
  *
- * This is the entry point for document-type-aware rendering.
- * It reads the estimate's document_type and delegates to the
- * appropriate presentation component.
- *
- * SHARED:  pricing engine, line item data, totals, financial calculations
- * DIFFERENT: section order, section labels, visual tone, required fields
- *
- * Usage:
- *   <DocumentTypeRenderer estimate={estimate} options={options} />
+ * BID documents → BidDocumentRenderer (specialized technical layout)
+ * All other documents (PROPOSAL, default) → EstimateTemplateRenderer
+ *   which respects the selected template (clean / premium / modern_card)
  */
 export default function DocumentTypeRenderer({ estimate, options = {}, lang }) {
   if (!estimate) return null;
 
   const resolvedLang = lang || estimate?.document_language || 'en';
-  const docType = estimate.document_type || 'PROPOSAL';
+  const mergedOpts = { ...DEFAULT_OPTIONS, ...options };
 
-  if (docType === 'BID') {
-    return <BidDocumentRenderer estimate={estimate} options={options} lang={resolvedLang} />;
+  if (estimate.document_type === 'BID') {
+    return <BidDocumentRenderer estimate={estimate} options={mergedOpts} lang={resolvedLang} />;
   }
 
-  return <ProposalDocumentRenderer estimate={estimate} options={options} lang={resolvedLang} />;
+  return (
+    <EstimateTemplateRenderer
+      estimate={estimate}
+      template={estimate?.document_config?.template || 'clean'}
+      options={mergedOpts}
+      documentType="estimate"
+    />
+  );
 }

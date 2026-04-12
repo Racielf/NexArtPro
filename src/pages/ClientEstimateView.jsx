@@ -10,7 +10,7 @@ import { logComm } from '@/lib/commTracking';
 import ClientSignaturePad from '@/components/estimates/ClientSignaturePad';
 import ClientChangesRequest from '@/components/estimates/ClientChangesRequest';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
-import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
+import BidDocumentRenderer from '@/components/documents/BidDocumentRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
@@ -241,28 +241,22 @@ export default function ClientEstimateView() {
         <div className="bg-slate-200 flex-1 overflow-auto p-8 flex justify-center">
           <div className="w-full max-w-4xl shadow-xl rounded-sm bg-white">
 
-            {(estimate?.document_type === 'BID' || estimate?.document_type === 'PROPOSAL') ? (
-              <DocumentTypeRenderer
+            {estimate?.document_type === 'BID' ? (
+              <BidDocumentRenderer
                 estimate={estimate}
                 options={{
                   ...DEFAULT_OPTIONS,
-                  showPrices: true,
-                  showBreakdown: true,
-                  showTerms: true,
-                  showSignatures: true,
+                  ...(estimate?.document_config?.options || {}),
                   hideInternalNotes: true,
                 }}
               />
             ) : (
               <EstimateTemplateRenderer
                 estimate={estimate}
-                template={estimate.document_config?.template || 'pro'}
+                template={estimate?.document_config?.template || 'clean'}
                 options={{
                   ...DEFAULT_OPTIONS,
-                  showPrices: true,
-                  showBreakdown: true,
-                  showTerms: true,
-                  showSignatures: true,
+                  ...(estimate?.document_config?.options || {}),
                   hideInternalNotes: true,
                 }}
                 documentType="estimate"

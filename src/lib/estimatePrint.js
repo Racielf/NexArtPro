@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
-import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
+import BidDocumentRenderer from '@/components/documents/BidDocumentRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 
 /**
@@ -12,12 +12,11 @@ import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
  * Legacy/other → EstimateTemplateRenderer (template-based)
  */
 function resolveRendererElement(estimate) {
-  const docType = estimate?.document_type;
-  const mergedOpts = { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options };
+  const mergedOpts = { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options, hideInternalNotes: true };
   const lang = estimate?.document_language || 'en';
 
-  if (docType === 'BID' || docType === 'PROPOSAL') {
-    return React.createElement(DocumentTypeRenderer, {
+  if (estimate?.document_type === 'BID') {
+    return React.createElement(BidDocumentRenderer, {
       estimate,
       options: mergedOpts,
       lang,
@@ -26,8 +25,9 @@ function resolveRendererElement(estimate) {
 
   return React.createElement(EstimateTemplateRenderer, {
     estimate,
-    template: estimate?.document_config?.template || 'professional',
+    template: estimate?.document_config?.template || 'clean',
     options: mergedOpts,
+    documentType: 'estimate',
   });
 }
 
