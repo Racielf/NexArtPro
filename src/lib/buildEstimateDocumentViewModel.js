@@ -208,6 +208,16 @@ export function buildEstimateDocumentViewModel({
     showProjectEndDate: effectiveShowEndDate,
     showDeposit: options.showDeposit !== false,
     hideInternalNotes: options.hideInternalNotes !== false,
+    // Granular visibility flags
+    showBusinessLogo: options.showBusinessLogo !== false,
+    showBusinessName: options.showBusinessName !== false,
+    showBusinessAddress: options.showBusinessAddress !== false,
+    showEstimateNumber: options.showEstimateNumber !== false,
+    showEstimateName: options.showEstimateName !== false,
+    showNotes: options.showNotes !== false,
+    showCustomerName: options.showCustomerName !== false,
+    showExpirationDate: options.showExpirationDate !== false,
+    showTechnicianName: options.showTechnicianName !== false,
   };
 
   // ─── Groups ──────────────────────────────────────────────────────────────

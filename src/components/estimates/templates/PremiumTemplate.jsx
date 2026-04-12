@@ -28,15 +28,17 @@ export default function PremiumTemplate({ vm }) {
       {/* ─── HEADER (centered branding) ─────────────────────── */}
       <div style={{ padding: `40px ${P}px 0`, textAlign: 'center' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-          <CompanyLogoBlock logoUrl={company.logoUrl} size={52} borderColor={ACCENT} bgColor="#faf8f3" />
+          {opts.showBusinessLogo && <CompanyLogoBlock logoUrl={company.logoUrl} size={52} borderColor={ACCENT} bgColor="#faf8f3" />}
           <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 24, fontWeight: 'bold', color: DARK, letterSpacing: '-0.3px' }}>{company.name}</div>
-            {company.tagline && <div style={{ fontSize: 11, color: MUTED, letterSpacing: 1, textTransform: 'uppercase' }}>{company.tagline}</div>}
+            {opts.showBusinessName && <div style={{ fontSize: 24, fontWeight: 'bold', color: DARK, letterSpacing: '-0.3px' }}>{company.name}</div>}
+            {opts.showBusinessName && company.tagline && <div style={{ fontSize: 11, color: MUTED, letterSpacing: 1, textTransform: 'uppercase' }}>{company.tagline}</div>}
           </div>
         </div>
-        <div style={{ fontSize: 11, color: MUTED, marginBottom: 16 }}>
-          {[company.address, company.email, company.phone].filter(Boolean).join(' · ')}
-        </div>
+        {opts.showBusinessAddress && (
+          <div style={{ fontSize: 11, color: MUTED, marginBottom: 16 }}>
+            {[company.address, company.email, company.phone].filter(Boolean).join(' · ')}
+          </div>
+        )}
         <div style={{ height: 2, background: ACCENT, marginBottom: 0 }} />
       </div>
 
@@ -44,11 +46,11 @@ export default function PremiumTemplate({ vm }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `16px ${P}px`, background: ACCENT_LIGHT, borderBottom: `1px solid ${BORDER}` }}>
         <div>
           <span style={{ fontSize: 13, fontWeight: 'bold', color: DARK }}>{meta.documentTypeLabel}</span>
-          <span style={{ fontSize: 13, color: MUTED, marginLeft: 8 }}>#{meta.documentNumber || '—'}</span>
+          {opts.showEstimateNumber && <span style={{ fontSize: 13, color: MUTED, marginLeft: 8 }}>#{meta.documentNumber || '—'}</span>}
         </div>
         <div style={{ display: 'flex', gap: 20, fontSize: 12, color: MUTED }}>
-          <span>{meta.today}</span>
-          {meta.expirationDate && <span>Expires: {meta.expirationDate}</span>}
+          {opts.showDocumentDate && <span>{meta.today}</span>}
+          {opts.showExpirationDate && meta.expirationDate && <span>Expires: {meta.expirationDate}</span>}
           {meta.status && meta.status !== 'draft' && (
             <span style={{ padding: '2px 8px', borderRadius: 3, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', background: meta.statusStyle?.bg || '#e2e8f0', color: meta.statusStyle?.color || DARK }}>
               {meta.statusLabel || meta.status}
@@ -61,7 +63,7 @@ export default function PremiumTemplate({ vm }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: `1px solid ${BORDER}` }}>
         <div style={{ padding: `28px ${P}px`, borderRight: `1px solid ${BORDER}` }}>
           <div style={sectionLabel}>Prepared For</div>
-          <div style={{ fontWeight: 'bold', fontSize: 16, color: DARK, marginBottom: 6 }}>{client.name}</div>
+          {opts.showCustomerName && <div style={{ fontWeight: 'bold', fontSize: 16, color: DARK, marginBottom: 6 }}>{client.name}</div>}
           <div style={{ fontSize: 12, color: '#555', lineHeight: 1.8 }}>
             {client.address && <div>{client.address}</div>}
             {client.email && <div>{client.email}</div>}
@@ -70,7 +72,7 @@ export default function PremiumTemplate({ vm }) {
         </div>
         <div style={{ padding: `28px ${P}px` }}>
           <div style={sectionLabel}>Project Scope</div>
-          {project.title && <div style={{ fontWeight: 'bold', fontSize: 14, color: DARK, marginBottom: 10 }}>{project.title}</div>}
+          {opts.showEstimateName && project.title && <div style={{ fontWeight: 'bold', fontSize: 14, color: DARK, marginBottom: 10 }}>{project.title}</div>}
           <FlexibleDocDates
             mode="formal"
             docDate={meta.today}
@@ -82,7 +84,7 @@ export default function PremiumTemplate({ vm }) {
             accentColor={ACCENT}
             font={FONT}
           />
-          {project.assignedTo && (
+          {opts.showTechnicianName && project.assignedTo && (
             <div style={{ marginTop: 10, fontSize: 12 }}>
               <span style={{ color: MUTED }}>Lead: </span><span style={{ fontWeight: 'bold' }}>{project.assignedTo}</span>
             </div>
@@ -99,7 +101,7 @@ export default function PremiumTemplate({ vm }) {
       </div>
 
       {/* ─── NOTES (before line items for context) ──────────── */}
-      {text.notes && (
+      {opts.showNotes && text.notes && (
         <div style={{ padding: `20px ${P}px`, borderBottom: `1px solid ${BORDER}`, background: ACCENT_LIGHT }}>
           <div style={sectionLabel}>Project Notes</div>
           <p style={{ color: '#555', fontSize: 12, lineHeight: 1.8, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>

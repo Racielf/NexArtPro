@@ -32,21 +32,23 @@ export default function ModernCardTemplate({ vm }) {
       <div style={{ ...card(), background: DARK, color: 'white', padding: '28px 32px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-            <CompanyLogoBlock logoUrl={company.logoUrl} size={48} borderColor={ACCENT} bgColor={DARK} />
+            {opts.showBusinessLogo && <CompanyLogoBlock logoUrl={company.logoUrl} size={48} borderColor={ACCENT} bgColor={DARK} />}
             <div>
-              <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.3px' }}>{company.name}</div>
-              {company.tagline && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{company.tagline}</div>}
-              <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.7, marginTop: 4 }}>
-                {company.address && <span>{company.address} · </span>}
-                {[company.email, company.phone].filter(Boolean).join(' · ')}
-              </div>
+              {opts.showBusinessName && <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.3px' }}>{company.name}</div>}
+              {opts.showBusinessName && company.tagline && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{company.tagline}</div>}
+              {opts.showBusinessAddress && (
+                <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.7, marginTop: 4 }}>
+                  {company.address && <span>{company.address} · </span>}
+                  {[company.email, company.phone].filter(Boolean).join(' · ')}
+                </div>
+              )}
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8' }}>{meta.documentTypeLabel}</div>
-            <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.5px', marginTop: 2 }}>#{meta.documentNumber || '—'}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{meta.today}</div>
-            {meta.expirationDate && <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Exp: {meta.expirationDate}</div>}
+            {opts.showEstimateNumber && <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.5px', marginTop: 2 }}>#{meta.documentNumber || '—'}</div>}
+            {opts.showDocumentDate && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{meta.today}</div>}
+            {opts.showExpirationDate && meta.expirationDate && <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Exp: {meta.expirationDate}</div>}
             {meta.status && meta.status !== 'draft' && (
               <div style={{ display: 'inline-block', marginTop: 6, padding: '2px 8px', borderRadius: 12, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}>
                 {meta.statusLabel || meta.status}
@@ -60,7 +62,7 @@ export default function ModernCardTemplate({ vm }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
         <div style={{ ...card(), padding: '22px 24px' }}>
           <div style={sectionLabel}>Client</div>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{client.name}</div>
+          {opts.showCustomerName && <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{client.name}</div>}
           <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.75 }}>
             {client.address && <div>{client.address}</div>}
             {client.email && <div>{client.email}</div>}
@@ -69,7 +71,7 @@ export default function ModernCardTemplate({ vm }) {
         </div>
         <div style={{ ...card(), padding: '22px 24px' }}>
           <div style={sectionLabel}>Project</div>
-          {project.title && <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{project.title}</div>}
+          {opts.showEstimateName && project.title && <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{project.title}</div>}
           <FlexibleDocDates
             mode="inline"
             docDate={meta.today}
@@ -80,7 +82,7 @@ export default function ModernCardTemplate({ vm }) {
             showEndDate={opts.showProjectEndDate}
             font={FONT}
           />
-          {project.assignedTo && (
+          {opts.showTechnicianName && project.assignedTo && (
             <div style={{ fontSize: 12, color: '#475569', marginTop: 6 }}>
               <span style={{ color: '#94a3b8', fontWeight: 600 }}>Lead:</span> {project.assignedTo}
             </div>
@@ -173,7 +175,7 @@ export default function ModernCardTemplate({ vm }) {
       )}
 
       {/* ─── NOTES CARD ─────────────────────────────────────── */}
-      {text.notes && (
+      {opts.showNotes && text.notes && (
         <div style={{ ...card(), padding: '22px 24px', marginBottom: 20, borderLeft: `4px solid ${ACCENT}` }}>
           <div style={sectionLabel}>Notes</div>
           <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>

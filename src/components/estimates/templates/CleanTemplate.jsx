@@ -28,21 +28,23 @@ export default function CleanTemplate({ vm }) {
       <div style={{ background: DARK, padding: `32px ${P}px 28px`, color: 'white' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-            <CompanyLogoBlock logoUrl={company.logoUrl} size={46} borderColor="#3b82f6" bgColor={DARK} />
+            {opts.showBusinessLogo && <CompanyLogoBlock logoUrl={company.logoUrl} size={46} borderColor="#3b82f6" bgColor={DARK} />}
             <div>
-              <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.3px' }}>{company.name}</div>
-              {company.tagline && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{company.tagline}</div>}
-              <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.8, marginTop: 6 }}>
-                {company.address && <div>{company.address}</div>}
-                <div>{[company.email, company.phone].filter(Boolean).join(' · ')}</div>
-              </div>
+              {opts.showBusinessName && <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.3px' }}>{company.name}</div>}
+              {opts.showBusinessName && company.tagline && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{company.tagline}</div>}
+              {opts.showBusinessAddress && (
+                <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.8, marginTop: 6 }}>
+                  {company.address && <div>{company.address}</div>}
+                  <div>{[company.email, company.phone].filter(Boolean).join(' · ')}</div>
+                </div>
+              )}
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8' }}>{meta.documentTypeLabel}</div>
-            <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: '-1px', marginTop: 4 }}>#{meta.documentNumber || '—'}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{meta.today}</div>
-            {meta.expirationDate && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Expires: {meta.expirationDate}</div>}
+            {opts.showEstimateNumber && <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: '-1px', marginTop: 4 }}>#{meta.documentNumber || '—'}</div>}
+            {opts.showDocumentDate && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{meta.today}</div>}
+            {opts.showExpirationDate && meta.expirationDate && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Expires: {meta.expirationDate}</div>}
             {meta.status && meta.status !== 'draft' && (
               <div style={{ display: 'inline-block', marginTop: 8, padding: '3px 10px', borderRadius: 4, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', background: meta.statusStyle?.bg || '#334155', color: meta.statusStyle?.color || '#94a3b8' }}>
                 {meta.statusLabel || meta.status}
@@ -56,7 +58,7 @@ export default function CleanTemplate({ vm }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: `1px solid ${BORDER}` }}>
         <div style={{ padding: `24px ${P}px`, borderRight: `1px solid ${BORDER}` }}>
           <div style={sectionLabel}>Bill To</div>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{client.name}</div>
+          {opts.showCustomerName && <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{client.name}</div>}
           <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.75 }}>
             {client.address && <div>{client.address}</div>}
             {client.email && <div>{client.email}</div>}
@@ -65,7 +67,7 @@ export default function CleanTemplate({ vm }) {
         </div>
         <div style={{ padding: `24px ${P}px` }}>
           <div style={sectionLabel}>Project Details</div>
-          {project.title && <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>{project.title}</div>}
+          {opts.showEstimateName && project.title && <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>{project.title}</div>}
           <FlexibleDocDates
             mode="block"
             docDate={meta.today}
@@ -76,7 +78,7 @@ export default function CleanTemplate({ vm }) {
             showEndDate={opts.showProjectEndDate}
             font={FONT}
           />
-          {project.assignedTo && (
+          {opts.showTechnicianName && project.assignedTo && (
             <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
               <span style={{ ...sectionLabel, display: 'inline', marginBottom: 0, marginRight: 6 }}>Assigned:</span>{project.assignedTo}
             </div>
@@ -160,7 +162,7 @@ export default function CleanTemplate({ vm }) {
       )}
 
       {/* ─── NOTES ──────────────────────────────────────────── */}
-      {text.notes && (
+      {opts.showNotes && text.notes && (
         <div style={{ padding: `16px ${P}px`, borderTop: `1px solid ${BORDER}` }}>
           <div style={sectionLabel}>Notes</div>
           <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>
