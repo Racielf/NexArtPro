@@ -45,7 +45,7 @@ function createIframeDoc(estimate, rootId) {
   document.body.appendChild(iframe);
 
   const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-  const docLabel = estimate?.document_type === 'BID' ? 'Bid' : estimate?.document_type === 'PROPOSAL' ? 'Proposal' : 'Estimate';
+  const docLabel = estimate?.document_type === 'BID' ? 'Bid' : 'Estimate';
 
   iframeDoc.open();
   iframeDoc.write(`<!DOCTYPE html>
@@ -134,7 +134,7 @@ export async function downloadEstimate(estimate, options, template) {
         heightLeft -= pageHeight;
       }
 
-      const docLabel = estimate?.document_type === 'BID' ? 'Bid' : estimate?.document_type === 'PROPOSAL' ? 'Proposal' : 'Estimate';
+      const docLabel = estimate?.document_type === 'BID' ? 'Bid' : 'Estimate';
       const filename = `${docLabel}-${estimate?.estimate_number || 'document'}.pdf`;
       pdf.save(filename);
     } finally {

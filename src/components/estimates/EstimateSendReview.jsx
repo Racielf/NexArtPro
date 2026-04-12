@@ -153,7 +153,8 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     logDocument(estimate.id, estimate, 'sent_link', { secure_link: clientLink });
   };
 
-  const docConfig = getDocTypeConfig(estimate?.document_type);
+  // In Estimate flow, always use Estimate label — only BID overrides
+  const docConfig = estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE');
 
   const handleConfirmSend = () => {
     if (!recipientEmail) { toast.error('Recipient email is required'); return; }

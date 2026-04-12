@@ -58,7 +58,7 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
         {/* Toolbar */}
         <div className="flex items-center justify-between px-5 py-3 border-b bg-slate-50 flex-shrink-0">
           <DialogTitle className="text-sm font-semibold">
-            {getDocTypeConfig(estimate?.document_type).label} #{estimate?.estimate_number} — Preview
+            {(estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE')).label} #{estimate?.estimate_number} — Preview
           </DialogTitle>
           <div className="flex items-center gap-3 pr-1">
             <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">
