@@ -75,6 +75,10 @@ export async function ensurePriceBookComplete(livePB, liveServices) {
     if (key) liveNames.set(key, pb);
   }
 
+  // Build fuzzy index from live PB entries (once, outside the loop)
+  const pbAsServices = livePB.map(pb => ({ id: pb.id, name: pb.display_name, aliases: [] }));
+  const pbIndex = buildServiceIndex(pbAsServices);
+
   // Also build a service index for linking
   const svcIndex = buildServiceIndex(liveServices);
   const toInsert = [];
@@ -86,8 +90,6 @@ export async function ensurePriceBookComplete(livePB, liveServices) {
     if (liveNames.has(seedName)) continue;
 
     // Check fuzzy match against live PB names (avoid semantic dupes)
-    const pbAsServices = livePB.map(pb => ({ id: pb.id, name: pb.display_name, aliases: [] }));
-    const pbIndex = buildServiceIndex(pbAsServices);
     const pbMatch = findBestMatch(seedPB.display_name, pbIndex, { threshold: 0.55, ambiguityGap: 0.12 });
     if (pbMatch) continue;
 
