@@ -482,7 +482,7 @@ function NotesSection({ label, placeholder, value, onChange, accent }) {
     <div>
       <label className={`text-sm font-semibold block mb-2 ${accent ? 'text-amber-700' : 'text-slate-700'}`}>{label}</label>
       <Textarea value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder} rows={3}
+        placeholder={placeholder} rows={6}
         className={`text-sm resize-none border-slate-200 ${accent ? 'bg-amber-50/30' : ''}`} />
     </div>
   );
