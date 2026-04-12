@@ -34,6 +34,7 @@ export const CATEGORIES = [
   'Tile',
   'Repairs',
   'Cleaning & Final Touch',
+  'Concrete',
   'Misc',
 ];
 
@@ -193,6 +194,19 @@ export const SERVICES_SEED = [
   svc('Surface Protection & Prep',   'Cleaning & Final Touch','sqft',    'Mask, tape, and cover surfaces before work',['surface prep', 'masking']),
   svc('Trash / Debris Removal',      'Cleaning & Final Touch','project', 'Remove and dispose of trash',  ['trash removal', 'cleanup']),
   svc('Final Walk-Through Punch List','Cleaning & Final Touch','hour',   'Complete punch list items',    ['punch list', 'final walkthrough']),
+
+  // ── Concrete ────────────────────────────────────────────────────
+  svc('Concrete Slab Installation (4" Standard)', 'Concrete', 'sqft',    'Pour and finish standard 4" residential slab',    ['concrete slab', 'slab pour']),
+  svc('Concrete Patio Installation',              'Concrete', 'sqft',    'Pour and finish concrete patio',                   ['patio pour', 'concrete patio']),
+  svc('Concrete Walkway Installation',            'Concrete', 'sqft',    'Pour and finish concrete sidewalk or walkway',     ['walkway', 'sidewalk', 'concrete walk']),
+  svc('Concrete Driveway Installation',           'Concrete', 'sqft',    'Pour and finish residential concrete driveway',    ['driveway pour', 'concrete driveway']),
+  svc('Concrete Driveway Extension',              'Concrete', 'sqft',    'Extend existing concrete driveway',                ['driveway extension']),
+  svc('Concrete Steps Installation',              'Concrete', 'each',    'Pour and form standard 3-5 step set',              ['concrete steps', 'concrete stairs']),
+  svc('Concrete Crack Repair',                    'Concrete', 'linear_ft','Seal and repair concrete cracks',                 ['crack repair', 'concrete crack']),
+  svc('Concrete Surface Resurfacing',             'Concrete', 'sqft',    'Apply overlay resurfacing to existing concrete',   ['resurfacing', 'concrete overlay']),
+  svc('Concrete Removal / Demolition',            'Concrete', 'sqft',    'Break out and haul away existing concrete',        ['concrete demo', 'concrete removal']),
+  svc('Broom Finish Concrete',                    'Concrete', 'sqft',    'Broom finish add-on for traction texture',         ['broom finish']),
+  svc('Stamped Concrete Finish (Basic)',           'Concrete', 'sqft',    'Basic decorative stamped concrete finish',         ['stamped concrete', 'decorative concrete']),
 
   // ── Misc ──────────────────────────────────────────────────────
   svc('Project Management',          'Misc','hour',    'Supervision, scheduling, and coordination',       ['PM', 'site management']),

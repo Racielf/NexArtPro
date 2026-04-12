@@ -29,6 +29,7 @@ const CAT_COLORS = {
   'Tile': 'bg-cyan-50 text-cyan-600',
   'Repairs': 'bg-rose-50 text-rose-600',
   'Cleaning & Final Touch': 'bg-sky-50 text-sky-600',
+  'Concrete': 'bg-stone-100 text-stone-600',
   'Misc': 'bg-slate-100 text-slate-500',
 };
 

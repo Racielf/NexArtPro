@@ -22,6 +22,7 @@ export const PRICE_BOOK_CATEGORIES = [
   'Demolition',
   'Cleaning',
   'Repairs',
+  'Concrete',
   'Admin',
   'Labor',
 ];
@@ -49,6 +50,7 @@ export const CATEGORY_COLORS = {
   'Trim & Finish':     'bg-pink-50 text-pink-600',
   'Siding & Exterior': 'bg-lime-50 text-lime-600',
   'Cleaning & Final Touch': 'bg-sky-50 text-sky-600',
+  'Concrete':           'bg-stone-100 text-stone-600',
   'Misc':              'bg-slate-100 text-slate-500',
 };
 

@@ -196,4 +196,19 @@ export const PRICE_BOOK_SEED = [
   mat('Primer Gallon',                           'Paint',   'gallon',  28,   18,   24,   null, 'Multi-surface primer'),
   mat('LVP Flooring per sqft (material)',        'Flooring','sqft',    3.50, 2.20, 3.00, null, 'Mid-grade luxury vinyl plank'),
   mat('Ceramic Tile per sqft (material)',        'Tile',    'sqft',    4.00, 2.50, 3.50, null, 'Standard ceramic/porcelain'),
+
+  // ══════════════════════════════════════════════════════════════════
+  // SERVICES — Concrete
+  // ══════════════════════════════════════════════════════════════════
+  svc('Concrete Slab Installation (4" Standard)', 'Concrete', 'sqft',      10.50, 6.00,  9.50,  null, 'Basic residential slab'),
+  svc('Concrete Patio Installation',              'Concrete', 'sqft',      11.50, 6.50,  10.50, null, 'Standard patio pour'),
+  svc('Concrete Walkway Installation',            'Concrete', 'sqft',      12.00, 7.00,  11.00, null, 'Sidewalk / walkway'),
+  svc('Concrete Driveway Installation',           'Concrete', 'sqft',      13.50, 8.00,  12.50, null, 'Residential driveway'),
+  svc('Concrete Driveway Extension',              'Concrete', 'sqft',      12.50, 7.25,  11.50, null, 'Extend existing driveway'),
+  svc('Concrete Steps Installation',              'Concrete', 'each',      450,   250,   400,   null, 'Standard 3-5 step set'),
+  svc('Concrete Crack Repair',                    'Concrete', 'linear_ft', 12,    4.00,  10.00, null, 'Seal cracks'),
+  svc('Concrete Surface Resurfacing',             'Concrete', 'sqft',      6.50,  3.00,  5.75,  null, 'Overlay resurfacing'),
+  svc('Concrete Removal / Demolition',            'Concrete', 'sqft',      4.00,  1.75,  3.50,  null, 'Break and haul'),
+  svc('Broom Finish Concrete',                    'Concrete', 'sqft',      1.25,  0.40,  1.00,  null, 'Finish add-on'),
+  svc('Stamped Concrete Finish (Basic)',           'Concrete', 'sqft',      5.50,  2.25,  4.75,  null, 'Decorative finish add-on'),
 ];
