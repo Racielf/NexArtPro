@@ -54,7 +54,7 @@ export async function loadServices() {
     const { added } = await ensureServicesComplete(records);
     if (added.length > 0) {
       records = await base44.entities.Service.list('-created_date', 500);
-      invalidateAllCaches();
+      await invalidateAllCaches();
     }
   }
   return records;
@@ -112,7 +112,7 @@ export async function loadPriceBook() {
     const { added } = await ensurePriceBookComplete(records, services);
     if (added > 0) {
       records = await base44.entities.PriceBookEntry.list('-created_date', 500);
-      invalidateAllCaches();
+      await invalidateAllCaches();
     }
   }
   return records;
