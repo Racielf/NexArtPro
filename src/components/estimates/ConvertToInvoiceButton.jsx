@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { FileText, Loader2 } from 'lucide-react';
+import { normalizeGroups } from '@/lib/lineItemNormalizer';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -49,8 +50,8 @@ export default function ConvertToInvoiceButton({ estimate, onConverted }) {
         client_phone: estimate.client_phone || '',
         title: estimate.title || `Invoice from Estimate #${estimate.estimate_number}`,
         status: 'draft',
-        groups: estimate.groups || [],
-        line_items: estimate.line_items || [],
+        groups: normalizeGroups(estimate.groups || []),
+        line_items: [],
         subtotal: estimate.subtotal || 0,
         discount_type: estimate.discount_type || 'percent',
         discount_value: estimate.discount_value || 0,

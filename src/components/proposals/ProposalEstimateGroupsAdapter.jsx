@@ -63,7 +63,9 @@ export function mapGroupsToItems(groups = []) {
   return (groups || []).flatMap(group =>
     (group.items || []).map(item => ({
       id: item.id,
-      service_name: toSafeString(item.service_name),
+      service_id: (typeof item.service_id === 'string' && item.service_id.length > 0) ? item.service_id : null,
+      service_name: toSafeString(item.service_name) || '(unnamed)',
+      category: toSafeString(item.category) || 'Misc',
       description: toSafeString(item.description),
       quantity: toSafeNumber(item.quantity, 1),
       unit: toSafeString(item.unit, 'ea'),

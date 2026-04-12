@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { ClipboardList, Loader2 } from 'lucide-react';
+import { normalizeGroups } from '@/lib/lineItemNormalizer';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -51,16 +52,9 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
         title: estimate.title || `Work Order from Estimate #${estimate.estimate_number}`,
         description: estimate.notes || '',
         status: 'draft',
-        // Copy services — groups (structured) AND line_items (flat) from the estimate
-        groups: (estimate.groups || []).map(g => ({
-          ...g,
-          items: (g.items || []).map(item => ({
-            ...item,
-            // Ensure each item has a stable id for task tracking
-            id: item.id || item.service_name || String(Math.random()),
-          })),
-        })),
-        line_items: estimate.line_items || [],
+        // Copy services — normalize all items to canonical shape
+        groups: normalizeGroups(estimate.groups || []),
+        line_items: [],
         subtotal: estimate.subtotal || 0,
         total: estimate.total || 0,
         notes: estimate.notes || '',

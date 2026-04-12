@@ -35,9 +35,12 @@ export function normalizeLineItem(raw = {}) {
   const unit_price = safeNonNeg(raw.unit_price, 0);
   const unit_cost  = safeNonNeg(raw.unit_cost, 0);
   const book_price = safeNonNeg(raw.book_price, 0);
-  // line_total: use stored value if valid, otherwise recalculate
-  const storedTotal = safeNonNeg(raw.line_total) || safeNonNeg(raw.total_price);
-  const line_total  = storedTotal || (quantity * unit_price);
+  // line_total: ALWAYS recalculate from quantity * unit_price to enforce contract.
+  // Only fall back to stored value when unit_price is 0 (legacy items with no price set).
+  const computed = quantity * unit_price;
+  const line_total = computed > 0
+    ? computed
+    : (safeNonNeg(raw.line_total) || safeNonNeg(raw.total_price) || 0);
 
   // service_name: resolve legacy alias 'name', guard empty
   const resolvedName = safeStr(raw.service_name || raw.name);

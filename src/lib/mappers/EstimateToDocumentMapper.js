@@ -56,6 +56,11 @@ export function EstimateToDocumentMapper(estimate) {
     deposit_percent: estimate.deposit_percent || 0,
     deposit_amount: estimate.deposit_amount || 0,
 
+    // Internal cost data (for admin/internal views)
+    total_cost: estimate.total_cost || 0,
+    gross_margin: estimate.gross_margin || 0,
+    gross_margin_pct: estimate.gross_margin_pct || 0,
+
     // Content (NO internal_notes)
     notes: estimate.notes || '',
     exclusions: estimate.exclusions || '',
