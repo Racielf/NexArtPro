@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceAuditLog from '@/components/estimates/internal/PriceAuditLog';
-import { normalizeLineItem, normalizeGroups, resolveAndNormalizeGroups, normalizeMaterials } from '@/lib/lineItemNormalizer';
+import { normalizeLineItem, normalizeGroups, resolveAndNormalizeGroups, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
 import { usePriceAuditLog } from '@/hooks/usePriceAuditLog';
 import { calculateLineTotal, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
 import { logChange } from '@/lib/estimateAuditLog';
@@ -582,7 +582,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       onSave({
         ...estimate,
         groups: result.groups,
-        materials: result.materials,
+        materials: result.materials.map(sanitizeMaterialForPersistence),
         materials_subtotal: result.materialsSubtotal,
         other_costs: otherCosts,
         other_costs_total: result.otherCostsTotal,

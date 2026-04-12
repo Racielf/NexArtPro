@@ -103,10 +103,22 @@ export function normalizeGroups(groups = []) {
   }));
 }
 
+/** Canonical material fields — the only keys that should exist on a material item. */
+const CANONICAL_MATERIAL_FIELDS = new Set([
+  'id', 'name', 'description', 'quantity', 'unit',
+  'unit_price', 'unit_cost', 'line_total',
+]);
+
+/** Legacy aliases that may appear on old materials data. */
+const MATERIAL_LEGACY_ALIASES = new Set([
+  'cost', 'price', 'total', 'material_name',
+]);
+
 /**
  * Normalize a single material item to canonical shape.
- * Resolves legacy aliases: cost → unit_cost, price → unit_price, total → line_total.
+ * Resolves legacy aliases: cost → unit_cost, price → unit_price, total → line_total, material_name → name.
  * Always recalculates line_total from quantity * unit_price.
+ * Strips legacy alias fields from the output to prevent re-persistence of bad shapes.
  */
 export function normalizeMaterial(raw = {}) {
   const quantity   = safeNonNeg(raw.quantity, 1);
@@ -117,8 +129,15 @@ export function normalizeMaterial(raw = {}) {
     ? computed
     : (safeNonNeg(raw.line_total) || safeNonNeg(raw.total) || 0);
 
+  // Dev warning for non-canonical fields (only in development)
+  if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+    const legacyKeys = Object.keys(raw).filter(k => MATERIAL_LEGACY_ALIASES.has(k));
+    if (legacyKeys.length > 0) {
+      console.warn(`[normalizeMaterial] Legacy fields detected: ${legacyKeys.join(', ')} — auto-resolved to canonical shape`);
+    }
+  }
+
   return {
-    ...raw,
     id:          raw.id || Math.random().toString(36).slice(2, 10),
     name:        safeStr(raw.name || raw.material_name),
     description: safeStr(raw.description),
@@ -136,6 +155,26 @@ export function normalizeMaterial(raw = {}) {
  */
 export function normalizeMaterials(materials = []) {
   return (materials || []).map(normalizeMaterial);
+}
+
+/**
+ * Strip any non-canonical fields from a material before persistence.
+ * Use this at save boundaries to guarantee clean data.
+ */
+export function sanitizeMaterialForPersistence(item) {
+  const out = {};
+  for (const key of CANONICAL_MATERIAL_FIELDS) {
+    if (key in item) out[key] = item[key];
+  }
+  return out;
+}
+
+/**
+ * Check if a material object uses only canonical fields.
+ * Returns true if clean, false if legacy/extra fields are present.
+ */
+export function isCanonicalMaterialShape(item) {
+  return Object.keys(item).every(k => CANONICAL_MATERIAL_FIELDS.has(k));
 }
 
 /**

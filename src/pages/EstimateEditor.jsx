@@ -22,7 +22,7 @@ import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButto
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
-import { normalizeLineItem, normalizeMaterials } from '@/lib/lineItemNormalizer';
+import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -83,7 +83,7 @@ export default function EstimateEditor() {
       }));
     }
     if (sanitized.materials && Array.isArray(sanitized.materials)) {
-      sanitized.materials = normalizeMaterials(sanitized.materials);
+      sanitized.materials = normalizeMaterials(sanitized.materials).map(sanitizeMaterialForPersistence);
     }
     
     try {
