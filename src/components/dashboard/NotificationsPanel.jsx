@@ -111,6 +111,69 @@ function buildNotifications({ workOrders, invoices, estimates, bankTransactions 
     });
   }
 
+  // F. ESTIMATES — recent client activity (last 48h)
+  const recentCutoff = new Date(today.getTime() - 48 * 60 * 60 * 1000);
+
+  const recentApproved = estimates.filter(e => e.status === 'approved' && e.approved_at && new Date(e.approved_at) >= recentCutoff);
+  if (recentApproved.length > 0) {
+    notifications.push({
+      id: 'estimates-approved',
+      type: 'success',
+      icon: '✅',
+      message: `${recentApproved.length} estimate${recentApproved.length > 1 ? 's' : ''} approved by client`,
+      link: '/estimates',
+      priority: 3,
+    });
+  }
+
+  const recentSigned = estimates.filter(e => e.status === 'signed' && e.signed_at && new Date(e.signed_at) >= recentCutoff);
+  if (recentSigned.length > 0) {
+    notifications.push({
+      id: 'estimates-signed',
+      type: 'success',
+      icon: '✍️',
+      message: `${recentSigned.length} estimate${recentSigned.length > 1 ? 's' : ''} signed by client`,
+      link: '/estimates',
+      priority: 4,
+    });
+  }
+
+  const recentDeclined = estimates.filter(e => e.status === 'declined' && e.declined_at && new Date(e.declined_at) >= recentCutoff);
+  if (recentDeclined.length > 0) {
+    notifications.push({
+      id: 'estimates-declined',
+      type: 'error',
+      icon: '❌',
+      message: `${recentDeclined.length} estimate${recentDeclined.length > 1 ? 's' : ''} declined`,
+      link: '/estimates',
+      priority: 3,
+    });
+  }
+
+  const recentChanges = estimates.filter(e => e.status === 'changes_requested' && e.changes_requested_at && new Date(e.changes_requested_at) >= recentCutoff);
+  if (recentChanges.length > 0) {
+    notifications.push({
+      id: 'estimates-changes',
+      type: 'warning',
+      icon: '🔄',
+      message: `${recentChanges.length} estimate${recentChanges.length > 1 ? 's' : ''} — changes requested`,
+      link: '/estimates',
+      priority: 3,
+    });
+  }
+
+  const recentViewed = estimates.filter(e => e.status === 'viewed' && e.viewed_at && new Date(e.viewed_at) >= recentCutoff);
+  if (recentViewed.length > 0) {
+    notifications.push({
+      id: 'estimates-viewed',
+      type: 'info',
+      icon: '👁️',
+      message: `${recentViewed.length} estimate${recentViewed.length > 1 ? 's' : ''} viewed by client`,
+      link: '/estimates',
+      priority: 1,
+    });
+  }
+
   return notifications.sort((a, b) => b.priority - a.priority);
 }
 

@@ -406,8 +406,10 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const sentVariant = isSent ? (isViewed ? 'info' : 'success') : 'neutral';
   const sentValue   = isSent ? (isViewed ? 'Viewed' : 'Sent') : 'Not sent';
 
-  const approvalVariant = isApproved ? 'success' : isDeclined ? 'error' : isSent ? 'warning' : 'neutral';
-  const approvalValue   = isApproved ? 'Approved' : isDeclined ? 'Declined' : isSent ? 'Pending' : '—';
+  const isSigned = s === 'signed';
+  const isChangesReq = s === 'changes_requested';
+  const approvalVariant = isSigned ? 'success' : isApproved ? 'success' : isDeclined ? 'error' : isChangesReq ? 'warning' : isSent ? 'warning' : 'neutral';
+  const approvalValue   = isSigned ? 'Signed' : isApproved ? 'Approved' : isDeclined ? 'Declined' : isChangesReq ? 'Changes Req.' : isSent ? 'Pending' : '—';
 
   // ── omw elapsed ──────────────────────────────────────────────────────────
   const elapsedLabel = omwStarted
@@ -441,6 +443,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         <SummaryChip label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
         <SummaryChip label="Sent"        value={sentValue}    variant={sentVariant} />
         <SummaryChip label="Approval"    value={approvalValue} variant={approvalVariant} />
+        {isSigned && estimate?.signer_name && (
+          <SummaryChip label="Signed by" value={estimate.signer_name} variant="success" />
+        )}
+        {isChangesReq && estimate?.changes_requested_at && (
+          <SummaryChip label="Changes" value={fmt(estimate.changes_requested_at)} variant="warning" />
+        )}
       </div>
 
       {/* ── NEXT BEST ACTION ──────────────────────────────────────────────── */}

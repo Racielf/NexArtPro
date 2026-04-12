@@ -7,12 +7,15 @@ import {
 } from 'lucide-react';
 
 const EVENT_META = {
-  appointment_created:  { label: 'Appointment Scheduled', icon: Calendar,    color: 'text-blue-600',   bg: 'bg-blue-50'   },
-  appointment_reminder: { label: 'Reminder Sent',         icon: Clock,       color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  omw:                  { label: 'On My Way',             icon: Truck,       color: 'text-orange-600', bg: 'bg-orange-50' },
-  estimate_sent:        { label: 'Estimate Sent',         icon: FileText,    color: 'text-yellow-700', bg: 'bg-yellow-50' },
-  estimate_approved:    { label: 'Estimate Approved',     icon: ThumbsUp,    color: 'text-green-700',  bg: 'bg-green-50'  },
-  estimate_declined:    { label: 'Estimate Declined',     icon: ThumbsDown,  color: 'text-red-600',    bg: 'bg-red-50'    },
+  appointment_created:          { label: 'Appointment Scheduled', icon: Calendar,       color: 'text-blue-600',   bg: 'bg-blue-50'   },
+  appointment_reminder:         { label: 'Reminder Sent',         icon: Clock,          color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  omw:                          { label: 'On My Way',             icon: Truck,          color: 'text-orange-600', bg: 'bg-orange-50' },
+  estimate_sent:                { label: 'Estimate Sent',         icon: FileText,       color: 'text-yellow-700', bg: 'bg-yellow-50' },
+  estimate_viewed:              { label: 'Client Viewed',         icon: Eye,            color: 'text-blue-600',   bg: 'bg-blue-50'   },
+  estimate_approved:            { label: 'Estimate Approved',     icon: ThumbsUp,       color: 'text-green-700',  bg: 'bg-green-50'  },
+  estimate_signed:              { label: 'Estimate Signed',       icon: FileText,       color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  estimate_declined:            { label: 'Estimate Declined',     icon: ThumbsDown,     color: 'text-red-600',    bg: 'bg-red-50'    },
+  estimate_changes_requested:   { label: 'Changes Requested',     icon: MessageSquare,  color: 'text-amber-600',  bg: 'bg-amber-50'  },
 };
 
 const STATUS_META = {

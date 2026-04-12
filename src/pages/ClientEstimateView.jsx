@@ -41,11 +41,23 @@ export default function ClientEstimateView() {
         setEstimate(est);
         // Mark as viewed if sent
         if (est.status === 'sent') {
+          const viewedAt = new Date().toISOString();
           await base44.entities.Estimate.update(estimateId, {
             status: 'viewed',
-            viewed_at: new Date().toISOString(),
+            viewed_at: viewedAt,
           });
-          setEstimate(e => ({ ...e, status: 'viewed', viewed_at: new Date().toISOString() }));
+          setEstimate(e => ({ ...e, status: 'viewed', viewed_at: viewedAt }));
+          // Log internal comm event
+          logComm({
+            event_type: 'estimate_viewed',
+            channel: 'system',
+            client_id: est.client_id || '',
+            client_name: est.client_name,
+            client_email: est.client_email || '',
+            estimate_id: est.id,
+            subject: `Estimate #${est.estimate_number} Viewed by Client`,
+            status: 'delivered',
+          }).catch(() => {});
           // Notify business
           notifyEstimateViewed(est).catch(err => console.warn('[notify] viewed failed:', err?.message));
         }
@@ -80,7 +92,8 @@ export default function ClientEstimateView() {
 
   const handleDecline = async () => {
     setActing(true);
-    await base44.entities.Estimate.update(estimateId, { status: 'declined' });
+    const declinedAt = new Date().toISOString();
+    await base44.entities.Estimate.update(estimateId, { status: 'declined', declined_at: declinedAt });
     await logComm({
       event_type: 'estimate_declined',
       client_id: estimate.client_id || '',
@@ -90,7 +103,7 @@ export default function ClientEstimateView() {
       subject: `Estimate #${estimate.estimate_number} Declined by Client`,
       status: 'delivered',
     });
-    setEstimate(e => ({ ...e, status: 'declined' }));
+    setEstimate(e => ({ ...e, status: 'declined', declined_at: declinedAt }));
     // Notify business
     notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
     setActing(false);
@@ -108,12 +121,13 @@ export default function ClientEstimateView() {
       signature_image_base64: base64,
     });
     await logComm({
-      event_type: 'estimate_approved',
+      event_type: 'estimate_signed',
       client_id: estimate.client_id || '',
       client_name: estimate.client_name,
       client_email: signerEmail || estimate.client_email || '',
       estimate_id: estimate.id,
       subject: `Estimate #${estimate.estimate_number} Signed by ${signerName}`,
+      preview: `Signer: ${signerName}`,
       status: 'delivered',
     });
     setEstimate(e => ({ ...e, status: 'signed', signed_at: new Date().toISOString(), signer_name: signerName }));
@@ -145,7 +159,7 @@ export default function ClientEstimateView() {
       version: (estimate.version || 1) + 1,
     });
     await logComm({
-      event_type: 'estimate_declined',
+      event_type: 'estimate_changes_requested',
       client_id: estimate.client_id || '',
       client_name: estimate.client_name,
       client_email: estimate.client_email || '',

@@ -9,15 +9,19 @@
         "appointment_reminder",
         "omw",
         "estimate_sent",
+        "estimate_viewed",
         "estimate_approved",
-        "estimate_declined"
+        "estimate_signed",
+        "estimate_declined",
+        "estimate_changes_requested"
       ]
     },
     "channel": {
       "type": "string",
       "enum": [
         "email",
-        "sms"
+        "sms",
+        "system"
       ],
       "default": "email"
     },
