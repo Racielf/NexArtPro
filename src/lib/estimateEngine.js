@@ -212,8 +212,15 @@ export function runEstimateEngine(groups = [], {
   const depositAmt   = calculateDeposit(grandTotal, depositPercent);
 
   // ── Internal / Audit data (never sent to client) ──
+  // materialsCost: use unit_cost when available, fall back to unit_price
+  // This ensures materials always contribute to cost even if unit_cost is not filled in
   const materialsCost = toMoney(
-    processedMaterials.reduce((acc, item) => acc.plus(D(item.unit_cost).times(D(item.quantity))), new Decimal(0))
+    processedMaterials.reduce((acc, item) => {
+      const cost = D(item.unit_cost);
+      const price = D(item.unit_price);
+      const effectiveCost = cost.isZero() ? price : cost;
+      return acc.plus(effectiveCost.times(D(item.quantity)));
+    }, new Decimal(0))
   );
 
   // Other costs (job-level internal expenses: labor, permits, fuel, etc.)
