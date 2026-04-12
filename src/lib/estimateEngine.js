@@ -215,10 +215,14 @@ export function runEstimateEngine(groups = [], {
   const materialsCost = toMoney(
     processedMaterials.reduce((acc, item) => acc.plus(D(item.unit_cost).times(D(item.quantity))), new Decimal(0))
   );
-  const servicesCost = toMoney(
-    allItems.reduce((acc, item) => acc.plus(D(item.unit_cost).times(D(item.quantity))), new Decimal(0))
+
+  // Other costs (job-level internal expenses: labor, permits, fuel, etc.)
+  const otherCostsTotal = toMoney(
+    (otherCosts || []).reduce((acc, c) => acc.plus(D(c.amount)), new Decimal(0))
   );
-  const totalCost = toMoney(D(servicesCost).plus(D(materialsCost)));
+
+  // totalCost = materialsCost + otherCostsTotal (service cost NO LONGER included)
+  const totalCost = toMoney(D(materialsCost).plus(D(otherCostsTotal)));
 
   const totalVariance = toMoney(
     allItems.reduce((acc, item) => {
@@ -240,14 +244,9 @@ export function runEstimateEngine(groups = [], {
     ? toMoney(D(grossMargin).dividedBy(D(grandTotal)).times(100))
     : 0;
 
-  // Other costs (job-level internal expenses)
-  const otherCostsTotal = toMoney(
-    (otherCosts || []).reduce((acc, c) => acc.plus(D(c.amount)), new Decimal(0))
-  );
-  const netProfit = toMoney(D(grossMargin).minus(D(otherCostsTotal)));
-  const netProfitPct = grandTotal > 0
-    ? toMoney(D(netProfit).dividedBy(D(grandTotal)).times(100))
-    : 0;
+  // Net profit = gross profit (otherCosts already included in totalCost)
+  const netProfit = grossMargin;
+  const netProfitPct = grossMarginPct;
 
   // marginPercentage: variance vs book (how much above/below book price we're selling)
   const marginPercentage = totalBookValue > 0
@@ -267,6 +266,7 @@ export function runEstimateEngine(groups = [], {
     depositAmount: depositAmt,
     // Internal audit (admin only)
     totalCost,
+    materialsCost,
     totalBookValue,
     totalVariance,
     marginPercentage,

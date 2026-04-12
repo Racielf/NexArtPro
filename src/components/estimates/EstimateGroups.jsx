@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronRight,
-  Pencil, Check, X, Eye, EyeOff, BookOpen, LayoutTemplate
+  Pencil, Check, X, BookOpen, LayoutTemplate
 } from 'lucide-react';
 import SmartServicePicker from '@/components/shared/services/SmartServicePicker';
 import PriceAuditLog from '@/components/estimates/internal/PriceAuditLog';
@@ -39,8 +39,8 @@ const emptyItem = () => normalizeLineItem({ id: uid() });
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
 
 // Shared grid template — single source of truth for header + row alignment
-// Cols: grip | service | qty | uom | unit_price | book_ref | cost | line_total | remove
-const GRID_COLS = 'minmax(20px,24px) minmax(180px,3fr) minmax(48px,60px) minmax(56px,76px) minmax(88px,110px) minmax(56px,72px) minmax(56px,90px) minmax(80px,110px) minmax(24px,28px)';
+// Cols: grip | service | qty | uom | unit_price | book_ref | line_total | remove
+const GRID_COLS = 'minmax(20px,24px) minmax(180px,3fr) minmax(48px,60px) minmax(56px,76px) minmax(88px,110px) minmax(56px,72px) minmax(80px,110px) minmax(24px,28px)';
 
 // ─── Single Line Item Row ──────────────────────────────────────────────────────
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false }) {
@@ -328,18 +328,6 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           );
         })() : <div />}
 
-        {/* Unit cost (internal only) */}
-        <div className="min-w-0">
-          {showCost && !isPreview ? (
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
-              <Input type="number" step="0.01" value={item.unit_cost} onChange={e => update('unit_cost', e.target.value)}
-                onBlur={() => handlePriceBlur('unit_cost')}
-                className="h-8 pl-4 text-sm text-right border-slate-200 bg-amber-50/60" min={0} />
-            </div>
-          ) : <div />}
-        </div>
-
         {/* Line total — quantity * unit_price */}
         <div className="text-right min-w-0">
           <div className="font-bold text-slate-900 text-sm tabular-nums">
@@ -397,7 +385,6 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
   };
 
   const groupSubtotal = (group.items || []).reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0);
-  const groupCost = (group.items || []).reduce((s, i) => s + (parseFloat(i.unit_cost) || 0) * (parseFloat(i.quantity) || 0), 0);
 
   const saveGroupName = () => {
     onUpdate({ ...group, name: nameVal || 'Group' });
@@ -439,7 +426,6 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
         <div className="flex items-center gap-4 ml-auto text-sm font-semibold">
           <span className="text-white/70">{group.items?.length || 0} items</span>
           <span className="text-white">${groupSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          {showCost && <span className="text-amber-300 text-xs">cost ${groupCost.toFixed(2)}</span>}
           {!isOnly && (
             <button onClick={() => onRemove(group.id)}
               className="p-1 rounded hover:bg-red-500/30 text-white/50 hover:text-white transition-colors ml-1">
@@ -460,7 +446,6 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             <div className="text-center text-slate-500">UOM</div>
             <div className="text-right text-slate-600">Unit Price</div>
             {!isPreview ? <div className="text-right text-slate-400 text-[9px]">Book<br/>ref</div> : <div />}
-            <div className={`text-right ${showCost && !isPreview ? 'text-amber-600' : ''}`}>{showCost && !isPreview ? 'Cost' : ''}</div>
             <div className="text-right">Line Total</div>
             <div />
           </div>
@@ -526,7 +511,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [legalTerms, setLegalTerms] = useState(estimate?.legal_terms || '');
   const [materials, setMaterials] = useState(estimate?.materials || []);
   const [otherCosts, setOtherCosts] = useState(estimate?.other_costs || []);
-  const [showCost, setShowCost] = useState(false);
+  const showCost = true; // Materials cost always tracked internally
   const [showTerms, setShowTerms] = useState(false);
   const [fixedItemIds, setFixedItemIds] = useState(new Set());
   const { priceLog, addLog, clearLog } = usePriceAuditLog();
@@ -625,7 +610,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
 
   // Live reactive calculation
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
-          totalCost, grossMargin, grossMarginPct,
+          totalCost, materialsCost, grossMargin, grossMarginPct,
           totalVariance, totalBookValue, marginPercentage, materialsSubtotal,
           otherCostsTotal, netProfit, netProfitPct } =
     runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts });
@@ -660,11 +645,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
               <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
                 className="h-7 text-xs w-32 border-slate-200" />
             </div>
-            <button onClick={() => setShowCost(v => !v)}
-              className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-colors ${showCost ? 'bg-amber-100 border-amber-300 text-amber-700' : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}>
-              {showCost ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              {showCost ? 'Cost on' : 'Cost'}
-            </button>
           </div>
         </div>
       </div>
@@ -710,8 +690,8 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
         <div className="flex gap-8 flex-wrap justify-between">
 
-          {/* ── INTERNAL COST SUMMARY — visible when Cost toggle is on ── */}
-          {showCost && !isPreview && (() => {
+          {/* ── INTERNAL COST SUMMARY ── */}
+          {!isPreview && (() => {
             const marginStatus = grossMarginPct >= 60
               ? { label: 'Good', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' }
               : grossMarginPct >= 40
@@ -720,47 +700,34 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
             return (
               <div className="space-y-2" style={{ minWidth: 200 }}>
                 <div className="flex items-center gap-3">
-                  <p className="text-[9px] font-bold tracking-widest uppercase text-amber-600">🔒 Internal Cost View</p>
+                  <p className="text-[9px] font-bold tracking-widest uppercase text-amber-600">🔒 Profit Analysis</p>
                   <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold ${marginStatus.bg} ${marginStatus.border} ${marginStatus.text}`}>
                     <span className={`w-2 h-2 rounded-full ${marginStatus.dot}`} />
                     {marginStatus.label} — {grossMarginPct.toFixed(1)}%
                   </span>
                 </div>
                 <div className="flex gap-3 flex-wrap">
+                  {materialsSubtotal > 0 && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
+                      <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-500 mb-1">Materials Cost</p>
+                      <p className="text-base font-bold text-emerald-700">{fmt(materialsCost)}</p>
+                    </div>
+                  )}
+                  {otherCostsTotal > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
+                      <p className="text-[9px] font-bold uppercase tracking-wide text-amber-500 mb-1">Other Costs</p>
+                      <p className="text-base font-bold text-amber-700">{fmt(otherCostsTotal)}</p>
+                    </div>
+                  )}
                   <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
                     <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Total Cost</p>
                     <p className="text-base font-bold text-slate-700">{fmt(totalCost)}</p>
                   </div>
                   <div className={`border rounded-lg px-4 py-3 flex-1 min-w-[100px] ${marginStatus.bg} ${marginStatus.border}`}>
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Gross Margin</p>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Gross Profit</p>
                     <p className={`text-base font-bold ${marginStatus.text}`}>{fmt(grossMargin)} ({grossMarginPct.toFixed(1)}%)</p>
                   </div>
                 </div>
-                {otherCostsTotal > 0 && (() => {
-                  const netStatus = netProfitPct >= 60
-                    ? { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Good' }
-                    : netProfitPct >= 40
-                    ? { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-400', label: 'Warning' }
-                    : { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-500', label: 'Low' };
-                  return (
-                    <div className="flex gap-3 flex-wrap mt-2">
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-amber-500 mb-1">Other Costs</p>
-                        <p className="text-base font-bold text-amber-700">-{fmt(otherCostsTotal)}</p>
-                      </div>
-                      <div className={`border rounded-lg px-4 py-3 flex-1 min-w-[100px] ${netStatus.bg} ${netStatus.border}`}>
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Net Profit</p>
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[8px] font-bold ${netStatus.bg} ${netStatus.border} ${netStatus.text}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${netStatus.dot}`} />
-                            {netStatus.label}
-                          </span>
-                        </div>
-                        <p className={`text-base font-bold ${netStatus.text}`}>{fmt(netProfit)} ({netProfitPct.toFixed(1)}%)</p>
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             );
           })()}

@@ -168,11 +168,23 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
           </div>
 
           {/* Add row */}
-          <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50">
+          <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
             <button onClick={addItem}
               className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
               <Plus className="w-4 h-4" />Add material item
             </button>
+            <div className="flex items-center gap-4 text-xs">
+              <div className="text-right">
+                <span className="text-slate-400 font-medium">Materials Total: </span>
+                <span className="font-bold text-slate-800">${materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+              {showCost && materialsCost > 0 && (
+                <div className="text-right">
+                  <span className="text-amber-500 font-medium">Cost Total: </span>
+                  <span className="font-bold text-amber-700">${materialsCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}
