@@ -2,10 +2,14 @@ import React from 'react';
 import CompanyLogoBlock from '../../documents/CompanyLogoBlock';
 import FlexibleDocDates from '../../documents/FlexibleDocDates';
 import PaymentMethodsSection from '../../documents/PaymentMethodsSection';
+import {
+  WhatsIncludedSection, ExclusionsSection, WarrantySection,
+  TimelineSection, PaymentTermsBullets, AcceptanceSection,
+} from '../../documents/ProposalSections';
 
 /**
- * CleanTemplate — Modern professional contractor estimate.
- * Structure: Logo+company left | doc info right → client|project grid → clean table → totals right → terms → signatures
+ * CleanTemplate — Modern professional contractor estimate / proposal.
+ * Structure: Logo+company left | doc info right → client|project grid → clean table → materials → totals right → What's Included → Exclusions → Warranty → Timeline → Payment Terms → Payment Methods → Acceptance → footer
  * Font: Inter, sans-serif. Colors: slate/navy palette. No cards, no background tints on body.
  */
 
@@ -16,10 +20,10 @@ const MUTED = '#64748b';
 const BORDER = '#e2e8f0';
 const LIGHT_BG = '#f8fafc';
 
-const sectionLabel = { fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 };
+const sectionLabel = { fontSize: 11, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, paddingBottom: 6, borderBottom: `2px solid ${BORDER}` };
 
 export default function CleanTemplate({ vm }) {
-  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray } = vm;
+  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray, proposalEnhancements } = vm;
   const { isWorkOrder, isEstimate, showPrices } = opts;
 
   return (
@@ -45,7 +49,7 @@ export default function CleanTemplate({ vm }) {
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8' }}>{meta.documentTypeLabel}</div>
             {opts.showEstimateNumber && <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: '-1px', marginTop: 4 }}>#{meta.documentNumber || '—'}</div>}
             {opts.showDocumentDate && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{meta.today}</div>}
-            {opts.showExpirationDate && meta.expirationDate && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Expires: {meta.expirationDate}</div>}
+            {opts.showExpirationDate && meta.expirationDate && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Valid Until: {meta.expirationDate}</div>}
             {meta.status && meta.status !== 'draft' && (
               <div style={{ display: 'inline-block', marginTop: 8, padding: '3px 10px', borderRadius: 4, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', background: meta.statusStyle?.bg || '#334155', color: meta.statusStyle?.color || '#94a3b8' }}>
                 {meta.statusLabel || meta.status}
@@ -58,7 +62,7 @@ export default function CleanTemplate({ vm }) {
       {/* ─── CLIENT + PROJECT ───────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: `1px solid ${BORDER}` }}>
         <div style={{ padding: `24px ${P}px`, borderRight: `1px solid ${BORDER}` }}>
-          <div style={sectionLabel}>Bill To</div>
+          <div style={{ ...sectionLabel, borderBottom: 'none', paddingBottom: 0 }}>Bill To</div>
           {opts.showCustomerName && <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{client.name}</div>}
           <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.75 }}>
             {client.address && <div>{client.address}</div>}
@@ -67,7 +71,7 @@ export default function CleanTemplate({ vm }) {
           </div>
         </div>
         <div style={{ padding: `24px ${P}px` }}>
-          <div style={sectionLabel}>Project Details</div>
+          <div style={{ ...sectionLabel, borderBottom: 'none', paddingBottom: 0 }}>Project Details</div>
           {opts.showEstimateName && project.title && <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>{project.title}</div>}
           <FlexibleDocDates
             mode="block"
@@ -81,13 +85,13 @@ export default function CleanTemplate({ vm }) {
           />
           {opts.showTechnicianName && project.assignedTo && (
             <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
-              <span style={{ ...sectionLabel, display: 'inline', marginBottom: 0, marginRight: 6 }}>Assigned:</span>{project.assignedTo}
+              <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: MUTED, marginRight: 6 }}>Assigned:</span>{project.assignedTo}
             </div>
           )}
         </div>
       </div>
 
-      {/* ─── LINE ITEMS ─────────────────────────────────────── */}
+      {/* ─── LINE ITEMS (Scope of Work) ─────────────────────── */}
       {opts.showBreakdown && groups.length > 0 && (
         <div style={{ padding: `24px ${P}px 0` }}>
           {groups.map((group, gi) => {
@@ -131,11 +135,11 @@ export default function CleanTemplate({ vm }) {
         </div>
       )}
 
-      {/* ─── MATERIALS ───────────────────────────────────────── */}
+      {/* ─── MATERIALS INCLUDED ───────────────────────────────── */}
       {opts.showMaterials && vm.materials && vm.materials.length > 0 && (
         <div style={{ padding: `24px ${P}px 0` }}>
           <div style={{ background: '#166534', color: 'white', fontWeight: 700, fontSize: 11, padding: '7px 14px', borderRadius: '6px 6px 0 0', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Materials</span>
+            <span>Materials Included</span>
             <span style={{ color: '#bbf7d0', fontSize: 11 }}>${vm.materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -166,10 +170,10 @@ export default function CleanTemplate({ vm }) {
         </div>
       )}
 
-      {/* ─── TOTALS ─────────────────────────────────────────── */}
+      {/* ─── TOTALS (Total Project Investment) ─────────────────── */}
       {showPrices && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: `16px ${P}px 24px` }}>
-          <div style={{ width: 260 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: `20px ${P}px 28px` }}>
+          <div style={{ width: 280 }}>
             {[
               { show: true, label: 'Subtotal', value: totals.subtotal },
               { show: totals.discountAmount > 0, label: 'Discount', value: -totals.discountAmount, color: '#dc2626' },
@@ -180,9 +184,9 @@ export default function CleanTemplate({ vm }) {
                 <span>${Math.abs(r.value).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', fontSize: 16, fontWeight: 800, color: DARK, borderTop: `2px solid ${BORDER}`, marginTop: 4 }}>
-              <span>TOTAL</span>
-              <span>${totals.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 0', marginTop: 6, borderTop: `3px solid ${DARK}` }}>
+              <span style={{ fontWeight: 800, color: DARK, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Project Investment</span>
+              <span style={{ fontWeight: 900, color: DARK, fontSize: 22 }}>${totals.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>
@@ -190,46 +194,92 @@ export default function CleanTemplate({ vm }) {
 
       {/* ─── DEPOSIT ────────────────────────────────────────── */}
       {isEstimate && totals.depositPercent > 0 && opts.showDeposit && showPrices && (
-        <div style={{ margin: `0 ${P}px 20px`, padding: '14px 18px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6 }}>
+        <div style={{ margin: `0 ${P}px 24px`, padding: '14px 18px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Deposit Required to Start</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#1e40af' }}>${totals.depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 400, color: '#3b82f6' }}>({totals.depositPercent}%)</span></div>
           <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>Remaining: ${totals.remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })} — due upon completion.</div>
         </div>
       )}
 
+      {/* ─── WHAT'S INCLUDED ─────────────────────────────────── */}
+      <div style={{ padding: `0 ${P}px` }}>
+        <WhatsIncludedSection
+          groups={groups} materials={vm.materials || []}
+          font={FONT} dark={DARK} muted="#475569" border={BORDER}
+          sectionLabelStyle={sectionLabel}
+        />
+      </div>
+
       {/* ─── NOTES ──────────────────────────────────────────── */}
       {opts.showNotes && text.notes && (
-        <div style={{ padding: `16px ${P}px`, borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ padding: `0 ${P}px 16px`, borderTop: `1px solid ${BORDER}`, paddingTop: 16 }}>
           <div style={sectionLabel}>Notes</div>
           <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>
         </div>
       )}
 
-      {/* ─── TERMS ──────────────────────────────────────────── */}
-      {opts.showTerms && termsArray.map(t => (
-        <div key={t.key} style={{ padding: `14px ${P}px`, borderTop: `1px solid ${BORDER}` }}>
-          <div style={sectionLabel}>{t.label}</div>
-          <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{t.value}</p>
+      {/* ─── EXCLUSIONS ─────────────────────────────────────── */}
+      <div style={{ padding: `0 ${P}px` }}>
+        <ExclusionsSection exclusions={text.exclusions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />
+      </div>
+
+      {/* ─── WARRANTY ───────────────────────────────────────── */}
+      <div style={{ padding: `0 ${P}px` }}>
+        <WarrantySection warrantyTerms={text.warrantyTerms} font={FONT} muted="#475569" sectionLabelStyle={sectionLabel} />
+      </div>
+
+      {/* ─── ESTIMATED TIMELINE ─────────────────────────────── */}
+      <div style={{ padding: `0 ${P}px` }}>
+        <TimelineSection
+          startDate={project.startDate} endDate={project.endDate}
+          font={FONT} dark={DARK} muted={MUTED} border={BORDER}
+          sectionLabelStyle={sectionLabel}
+        />
+      </div>
+
+      {/* ─── PAYMENT TERMS (bullet format) ──────────────────── */}
+      {opts.showTerms && (
+        <div style={{ padding: `0 ${P}px` }}>
+          <PaymentTermsBullets
+            paymentTerms={text.paymentTerms}
+            depositPercent={totals.depositPercent}
+            depositAmount={totals.depositAmount}
+            total={totals.total}
+            font={FONT} muted="#475569"
+            sectionLabelStyle={sectionLabel}
+          />
         </div>
-      ))}
+      )}
 
       {/* ─── PAYMENT METHODS ────────────────────────────────── */}
-      <PaymentMethodsSection
-        paymentMethods={company.paymentMethods}
-        sectionLabelStyle={sectionLabel}
-        textStyle={{ color: '#475569', fontSize: 12, lineHeight: 1.7 }}
-        containerStyle={{ padding: `14px ${P}px`, borderTop: `1px solid ${BORDER}` }}
-      />
+      {company.paymentMethods && company.paymentMethods.trim() && (
+        <div style={{ padding: `0 ${P}px 16px` }}>
+          <div style={sectionLabel}>Payment Methods</div>
+          <PaymentMethodsSection
+            paymentMethods={company.paymentMethods}
+            sectionLabelStyle={{ display: 'none' }}
+            textStyle={{ color: '#475569', fontSize: 12, lineHeight: 1.7 }}
+            containerStyle={{}}
+          />
+        </div>
+      )}
 
-      {/* ─── SIGNATURES ─────────────────────────────────────── */}
+      {/* ─── LEGAL TERMS ────────────────────────────────────── */}
+      {opts.showTerms && text.legalTerms && (
+        <div style={{ padding: `0 ${P}px 16px`, borderTop: `1px solid ${BORDER}`, paddingTop: 16 }}>
+          <div style={sectionLabel}>Terms & Conditions</div>
+          <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.legalTerms}</p>
+        </div>
+      )}
+
+      {/* ─── CLIENT ACCEPTANCE ──────────────────────────────── */}
       {opts.showSignatures && !isWorkOrder && (
-        <div style={{ padding: `28px ${P}px 24px`, borderTop: `1px solid ${BORDER}`, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48 }}>
-          {[{ label: 'Authorized Signature' }, { label: 'Customer Signature & Date' }].map((sig, i) => (
-            <div key={i}>
-              <div style={{ borderBottom: `2px solid #cbd5e1`, paddingBottom: 36, marginBottom: 8 }} />
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{sig.label}</div>
-            </div>
-          ))}
+        <div style={{ padding: `20px ${P}px 24px`, borderTop: `1px solid ${BORDER}` }}>
+          <AcceptanceSection
+            companyName={company.name} clientName={client.name}
+            font={FONT} dark={DARK} muted="#475569" border={BORDER}
+            sectionLabelStyle={sectionLabel}
+          />
         </div>
       )}
 

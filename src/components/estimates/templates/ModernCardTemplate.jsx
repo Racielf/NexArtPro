@@ -2,10 +2,13 @@ import React from 'react';
 import CompanyLogoBlock from '../../documents/CompanyLogoBlock';
 import FlexibleDocDates from '../../documents/FlexibleDocDates';
 import PaymentMethodsSection from '../../documents/PaymentMethodsSection';
+import {
+  WhatsIncludedSection, ExclusionsSection, WarrantySection,
+  TimelineSection, PaymentTermsBullets, AcceptanceSection,
+} from '../../documents/ProposalSections';
 
 /**
  * ModernCardTemplate — Contemporary SaaS-style document with card sections.
- * Structure: Page background #f1f5f9 → Header card (dark) → Client/Project cards (2-col) → Services card → Materials card → Totals + Deposit cards (2-col) → Notes card → Terms card → Signatures card → Footer
  * Font: Inter, sans-serif. Colors: slate/navy palette with card shadows.
  */
 
@@ -20,10 +23,11 @@ const card = (extra = {}) => ({
   background: 'white', borderRadius: 12, border: `1px solid ${BORDER}`,
   boxShadow: '0 1px 6px rgba(15,23,42,0.06)', overflow: 'hidden', ...extra,
 });
-const sectionLabel = { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8', marginBottom: 8 };
+const sectionLabel = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#334155', marginBottom: 10, paddingBottom: 6, borderBottom: `2px solid ${BORDER}` };
+const cardSectionLabel = { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8', marginBottom: 8 };
 
 export default function ModernCardTemplate({ vm }) {
-  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray } = vm;
+  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray, proposalEnhancements } = vm;
   const { isWorkOrder, isEstimate, showPrices } = opts;
 
   return (
@@ -49,7 +53,7 @@ export default function ModernCardTemplate({ vm }) {
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8' }}>{meta.documentTypeLabel}</div>
             {opts.showEstimateNumber && <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.5px', marginTop: 2 }}>#{meta.documentNumber || '—'}</div>}
             {opts.showDocumentDate && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{meta.today}</div>}
-            {opts.showExpirationDate && meta.expirationDate && <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Exp: {meta.expirationDate}</div>}
+            {opts.showExpirationDate && meta.expirationDate && <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Valid Until: {meta.expirationDate}</div>}
             {meta.status && meta.status !== 'draft' && (
               <div style={{ display: 'inline-block', marginTop: 6, padding: '2px 8px', borderRadius: 12, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}>
                 {meta.statusLabel || meta.status}
@@ -62,7 +66,7 @@ export default function ModernCardTemplate({ vm }) {
       {/* ─── CLIENT + PROJECT CARDS ─────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
         <div style={{ ...card(), padding: '22px 24px' }}>
-          <div style={sectionLabel}>Client</div>
+          <div style={cardSectionLabel}>Client</div>
           {opts.showCustomerName && <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{client.name}</div>}
           <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.75 }}>
             {client.address && <div>{client.address}</div>}
@@ -71,7 +75,7 @@ export default function ModernCardTemplate({ vm }) {
           </div>
         </div>
         <div style={{ ...card(), padding: '22px 24px' }}>
-          <div style={sectionLabel}>Project</div>
+          <div style={cardSectionLabel}>Project</div>
           {opts.showEstimateName && project.title && <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{project.title}</div>}
           <FlexibleDocDates
             mode="inline"
@@ -94,7 +98,7 @@ export default function ModernCardTemplate({ vm }) {
         </div>
       </div>
 
-      {/* ─── SERVICES CARD ──────────────────────────────────── */}
+      {/* ─── SERVICES CARD (Scope of Work) ──────────────────── */}
       {opts.showBreakdown && groups.length > 0 && (
         <div style={{ ...card(), marginBottom: 20 }}>
           {groups.map((group, gi) => (
@@ -137,11 +141,11 @@ export default function ModernCardTemplate({ vm }) {
         </div>
       )}
 
-      {/* ─── MATERIALS CARD ──────────────────────────────────── */}
+      {/* ─── MATERIALS INCLUDED CARD ─────────────────────────── */}
       {opts.showMaterials && vm.materials && vm.materials.length > 0 && (
         <div style={{ ...card(), marginBottom: 20 }}>
           <div style={{ background: '#166534', color: 'white', padding: '9px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Materials</span>
+            <span style={{ fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Materials Included</span>
             {showPrices && <span style={{ fontSize: 11, color: '#bbf7d0' }}>${vm.materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>}
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -176,7 +180,7 @@ export default function ModernCardTemplate({ vm }) {
       {showPrices && (
         <div style={{ display: 'grid', gridTemplateColumns: isEstimate && totals.depositPercent > 0 && opts.showDeposit ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
           <div style={{ ...card(), padding: '22px 24px' }}>
-            <div style={sectionLabel}>Summary</div>
+            <div style={cardSectionLabel}>Summary</div>
             {[
               { show: true, label: 'Subtotal', value: totals.subtotal },
               { show: totals.discountAmount > 0, label: 'Discount', value: -totals.discountAmount, color: '#dc2626' },
@@ -187,15 +191,15 @@ export default function ModernCardTemplate({ vm }) {
                 <span>${Math.abs(r.value).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0 0', fontSize: 16, fontWeight: 800, color: DARK, borderTop: `2px solid #dbeafe`, marginTop: 4 }}>
-              <span>TOTAL</span>
-              <span>${totals.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 0', marginTop: 6, borderTop: `3px solid ${DARK}` }}>
+              <span style={{ fontWeight: 800, color: DARK, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Project Investment</span>
+              <span style={{ fontWeight: 900, color: DARK, fontSize: 22 }}>${totals.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
 
           {isEstimate && totals.depositPercent > 0 && opts.showDeposit && (
             <div style={{ ...card(), padding: '22px 24px', background: '#dbeafe', border: `1.5px solid ${ACCENT}` }}>
-              <div style={{ ...sectionLabel, color: ACCENT }}>Payment Schedule</div>
+              <div style={{ ...cardSectionLabel, color: ACCENT }}>Payment Schedule</div>
               <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${ACCENT}30` }}>
                 <div style={{ fontSize: 11, color: ACCENT, marginBottom: 4, fontWeight: 600 }}>Deposit to Start</div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: ACCENT, lineHeight: 1 }}>${totals.depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
@@ -210,54 +214,78 @@ export default function ModernCardTemplate({ vm }) {
         </div>
       )}
 
+      {/* ─── WHAT'S INCLUDED CARD ────────────────────────────── */}
+      <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
+        <WhatsIncludedSection
+          groups={groups} materials={vm.materials || []}
+          font={FONT} dark={DARK} muted="#475569" border={BORDER}
+          sectionLabelStyle={sectionLabel}
+        />
+      </div>
+
       {/* ─── NOTES CARD ─────────────────────────────────────── */}
       {opts.showNotes && text.notes && (
         <div style={{ ...card(), padding: '22px 24px', marginBottom: 20, borderLeft: `4px solid ${ACCENT}` }}>
-          <div style={sectionLabel}>Notes</div>
+          <div style={cardSectionLabel}>Notes</div>
           <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>
         </div>
       )}
 
-      {/* ─── TERMS CARD ─────────────────────────────────────── */}
-      {opts.showTerms && termsArray.length > 0 && (
+      {/* ─── EXCLUSIONS + WARRANTY + TIMELINE CARD ──────────── */}
+      {(text.exclusions || text.warrantyTerms || project.startDate || project.endDate) && (
         <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
-          {termsArray.map((t, i) => (
-            <div key={t.key} style={{ paddingBottom: i < termsArray.length - 1 ? 14 : 0, marginBottom: i < termsArray.length - 1 ? 14 : 0, borderBottom: i < termsArray.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-              <div style={sectionLabel}>{t.label}</div>
-              <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{t.value}</p>
+          <ExclusionsSection exclusions={text.exclusions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />
+          <WarrantySection warrantyTerms={text.warrantyTerms} font={FONT} muted="#475569" sectionLabelStyle={sectionLabel} accentColor={ACCENT} />
+          <TimelineSection
+            startDate={project.startDate} endDate={project.endDate}
+            font={FONT} dark={DARK} muted={MUTED} border={BORDER}
+            sectionLabelStyle={sectionLabel}
+          />
+        </div>
+      )}
+
+      {/* ─── PAYMENT TERMS CARD ──────────────────────────────── */}
+      {opts.showTerms && (
+        <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
+          <PaymentTermsBullets
+            paymentTerms={text.paymentTerms}
+            depositPercent={totals.depositPercent}
+            depositAmount={totals.depositAmount}
+            total={totals.total}
+            font={FONT} muted="#475569"
+            sectionLabelStyle={sectionLabel}
+          />
+          {/* Legal terms */}
+          {text.legalTerms && (
+            <div style={{ marginTop: 4 }}>
+              <div style={sectionLabel}>Terms & Conditions</div>
+              <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.legalTerms}</p>
             </div>
-          ))}
+          )}
         </div>
       )}
 
       {/* ─── PAYMENT METHODS CARD ──────────────────────────── */}
       {company.paymentMethods && company.paymentMethods.trim() && (
         <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
+          <div style={sectionLabel}>Payment Methods</div>
           <PaymentMethodsSection
             paymentMethods={company.paymentMethods}
-            sectionLabelStyle={sectionLabel}
+            sectionLabelStyle={{ display: 'none' }}
             textStyle={{ color: '#475569', fontSize: 13, lineHeight: 1.7 }}
             containerStyle={{}}
           />
         </div>
       )}
 
-      {/* ─── SIGNATURES CARD ────────────────────────────────── */}
+      {/* ─── CLIENT ACCEPTANCE CARD ──────────────────────────── */}
       {opts.showSignatures && !isWorkOrder && (
         <div style={{ ...card(), padding: '24px 32px', marginBottom: 20 }}>
-          <div style={sectionLabel}>Authorization</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, marginTop: 4 }}>
-            {[
-              { title: 'Contractor', sub: `${company.name}` },
-              { title: 'Client Signature & Date', sub: client.name || 'Client' }
-            ].map((sig, i) => (
-              <div key={i}>
-                <div style={{ height: 48, borderBottom: `2px solid ${DARK}`, marginBottom: 8 }} />
-                <div style={{ fontSize: 11, fontWeight: 600, color: DARK }}>{sig.title}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{sig.sub}</div>
-              </div>
-            ))}
-          </div>
+          <AcceptanceSection
+            companyName={company.name} clientName={client.name}
+            font={FONT} dark={DARK} muted="#475569" border={BORDER}
+            sectionLabelStyle={sectionLabel} accentColor={ACCENT}
+          />
         </div>
       )}
 
