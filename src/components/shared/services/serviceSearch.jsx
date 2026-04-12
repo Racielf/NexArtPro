@@ -55,16 +55,22 @@ export function searchServices(query, limit = 12) {
   });
 
   // Score a text field match (0 = no match, higher = better)
+  const qWords = q.split(' ').filter(w => w.length > 0);
   const score = (text) => {
     const t = norm(text);
     if (!t) return 0;
-    if (t === q) return 10;
-    if (t.startsWith(q)) return 7;
-    if (t.includes(q)) return 4;
-    // Partial word match
-    const words = q.split(' ');
-    if (words.length > 1 && words.every(w => t.includes(w))) return 3;
-    if (words.some(w => w.length > 2 && t.includes(w))) return 1;
+    if (t === q) return 10;           // exact match
+    if (t.startsWith(q)) return 7;    // full prefix match
+    if (t.includes(q)) return 4;      // substring match
+    // Word-level prefix: any word in t starts with q (e.g. "concr" → "broom finish concrete")
+    const tWords = t.split(' ');
+    if (tWords.some(w => w.startsWith(q))) return 6;
+    // Multi-word query: all query words found as substrings
+    if (qWords.length > 1 && qWords.every(w => t.includes(w))) return 3;
+    // Any query word (len>2) is a prefix of any target word
+    if (qWords.some(qw => qw.length > 2 && tWords.some(tw => tw.startsWith(qw)))) return 2;
+    // Any query word (len>2) found as substring
+    if (qWords.some(w => w.length > 2 && t.includes(w))) return 1;
     return 0;
   };
 

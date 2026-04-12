@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { buildTempService } from './serviceSearch';
 import { searchServicesUnified } from './serviceSearchUnified';
 import { Plus, BookOpen, Tag, Database } from 'lucide-react';
@@ -70,10 +71,12 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
     return () => { cancelled = true; clearTimeout(timer); };
   }, [query, focused]);
 
-  // Close on outside click
+  // Close on outside click (check both the input wrapper and the portal dropdown)
   useEffect(() => {
     const handler = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+      const inWrapper = wrapRef.current && wrapRef.current.contains(e.target);
+      const inDropdown = e.target.closest && e.target.closest('[data-smart-picker-dropdown]');
+      if (!inWrapper && !inDropdown) {
         setOpen(false);
         setFocused(false);
       }
@@ -136,6 +139,90 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
 
   const showCreate = focused && query.trim().length >= 2 && !results.some(r => r.name.toLowerCase() === query.trim().toLowerCase());
 
+  // Compute dropdown position relative to viewport for portal rendering
+  const [dropdownStyle, setDropdownStyle] = useState({});
+  useEffect(() => {
+    if (open && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: 'fixed',
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: Math.max(340, rect.width),
+        zIndex: 9999,
+      });
+    }
+  }, [open, query]);
+
+  const dropdown = open ? createPortal(
+    <div
+      data-smart-picker-dropdown="true"
+      style={dropdownStyle}
+      className="bg-white border border-slate-200 rounded-xl shadow-xl max-h-72 overflow-y-auto"
+    >
+      {results.length > 0 && (
+        <div className="py-1.5">
+          {results.map((r, i) => (
+            <button
+              key={r.id}
+              type="button"
+              onMouseDown={e => { e.preventDefault(); handleSelect(r); }}
+              className="w-full px-3 py-2.5 flex items-start gap-3 hover:bg-slate-50 transition-colors text-left group"
+            >
+              <div className="flex-shrink-0 mt-0.5">
+                {r.source === 'base44'
+                  ? <Database className="w-3.5 h-3.5 text-emerald-400" />
+                  : r.source === 'seed'
+                    ? <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+                    : <Tag className="w-3.5 h-3.5 text-slate-300" />
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{r.name}</p>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${CAT_COLORS[r.category] || 'bg-slate-100 text-slate-500'}`}>
+                    {r.category}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{unitDisplay(r.unit)}</span>
+                </div>
+              </div>
+              <div className="flex-shrink-0 text-right">
+                {r.unit_price !== null
+                  ? <span className="text-sm font-bold text-slate-800">${parseFloat(r.unit_price).toFixed(2)}</span>
+                  : <span className="text-xs text-slate-300">no price</span>
+                }
+                <p className="text-[10px] text-slate-400">/{unitDisplay(r.unit)}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showCreate && (
+        <div className={results.length > 0 ? 'border-t border-slate-100' : ''}>
+          <button
+            type="button"
+            onMouseDown={e => { e.preventDefault(); handleCreateNew(); }}
+            className="w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-blue-50 transition-colors text-left group"
+          >
+            <Plus className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-blue-600">Create "{query.trim()}"</p>
+              <p className="text-[10px] text-slate-400">Add as new service · marked for review</p>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {results.length === 0 && !showCreate && query.trim().length >= 2 && (
+        <div className="px-4 py-4 text-center text-xs text-slate-400">
+          No matches found
+        </div>
+      )}
+    </div>,
+    document.body
+  ) : null;
+
   return (
     <div ref={wrapRef} className="relative w-full">
       <input
@@ -148,78 +235,7 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
         className={className}
         autoComplete="off"
       />
-
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-xl w-[340px] max-h-72 overflow-y-auto">
-          {results.length > 0 && (
-            <div className="py-1.5">
-              {results.map((r, i) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onMouseDown={e => { e.preventDefault(); handleSelect(r); }}
-                  className="w-full px-3 py-2.5 flex items-start gap-3 hover:bg-slate-50 transition-colors text-left group"
-                >
-                  {/* Icon */}
-                  <div className="flex-shrink-0 mt-0.5">
-                    {r.source === 'base44'
-                      ? <Database className="w-3.5 h-3.5 text-emerald-400" />
-                      : r.source === 'seed'
-                        ? <BookOpen className="w-3.5 h-3.5 text-blue-400" />
-                        : <Tag className="w-3.5 h-3.5 text-slate-300" />
-                    }
-                  </div>
-
-                  {/* Name + category */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{r.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${CAT_COLORS[r.category] || 'bg-slate-100 text-slate-500'}`}>
-                        {r.category}
-                      </span>
-                      <span className="text-[10px] text-slate-400">{unitDisplay(r.unit)}</span>
-                    </div>
-                  </div>
-
-                  {/* Price */}
-                  <div className="flex-shrink-0 text-right">
-                    {r.unit_price !== null
-                      ? <span className="text-sm font-bold text-slate-800">${parseFloat(r.unit_price).toFixed(2)}</span>
-                      : <span className="text-xs text-slate-300">no price</span>
-                    }
-                    <p className="text-[10px] text-slate-400">/{unitDisplay(r.unit)}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Create new */}
-          {showCreate && (
-            <div className={results.length > 0 ? 'border-t border-slate-100' : ''}>
-              <button
-                type="button"
-                onMouseDown={e => { e.preventDefault(); handleCreateNew(); }}
-                className="w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-blue-50 transition-colors text-left group"
-              >
-                <Plus className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-blue-600">Create "{query.trim()}"</p>
-                  <p className="text-[10px] text-slate-400">Add as new service · marked for review</p>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {/* No results hint */}
-          {results.length === 0 && !showCreate && query.trim().length >= 2 && (
-            <div className="px-4 py-4 text-center text-xs text-slate-400">
-              No matches found
-            </div>
-          )}
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }
