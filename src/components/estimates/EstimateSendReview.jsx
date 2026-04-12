@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link, Mail, Lock, FileText } from 'lucide-react';
-import { getTemplateOptions } from '@/lib/estimateTemplates';
+import { Printer, Download, Send, CheckCircle, Link } from 'lucide-react';
 import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
+import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import { logSend, logBelowCostOverride } from '@/lib/estimateAuditLog';
-import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import LossPreventionModal from './internal/LossPreventionModal';
@@ -18,19 +17,9 @@ import AttachmentWarningModal from './internal/AttachmentWarningModal';
 import { markEstimateSent } from '@/lib/estimateSalesLifecycle';
 import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
-
-async function logDocument(estimateId, estimate, action, extra = {}) {
-  await base44.entities.DocumentLog.create({
-    estimate_id: estimateId,
-    estimate_number: estimate?.estimate_number,
-    client_name: estimate?.client_name || '',
-    client_email: estimate?.client_email || '',
-    action,
-    total_amount: estimate?.total || 0,
-    status_at_send: estimate?.status || 'draft',
-    ...extra,
-  });
-}
+import SendReviewSidePanel from './SendReviewSidePanel';
+import SendReviewBanners from './SendReviewBanners';
+import { Mail } from 'lucide-react';
 
 const DEFAULT_VISIBILITY = {
   businessLogo: true,
@@ -49,55 +38,17 @@ const DEFAULT_VISIBILITY = {
   materialsSection: true,
 };
 
-const VISIBILITY_LABELS = {
-  businessLogo: 'Business logo',
-  businessName: 'Business name',
-  businessAddress: 'Business address',
-  estimateNumber: 'Estimate #',
-  estimateName: 'Estimate name',
-  estimateMessage: 'Estimate summary / message',
-  customerName: 'Customer display name',
-  estimateDate: 'Estimate date',
-  expirationDate: 'Expiration date',
-  serviceDate: 'Service date',
-  technicianName: 'Technician name',
-  services: 'Services',
-  prices: 'Prices & totals',
-  materialsSection: 'Materials section',
-};
-
-function SectionAccordion({ title, icon, children, defaultOpen = true }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border-b border-slate-100 last:border-0">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider hover:bg-slate-50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          {icon}
-          {title}
-        </div>
-        {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-      </button>
-      {open && <div className="px-5 pb-4">{children}</div>}
-    </div>
-  );
-}
-
-function ToggleRow({ label, checked, onChange }) {
-  return (
-    <label className="flex items-center justify-between py-1.5 cursor-pointer group">
-      <span className="text-sm text-slate-700 group-hover:text-slate-900 transition-colors">{label}</span>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-primary' : 'bg-slate-200'}`}
-      >
-        <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-4' : ''}`} />
-      </button>
-    </label>
-  );
+async function logDocument(estimateId, estimate, action, extra = {}) {
+  await base44.entities.DocumentLog.create({
+    estimate_id: estimateId,
+    estimate_number: estimate?.estimate_number,
+    client_name: estimate?.client_name || '',
+    client_email: estimate?.client_email || '',
+    action,
+    total_amount: estimate?.total || 0,
+    status_at_send: estimate?.status || 'draft',
+    ...extra,
+  });
 }
 
 export default function EstimateSendReview({ estimate, open, onClose, onSent }) {
@@ -118,8 +69,6 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
    const [attachWarningReasons, setAttachWarningReasons] = useState([]);
 
   if (!open) return null;
-
-  const setVis = (key, val) => setVisibility(v => ({ ...v, [key]: val }));
 
   const clientLink = `${window.location.origin}/client-estimate?id=${estimate?.id}`;
 
@@ -160,24 +109,19 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     logDocument(estimate.id, estimate, 'sent_link', { secure_link: clientLink });
   };
 
-  // In Estimate flow, always use Estimate label — only BID overrides
   const docConfig = estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE');
 
-  // Handler when user confirms override of below-cost pricing warning
+  // --- Loss prevention / pricing validation handlers ---
+
   const handleProceedAfterPricingWarning = async () => {
     setLossModalOpen(false);
-
     const lossItems = Array.isArray(lossValidation?.lossItems) ? lossValidation.lossItems : [];
-
     if (lossItems.length > 0) {
       const totalLoss = lossItems.reduce(
-        (sum, item) =>
-          sum + ((Number(item.loss_per_unit) || 0) * (Number(item.quantity) || 0)),
+        (sum, item) => sum + ((Number(item.loss_per_unit) || 0) * (Number(item.quantity) || 0)),
         0
       );
-
       const currentUser = await base44.auth.me().catch(() => null);
-
       if (currentUser) {
         await logBelowCostOverride({
           estimate_id: estimate.id,
@@ -192,11 +136,9 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         }).catch(err => console.warn('[audit] below-cost override log failed:', err?.message));
       }
     }
-
     setConfirmOpen(true);
   };
 
-  // Proceeds past attachment check to pricing validation
   const proceedToPricingValidation = () => {
     const pv = validateEstimatePricing(estimate);
     if (!pv.canProceed || pv.requiresConfirmation) {
@@ -209,20 +151,17 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
 
   const handleConfirmSend = () => {
     if (!recipientEmail) { toast.error('Recipient email is required'); return; }
-    // Document type validation — BID requires job_number or plan_reference
     const dtv = validateDocTypeFields(estimate);
     if (!dtv.valid) {
       dtv.errors.forEach(e => toast.error(e));
       return;
     }
-    // Attachment completeness check — warn if likely needed but missing
     const ac = checkAttachmentCompleteness(estimate);
     if (ac.needsWarning) {
       setAttachWarningReasons(ac.reasons);
       setAttachWarningOpen(true);
       return;
     }
-    // Loss prevention gate — block losses, warn zero-profit
     proceedToPricingValidation();
   };
 
@@ -232,16 +171,11 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     setSending(true);
     setSentError(null);
     try {
-      // 1. Build payload
-      const documentConfig = {
-        template: currentTemplate,
-        options: currentOptions,
-      };
+      const documentConfig = { template: currentTemplate, options: currentOptions };
       const clientAttachments = Array.isArray(estimate?.attachments)
         ? estimate.attachments.filter(a => a.intent === 'send_to_client')
         : [];
 
-      // 2. Send email first — must succeed before marking as sent
       const emailRes = await base44.functions.invoke('sendEstimateEmail', {
         to: recipientEmail,
         subject,
@@ -255,10 +189,8 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       });
       if (emailRes.data?.error) throw new Error(emailRes.data.error);
 
-      // 3. Email confirmed — now mark estimate as sent
       await markEstimateSent(estimate.id, { documentConfig });
 
-      // 4. Write logs
       await logDocument(estimate.id, estimate, 'sent_email', { recipient_email: recipientEmail, subject, secure_link: clientLink });
       const currentUser = await base44.auth.me().catch(() => null);
       if (currentUser) {
@@ -280,11 +212,9 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         preview: `Total: $${(estimate.total || 0).toFixed(2)}`,
       });
 
-      // 5. Success UI
       setSentSuccess(true);
       toast.success('Estimate sent successfully!');
     } catch (error) {
-      // On failure: do NOT mark as sent, log failed comm, show real error
       await logCommFailed({
         event_type: 'estimate_sent',
         client_name: estimate.client_name,
@@ -300,239 +230,93 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[60] bg-[#f0f2f5] flex flex-col overflow-hidden">
+  // --- Shell props ---
 
-      {/* CONFIRMATION BANNER */}
-      {sentSuccess && (
-        <div className="bg-green-50 border-b border-green-200 px-5 py-3 flex items-start gap-3">
-          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-green-900">{docConfig.label} sent successfully!</p>
-            <p className="text-xs text-green-700 mt-1">Sent to: <span className="font-medium">{recipientEmail}</span></p>
-            <div className="mt-2 flex items-center gap-2 bg-white rounded-md border border-green-200 px-3 py-1.5">
-              <span className="text-xs text-slate-600 truncate">Client link: {clientLink}</span>
-              <button
-                onClick={() => { navigator.clipboard.writeText(clientLink); toast.success('Link copied!'); }}
-                className="p-1 hover:bg-green-50 rounded text-green-600 flex-shrink-0"
-                title="Copy link"
-              >
-                <Copy className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {sentError && (
-        <div className="bg-red-50 border-b border-red-200 px-5 py-3 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-red-900">Send failed</p>
-            <p className="text-xs text-red-700 mt-0.5">{sentError}</p>
-          </div>
-        </div>
-      )}
-
-      {/* TOP BAR */}
-      <div className="bg-white border-b border-slate-200 flex items-center justify-between px-5 py-3 flex-shrink-0 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div>
-            <p className="text-sm font-bold text-slate-800">Review &amp; Send</p>
-            <p className="text-xs text-slate-400">{docConfig.label} #{estimate?.estimate_number} · {estimate?.client_name}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 pr-1">
-          <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">
-            <Printer className="w-3.5 h-3.5" /> Print
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleDownload} className="gap-1.5">
-            <Download className="w-3.5 h-3.5" /> PDF
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleCopyLink} className="gap-1.5">
-            <Link className="w-3.5 h-3.5" /> Copy Link
-          </Button>
-          <Button
-            size="sm"
-            className={`text-white gap-1.5 ${sentSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'}`}
-            onClick={sentSuccess ? undefined : handleConfirmSend}
-            disabled={sending || sentSuccess}
-          >
-            {sentSuccess ? (
-              <><CheckCircle className="w-3.5 h-3.5" /> Sent</>
-            ) : (
-              <><Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Confirm & Send'}</>
-            )}
-          </Button>
-          <DocumentCloseButton onClick={onClose} />
-          </div>
-          </div>
-
-      {/* BODY */}
-      <div className="flex flex-1 overflow-hidden min-h-0">
-
-        {/* LEFT PANEL */}
-        <div className="w-[300px] flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
-
-          {/* LAYOUT - TEMPLATE SELECTOR */}
-          <SectionAccordion title="Layout" icon={<Eye className="w-3.5 h-3.5" />}>
-            <p className="text-xs text-slate-400 mb-3">Select document template</p>
-            <div className="space-y-2">
-              {getTemplateOptions().map(template => (
-                <button
-                   key={template.value}
-                   onClick={() => setCurrentTemplate(template.value)}
-                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
-                     currentTemplate === template.value
-                       ? 'border-primary bg-primary/5'
-                       : 'border-slate-200 hover:border-slate-300 bg-white'
-                   }`}
-                 >
-                   <div className="text-left flex-1 min-w-0">
-                     <p className={`text-xs font-semibold ${currentTemplate === template.value ? 'text-primary' : 'text-slate-800'}`}>
-                       {template.label}
-                     </p>
-                     <p className="text-[11px] text-slate-400">{template.description}</p>
-                   </div>
-                   {currentTemplate === template.value && (
-                     <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                       <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                     </div>
-                   )}
-                 </button>
-              ))}
-            </div>
-          </SectionAccordion>
-
-          {/* DETAILS (email) */}
-          <SectionAccordion title="Details" icon={<Send className="w-3.5 h-3.5" />}>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-slate-400 block mb-1 font-medium">To</label>
-                <input
-                  type="email"
-                  value={recipientEmail}
-                  onChange={e => setRecipientEmail(e.target.value)}
-                  placeholder="client@email.com"
-                  className="w-full text-sm border border-slate-200 rounded-md px-3 py-1.5 focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1 font-medium">Subject</label>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={e => setSubject(e.target.value)}
-                  className="w-full text-sm border border-slate-200 rounded-md px-3 py-1.5 focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1 font-medium">Message</label>
-                <textarea
-                  value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  rows={4}
-                  className="w-full text-sm border border-slate-200 rounded-md px-3 py-1.5 focus:outline-none focus:border-primary resize-none"
-                />
-              </div>
-            </div>
-          </SectionAccordion>
-
-          {/* ATTACHMENTS */}
-          <SectionAccordion title="Attachments" icon={<Paperclip className="w-3.5 h-3.5" />} defaultOpen={true}>
-            {/* Auto-generated PDF — always included via secure link */}
-            <div className="flex items-center gap-2 py-1 mb-2">
-              <div className="w-7 h-7 bg-red-50 border border-red-200 rounded flex items-center justify-center flex-shrink-0">
-                <span className="text-[9px] font-bold text-red-500">PDF</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-700">estimate-{estimate?.estimate_number}.pdf</p>
-                <p className="text-[10px] text-slate-400">Auto-generated · via secure link</p>
-              </div>
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[9px] font-semibold text-blue-700">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />Client
-              </span>
-            </div>
-
-            {/* Client-sendable attachments */}
-            {(() => {
-              const allAtts = Array.isArray(estimate?.attachments) ? estimate.attachments : [];
-              const clientAtts = allAtts.filter(a => a.intent === 'send_to_client');
-              const internalAtts = allAtts.filter(a => a.intent !== 'send_to_client');
-              return (
-                <>
-                  {clientAtts.length > 0 && (
-                    <div className="space-y-1.5 mb-2">
-                      <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Included with email ({clientAtts.length})</p>
-                      {clientAtts.map(att => (
-                        <div key={att.id} className="flex items-center gap-2 py-1">
-                          <div className="w-7 h-7 bg-blue-50 border border-blue-200 rounded flex items-center justify-center flex-shrink-0">
-                            <FileText className="w-3.5 h-3.5 text-blue-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-slate-700 truncate">{att.file_name || 'file'}</p>
-                            <p className="text-[10px] text-slate-400">Download link in email</p>
-                          </div>
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[9px] font-semibold text-blue-700">
-                            <Send className="w-2.5 h-2.5" />Client
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {internalAtts.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Internal only ({internalAtts.length}) — not sent</p>
-                      {internalAtts.map(att => (
-                        <div key={att.id} className="flex items-center gap-2 py-1 opacity-60">
-                          <div className="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center flex-shrink-0">
-                            <Lock className="w-3 h-3 text-slate-400" />
-                          </div>
-                          <p className="text-xs text-slate-500 truncate flex-1">{att.file_name || 'file'}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {allAtts.length === 0 && (
-                    <p className="text-[11px] text-slate-400 py-1">No extra attachments. Upload files in the editor sidebar.</p>
-                  )}
-                </>
-              );
-            })()}
-          </SectionAccordion>
-
-          {/* VISIBILITY */}
-          <SectionAccordion title="Visibility" icon={<EyeOff className="w-3.5 h-3.5" />} defaultOpen={true}>
-            <p className="text-[11px] text-slate-400 mb-2">Choose what appears in the document</p>
-            <div className="space-y-0.5">
-              {Object.entries(VISIBILITY_LABELS).map(([key, label]) => (
-                <ToggleRow
-                  key={key}
-                  label={label}
-                  checked={visibility[key]}
-                  onChange={val => setVis(key, val)}
-                />
-              ))}
-            </div>
-          </SectionAccordion>
-
-        </div>
-
-        {/* RIGHT — LIVE PREVIEW */}
-        <div className="flex-1 overflow-y-auto p-8 flex justify-center min-h-0">
-          <div className="w-full max-w-3xl shadow-xl rounded-sm bg-white">
-            <DocumentTypeRenderer
-              estimate={estimate}
-              template={currentTemplate}
-              options={currentOptions}
-            />
-          </div>
-        </div>
-
+  const titleContent = (
+    <div className="flex items-center gap-3">
+      <div>
+        <p className="text-sm font-bold text-slate-800">Review &amp; Send</p>
+        <p className="text-xs text-slate-400">{docConfig.label} #{estimate?.estimate_number} · {estimate?.client_name}</p>
       </div>
+    </div>
+  );
 
-      {/* LOSS PREVENTION MODAL */}
-      {/* ATTACHMENT WARNING MODAL */}
+  const toolbarActions = [
+    <Button key="print" size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">
+      <Printer className="w-3.5 h-3.5" /> Print
+    </Button>,
+    <Button key="pdf" size="sm" variant="outline" onClick={handleDownload} className="gap-1.5">
+      <Download className="w-3.5 h-3.5" /> PDF
+    </Button>,
+    <Button key="link" size="sm" variant="outline" onClick={handleCopyLink} className="gap-1.5">
+      <Link className="w-3.5 h-3.5" /> Copy Link
+    </Button>,
+    <Button
+      key="send"
+      size="sm"
+      className={`text-white gap-1.5 ${sentSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'}`}
+      onClick={sentSuccess ? undefined : handleConfirmSend}
+      disabled={sending || sentSuccess}
+    >
+      {sentSuccess ? (
+        <><CheckCircle className="w-3.5 h-3.5" /> Sent</>
+      ) : (
+        <><Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Confirm & Send'}</>
+      )}
+    </Button>,
+    <DocumentCloseButton key="close" onClick={onClose} />,
+  ];
+
+  const banners = (
+    <SendReviewBanners
+      sentSuccess={sentSuccess}
+      sentError={sentError}
+      recipientEmail={recipientEmail}
+      clientLink={clientLink}
+      docLabel={docConfig.label}
+    />
+  );
+
+  const sidePanel = (
+    <SendReviewSidePanel
+      currentTemplate={currentTemplate}
+      onTemplateChange={setCurrentTemplate}
+      recipientEmail={recipientEmail}
+      onRecipientEmailChange={setRecipientEmail}
+      subject={subject}
+      onSubjectChange={setSubject}
+      message={message}
+      onMessageChange={setMessage}
+      visibility={visibility}
+      onVisibilityChange={setVisibility}
+      attachments={estimate?.attachments}
+      estimateNumber={estimate?.estimate_number}
+    />
+  );
+
+  const documentContent = (
+    <div className="shadow-xl rounded-sm bg-white">
+      <DocumentTypeRenderer
+        estimate={estimate}
+        template={currentTemplate}
+        options={currentOptions}
+      />
+    </div>
+  );
+
+  return (
+    <>
+      <DocumentViewerShell
+        variant="fullscreen"
+        title={titleContent}
+        actions={toolbarActions}
+        onClose={onClose}
+        banners={banners}
+        sidePanel={sidePanel}
+        documentContent={documentContent}
+      />
+
+      {/* Modals — rendered outside shell to ensure proper z-index layering */}
       <AttachmentWarningModal
         open={attachWarningOpen}
         onClose={() => setAttachWarningOpen(false)}
@@ -549,7 +333,6 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         materialsWithoutCost={lossValidation.materialsWithoutCost}
       />
 
-      {/* CONFIRM & SEND MODAL */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -593,7 +376,6 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
           </div>
         </DialogContent>
       </Dialog>
-
-    </div>
+    </>
   );
 }

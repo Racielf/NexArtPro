@@ -3,40 +3,71 @@ import GlobalDocumentCloseButton from '@/components/ui/GlobalDocumentCloseButton
 
 /**
  * DocumentViewerShell — Shell unificado para visualizar documentos.
- * Layout interno SIEMPRE igual.
- * X en posición absoluta, no empuja contenido.
+ *
+ * Modos:
+ * - Simple (Fase 1): toolbar + document area + close button
+ * - Split  (Fase 2): optional banners + toolbar + side panel + document area + close button
  *
  * Props:
  * - documentContent: ReactNode (documento renderizado)
- * - title: string (título en toolbar)
+ * - title: string | ReactNode (título en toolbar)
  * - actions: ReactNode[] (botones adicionales en toolbar)
- * - onClose: () => void (handler para cerrar)
+ * - onClose: () => void
+ * - banners: ReactNode (optional — rendered above toolbar)
+ * - sidePanel: ReactNode (optional — left panel for split layout)
+ * - variant: 'simple' | 'fullscreen' (default: 'simple')
  */
 export default function DocumentViewerShell({
   documentContent,
   title,
   actions = [],
   onClose,
+  banners,
+  sidePanel,
+  variant = 'simple',
 }) {
+  const isFullscreen = variant === 'fullscreen';
+  const outerClass = isFullscreen
+    ? 'fixed inset-0 z-[60] bg-[#f0f2f5] flex flex-col overflow-hidden'
+    : 'relative w-full h-full flex flex-col overflow-hidden';
+
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden">
+    <div className={outerClass}>
+      {/* Optional banners — above toolbar */}
+      {banners}
+
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50 flex-shrink-0">
-        <span className="text-sm font-semibold text-slate-700">{title}</span>
+      <div className={`flex items-center justify-between px-5 py-3 border-b flex-shrink-0 ${
+        isFullscreen ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-200'
+      }`}>
+        {typeof title === 'string' ? (
+          <span className="text-sm font-semibold text-slate-700">{title}</span>
+        ) : title}
         <div className="flex items-center gap-3">
           {actions}
         </div>
       </div>
 
-      {/* Document Container */}
-      <div className="flex-1 overflow-y-auto bg-slate-200 p-6 min-h-0 flex justify-center">
-        <div className="w-full max-w-4xl">
-          {documentContent}
+      {/* Content area — split or simple */}
+      {sidePanel ? (
+        <div className="flex flex-1 overflow-hidden min-h-0">
+          {sidePanel}
+          <div className="flex-1 overflow-y-auto p-8 flex justify-center min-h-0">
+            <div className="w-full max-w-3xl">
+              {documentContent}
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto bg-slate-200 p-6 min-h-0 flex justify-center">
+          <div className="w-full max-w-4xl">
+            {documentContent}
+          </div>
+        </div>
+      )}
 
       {/* Close Button — Absolute, no empuja contenido */}
-      <GlobalDocumentCloseButton onClick={onClose} />
+      {!isFullscreen && <GlobalDocumentCloseButton onClick={onClose} />}
     </div>
   );
 }
