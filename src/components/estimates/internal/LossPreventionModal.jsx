@@ -1,8 +1,8 @@
 /**
- * LossPreventionModal — Two modes:
- *   1. BLOCK (hasLoss=true): Loss items present — no proceed button, must fix.
- *   2. CONFIRM (hasLoss=false, hasZeroProfit=true): Zero-profit items —
- *      standard confirmation (all roles), not an override.
+ * LossPreventionModal — Unified pricing warning.
+ *
+ * All pricing issues (loss, zero-profit, missing cost) are confirmation-based.
+ * The user is warned clearly but can always proceed intentionally.
  */
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,14 +20,14 @@ export default function LossPreventionModal({ open, onClose, onProceed, lossItem
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {hasLoss
-              ? <><XCircle className="w-5 h-5 text-red-500" /> Pricing Error — Cannot Send</>
+              ? <><AlertTriangle className="w-5 h-5 text-red-500" /> Below-Cost Pricing Warning</>
               : <><AlertCircle className="w-5 h-5 text-slate-500" /> Confirm Zero-Profit Items</>
             }
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
-          {/* Loss items — hard block */}
+          {/* Loss items — warning + confirmation */}
           {hasLoss && (
             <>
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -35,7 +35,7 @@ export default function LossPreventionModal({ open, onClose, onProceed, lossItem
                   {lossItems.length} item{lossItems.length > 1 ? 's' : ''} priced below cost
                 </p>
                 <p className="text-xs text-red-600">
-                  Total estimated loss: <strong>${totalLoss.toFixed(2)}</strong>. Fix pricing before sending.
+                  Total estimated loss: <strong>${totalLoss.toFixed(2)}</strong>. This loss is real and will reduce your profit. You can still proceed if this is intentional.
                 </p>
               </div>
               <div className="max-h-40 overflow-y-auto space-y-1.5">
@@ -78,7 +78,7 @@ export default function LossPreventionModal({ open, onClose, onProceed, lossItem
           )}
 
           {/* Materials without internal cost — warning / confirm */}
-          {!hasLoss && hasMissingCost && (
+          {hasMissingCost && (
             <>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                 <p className="text-sm font-semibold text-amber-800 mb-1">
@@ -110,14 +110,14 @@ export default function LossPreventionModal({ open, onClose, onProceed, lossItem
 
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onClose}>
-            {hasLoss ? 'Go Back & Fix' : 'Review Materials'}
+            {hasLoss ? 'Review Pricing' : 'Review Items'}
           </Button>
-          {!hasLoss && onProceed && (
+          {onProceed && (
             <Button
-              className="flex-1 bg-primary hover:bg-primary/90 text-white"
+              className={`flex-1 text-white ${hasLoss ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'}`}
               onClick={onProceed}
             >
-              Confirm & Continue
+              {hasLoss ? 'Send Anyway' : 'Confirm & Continue'}
             </Button>
           )}
         </div>

@@ -128,11 +128,15 @@ export function validateEstimatePricing(estimate) {
   // Materials without internal cost
   const materialsWithoutCost = validateMaterialsCostCompleteness(estimate);
 
+  // All pricing issues are confirmation-based — never a hard block.
+  // Losses, zero-profit, and missing costs all require explicit user acknowledgement.
+  const hasAnyIssue = lossItems.length > 0 || zeroProfitItems.length > 0 || materialsWithoutCost.length > 0;
+
   return {
-    canProceed: lossItems.length === 0,
+    canProceed: true,
     lossItems,
     zeroProfitItems,
     materialsWithoutCost,
-    requiresConfirmation: lossItems.length === 0 && (zeroProfitItems.length > 0 || materialsWithoutCost.length > 0),
+    requiresConfirmation: hasAnyIssue,
   };
 }
