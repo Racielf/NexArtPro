@@ -99,24 +99,32 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
             value={item.service_name}
             onChange={v => update('service_name', v)}
             onSelect={picked => {
+                if (!picked?.name) return;
                 setExpanded(true);
                 // Null = source has no data → preserve existing. Number = explicit.
                 const pickedPrice = picked.unit_price !== null ? Number(picked.unit_price) : price;
                 const pickedCost  = picked.unit_cost  !== null ? Number(picked.unit_cost)  : cost;
+                // NaN safety
+                const safePrice = isNaN(pickedPrice) ? 0 : pickedPrice;
+                const safeCost  = isNaN(pickedCost)  ? 0 : pickedCost;
                 // book_price: prefer explicit book_price from picker, fallback to unit_price, then existing
                 const pickedBook  = picked.book_price !== null && picked.book_price !== undefined
                   ? Number(picked.book_price)
                   : (picked.unit_price !== null ? Number(picked.unit_price) : book);
+                const safeBook = isNaN(pickedBook) ? 0 : pickedBook;
+                // Compute line_total explicitly: quantity * unit_price
+                const qty = parseFloat(item.quantity) || 0;
+                const lineTotal = calculateLineTotal(qty, safePrice);
                 const updated = {
                   ...item,
                   service_id:   picked.service_id ?? null,
-                  service_name: picked.name,
+                  service_name: picked.name || item.service_name,
                   description:  picked.description || item.description || '',
                   category:     picked.category || item.category || 'Misc',
                   unit:         picked.unit || item.unit || 'ea',
-                  unit_price:   pickedPrice,
-                  unit_cost:    pickedCost,
-                  book_price:   pickedBook,
+                  unit_price:   safePrice,
+                  unit_cost:    safeCost,
+                  book_price:   safeBook,
                   line_total:   lineTotal,
                 };
                 onUpdate(updated);

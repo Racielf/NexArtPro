@@ -24,11 +24,19 @@ export default function useServices() {
     }
     setLoading(true);
     setError(null);
-    const data = await base44.entities.Service.filter({ is_active: true }, 'name', 500);
-    _cache = data;
-    _cacheTime = Date.now();
-    setServices(data);
-    setLoading(false);
+    try {
+      const data = await base44.entities.Service.filter({ is_active: true }, 'name', 500);
+      _cache = data;
+      _cacheTime = Date.now();
+      setServices(data);
+    } catch (err) {
+      console.warn('[useServices] failed:', err?.message);
+      setError(err);
+      // Fall back to stale cache if available
+      if (_cache) setServices(_cache);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetch(); }, [fetch]);
