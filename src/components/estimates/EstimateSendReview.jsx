@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link, Mail } from 'lucide-react';
+import { Printer, Download, Send, Eye, EyeOff, ChevronDown, ChevronUp, Paperclip, CheckCircle, AlertCircle, Copy, Link, Mail, Lock, FileText } from 'lucide-react';
 import { getTemplateOptions } from '@/lib/estimateTemplates';
 import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -185,7 +185,16 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       status: 'sent',
       sent_at: now,
       });
-      const fullMessage = `${message}\n\nView & approve your estimate here:\n${clientLink}`;
+      // Build attachment links for client-sendable files
+      const clientAttachments = Array.isArray(estimate?.attachments)
+        ? estimate.attachments.filter(a => a.intent === 'send_to_client')
+        : [];
+      let attachmentSection = '';
+      if (clientAttachments.length > 0) {
+        attachmentSection = '\n\n📎 Attached documents:\n' +
+          clientAttachments.map(a => `• ${a.file_name || 'Document'}: ${a.file_url}`).join('\n');
+      }
+      const fullMessage = `${message}\n\nView & approve your estimate here:\n${clientLink}${attachmentSection}`;
       try {
       await base44.integrations.Core.SendEmail({ to: recipientEmail, subject, body: fullMessage });
       await logDocument(estimate.id, estimate, 'sent_email', { recipient_email: recipientEmail, subject, secure_link: clientLink });
@@ -369,16 +378,66 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
           </SectionAccordion>
 
           {/* ATTACHMENTS */}
-          <SectionAccordion title="Attachments" icon={<Paperclip className="w-3.5 h-3.5" />} defaultOpen={false}>
-            <div className="flex items-center gap-2 py-1">
-              <div className="w-8 h-8 bg-red-50 rounded flex items-center justify-center flex-shrink-0">
-                <span className="text-[10px] font-bold text-red-500">PDF</span>
+          <SectionAccordion title="Attachments" icon={<Paperclip className="w-3.5 h-3.5" />} defaultOpen={true}>
+            {/* Auto-generated PDF — always included via secure link */}
+            <div className="flex items-center gap-2 py-1 mb-2">
+              <div className="w-7 h-7 bg-red-50 border border-red-200 rounded flex items-center justify-center flex-shrink-0">
+                <span className="text-[9px] font-bold text-red-500">PDF</span>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-slate-700">estimate-{estimate?.estimate_number}.pdf</p>
-                <p className="text-[11px] text-slate-400">Auto-generated</p>
+                <p className="text-[10px] text-slate-400">Auto-generated · via secure link</p>
               </div>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[9px] font-semibold text-blue-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />Client
+              </span>
             </div>
+
+            {/* Client-sendable attachments */}
+            {(() => {
+              const allAtts = Array.isArray(estimate?.attachments) ? estimate.attachments : [];
+              const clientAtts = allAtts.filter(a => a.intent === 'send_to_client');
+              const internalAtts = allAtts.filter(a => a.intent !== 'send_to_client');
+              return (
+                <>
+                  {clientAtts.length > 0 && (
+                    <div className="space-y-1.5 mb-2">
+                      <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Included with email ({clientAtts.length})</p>
+                      {clientAtts.map(att => (
+                        <div key={att.id} className="flex items-center gap-2 py-1">
+                          <div className="w-7 h-7 bg-blue-50 border border-blue-200 rounded flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-3.5 h-3.5 text-blue-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-slate-700 truncate">{att.file_name || 'file'}</p>
+                            <p className="text-[10px] text-slate-400">Download link in email</p>
+                          </div>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[9px] font-semibold text-blue-700">
+                            <Send className="w-2.5 h-2.5" />Client
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {internalAtts.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Internal only ({internalAtts.length}) — not sent</p>
+                      {internalAtts.map(att => (
+                        <div key={att.id} className="flex items-center gap-2 py-1 opacity-60">
+                          <div className="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center flex-shrink-0">
+                            <Lock className="w-3 h-3 text-slate-400" />
+                          </div>
+                          <p className="text-xs text-slate-500 truncate flex-1">{att.file_name || 'file'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {allAtts.length === 0 && (
+                    <p className="text-[11px] text-slate-400 py-1">No extra attachments. Upload files in the editor sidebar.</p>
+                  )}
+                </>
+              );
+            })()}
           </SectionAccordion>
 
           {/* VISIBILITY */}

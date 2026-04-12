@@ -19,6 +19,7 @@ import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButto
 // documentTypeConfig used internally by EstimateActionsPanel
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
+import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 
 export default function EstimateEditor() {
@@ -289,7 +290,16 @@ export default function EstimateEditor() {
           )}
           {hasClient && (
             <div className="px-4 pb-5 pt-3 border-t border-slate-100 flex-shrink-0">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Communications</p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Attachments</p>
+              <EstimateAttachments
+                attachments={estimate.attachments}
+                onUpdate={async (newAttachments) => {
+                  const updated = { ...estimate, attachments: newAttachments };
+                  setEstimate(updated);
+                  await base44.entities.Estimate.update(estimateId, { attachments: newAttachments });
+                }}
+              />
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2 mt-4">Communications</p>
               <CommTimeline estimateId={estimate.id} />
             </div>
           )}

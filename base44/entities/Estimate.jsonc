@@ -157,6 +157,40 @@
         "type": "object"
       }
     },
+    "attachments": {
+      "type": "array",
+      "description": "File attachments with intent: internal_only or send_to_client",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string",
+            "description": "Public URL of uploaded file"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "internal_only",
+              "send_to_client"
+            ],
+            "default": "internal_only",
+            "description": "internal_only = company use; send_to_client = included in client email"
+          },
+          "uploaded_by": {
+            "type": "string"
+          },
+          "uploaded_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "subtotal": {
       "type": "number"
     },
