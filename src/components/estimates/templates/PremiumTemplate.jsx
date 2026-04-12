@@ -6,6 +6,7 @@ import {
   ExclusionsSection, WarrantySection,
   TimelineSection, PaymentTermsBullets, AcceptanceSection,
 } from '../../documents/ProposalSections';
+import DocumentAttachmentsSection from '../../documents/DocumentAttachmentsSection';
 
 /**
  * PremiumTemplate — Presentation-level estimate / proposal.
@@ -292,6 +293,18 @@ export default function PremiumTemplate({ vm }) {
         <div style={{ padding: `0 ${P}px 20px` }}>
           <div style={sectionLabel}>Terms & Conditions</div>
           <p style={{ color: '#555', fontSize: 11, lineHeight: 1.8, whiteSpace: 'pre-wrap', margin: 0 }}>{text.legalTerms}</p>
+        </div>
+      )}
+
+      {/* ─── INCLUDED DOCUMENTS ─────────────────────────────── */}
+      {vm.clientAttachments && vm.clientAttachments.length > 0 && (
+        <div style={{ padding: `0 ${P}px 20px` }}>
+          <DocumentAttachmentsSection
+            attachments={vm.clientAttachments}
+            font={FONT}
+            sectionLabelStyle={sectionLabel}
+            accentColor={ACCENT}
+          />
         </div>
       )}
 

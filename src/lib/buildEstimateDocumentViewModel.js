@@ -276,6 +276,16 @@ export function buildEstimateDocumentViewModel({
   // ─── Pre-built terms array for templates ─────────────────────────────────
   const termsArray = buildTermsArray(text);
 
+  // ─── Client Attachments (only send_to_client, never internal) ────────────
+  const allAttachments = Array.isArray(estimate.attachments) ? estimate.attachments : [];
+  const clientAttachments = allAttachments
+    .filter(a => a.intent === 'send_to_client')
+    .map(a => ({
+      id: a.id || '',
+      file_name: safeStr(a.file_name, 'Document'),
+      file_url: safeStr(a.file_url),
+    }));
+
   return {
     meta,
     company,
@@ -289,5 +299,6 @@ export function buildEstimateDocumentViewModel({
     text,
     columns,
     termsArray,
+    clientAttachments,
   };
 }

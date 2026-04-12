@@ -6,6 +6,7 @@ import {
   ExclusionsSection, WarrantySection,
   TimelineSection, PaymentTermsBullets, AcceptanceSection,
 } from '../../documents/ProposalSections';
+import DocumentAttachmentsSection from '../../documents/DocumentAttachmentsSection';
 
 /**
  * ModernCardTemplate — Contemporary SaaS-style document with card sections.
@@ -279,6 +280,18 @@ export default function ModernCardTemplate({ vm }) {
             sectionLabelStyle={{ display: 'none' }}
             textStyle={{ color: '#475569', fontSize: 13, lineHeight: 1.7 }}
             containerStyle={{}}
+          />
+        </div>
+      )}
+
+      {/* ─── INCLUDED DOCUMENTS CARD ─────────────────────────── */}
+      {vm.clientAttachments && vm.clientAttachments.length > 0 && (
+        <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
+          <DocumentAttachmentsSection
+            attachments={vm.clientAttachments}
+            font={FONT}
+            sectionLabelStyle={sectionLabel}
+            accentColor={ACCENT}
           />
         </div>
       )}

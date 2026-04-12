@@ -6,6 +6,7 @@ import {
   ExclusionsSection, WarrantySection,
   TimelineSection, PaymentTermsBullets, AcceptanceSection,
 } from '../../documents/ProposalSections';
+import DocumentAttachmentsSection from '../../documents/DocumentAttachmentsSection';
 
 /**
  * CleanTemplate — Modern professional contractor estimate / proposal.
@@ -280,6 +281,17 @@ export default function CleanTemplate({ vm }) {
         <div style={{ padding: `0 ${P}px 16px`, borderTop: `1px solid ${BORDER}`, paddingTop: 16 }}>
           <div style={sectionLabel}>Terms & Conditions</div>
           <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.legalTerms}</p>
+        </div>
+      )}
+
+      {/* ─── INCLUDED DOCUMENTS ─────────────────────────────── */}
+      {vm.clientAttachments && vm.clientAttachments.length > 0 && (
+        <div style={{ padding: `0 ${P}px 16px`, borderTop: `1px solid ${BORDER}`, paddingTop: 16 }}>
+          <DocumentAttachmentsSection
+            attachments={vm.clientAttachments}
+            font={FONT}
+            sectionLabelStyle={sectionLabel}
+          />
         </div>
       )}
 
