@@ -1,22 +1,37 @@
 /**
  * pricingValidation.js — Centralized loss prevention validation
  *
- * Returns { canProceed, lossItems, zeroProfitItems, requiresConfirmation }
+ * Returns { canProceed, lossItems, zeroProfitItems, materialsWithoutCost, requiresConfirmation }
  * Used by all send/export/print actions in the estimate flow.
  */
 
 /**
- * validateEstimatePricing(estimate)
+ * validateMaterialsCostCompleteness(estimate)
  *
- * Scans all line items across all groups for pricing violations.
- *
- * @returns {{
- *   canProceed: boolean,          // true if no losses (zero-profit allowed with confirm)
- *   lossItems: Array,             // items where unit_price < unit_cost
- *   zeroProfitItems: Array,       // items where unit_price == unit_cost (within $0.01)
- *   requiresConfirmation: boolean // true if zero-profit items exist but no losses
- * }}
+ * Detects materials with quantity > 0 but missing or zero internal cost.
+ * Returns array of problematic materials with useful display data.
  */
+export function validateMaterialsCostCompleteness(estimate) {
+  const materials = Array.isArray(estimate?.materials) ? estimate.materials : [];
+  const result = [];
+
+  materials.forEach(m => {
+    const qty = parseFloat(m.quantity) || 0;
+    const unitCost = parseFloat(m.unit_cost) || 0;
+    if (qty > 0 && unitCost <= 0) {
+      result.push({
+        name: m.name || 'Unnamed material',
+        quantity: qty,
+        unit: m.unit || 'ea',
+        unit_price: parseFloat(m.unit_price) || 0,
+        unit_cost: unitCost,
+      });
+    }
+  });
+
+  return result;
+}
+
 export function validateEstimatePricing(estimate) {
   const lossItems = [];
   const zeroProfitItems = [];
@@ -47,10 +62,14 @@ export function validateEstimatePricing(estimate) {
     });
   });
 
+  // Materials without internal cost
+  const materialsWithoutCost = validateMaterialsCostCompleteness(estimate);
+
   return {
     canProceed: lossItems.length === 0,
     lossItems,
     zeroProfitItems,
-    requiresConfirmation: lossItems.length === 0 && zeroProfitItems.length > 0,
+    materialsWithoutCost,
+    requiresConfirmation: lossItems.length === 0 && (zeroProfitItems.length > 0 || materialsWithoutCost.length > 0),
   };
 }

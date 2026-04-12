@@ -112,7 +112,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
    const [sentError, setSentError] = useState(null);
    const [confirmOpen, setConfirmOpen] = useState(false);
    const [lossModalOpen, setLossModalOpen] = useState(false);
-   const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [] });
+   const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [], materialsWithoutCost: [] });
 
   if (!open) return null;
 
@@ -481,6 +481,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         onProceed={() => { setLossModalOpen(false); setConfirmOpen(true); }}
         lossItems={lossValidation.lossItems}
         zeroProfitItems={lossValidation.zeroProfitItems}
+        materialsWithoutCost={lossValidation.materialsWithoutCost}
       />
 
       {/* CONFIRM & SEND MODAL */}

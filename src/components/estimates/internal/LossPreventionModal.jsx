@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, XCircle, AlertCircle } from 'lucide-react';
 
-export default function LossPreventionModal({ open, onClose, onProceed, lossItems = [], zeroProfitItems = [] }) {
+export default function LossPreventionModal({ open, onClose, onProceed, lossItems = [], zeroProfitItems = [], materialsWithoutCost = [] }) {
   const hasLoss = lossItems.length > 0;
+  const hasMissingCost = materialsWithoutCost.length > 0;
   const totalLoss = lossItems.reduce((sum, i) => sum + (i.loss_per_unit * i.quantity), 0);
 
   return (
@@ -75,11 +76,41 @@ export default function LossPreventionModal({ open, onClose, onProceed, lossItem
               </div>
             </>
           )}
+
+          {/* Materials without internal cost — warning / confirm */}
+          {!hasLoss && hasMissingCost && (
+            <>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-sm font-semibold text-amber-800 mb-1">
+                  {materialsWithoutCost.length} material{materialsWithoutCost.length > 1 ? 's' : ''} missing internal cost
+                </p>
+                <p className="text-xs text-amber-600">
+                  These materials have no internal cost recorded. Profit analysis, materials cost, and total cost calculations will be inaccurate.
+                </p>
+              </div>
+              <div className="max-h-40 overflow-y-auto space-y-1.5">
+                {materialsWithoutCost.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2 bg-amber-50/50 rounded-lg border border-amber-100 text-xs">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="font-medium text-slate-700 truncate max-w-[160px]">{item.name}</span>
+                      <span className="text-slate-400 flex-shrink-0">{item.quantity} {item.unit}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {item.unit_price > 0 && (
+                        <span className="text-slate-500">sells ${item.unit_price.toFixed(2)}</span>
+                      )}
+                      <span className="text-amber-600 font-semibold">no cost</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onClose}>
-            {hasLoss ? 'Go Back & Fix' : 'Cancel'}
+            {hasLoss ? 'Go Back & Fix' : 'Review Materials'}
           </Button>
           {!hasLoss && onProceed && (
             <Button
