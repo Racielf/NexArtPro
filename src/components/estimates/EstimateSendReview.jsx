@@ -14,6 +14,7 @@ import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import LossPreventionModal from './internal/LossPreventionModal';
+import { markEstimateSent } from '@/lib/estimateSalesLifecycle';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 
@@ -183,11 +184,11 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     setSending(true);
     setSentError(null);
     try {
-      const now = new Date().toISOString();
-      await base44.entities.Estimate.update(estimate.id, {
-      status: 'sent',
-      sent_at: now,
-      });
+      const documentConfig = {
+        template: currentTemplate,
+        options: currentOptions,
+      };
+      await markEstimateSent(estimate.id, { documentConfig });
       // Build attachment links for client-sendable files
       const clientAttachments = Array.isArray(estimate?.attachments)
         ? estimate.attachments.filter(a => a.intent === 'send_to_client')

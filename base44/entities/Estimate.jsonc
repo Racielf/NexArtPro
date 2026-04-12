@@ -74,6 +74,61 @@
       ],
       "default": "draft"
     },
+    "sales_stage": {
+      "type": "string",
+      "enum": [
+        "lead",
+        "presented",
+        "engaged",
+        "negotiation",
+        "won",
+        "lost",
+        "converted"
+      ],
+      "default": "lead",
+      "description": "Sales pipeline stage derived from status transitions"
+    },
+    "view_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times client has viewed this estimate"
+    },
+    "last_viewed_at": {
+      "type": "string",
+      "description": "Timestamp of the most recent client view"
+    },
+    "last_client_event": {
+      "type": "string",
+      "description": "Last client action: viewed, approved, signed, declined, changes_requested"
+    },
+    "next_follow_up_at": {
+      "type": "string",
+      "description": "Suggested next follow-up datetime"
+    },
+    "follow_up_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pending",
+        "action_required",
+        "completed"
+      ],
+      "default": "none",
+      "description": "Current follow-up state"
+    },
+    "follow_up_stage": {
+      "type": "string",
+      "enum": [
+        "none",
+        "initial",
+        "post_view",
+        "revision",
+        "won",
+        "lost"
+      ],
+      "default": "none",
+      "description": "Follow-up pipeline position"
+    },
     "expiration_date": {
       "type": "string",
       "format": "date"

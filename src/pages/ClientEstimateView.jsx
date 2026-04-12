@@ -21,6 +21,13 @@ import {
   notifyEstimateDeclined,
   notifyEstimateChangesRequested,
 } from '@/lib/businessNotifications';
+import {
+  markEstimateViewed,
+  approveEstimate,
+  signEstimate,
+  declineEstimate,
+  requestEstimateChanges,
+} from '@/lib/estimateSalesLifecycle';
 
 export default function ClientEstimateView() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -39,27 +46,24 @@ export default function ClientEstimateView() {
       if (list.length) {
         const est = list[0];
         setEstimate(est);
-        // Mark as viewed if sent
-        if (est.status === 'sent') {
-          const viewedAt = new Date().toISOString();
-          await base44.entities.Estimate.update(estimateId, {
-            status: 'viewed',
-            viewed_at: viewedAt,
-          });
-          setEstimate(e => ({ ...e, status: 'viewed', viewed_at: viewedAt }));
-          // Log internal comm event
-          logComm({
-            event_type: 'estimate_viewed',
-            channel: 'system',
-            client_id: est.client_id || '',
-            client_name: est.client_name,
-            client_email: est.client_email || '',
-            estimate_id: est.id,
-            subject: `Estimate #${est.estimate_number} Viewed by Client`,
-            status: 'delivered',
-          }).catch(() => {});
-          // Notify business
-          notifyEstimateViewed(est).catch(err => console.warn('[notify] viewed failed:', err?.message));
+        // Mark as viewed — lifecycle handles view_count, timestamps, stage
+        if (est.status === 'sent' || est.status === 'viewed') {
+          const updates = await markEstimateViewed(estimateId, est);
+          setEstimate(e => ({ ...e, ...updates }));
+          // Log internal comm event (only on first view transition)
+          if (est.status === 'sent') {
+            logComm({
+              event_type: 'estimate_viewed',
+              channel: 'system',
+              client_id: est.client_id || '',
+              client_name: est.client_name,
+              client_email: est.client_email || '',
+              estimate_id: est.id,
+              subject: `Estimate #${est.estimate_number} Viewed by Client`,
+              status: 'delivered',
+            }).catch(() => {});
+            notifyEstimateViewed(est).catch(err => console.warn('[notify] viewed failed:', err?.message));
+          }
         }
       }
       setLoading(false);
@@ -69,21 +73,8 @@ export default function ClientEstimateView() {
 
   const handleApprove = async () => {
     setActing(true);
-    await base44.entities.Estimate.update(estimateId, {
-      status: 'approved',
-      approved_at: new Date().toISOString(),
-      approved_by: estimate.client_name,
-    });
-    await logComm({
-      event_type: 'estimate_approved',
-      client_id: estimate.client_id || '',
-      client_name: estimate.client_name,
-      client_email: estimate.client_email || '',
-      estimate_id: estimate.id,
-      subject: `Estimate #${estimate.estimate_number} Approved by Client`,
-      status: 'delivered',
-    });
-    setEstimate(e => ({ ...e, status: 'approved', approved_at: new Date().toISOString() }));
+    const updates = await approveEstimate(estimateId, { approvedBy: estimate.client_name });
+    setEstimate(e => ({ ...e, ...updates }));
     // Notify business
     notifyEstimateApproved(estimate).catch(err => console.warn('[notify] approved failed:', err?.message));
     setActing(false);
@@ -92,18 +83,8 @@ export default function ClientEstimateView() {
 
   const handleDecline = async () => {
     setActing(true);
-    const declinedAt = new Date().toISOString();
-    await base44.entities.Estimate.update(estimateId, { status: 'declined', declined_at: declinedAt });
-    await logComm({
-      event_type: 'estimate_declined',
-      client_id: estimate.client_id || '',
-      client_name: estimate.client_name,
-      client_email: estimate.client_email || '',
-      estimate_id: estimate.id,
-      subject: `Estimate #${estimate.estimate_number} Declined by Client`,
-      status: 'delivered',
-    });
-    setEstimate(e => ({ ...e, status: 'declined', declined_at: declinedAt }));
+    const updates = await declineEstimate(estimateId);
+    setEstimate(e => ({ ...e, ...updates }));
     // Notify business
     notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
     setActing(false);
@@ -113,24 +94,8 @@ export default function ClientEstimateView() {
   const handleSign = async ({ base64, signerName, signerEmail }) => {
     setShowSignPad(false);
     setActing(true);
-    await base44.entities.Estimate.update(estimateId, {
-      status: 'signed',
-      signed_at: new Date().toISOString(),
-      signer_name: signerName,
-      signer_email: signerEmail,
-      signature_image_base64: base64,
-    });
-    await logComm({
-      event_type: 'estimate_signed',
-      client_id: estimate.client_id || '',
-      client_name: estimate.client_name,
-      client_email: signerEmail || estimate.client_email || '',
-      estimate_id: estimate.id,
-      subject: `Estimate #${estimate.estimate_number} Signed by ${signerName}`,
-      preview: `Signer: ${signerName}`,
-      status: 'delivered',
-    });
-    setEstimate(e => ({ ...e, status: 'signed', signed_at: new Date().toISOString(), signer_name: signerName }));
+    const updates = await signEstimate(estimateId, { signerName, signerEmail, signatureBase64: base64 });
+    setEstimate(e => ({ ...e, ...updates }));
     // Notify business with signed document link
     notifyEstimateSigned(estimate, { signerName, signerEmail }).catch(err => console.warn('[notify] signed failed:', err?.message));
     setActing(false);
@@ -152,23 +117,8 @@ export default function ClientEstimateView() {
       snapshot: estimate,
       total_at_archive: estimate.total || 0,
     });
-    await base44.entities.Estimate.update(estimateId, {
-      status: 'changes_requested',
-      changes_requested_at: new Date().toISOString(),
-      changes_requested_note: note,
-      version: (estimate.version || 1) + 1,
-    });
-    await logComm({
-      event_type: 'estimate_changes_requested',
-      client_id: estimate.client_id || '',
-      client_name: estimate.client_name,
-      client_email: estimate.client_email || '',
-      estimate_id: estimate.id,
-      subject: `Changes requested for Estimate #${estimate.estimate_number}`,
-      status: 'delivered',
-      preview: note.substring(0, 80),
-    });
-    setEstimate(e => ({ ...e, status: 'changes_requested', changes_requested_note: note }));
+    const updates = await requestEstimateChanges(estimateId, { note, currentVersion: estimate.version });
+    setEstimate(e => ({ ...e, ...updates }));
     // Notify business
     notifyEstimateChangesRequested(estimate, note).catch(err => console.warn('[notify] changes failed:', err?.message));
     setActing(false);
