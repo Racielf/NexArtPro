@@ -100,14 +100,6 @@ export default function PremiumTemplate({ vm }) {
         </div>
       </div>
 
-      {/* ─── NOTES (before line items for context) ──────────── */}
-      {opts.showNotes && text.notes && (
-        <div style={{ padding: `20px ${P}px`, borderBottom: `1px solid ${BORDER}`, background: ACCENT_LIGHT }}>
-          <div style={sectionLabel}>Project Notes</div>
-          <p style={{ color: '#555', fontSize: 12, lineHeight: 1.8, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>
-        </div>
-      )}
-
       {/* ─── LINE ITEMS ─────────────────────────────────────── */}
       {opts.showBreakdown && groups.length > 0 && (
         <div style={{ padding: `24px ${P}px 0` }}>
@@ -179,6 +171,14 @@ export default function PremiumTemplate({ vm }) {
             <div style={{ fontSize: 20, fontWeight: 'bold', color: DARK }}>${totals.depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 'normal', color: MUTED }}>({totals.depositPercent}%)</span></div>
             <div style={{ fontSize: 12, color: MUTED }}>Balance: ${totals.remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           </div>
+        </div>
+      )}
+
+      {/* ─── NOTES (after line items / totals / deposit) ──────── */}
+      {opts.showNotes && text.notes && (
+        <div style={{ padding: `20px ${P}px`, borderBottom: `1px solid ${BORDER}`, background: ACCENT_LIGHT }}>
+          <div style={sectionLabel}>Project Notes</div>
+          <p style={{ color: '#555', fontSize: 12, lineHeight: 1.8, whiteSpace: 'pre-wrap', margin: 0 }}>{text.notes}</p>
         </div>
       )}
 

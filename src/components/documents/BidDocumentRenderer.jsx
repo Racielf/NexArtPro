@@ -111,11 +111,10 @@ export default function BidDocumentRenderer({ estimate, options = {}, lang: lang
 
       <div style={{ padding: `0 ${SPACE.page}px` }}>
 
-        {/* ═══ 3. SCOPE OF WORK ═══ */}
+        {/* ═══ 3. SCOPE OF WORK (title only — notes moved below line items) ═══ */}
         <PDFSectionBlock title={T('scopeOfWork')} titleEs={esTitle('scopeOfWork')} accent={SECTION_COLOR} spacing="tight" style={{ paddingTop: SPACE['2xl'] }}>
-          {estimate.title && <div style={{ fontWeight: FONT.weight.bold, fontSize: FONT.size.lg, color: COLORS.text.primary, marginBottom: SPACE.sm }}>{estimate.title}</div>}
-          {estimate.notes
-            ? <p style={S.body}>{estimate.notes}</p>
+          {estimate.title
+            ? <div style={{ fontWeight: FONT.weight.bold, fontSize: FONT.size.lg, color: COLORS.text.primary, marginBottom: SPACE.sm }}>{estimate.title}</div>
             : <p style={{ ...S.body, color: COLORS.text.faint, fontStyle: 'italic' }}>{T('scopeDefault')}</p>
           }
         </PDFSectionBlock>
@@ -133,6 +132,13 @@ export default function BidDocumentRenderer({ estimate, options = {}, lang: lang
           <PDFSectionBlock title={T('alternatesOptions')} titleEs={esTitle('alternatesOptions')} accent={SECTION_COLOR} spacing="tight">
             <p style={{ ...S.body, marginBottom: SPACE.md }}>{T('alternatesIntro')}</p>
             <PDFLineItemsTable groups={alternateGroups} showPrices={opts.showPrices} lang={primaryLang} variant="bid" />
+          </PDFSectionBlock>
+        )}
+
+        {/* ═══ 5b. SCOPE NOTES (after line items) ═══ */}
+        {estimate.notes && (
+          <PDFSectionBlock title={T('scopeOfWork')} titleEs={esTitle('scopeOfWork')} accent={SECTION_COLOR} spacing="tight">
+            <p style={S.body}>{estimate.notes}</p>
           </PDFSectionBlock>
         )}
 

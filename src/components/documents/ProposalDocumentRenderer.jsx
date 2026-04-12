@@ -126,14 +126,10 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
           </div>
         </PDFSectionBlock>
 
-        {/* ═══ 4. PROJECT SUMMARY ═══ */}
-        {(estimate.title || estimate.notes) && (
+        {/* ═══ 4. PROJECT SUMMARY (title only — notes moved below services) ═══ */}
+        {estimate.title && (
           <PDFSectionBlock title={T('projectSummary')} titleEs={esTitle('projectSummary')} accent={ACCENT}>
-            {estimate.title && <div style={{ fontWeight: FONT.weight.semibold, fontSize: FONT.size.lg, color: COLORS.text.primary, marginBottom: SPACE.sm }}>{estimate.title}</div>}
-            {estimate.notes
-              ? <p style={S.body}>{estimate.notes}</p>
-              : <p style={{ ...S.body, color: COLORS.text.faint, fontStyle: 'italic' }}>{T('projectSummaryDefault')}</p>
-            }
+            <div style={{ fontWeight: FONT.weight.semibold, fontSize: FONT.size.lg, color: COLORS.text.primary, marginBottom: SPACE.sm }}>{estimate.title}</div>
           </PDFSectionBlock>
         )}
 
@@ -142,6 +138,13 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
           <PDFSectionBlock title={T('servicesIncluded')} titleEs={esTitle('servicesIncluded')} accent={ACCENT}>
             <p style={{ ...S.body, marginBottom: SPACE.md }}>{T('servicesIntro')}</p>
             <PDFLineItemsTable groups={mainGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} variant="proposal" />
+          </PDFSectionBlock>
+        )}
+
+        {/* ═══ 5b. PROJECT NOTES (after services) ═══ */}
+        {estimate.notes && (
+          <PDFSectionBlock title={T('projectSummary')} titleEs={esTitle('projectSummary')} accent={ACCENT}>
+            <p style={S.body}>{estimate.notes}</p>
           </PDFSectionBlock>
         )}
 
