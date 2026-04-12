@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,10 +61,6 @@ export default function CustomerFormModal({ open, onOpenChange, customer = null,
       toast.error('First name, last name and phone are required');
       return;
     }
-    if (!supabase) {
-      toast.error('Database not configured');
-      return;
-    }
     setSaving(true);
     try {
       const data = {
@@ -84,23 +80,10 @@ export default function CustomerFormModal({ open, onOpenChange, customer = null,
       };
       let saved;
       if (customer) {
-        const { data: row, error } = await supabase
-          .from('customers')
-          .update(data)
-          .eq('id', customer.id)
-          .select()
-          .single();
-        if (error) throw error;
-        saved = row;
+        saved = await base44.entities.Customer.update(customer.id, data);
         toast.success('Customer updated');
       } else {
-        const { data: row, error } = await supabase
-          .from('customers')
-          .insert(data)
-          .select()
-          .single();
-        if (error) throw error;
-        saved = row;
+        saved = await base44.entities.Customer.create(data);
         toast.success('Customer created');
       }
       onOpenChange(false);
