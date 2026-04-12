@@ -70,21 +70,21 @@ export default function Sidebar() {
 
   return (
     <div className="w-56 min-h-screen bg-gray-900 flex flex-col">
-      {/* Logo */}
-      <div className="p-5 border-b border-gray-700">
-        <div className="flex items-center gap-2.5">
+      {/* Logo / Branding */}
+      <div className="px-4 py-5 border-b border-gray-700/60">
+        <div className="flex items-center gap-3">
           {cc.logo_url ? (
-            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-white flex items-center justify-center">
-              <img src={cc.logo_url} alt="Logo" className="w-full h-full object-contain" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-white/95 ring-1 ring-white/10 flex items-center justify-center p-1">
+              <img src={cc.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-              <Wrench className="w-4 h-4 text-white" />
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ring-white/10">
+              <Wrench className="w-[18px] h-[18px] text-white" />
             </div>
           )}
-          <div className="min-w-0">
-            <p className="text-white font-bold text-sm truncate">{cc.name || appConfig.appName}</p>
-            <p className="text-gray-400 text-xs truncate">{cc.displayName || appConfig.company.displayName}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-white font-semibold text-[13px] leading-tight truncate">{cc.name || appConfig.appName}</p>
+            <p className="text-gray-500 text-[11px] leading-tight mt-0.5 truncate">{cc.displayName || appConfig.company.displayName}</p>
           </div>
         </div>
       </div>
