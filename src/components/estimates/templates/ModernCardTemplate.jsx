@@ -70,9 +70,16 @@ export default function ModernCardTemplate({ vm }) {
         <div style={{ ...card(), padding: '22px 24px' }}>
           <div style={sectionLabel}>Project</div>
           {project.title && <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{project.title}</div>}
-          {opts.showProjectDates && project.hasProjectDates && (
-            <FlexibleDocDates mode="inline" docDate={null} startDate={project.startDate} endDate={project.endDate} font={FONT} />
-          )}
+          <FlexibleDocDates
+            mode="inline"
+            docDate={meta.today}
+            startDate={project.startDate}
+            endDate={project.endDate}
+            showDocumentDate={opts.showDocumentDate}
+            showStartDate={opts.showProjectStartDate}
+            showEndDate={opts.showProjectEndDate}
+            font={FONT}
+          />
           {project.assignedTo && (
             <div style={{ fontSize: 12, color: '#475569', marginTop: 6 }}>
               <span style={{ color: '#94a3b8', fontWeight: 600 }}>Lead:</span> {project.assignedTo}

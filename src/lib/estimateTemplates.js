@@ -38,7 +38,9 @@ export const DEFAULT_OPTIONS = {
   showBreakdown: true,
   showTerms: true,
   showSignatures: true,
-  showProjectDates: true,
+  showDocumentDate: true,
+  showProjectStartDate: true,
+  showProjectEndDate: true,
   showDeposit: true,
   hideInternalNotes: true,
 };

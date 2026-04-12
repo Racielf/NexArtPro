@@ -66,9 +66,16 @@ export default function CleanTemplate({ vm }) {
         <div style={{ padding: `24px ${P}px` }}>
           <div style={sectionLabel}>Project Details</div>
           {project.title && <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>{project.title}</div>}
-          {opts.showProjectDates && project.hasProjectDates && (
-            <FlexibleDocDates mode="block" docDate={null} startDate={project.startDate} endDate={project.endDate} font={FONT} />
-          )}
+          <FlexibleDocDates
+            mode="block"
+            docDate={meta.today}
+            startDate={project.startDate}
+            endDate={project.endDate}
+            showDocumentDate={opts.showDocumentDate}
+            showStartDate={opts.showProjectStartDate}
+            showEndDate={opts.showProjectEndDate}
+            font={FONT}
+          />
           {project.assignedTo && (
             <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
               <span style={{ ...sectionLabel, display: 'inline', marginBottom: 0, marginRight: 6 }}>Assigned:</span>{project.assignedTo}

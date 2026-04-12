@@ -43,12 +43,12 @@ const STATUS_COLORS = {
 };
 
 // ─── Template alias normalization ──────────────────────────────────────────────
-const TEMPLATE_ALIASES = { professional: 'pro', detailed: 'pro', standard: 'standard' };
-const VALID_TEMPLATES = ['minimal', 'standard', 'modern', 'executive', 'compact', 'pro'];
+const TEMPLATE_ALIASES = { professional: 'clean', detailed: 'clean', standard: 'clean', minimal: 'clean', modern: 'modern_card', executive: 'premium', compact: 'modern_card', pro: 'modern_card' };
+const VALID_TEMPLATES = ['clean', 'premium', 'modern_card'];
 
 function resolveTemplate(template) {
-  const mapped = TEMPLATE_ALIASES[template] || template;
-  return VALID_TEMPLATES.includes(mapped) ? mapped : 'standard';
+  if (VALID_TEMPLATES.includes(template)) return template;
+  return TEMPLATE_ALIASES[template] || 'clean';
 }
 
 // ─── Column visibility by document type ────────────────────────────────────────
@@ -183,6 +183,17 @@ export function buildEstimateDocumentViewModel({
   // ─── Visibility ──────────────────────────────────────────────────────────
   const showPrices = isWorkOrder ? false : (options.showPrices !== false);
 
+  // Date visibility — explicit per-flag with fallback rules
+  const showDocumentDate = options.showDocumentDate !== false;
+  const showProjectStartDate = options.showProjectStartDate !== false;
+  const showProjectEndDate = options.showProjectEndDate !== false;
+  // Legacy compat: if old showProjectDates is explicitly false, disable both project dates
+  if (options.showProjectDates === false && options.showProjectStartDate === undefined && options.showProjectEndDate === undefined) {
+    // handled below
+  }
+  const effectiveShowStartDate = options.showProjectDates === false && options.showProjectStartDate === undefined ? false : showProjectStartDate;
+  const effectiveShowEndDate = options.showProjectDates === false && options.showProjectEndDate === undefined ? false : showProjectEndDate;
+
   const visibility = {
     isEstimate,
     isInvoice,
@@ -191,7 +202,10 @@ export function buildEstimateDocumentViewModel({
     showBreakdown: options.showBreakdown !== false,
     showTerms: options.showTerms !== false,
     showSignatures: options.showSignatures !== false,
-    showProjectDates: options.showProjectDates !== false,
+    showProjectDates: effectiveShowStartDate || effectiveShowEndDate,
+    showDocumentDate,
+    showProjectStartDate: effectiveShowStartDate,
+    showProjectEndDate: effectiveShowEndDate,
     showDeposit: options.showDeposit !== false,
     hideInternalNotes: options.hideInternalNotes !== false,
   };

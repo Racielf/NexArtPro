@@ -71,9 +71,17 @@ export default function PremiumTemplate({ vm }) {
         <div style={{ padding: `28px ${P}px` }}>
           <div style={sectionLabel}>Project Scope</div>
           {project.title && <div style={{ fontWeight: 'bold', fontSize: 14, color: DARK, marginBottom: 10 }}>{project.title}</div>}
-          {opts.showProjectDates && project.hasProjectDates && (
-            <FlexibleDocDates mode="formal" docDate={null} startDate={project.startDate} endDate={project.endDate} accentColor={ACCENT} font={FONT} />
-          )}
+          <FlexibleDocDates
+            mode="formal"
+            docDate={meta.today}
+            startDate={project.startDate}
+            endDate={project.endDate}
+            showDocumentDate={opts.showDocumentDate}
+            showStartDate={opts.showProjectStartDate}
+            showEndDate={opts.showProjectEndDate}
+            accentColor={ACCENT}
+            font={FONT}
+          />
           {project.assignedTo && (
             <div style={{ marginTop: 10, fontSize: 12 }}>
               <span style={{ color: MUTED }}>Lead: </span><span style={{ fontWeight: 'bold' }}>{project.assignedTo}</span>

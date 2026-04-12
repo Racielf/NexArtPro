@@ -1,32 +1,60 @@
 import React from 'react';
 
 /**
- * FlexibleDocDates — Layout-driven date display.
+ * FlexibleDocDates — Explicit visibility-driven date display.
  *
- * Rules:
- *   - Document date always shown
- *   - Start date shown if present
- *   - End date shown if present
+ * Date visibility rules:
+ *   - Each date has an independent show flag
+ *   - Fallback: if no project dates are shown, document date appears (if enabled)
+ *   - If only start is shown, show start only
+ *   - If both start + end are shown, show both
+ *   - Document date shown when enabled AND (always, or when no project dates visible)
  *
- * Modes (from layout.dates):
+ * Modes (visual layout only):
  *   "block"   — stacked label/value pairs
  *   "inline"  — single line with separators
  *   "formal"  — mini table rows (label: value)
  *
  * Props:
- *   mode       — 'block' | 'inline' | 'formal'
- *   docDate    — formatted string (always shown)
- *   startDate  — formatted string or null
- *   endDate    — formatted string or null
- *   accentColor — template accent color
- *   font       — font family
+ *   mode              — 'block' | 'inline' | 'formal'
+ *   docDate           — formatted string
+ *   startDate         — formatted string or null
+ *   endDate           — formatted string or null
+ *   showDocumentDate  — boolean (default true)
+ *   showStartDate     — boolean (default true)
+ *   showEndDate       — boolean (default true)
+ *   accentColor       — template accent color
+ *   font              — font family
  */
-export default function FlexibleDocDates({ mode = 'block', docDate, startDate, endDate, accentColor = '#3b82f6', font }) {
-  const items = [
-    { label: 'Date', value: docDate },
-    ...(startDate ? [{ label: 'Start', value: startDate }] : []),
-    ...(endDate ? [{ label: 'Completion', value: endDate }] : []),
-  ].filter(i => i.value);
+export default function FlexibleDocDates({
+  mode = 'block',
+  docDate,
+  startDate,
+  endDate,
+  showDocumentDate = true,
+  showStartDate = true,
+  showEndDate = true,
+  accentColor = '#3b82f6',
+  font,
+}) {
+  // Build visible items based on explicit flags
+  const items = [];
+
+  const startVisible = showStartDate && startDate;
+  const endVisible = showEndDate && endDate;
+  const anyProjectDateVisible = startVisible || endVisible;
+
+  // Document date: show if enabled AND (no project dates visible OR always-show mode)
+  // Fallback: if project dates are all hidden, always show doc date when enabled
+  if (showDocumentDate && docDate && !anyProjectDateVisible) {
+    items.push({ label: 'Date', value: docDate });
+  } else if (showDocumentDate && docDate && anyProjectDateVisible) {
+    // When project dates are visible, still show document date as context
+    items.push({ label: 'Date', value: docDate });
+  }
+
+  if (startVisible) items.push({ label: 'Start', value: startDate });
+  if (endVisible) items.push({ label: 'Completion', value: endDate });
 
   if (items.length === 0) return null;
 
@@ -80,7 +108,7 @@ export default function FlexibleDocDates({ mode = 'block', docDate, startDate, e
     );
   }
 
-  // Fallback → block
+  // Fallback → simple list
   return (
     <div style={{ fontFamily: font }}>
       {items.map((item, i) => (
