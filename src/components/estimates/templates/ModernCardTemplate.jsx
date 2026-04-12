@@ -196,16 +196,30 @@ export default function ModernCardTemplate({ vm }) {
         <div style={{ display: 'grid', gridTemplateColumns: isEstimate && totals.depositPercent > 0 && opts.showDeposit ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
           <div style={{ ...card(), padding: '22px 24px' }}>
             <div style={cardSectionLabel}>Summary</div>
-            {[
-              { show: true, label: 'Subtotal', value: totals.subtotal },
-              { show: totals.discountAmount > 0, label: 'Discount', value: -totals.discountAmount, color: '#dc2626' },
-              { show: totals.taxRate > 0, label: `Tax (${totals.taxRate}%)`, value: totals.taxAmount },
-            ].filter(r => r.show).map((r, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: r.color || '#475569', borderBottom: '1px solid #f1f5f9' }}>
-                <span>{r.label}</span>
-                <span>${Math.abs(r.value).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            {/* Subtotal — emphasized when discount exists */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: totals.discountAmount > 0 ? '10px 0 8px' : '6px 0', fontSize: totals.discountAmount > 0 ? 15 : 13, color: DARK, borderBottom: '1px solid #f1f5f9', fontWeight: totals.discountAmount > 0 ? 700 : 400 }}>
+              <span>{totals.discountAmount > 0 ? 'Original Price' : 'Subtotal'}</span>
+              <span>${totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+            {/* Discount — red with savings label */}
+            {totals.discountAmount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, color: '#dc2626', borderBottom: '1px solid #f1f5f9', fontWeight: 700 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Your Savings
+                  <span style={{ fontSize: 10, fontWeight: 600, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, padding: '1px 6px', color: '#b91c1c' }}>
+                    {totals.discountType === 'percent' ? `${totals.discountValue}% OFF` : 'DISCOUNT'}
+                  </span>
+                </span>
+                <span>−${totals.discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
-            ))}
+            )}
+            {/* Tax */}
+            {totals.taxRate > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#475569', borderBottom: '1px solid #f1f5f9' }}>
+                <span>Tax ({totals.taxRate}%)</span>
+                <span>${totals.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 0', marginTop: 6, borderTop: `3px solid ${DARK}` }}>
               <span style={{ fontWeight: 800, color: DARK, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Project Investment</span>
               <span style={{ fontWeight: 900, color: DARK, fontSize: 22 }}>${totals.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
