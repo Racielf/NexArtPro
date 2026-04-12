@@ -9,12 +9,11 @@ import { buildEstimateDocumentViewModel } from '@/lib/buildEstimateDocumentViewM
 /**
  * EstimateTemplateRenderer — Universal document renderer with 6 distinct templates
  *
- * ARCHITECTURE (Phase 11):
+ * ARCHITECTURE (Phase 11 — 100% CLOSED):
  * - buildEstimateDocumentViewModel() centralizes ALL domain/business prep
  * - Templates consume ONLY the view model (vm.*) — never raw estimate fields
- * - Child components (DocumentHeader, DocumentSummary, DocumentFooter) receive
- *   vm-derived props; DocumentHeader still receives raw `estimate` for its own
- *   internal contract (reads estimate_number, status)
+ * - All child components (DocumentHeader, DocumentSummary, DocumentFooter)
+ *   receive ONLY vm-derived props — zero raw `estimate` reads remain
  *
  * Templates:
  * 1. minimal  — Clean, sparse, B&W
@@ -59,10 +58,22 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   const { isWorkOrder, isInvoice, isEstimate, showPrices } = opts;
 
   // ═══════════════════════════════════════════════════════════════════════
+  // SHARED CHILD PROPS — fully vm-driven, no raw estimate references
+  // ═══════════════════════════════════════════════════════════════════════
+  const headerProps = {
+    documentNumber: meta.documentNumber,
+    documentTypeLabel: meta.documentTypeLabel,
+    status: meta.status,
+    statusLabel: meta.statusLabel,
+    statusStyle: meta.statusStyle,
+    today: meta.today,
+    expDate: meta.expirationDate,
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
   // SHARED HELPERS for DocumentSummary props
   // ═══════════════════════════════════════════════════════════════════════
   const summaryProps = {
-    estimate, // backward compat for DocumentSummary internal fallback
     documentType,
     showPrices,
     showDeposit: opts.showDeposit,
@@ -241,11 +252,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
             </div>
           </div>
           <DocumentHeader
-            estimate={estimate}
-            documentType={documentType}
-            today={meta.today}
-            expDate={meta.expirationDate}
-            statusStyle={meta.statusStyle}
+            {...headerProps}
             showStatus={true}
             variant="standard"
             style={{ textAlign: 'right', color: 'white' }}
@@ -403,11 +410,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         {/* Header */}
         <div style={{ marginBottom: 30, paddingBottom: 20, borderBottom: `4px solid ${accentColor}` }}>
           <DocumentHeader
-            estimate={estimate}
-            documentType={documentType}
-            today={meta.today}
-            expDate={meta.expirationDate}
-            statusStyle={meta.statusStyle}
+            {...headerProps}
             showStatus={false}
             variant="modern"
             style={{ color: '#111' }}
@@ -508,7 +511,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
             <div style={{ fontSize: 11, color: '#7a7a7a', letterSpacing: 2, textTransform: 'uppercase' }}>{company.tagline}</div>
           </div>
         </div>
-        <DocumentHeader estimate={estimate} documentType={documentType} today={null} expDate={null} statusStyle={meta.statusStyle} showStatus={false} variant="executive" style={{ textAlign: 'right' }} />
+        <DocumentHeader {...headerProps} today={null} expDate={null} showStatus={false} variant="executive" style={{ textAlign: 'right' }} />
       </div>
 
       {/* Client & Details */}
@@ -609,7 +612,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
     <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#222', background: 'white', display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
       <div style={{ width: '35%', background: '#f0f0f0', padding: '30px', borderRight: '1px solid #ddd' }}>
-        <DocumentHeader estimate={estimate} documentType={documentType} today={null} expDate={null} statusStyle={meta.statusStyle} showStatus={false} variant="compact" />
+        <DocumentHeader {...headerProps} today={null} expDate={null} showStatus={false} variant="compact" />
 
         <div style={{ fontSize: 10, fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginBottom: 8 }}>Bill To</div>
         <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{client.name}</div>

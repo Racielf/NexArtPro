@@ -1,32 +1,34 @@
 import React from 'react';
 
 /**
- * DocumentSummary — Resumen financiero reutilizable
- * 
- * Responsabilidad: Renderizar SOLO los números financieros
- * Lógica: Mínima — solo renderiza si showPrices=true y documentType!='workorder'
- * 
- * Props:
- *   estimate (object) - Datos del documento (para acceder a tax_rate, discount_amount, etc.)
- *   documentType (string) - 'estimate' | 'invoice' | 'workorder'
- *   showPrices (boolean) - Si false, retorna null
- *   total (number) - Total ya calculado
- *   subtotal (number) - Subtotal
- *   depositPct (number) - Porcentaje de depósito (solo si isEstimate)
- *   depositAmount (number) - Monto de depósito
- *   remaining (number) - Balance restante
- *   isEstimate (boolean) - Si es estimate, muestra deposit info
- *   variant (string) - 'minimal' | 'standard' | 'modern' | 'executive' | 'compact' | 'pro'
- *   style (object) - Estilos CSS custom
- *   className (string) - Classes custom
+ * DocumentSummary — Reusable financial summary (Phase 11: fully vm-driven)
+ *
+ * Props (all explicit — no raw estimate object):
+ *   documentType (string)
+ *   showPrices (boolean)
+ *   showDeposit (boolean)
+ *   total (number)
+ *   subtotal (number)
+ *   discountAmount (number)
+ *   taxRate (number)
+ *   taxAmount (number)
+ *   depositPct (number)
+ *   depositAmount (number)
+ *   remaining (number)
+ *   isEstimate (boolean)
+ *   variant (string)
+ *   style (object)
+ *   className (string)
  */
 export default function DocumentSummary({
-  estimate,
   documentType = 'estimate',
   showPrices = true,
   showDeposit = true,
   total = 0,
   subtotal = 0,
+  discountAmount = 0,
+  taxRate = 0,
+  taxAmount = 0,
   depositPct = 0,
   depositAmount = 0,
   remaining = 0,
@@ -34,97 +36,34 @@ export default function DocumentSummary({
   variant = 'standard',
   style = {},
   className = '',
-  // New vm-based props (preferred over raw estimate reads)
-  discountAmount,
-  taxRate,
-  taxAmount,
 }) {
-  // LÓGICA DE NEGOCIO: No renderiza si no aplica
   const isWorkOrder = documentType === 'workorder';
-
-  // Resolve values: prefer explicit props, fallback to estimate for backward compat
-  const resolvedDiscountAmount = discountAmount ?? estimate?.discount_amount ?? 0;
-  const resolvedTaxRate = taxRate ?? estimate?.tax_rate ?? 0;
-  const resolvedTaxAmount = taxAmount ?? estimate?.tax_amount ?? 0;
 
   if (isWorkOrder || !showPrices) {
     return null;
   }
 
-  // Template-specific defaults (estilos de presentación)
   const variantDefaults = {
-    minimal: {
-      padding: '10px 0',
-      fontSize: 11,
-    },
-    standard: {
-      padding: '24px 52px',
-      fontSize: 13,
-      alignment: 'flex-end',
-    },
-    modern: {
-      padding: '30px 0',
-      fontSize: 11,
-      alignment: 'flex-end',
-    },
-    executive: {
-      padding: '0 0 40px',
-      fontSize: 12,
-      alignment: 'flex-end',
-    },
-    compact: {
-      padding: '12px',
-      fontSize: 11,
-    },
-    pro: {
-      padding: '32px',
-      fontSize: 13,
-      alignment: 'flex-start',
-    },
+    minimal: { padding: '10px 0', fontSize: 11 },
+    standard: { padding: '24px 52px', fontSize: 13, alignment: 'flex-end' },
+    modern: { padding: '30px 0', fontSize: 11, alignment: 'flex-end' },
+    executive: { padding: '0 0 40px', fontSize: 12, alignment: 'flex-end' },
+    compact: { padding: '12px', fontSize: 11 },
+    pro: { padding: '32px', fontSize: 13, alignment: 'flex-start' },
   };
 
   const defaults = variantDefaults[variant] || variantDefaults.standard;
 
-  // Renderiza tabla de financials (cada template define su contenedor visual)
   const financialRows = [
-    {
-      label: 'Subtotal',
-      value: subtotal,
-      show: true,
-    },
-    {
-      label: 'Discount',
-      value: -resolvedDiscountAmount,
-      show: resolvedDiscountAmount > 0,
-      color: '#dc2626',
-    },
-    {
-      label: `Tax (${resolvedTaxRate}%)`,
-      value: resolvedTaxAmount,
-      show: resolvedTaxRate > 0,
-    },
-    {
-      label: 'TOTAL',
-      value: total,
-      show: true,
-      isBold: true,
-      fontSize: 15,
-    },
+    { label: 'Subtotal', value: subtotal, show: true },
+    { label: 'Discount', value: -discountAmount, show: discountAmount > 0, color: '#dc2626' },
+    { label: `Tax (${taxRate}%)`, value: taxAmount, show: taxRate > 0 },
+    { label: 'TOTAL', value: total, show: true, isBold: true, fontSize: 15 },
     ...(isEstimate && depositPct > 0 && showDeposit
       ? [
-        {
-          label: `Deposit Due (${depositPct}%)`,
-          value: depositAmount,
-          show: true,
-          isBold: true,
-          color: '#0369a1',
-        },
-        {
-          label: 'Remaining Balance',
-          value: remaining,
-          show: true,
-        },
-      ]
+          { label: `Deposit Due (${depositPct}%)`, value: depositAmount, show: true, isBold: true, color: '#0369a1' },
+          { label: 'Remaining Balance', value: remaining, show: true },
+        ]
       : []),
   ];
 
