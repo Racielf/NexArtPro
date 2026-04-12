@@ -3,9 +3,10 @@
  * Loads saved company settings and merges with APP_CONFIG defaults.
  * Returns a config object usable by all template renderers.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { APP_CONFIG } from '@/lib/appConfig';
 import { loadCompanySettings } from '@/lib/companySettings';
+import { onCompanyConfigChange } from '@/lib/companyConfigEvents';
 
 const DEFAULTS = {
   name: APP_CONFIG.company.name,
@@ -22,7 +23,7 @@ const DEFAULTS = {
 export default function useCompanyConfig() {
   const [config, setConfig] = useState(DEFAULTS);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     loadCompanySettings()
       .then(saved => {
         setConfig({
@@ -35,10 +36,15 @@ export default function useCompanyConfig() {
           logo_url: saved.logo_url || DEFAULTS.logo_url,
         });
       })
-      .catch(() => {
-        // Fallback to defaults
-      });
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    refresh();
+    // Re-fetch whenever company settings are saved anywhere
+    const unsub = onCompanyConfigChange(refresh);
+    return unsub;
+  }, [refresh]);
 
   return config;
 }

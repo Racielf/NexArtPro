@@ -3,7 +3,7 @@ import SettingsSection from '@/components/settings/SettingsSection';
 import SettingsCard from '@/components/settings/SettingsCard';
 import SettingsRow from '@/components/settings/SettingsRow';
 import { Button } from '@/components/ui/button';
-import { Upload, Save, Trash2, Loader2, CheckCircle, XCircle, ImageIcon } from 'lucide-react';
+import { Upload, Save, RefreshCw, Trash2, Loader2, CheckCircle, XCircle, ImageIcon } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { loadCompanySettings, saveCompanySettings } from '@/lib/companySettings';
@@ -150,37 +150,41 @@ export default function CompanyPanel() {
 
             {/* Preview thumbnail */}
             {previewUrl && (
-              <div className="relative group">
-                <div className="relative w-40 h-28 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
+              <div className="flex flex-col items-start gap-3">
+                <div className="relative w-44 h-32 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-sm">
                   <img
                     src={previewUrl}
                     alt="Company logo"
-                    className="max-w-full max-h-full object-contain"
+                    className="max-w-full max-h-full object-contain p-2"
                   />
-                  {/* Uploading overlay when replacing */}
                   {uploading && (
-                    <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center gap-1 rounded-lg">
+                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-1.5 rounded-xl">
                       <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                      <span className="text-[10px] font-medium text-blue-600">Replacing…</span>
+                      <span className="text-xs font-medium text-blue-600">Replacing…</span>
                     </div>
                   )}
                 </div>
-                <div className="flex gap-1.5 mt-1.5">
-                  <button
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => fileRef.current?.click()}
                     disabled={uploading}
-                    className="text-[11px] font-medium text-blue-500 hover:text-blue-600 transition disabled:opacity-50"
+                    className="gap-1.5 text-xs"
                   >
-                    Replace
-                  </button>
-                  <span className="text-slate-300">·</span>
-                  <button
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Replace Logo
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleRemoveLogo}
                     disabled={uploading}
-                    className="text-[11px] font-medium text-red-500 hover:text-red-600 transition disabled:opacity-50"
+                    className="gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300"
                   >
-                    Remove
-                  </button>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Remove Logo
+                  </Button>
                 </div>
               </div>
             )}

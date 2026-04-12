@@ -5,6 +5,7 @@
  */
 import { base44 } from '@/api/base44Client';
 import { APP_CONFIG } from '@/lib/appConfig';
+import { emitCompanyConfigChange } from '@/lib/companyConfigEvents';
 
 const STORAGE_KEY = 'company_settings';
 
@@ -28,6 +29,8 @@ export async function loadCompanySettings() {
 
 export async function saveCompanySettings(settings) {
   await base44.auth.updateMe({ [STORAGE_KEY]: settings });
+  _cache = settings;
+  emitCompanyConfigChange();
 }
 
 /**
