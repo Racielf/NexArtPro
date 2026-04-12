@@ -1,12 +1,14 @@
 /**
- * supabaseServiceCache.js — Preloads and caches services + price book from Supabase.
+ * catalogCache.js — Base44-first catalog cache for Services + Price Book.
  *
  * Strategy: Fetch once on first access, cache in memory with a 5-minute TTL.
  * Exposes getServices() and getPriceBook() which return arrays synchronously
  * after the initial load, or trigger a background refresh if stale.
  *
- * Fallback: If Supabase fetch fails, falls back to static seed data so the
- * editor never breaks (degraded mode with console warning).
+ * Data priority:
+ *   1. Base44 entities (Service, PriceBookEntry) — primary source of truth
+ *   2. Supabase tables — legacy fallback
+ *   3. Static seed data — cold-start fallback so the editor never breaks
  */
 import { supabase } from '@/lib/supabaseClient';
 import { base44 } from '@/api/base44Client';
@@ -23,16 +25,17 @@ let _servicesFetching = null;
 let _priceBookFetching = null;
 let _initPromise = null;
 
-// ── Supabase fetchers ──────────────────────────────────────────────────────
+// ── Data fetchers ──────────────────────────────────────────────────────────
 
-async function fetchServicesFromSupabase() {
-  // Try Base44 entity first (persistent admin source of truth)
+async function fetchServices() {
+  // Base44 entity — primary source of truth
   try {
     const b44Data = await base44.entities.Service.filter({ is_active: true }, 'name', 500);
     if (b44Data && b44Data.length > 0) return b44Data;
   } catch (e) {
-    // Fallback to Supabase direct
+    // Fall through to Supabase
   }
+  // Supabase — legacy fallback
   const { data, error } = await supabase
     .from('services')
     .select('*')
@@ -43,8 +46,8 @@ async function fetchServicesFromSupabase() {
   return data || [];
 }
 
-async function fetchPriceBookFromSupabase() {
-  // Try Base44 PriceBookEntry entity first (persistent admin source of truth)
+async function fetchPriceBook() {
+  // Base44 entity — primary source of truth
   try {
     const b44Data = await base44.entities.PriceBookEntry.filter({ is_active: true }, 'display_name', 500);
     if (b44Data && b44Data.length > 0) {
@@ -56,8 +59,9 @@ async function fetchPriceBookFromSupabase() {
       }));
     }
   } catch (e) {
-    // Fallback to Supabase direct
+    // Fall through to Supabase
   }
+  // Supabase — legacy fallback
   const { data, error } = await supabase
     .from('price_book')
     .select('*')
@@ -81,7 +85,7 @@ function isStale(fetchedAt) {
 
 async function refreshServices() {
   if (_servicesFetching) return _servicesFetching;
-  _servicesFetching = fetchServicesFromSupabase()
+  _servicesFetching = fetchServices()
     .then(data => {
       _servicesCache = data;
       _servicesFetchedAt = Date.now();
@@ -89,7 +93,7 @@ async function refreshServices() {
       return data;
     })
     .catch(err => {
-      console.warn('[ServiceCache] Supabase services fetch failed, using seed fallback:', err?.message);
+      console.warn('[CatalogCache] Services fetch failed, using seed fallback:', err?.message);
       _servicesFetching = null;
       if (!_servicesCache) _servicesCache = SERVICES_SEED;
       return _servicesCache;
@@ -99,7 +103,7 @@ async function refreshServices() {
 
 async function refreshPriceBook() {
   if (_priceBookFetching) return _priceBookFetching;
-  _priceBookFetching = fetchPriceBookFromSupabase()
+  _priceBookFetching = fetchPriceBook()
     .then(data => {
       _priceBookCache = data;
       _priceBookFetchedAt = Date.now();
@@ -107,7 +111,7 @@ async function refreshPriceBook() {
       return data;
     })
     .catch(err => {
-      console.warn('[ServiceCache] Supabase price_book fetch failed, using seed fallback:', err?.message);
+      console.warn('[CatalogCache] Price book fetch failed, using seed fallback:', err?.message);
       _priceBookFetching = null;
       if (!_priceBookCache) _priceBookCache = PRICE_BOOK_SEED;
       return _priceBookCache;
@@ -121,11 +125,14 @@ async function refreshPriceBook() {
  * Initialize cache — call once at app startup or before first search.
  * Returns a promise that resolves when both datasets are loaded.
  */
-export async function initServiceCache() {
+export async function initCatalogCache() {
   if (_initPromise) return _initPromise;
   _initPromise = Promise.all([refreshServices(), refreshPriceBook()]);
   return _initPromise;
 }
+
+// Re-export under old name for backward compat (avoid breaking any missed references)
+export const initServiceCache = initCatalogCache;
 
 /**
  * Get cached services array (synchronous after init).
@@ -134,11 +141,9 @@ export async function initServiceCache() {
  */
 export function getServices() {
   if (!_servicesCache) {
-    // Cold start — return seed immediately, trigger async load
     _servicesCache = SERVICES_SEED;
     refreshServices();
   } else if (isStale(_servicesFetchedAt)) {
-    // Stale — return current cache, refresh in background
     refreshServices();
   }
   return _servicesCache;
@@ -159,10 +164,13 @@ export function getPriceBook() {
 }
 
 /**
- * Force-refresh both caches immediately (e.g., after admin edits price book).
+ * Force-refresh both caches immediately (e.g., after admin edits).
  */
-export async function invalidateServiceCache() {
+export async function invalidateCatalogCache() {
   _servicesFetchedAt = 0;
   _priceBookFetchedAt = 0;
   return Promise.all([refreshServices(), refreshPriceBook()]);
 }
+
+// Re-export under old name for backward compat
+export const invalidateServiceCache = invalidateCatalogCache;

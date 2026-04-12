@@ -1,4 +1,4 @@
-import { getServices, getPriceBook } from '@/lib/supabaseServiceCache';
+import { getServices, getPriceBook } from '@/lib/catalogCache';
 import { autolinkServiceIds } from '@/lib/autolinkServiceIds';
 
 // Normalize text for comparison

@@ -12,7 +12,7 @@
 import { base44 } from '@/api/base44Client';
 import { SERVICES_SEED } from '@/components/settings/services/servicesSeed';
 import { PRICE_BOOK_SEED } from '@/components/settings/pricebook/priceBookSeed';
-import { invalidateServiceCache } from '@/lib/supabaseServiceCache';
+import { invalidateCatalogCache } from '@/lib/catalogCache';
 import { invalidateBase44ServiceCache } from '@/components/shared/services/serviceSearchBase44';
 import { autolinkServiceIds } from '@/lib/autolinkServiceIds';
 
@@ -22,7 +22,7 @@ import { autolinkServiceIds } from '@/lib/autolinkServiceIds';
  * the Base44 service cache (used by searchBase44 if still referenced).
  */
 function invalidateAllCaches() {
-  invalidateServiceCache();
+  invalidateCatalogCache();
   invalidateBase44ServiceCache();
 }
 
