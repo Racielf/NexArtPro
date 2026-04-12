@@ -16,6 +16,7 @@ const DEFAULTS = {
   address: APP_CONFIG.company.address || '',
   license: '',
   logo_url: '',
+  payment_methods: '',
 };
 
 export async function loadCompanySettings() {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import useCompanyConfig from '@/hooks/useCompanyConfig';
+import PaymentMethodsSection from './PaymentMethodsSection';
 import { tb, tList, tReplace } from '@/lib/documentTranslations';
 import { COLORS, FONT, SPACE, S } from './pdf/PDFStyles';
 import PDFHeader from './pdf/PDFHeader';
@@ -236,6 +237,18 @@ export default function BidDocumentRenderer({ estimate, options = {}, lang: lang
                 <p style={S.body}>{estimate.legal_terms}</p>
               </div>
             )}
+          </PDFSectionBlock>
+        )}
+
+        {/* ═══ 9b. PAYMENT METHODS ═══ */}
+        {cc.payment_methods && cc.payment_methods.trim() && (
+          <PDFSectionBlock title="Payment Methods" accent={SECTION_COLOR} spacing="tight">
+            <PaymentMethodsSection
+              paymentMethods={cc.payment_methods}
+              sectionLabelStyle={{ display: 'none' }}
+              textStyle={{ fontSize: FONT.size.base, color: COLORS.text.secondary, lineHeight: FONT.lineHeight.relaxed }}
+              containerStyle={{}}
+            />
           </PDFSectionBlock>
         )}
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import CompanyLogoBlock from '../../documents/CompanyLogoBlock';
 import FlexibleDocDates from '../../documents/FlexibleDocDates';
+import PaymentMethodsSection from '../../documents/PaymentMethodsSection';
 
 /**
  * PremiumTemplate — Presentation-level estimate / proposal.
@@ -193,6 +194,14 @@ export default function PremiumTemplate({ vm }) {
           ))}
         </div>
       )}
+
+      {/* ─── PAYMENT METHODS ────────────────────────────────── */}
+      <PaymentMethodsSection
+        paymentMethods={company.paymentMethods}
+        sectionLabelStyle={sectionLabel}
+        textStyle={{ color: '#555', fontSize: 12, lineHeight: 1.8 }}
+        containerStyle={{ padding: `20px ${P}px`, borderTop: `1px solid ${BORDER}` }}
+      />
 
       {/* ─── SIGNATURES ─────────────────────────────────────── */}
       {opts.showSignatures && !isWorkOrder && (

@@ -1,6 +1,7 @@
 import React from 'react';
 import CompanyLogoBlock from '../../documents/CompanyLogoBlock';
 import FlexibleDocDates from '../../documents/FlexibleDocDates';
+import PaymentMethodsSection from '../../documents/PaymentMethodsSection';
 
 /**
  * ModernCardTemplate — Contemporary SaaS-style document with card sections.
@@ -191,6 +192,18 @@ export default function ModernCardTemplate({ vm }) {
               <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{t.value}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ─── PAYMENT METHODS CARD ──────────────────────────── */}
+      {company.paymentMethods && company.paymentMethods.trim() && (
+        <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
+          <PaymentMethodsSection
+            paymentMethods={company.paymentMethods}
+            sectionLabelStyle={sectionLabel}
+            textStyle={{ color: '#475569', fontSize: 13, lineHeight: 1.7 }}
+            containerStyle={{}}
+          />
         </div>
       )}
 

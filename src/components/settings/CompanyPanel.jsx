@@ -13,7 +13,7 @@ import { uploadLogoToStorage } from '@/lib/logoStorage';
 const inputCls = 'w-64 text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';
 
 export default function CompanyPanel() {
-  const [state, setState] = useState({ name: '', email: '', phone: '', address: '', license: '', logo_url: '' });
+  const [state, setState] = useState({ name: '', email: '', phone: '', address: '', license: '', logo_url: '', payment_methods: '' });
   const [original, setOriginal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -126,6 +126,14 @@ export default function CompanyPanel() {
         </SettingsRow>
         <SettingsRow label="License Number">
           <input className={inputCls} value={state.license} onChange={e => set('license', e.target.value)} placeholder="#CCB-000000" />
+        </SettingsRow>
+        <SettingsRow label="Payment Methods" description="Accepted payment methods shown on documents. One per line.">
+          <textarea
+            className={inputCls + ' h-24 resize-none'}
+            value={state.payment_methods}
+            onChange={e => set('payment_methods', e.target.value)}
+            placeholder={"Credit Card (3.5% processing fee)\nZelle\nCheck\nCash"}
+          />
         </SettingsRow>
 
         {/* Logo */}

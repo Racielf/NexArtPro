@@ -1,6 +1,7 @@
 import React from 'react';
 import CompanyLogoBlock from '../../documents/CompanyLogoBlock';
 import FlexibleDocDates from '../../documents/FlexibleDocDates';
+import PaymentMethodsSection from '../../documents/PaymentMethodsSection';
 
 /**
  * CleanTemplate — Modern professional contractor estimate.
@@ -176,6 +177,14 @@ export default function CleanTemplate({ vm }) {
           <p style={{ color: '#475569', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{t.value}</p>
         </div>
       ))}
+
+      {/* ─── PAYMENT METHODS ────────────────────────────────── */}
+      <PaymentMethodsSection
+        paymentMethods={company.paymentMethods}
+        sectionLabelStyle={sectionLabel}
+        textStyle={{ color: '#475569', fontSize: 12, lineHeight: 1.7 }}
+        containerStyle={{ padding: `14px ${P}px`, borderTop: `1px solid ${BORDER}` }}
+      />
 
       {/* ─── SIGNATURES ─────────────────────────────────────── */}
       {opts.showSignatures && !isWorkOrder && (

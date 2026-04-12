@@ -156,6 +156,7 @@ export function buildEstimateDocumentViewModel({
     license: cc.license || APP_CONFIG.company.license || '',
     tagline: cc.tagline || APP_CONFIG.company.tagline || '',
     city: cc.city || APP_CONFIG.company.city || '',
+    paymentMethods: cc.payment_methods || '',
   };
 
   // ─── Client ──────────────────────────────────────────────────────────────
