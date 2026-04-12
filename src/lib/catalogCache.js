@@ -31,7 +31,11 @@ async function fetchServices() {
   // Base44 entity — primary source of truth
   try {
     const b44Data = await base44.entities.Service.filter({ is_active: true }, 'name', 500);
-    if (b44Data && b44Data.length > 0) return b44Data;
+    if (b44Data && b44Data.length > 0) {
+      // Check for missing seed categories (e.g. Concrete) and merge in background
+      _checkSeedGaps(b44Data);
+      return b44Data;
+    }
   } catch (e) {
     // Fall through to Supabase
   }
@@ -44,6 +48,50 @@ async function fetchServices() {
 
   if (error) throw error;
   return data || [];
+}
+
+// Background seed-gap check — runs at most once per session
+let _seedGapChecked = false;
+async function _checkSeedGaps(liveServices) {
+  if (_seedGapChecked) return;
+  _seedGapChecked = true;
+  try {
+    // Quick category check: do we have all seed categories?
+    const liveCats = new Set(liveServices.map(s => (s.category || '').toLowerCase()));
+    const seedCats = new Set(SERVICES_SEED.map(s => (s.category || '').toLowerCase()));
+    let missing = false;
+    for (const sc of seedCats) {
+      if (!liveCats.has(sc)) { missing = true; break; }
+    }
+    if (!missing) return; // All seed categories present, skip heavy merge
+
+    // Dynamic import to avoid circular dependency on first load
+    const { ensureServicesComplete, ensurePriceBookComplete } = await import('@/lib/catalogMerge');
+    const { added } = await ensureServicesComplete(liveServices);
+    if (added.length > 0) {
+      // Refresh the cache with the new data
+      const refreshed = await base44.entities.Service.filter({ is_active: true }, 'name', 500);
+      _servicesCache = refreshed;
+      _servicesFetchedAt = Date.now();
+
+      // Also merge PB gaps
+      const livePB = await base44.entities.PriceBookEntry.filter({ is_active: true }, 'display_name', 500);
+      const pbResult = await ensurePriceBookComplete(livePB, refreshed);
+      if (pbResult.added > 0) {
+        const refreshedPB = await base44.entities.PriceBookEntry.filter({ is_active: true }, 'display_name', 500);
+        _priceBookCache = refreshedPB.map(row => ({
+          ...row,
+          type: row.type || 'service',
+          unit_price: row.unit_price ?? 0,
+          unit_cost: row.unit_cost ?? 0,
+        }));
+        _priceBookFetchedAt = Date.now();
+      }
+      console.info(`[CatalogCache] Seed gap merge: ${added.length} services, ${pbResult.added} PB entries added`);
+    }
+  } catch (err) {
+    console.warn('[CatalogCache] Seed gap check failed (non-blocking):', err?.message);
+  }
 }
 
 async function fetchPriceBook() {

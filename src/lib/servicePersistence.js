@@ -6,8 +6,8 @@
  *   - PriceBookEntry entity for price book items
  *
  * On first load, if no records exist, seeds from the static seed data.
- * After any write, invalidates the supabaseServiceCache so the picker
- * picks up changes immediately.
+ * After load with existing data, merges any missing seed records.
+ * After any write, invalidates all caches so the picker reflects changes.
  */
 import { base44 } from '@/api/base44Client';
 import { SERVICES_SEED } from '@/components/settings/services/servicesSeed';
@@ -15,6 +15,8 @@ import { PRICE_BOOK_SEED } from '@/components/settings/pricebook/priceBookSeed';
 import { invalidateCatalogCache } from '@/lib/catalogCache';
 import { invalidateBase44ServiceCache } from '@/components/shared/services/serviceSearchBase44';
 import { autolinkServiceIds } from '@/lib/autolinkServiceIds';
+import { buildServiceIndex, findBestMatch } from '@/lib/serviceReconciler';
+import { ensureServicesComplete, ensurePriceBookComplete } from '@/lib/catalogMerge';
 
 /**
  * Invalidate all caches after a write operation.
@@ -30,6 +32,7 @@ function invalidateAllCaches() {
 
 /**
  * Load all services. If empty, bulk-seed from SERVICES_SEED.
+ * If records exist, merge any missing seed services (e.g. Concrete).
  */
 export async function loadServices() {
   let records = await base44.entities.Service.list('-created_date', 500);
@@ -43,11 +46,17 @@ export async function loadServices() {
       is_active: s.is_active !== false,
       type: 'service',
     }));
-    // Bulk create in batches of 50
     for (let i = 0; i < seedData.length; i += 50) {
       await base44.entities.Service.bulkCreate(seedData.slice(i, i + 50));
     }
     records = await base44.entities.Service.list('-created_date', 500);
+  } else {
+    // Merge any missing seed services (e.g. Concrete category)
+    const { added } = await ensureServicesComplete(records);
+    if (added.length > 0) {
+      records = await base44.entities.Service.list('-created_date', 500);
+      invalidateAllCaches();
+    }
   }
   return records;
 }
@@ -68,7 +77,7 @@ export async function updateService(id, data) {
 
 /**
  * Load all price book entries. If empty, bulk-seed from PRICE_BOOK_SEED
- * with autolinked service_ids.
+ * with autolinked service_ids. If records exist, merge any missing seed entries.
  */
 export async function loadPriceBook() {
   let records = await base44.entities.PriceBookEntry.list('-created_date', 500);
@@ -98,6 +107,14 @@ export async function loadPriceBook() {
       await base44.entities.PriceBookEntry.bulkCreate(seedData.slice(i, i + 50));
     }
     records = await base44.entities.PriceBookEntry.list('-created_date', 500);
+  } else {
+    // Merge any missing seed PB entries (e.g. Concrete)
+    const services = await base44.entities.Service.list('-created_date', 500);
+    const { added } = await ensurePriceBookComplete(records, services);
+    if (added > 0) {
+      records = await base44.entities.PriceBookEntry.list('-created_date', 500);
+      invalidateAllCaches();
+    }
   }
   return records;
 }
@@ -119,13 +136,26 @@ export async function updatePriceBookEntry(id, data, services = []) {
 
 /**
  * Bulk import price book entries from CSV rows.
- * Resolves service_id for each via autolink.
+ * Uses the reconciler for intelligent duplicate detection and service linking.
+ * Also creates missing Service records for truly new entries.
  */
 export async function importPriceBookEntries(rows, existingEntries, services) {
-  const serviceMap = new Map();
-  for (const svc of services) {
-    const key = (svc.name || '').toLowerCase().replace(/\s+/g, ' ').trim();
-    if (key && !serviceMap.has(key)) serviceMap.set(key, svc);
+  // Build reconciler index from services for linking
+  const svcIndex = buildServiceIndex(services);
+
+  // Build reconciler index from existing PB entries for dedup
+  const pbAsServices = existingEntries.map(pb => ({
+    id: pb.id,
+    name: pb.display_name,
+    aliases: [],
+  }));
+  const pbIndex = buildServiceIndex(pbAsServices);
+
+  // Also keep an exact-name map for fast path
+  const exactPBMap = new Map();
+  for (const pb of existingEntries) {
+    const key = (pb.display_name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (key && !exactPBMap.has(key)) exactPBMap.set(key, pb);
   }
 
   let added = 0, updated = 0, skipped = 0;
@@ -134,17 +164,24 @@ export async function importPriceBookEntries(rows, existingEntries, services) {
     const name = (row.service_name || '').trim();
     if (!name) { skipped++; continue; }
 
-    // Check if existing entry with same name
-    const existing = existingEntries.find(
-      e => (e.display_name || '').toLowerCase() === name.toLowerCase()
-    );
-
-    // Resolve service_id
+    // 1. Check exact match in existing PB
     const nameKey = name.toLowerCase().replace(/\s+/g, ' ').trim();
-    const matchedSvc = serviceMap.get(nameKey);
-    const service_id = existing?.service_id || (matchedSvc ? matchedSvc.id : '');
+    let existing = exactPBMap.get(nameKey);
+
+    // 2. If no exact match, check fuzzy match via reconciler
+    if (!existing) {
+      const fuzzyMatch = findBestMatch(name, pbIndex, { threshold: 0.60, ambiguityGap: 0.12 });
+      if (fuzzyMatch) {
+        existing = existingEntries.find(e => e.id === fuzzyMatch.service.id);
+      }
+    }
+
+    // Resolve service_id via reconciler
+    const svcMatch = findBestMatch(name, svcIndex);
+    const service_id = existing?.service_id || (svcMatch ? svcMatch.service.id : '');
 
     if (existing) {
+      // Update existing record with new pricing data
       await base44.entities.PriceBookEntry.update(existing.id, {
         ...(row.unit_price != null && { unit_price: row.unit_price }),
         ...(row.unit_cost != null && { unit_cost: row.unit_cost }),
@@ -158,6 +195,7 @@ export async function importPriceBookEntries(rows, existingEntries, services) {
       });
       updated++;
     } else {
+      // Create new PB entry
       await base44.entities.PriceBookEntry.create({
         display_name: name,
         type: row.type || 'service',
@@ -173,6 +211,17 @@ export async function importPriceBookEntries(rows, existingEntries, services) {
         service_id,
       });
       added++;
+
+      // If no matching Service exists, create one
+      if (!svcMatch) {
+        await base44.entities.Service.create({
+          name,
+          category: row.category || 'Misc',
+          unit: row.uom || 'each',
+          type: row.type || 'service',
+          is_active: true,
+        });
+      }
     }
   }
 
@@ -186,14 +235,14 @@ function resolveServiceId(data, services) {
   // Don't overwrite existing valid service_id
   if (data.service_id) return data;
 
-  const name = (data.display_name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const name = data.display_name;
   if (!name) return data;
 
-  for (const svc of services) {
-    const svcName = (svc.name || '').toLowerCase().replace(/\s+/g, ' ').trim();
-    if (svcName === name) {
-      return { ...data, service_id: svc.id };
-    }
+  // Use reconciler for intelligent matching (exact → alias → fuzzy)
+  const index = buildServiceIndex(services);
+  const match = findBestMatch(name, index);
+  if (match) {
+    return { ...data, service_id: match.service.id };
   }
   return data;
 }

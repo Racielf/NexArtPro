@@ -123,6 +123,45 @@ export function searchServices(query, limit = 12) {
     });
   });
 
+  // Pass 2: Check orphan PB entries (no service_id or service_id not in Services)
+  // This ensures PB entries like Concrete that haven't been linked yet still appear
+  const serviceIds = new Set(SERVICES.map(s => s.id));
+  const resultNames = new Set(results.map(r => norm(r.name)));
+
+  priceBook.forEach(pb => {
+    if (!pb.is_active) return;
+    // Skip if already represented via a Service record
+    if (pb.service_id && serviceIds.has(pb.service_id)) return;
+
+    const pbName = pb.display_name || '';
+    // Skip if a result with the same name already exists
+    if (resultNames.has(norm(pbName))) return;
+
+    const nameScore = score(pbName);
+    const catScore = score(pb.category) * 0.6;
+    const notesScore = score(pb.notes) * 0.3;
+    const totalScore = nameScore + catScore + notesScore;
+    if (totalScore === 0) return;
+
+    results.push({
+      id: pb.id,
+      name: pbName,
+      category: pb.category || 'Misc',
+      unit: pb.unit || 'each',
+      unit_price: pb.unit_price ?? null,
+      unit_cost: pb.unit_cost ?? null,
+      base_price: pb.unit_price ?? null,
+      estimated_cost: pb.unit_cost ?? null,
+      book_price: pb.book_price ?? null,
+      type: pb.type || 'service',
+      source: 'pricebook',
+      svcEntry: null,
+      pbEntry: pb,
+      _score: totalScore,
+      _tier: 2, // Has PB entry but no linked Service
+    });
+  });
+
   // Sort: tier ASC, then score DESC
   results.sort((a, b) => a._tier - b._tier || b._score - a._score);
 
