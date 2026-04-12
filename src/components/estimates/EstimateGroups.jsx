@@ -459,7 +459,15 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             ))}
           </div>
 
-          <div className="px-6 py-3 flex items-center gap-4 border-t border-slate-100 bg-slate-50/50">
+          {/* Section Total Row */}
+          <div className="px-6 py-3 border-t-2 border-slate-300 bg-slate-50 flex items-center justify-between">
+            <span className="text-sm font-extrabold text-slate-800 uppercase tracking-wide">Services Total</span>
+            <span className="text-lg font-extrabold text-slate-900 tabular-nums">
+              ${groupSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+
+          <div className="px-6 py-2.5 flex items-center gap-4 border-t border-slate-100 bg-white">
             <button onClick={addItem}
               className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
               <Plus className="w-4 h-4" />Add line item

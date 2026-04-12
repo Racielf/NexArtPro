@@ -167,24 +167,28 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
             ))}
           </div>
 
+          {/* Section Total Row */}
+          <div className="px-6 py-3 border-t-2 border-emerald-300 bg-emerald-50 flex items-center justify-between">
+            <span className="text-sm font-extrabold text-emerald-900 uppercase tracking-wide">Materials Total</span>
+            <div className="flex items-center gap-6">
+              {showCost && materialsCost > 0 && (
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">Cost: </span>
+                  <span className="text-sm font-bold text-amber-700">${materialsCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              <span className="text-lg font-extrabold text-emerald-900 tabular-nums">
+                ${materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+
           {/* Add row */}
-          <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <div className="px-6 py-2.5 border-t border-emerald-100 bg-white">
             <button onClick={addItem}
               className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
               <Plus className="w-4 h-4" />Add material item
             </button>
-            <div className="flex items-center gap-4 text-xs">
-              <div className="text-right">
-                <span className="text-slate-400 font-medium">Materials Total: </span>
-                <span className="font-bold text-slate-800">${materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </div>
-              {showCost && materialsCost > 0 && (
-                <div className="text-right">
-                  <span className="text-amber-500 font-medium">Cost Total: </span>
-                  <span className="font-bold text-amber-700">${materialsCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </div>
-              )}
-            </div>
           </div>
         </>
       )}

@@ -136,6 +136,13 @@ export default function ModernCardTemplate({ vm }) {
                   ))}
                 </tbody>
               </table>
+              {/* Services Total row */}
+              {lineCols.total && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', borderTop: `2px solid ${DARK}`, background: '#f1f5f9' }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: DARK, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Services Total</span>
+                  <span style={{ fontSize: 16, fontWeight: 900, color: DARK }}>${group.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -173,6 +180,13 @@ export default function ModernCardTemplate({ vm }) {
               ))}
             </tbody>
           </table>
+          {/* Materials Total row */}
+          {showPrices && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', borderTop: '2px solid #166534', background: '#f0fdf4' }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Materials Total</span>
+              <span style={{ fontSize: 16, fontWeight: 900, color: '#166534' }}>${vm.materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+          )}
         </div>
       )}
 

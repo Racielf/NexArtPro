@@ -139,7 +139,17 @@ export default function OtherCostsSection({ otherCosts = [], onChange }) {
             <CostRow key={item.id} item={item} onUpdate={updateCost} onRemove={removeCost} />
           ))}
 
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-amber-200">
+          {/* Section Total Row */}
+          {total > 0 && (
+            <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-amber-300 bg-amber-50 -mx-5 px-5 pb-3 rounded-b">
+              <span className="text-sm font-extrabold text-amber-900 uppercase tracking-wide">Other Costs Total</span>
+              <span className="text-lg font-extrabold text-amber-900 tabular-nums">
+                ${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
+
+          <div className="mt-2">
             <button
               type="button"
               onClick={addCost}
@@ -148,12 +158,6 @@ export default function OtherCostsSection({ otherCosts = [], onChange }) {
               <Plus className="w-3.5 h-3.5" />
               Add cost
             </button>
-            {total > 0 && (
-              <div className="text-right text-xs">
-                <span className="text-amber-600 font-medium">Other Costs Total: </span>
-                <span className="font-bold text-amber-800">${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </div>
-            )}
           </div>
         </div>
       )}
