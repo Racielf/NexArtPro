@@ -1,0 +1,41 @@
+{
+  "name": "Material",
+  "type": "object",
+  "properties": {
+    "material_name": {
+      "type": "string",
+      "description": "Name of the material"
+    },
+    "category": {
+      "type": "string",
+      "description": "Material category (e.g. Concrete, Lumber, Electrical)"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measure (e.g. bag, sheet, ft, ea)"
+    },
+    "unit_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Cost per unit"
+    },
+    "supplier": {
+      "type": "string",
+      "description": "Supplier or vendor name"
+    },
+    "sku_or_ref": {
+      "type": "string",
+      "description": "SKU, part number, or reference code"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "material_name"
+  ]
+}

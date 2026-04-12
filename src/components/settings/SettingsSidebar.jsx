@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Building2, FileText, Wrench, BookOpen,
-  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked
+  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package
 } from 'lucide-react';
 
 const sections = [
@@ -9,6 +9,7 @@ const sections = [
   { id: 'documents', label: 'Documents',             icon: FileText },
   { id: 'services',  label: 'Services',              icon: Wrench },
   { id: 'pricebook', label: 'Price Book',            icon: BookOpen },
+  { id: 'materials', label: 'Materials',              icon: Package },
   { id: 'labor',     label: 'Work Orders & Labor',   icon: ClipboardList },
   { id: 'payments',  label: 'Payments',              icon: CreditCard },
   { id: 'team',      label: 'Team & Access',         icon: ShieldCheck },

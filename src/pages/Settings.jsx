@@ -7,6 +7,7 @@ import SettingsToggle from '@/components/settings/SettingsToggle';
 import { Plus, Search, ShieldCheck } from 'lucide-react';
 import ServicesCatalogSection from '@/components/settings/services/ServicesCatalogSection';
 import PriceBookSection from '@/components/settings/pricebook/PriceBookSection';
+import MaterialsCatalogSection from '@/components/settings/materials/MaterialsCatalogSection';
 import { base44 } from '@/api/base44Client';
 import CompanyPanel from '@/components/settings/CompanyPanel';
 import { normalizeUserRole } from '@/lib/utils';
@@ -71,6 +72,14 @@ function PriceBookPanel() {
   return (
     <SettingsSection title="Price Book" description="Standardized pricing connected to your service catalog.">
       <PriceBookSection />
+    </SettingsSection>
+  );
+}
+
+function MaterialsPanel() {
+  return (
+    <SettingsSection title="Materials" description="Company materials database for construction and remodeling. Separate from service pricing.">
+      <MaterialsCatalogSection />
     </SettingsSection>
   );
 }
@@ -315,6 +324,7 @@ export default function Settings() {
     documents: <DocumentsPanel state={documents} set={setDocuments} />,
     services:  <ServicesPanel />,
     pricebook: <PriceBookPanel />,
+    materials: <MaterialsPanel />,
     labor:     <LaborPanel     state={labor}     set={setLabor}     />,
     payments:  <PaymentsPanel  state={payments}  set={setPayments}  />,
     team:      <TeamAccessPanel userRole={userRole} />,
