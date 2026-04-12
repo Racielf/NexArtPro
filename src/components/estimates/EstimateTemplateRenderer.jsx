@@ -5,7 +5,7 @@ import DocumentSummary from '../documents/DocumentSummary';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CompanyLogoBlock from '../documents/CompanyLogoBlock';
 import useCompanyConfig from '@/hooks/useCompanyConfig';
-import { normalizeLineItem } from '@/lib/lineItemNormalizer';
+import { buildEstimateDocumentViewModel } from '@/lib/buildEstimateDocumentViewModel';
 
 /**
  * EstimateTemplateRenderer — Universal document renderer with 6 distinct templates
@@ -31,21 +31,9 @@ import { normalizeLineItem } from '@/lib/lineItemNormalizer';
  */
 
 // ═══════════════════════════════════════════════════════════════════════
-// UTILITY FUNCTIONS
+// NOTE: Domain/business preparation logic has been moved to
+// lib/buildEstimateDocumentViewModel.js — templates consume the view model.
 // ═══════════════════════════════════════════════════════════════════════
-
-const getLineItemColumns = (documentType) => {
-  if (documentType === 'workorder') {
-    return { description: true, quantity: true, unit: true, price: false, total: false };
-  }
-  return { description: true, quantity: true, unit: true, price: true, total: true };
-};
-
-const hasProjectDates = (startDate, endDate) => Boolean(startDate || endDate);
-
-const formatDate = (dateStr) => dateStr
-  ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-  : null;
 
 // ═══════════════════════════════════════════════════════════════════════
 // TEMPLATE CONFIG (visual styles per template)
@@ -127,62 +115,36 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   if (!estimate) return null;
 
   // ═══════════════════════════════════════════════════════════════════════
-  // COMMON SETUP (shared by all templates)
+  // VIEW MODEL — all domain/business prep centralized here
   // ═══════════════════════════════════════════════════════════════════════
+  const vm = buildEstimateDocumentViewModel({
+    estimate,
+    companyConfig: cc,
+    documentType,
+    template,
+    options,
+  });
+  if (!vm) return null;
 
-  const opts = {
-    showPrices: options.showPrices !== false,
-    showBreakdown: options.showBreakdown !== false,
-    showTerms: options.showTerms !== false,
-    showSignatures: options.showSignatures !== false,
-    showProjectDates: options.showProjectDates !== false,
-    showDeposit: options.showDeposit !== false,
-    hideInternalNotes: options.hideInternalNotes !== false,
-  };
-
-  const isWorkOrder = documentType === 'workorder';
-  const isInvoice = documentType === 'invoice';
-  const isEstimate = documentType === 'estimate';
-  const showPrices = isWorkOrder ? false : opts.showPrices;
-
-  const groups = estimate.groups?.length
-    ? estimate.groups.map(g => ({ ...g, items: (g.items || []).map(normalizeLineItem) }))
-    : estimate.line_items?.length
-      ? [{
-        id: 'legacy',
-        name: null,
-        items: estimate.line_items.map(li => normalizeLineItem(li)),
-      }]
-      : [];
-
-  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  const expDate = formatDate(estimate.expiration_date);
-  const startDate = formatDate(estimate.project_start_date);
-  const endDate = formatDate(estimate.project_end_date);
-
-  const total = estimate.total || 0;
-  const depositPct = estimate.deposit_percent || 0;
-  const depositAmount = estimate.deposit_amount || (total * depositPct / 100);
-  const remaining = total - depositAmount;
-
-  const statusColors = {
-    approved: { bg: '#166534', color: '#bbf7d0' },
-    declined: { bg: '#7f1d1d', color: '#fecaca' },
-    sent: { bg: '#1e3a5f', color: '#93c5fd' },
-    draft: { bg: '#1e293b', color: '#94a3b8' },
-    converted: { bg: '#14532d', color: '#bbf7d0' },
-  };
-  const statusStyle = statusColors[estimate.status] || statusColors.draft;
-
-  const docTypeLabel = isWorkOrder ? 'WORK ORDER' : isInvoice ? 'INVOICE' : 'ESTIMATE';
-
-  const lineCols = getLineItemColumns(documentType);
-  const hasProjectDates_ = hasProjectDates(startDate, endDate);
-
-  // Normalize template aliases (professional → pro, detailed → pro, standard → standard)
-  const templateMap = { professional: 'pro', detailed: 'pro', standard: 'standard' };
-  const normalizedTemplate = templateMap[template] || template;
-  const safeTemplate = ['minimal', 'standard', 'modern', 'executive', 'compact', 'pro'].includes(normalizedTemplate) ? normalizedTemplate : 'standard';
+  // ─── Alias view model fields to local variables for template compatibility ───
+  // This avoids rewriting every template JSX reference while still consuming
+  // the centralized view model. Templates will be refactored in Phase 12/13.
+  const opts = vm.visibility;
+  const { isWorkOrder, isInvoice, isEstimate, showPrices } = vm.visibility;
+  const groups = vm.groups;
+  const today = vm.meta.today;
+  const expDate = vm.meta.expirationDate;
+  const startDate = vm.project.startDate;
+  const endDate = vm.project.endDate;
+  const total = vm.totals.total;
+  const depositPct = vm.totals.depositPercent;
+  const depositAmount = vm.totals.depositAmount;
+  const remaining = vm.totals.remaining;
+  const statusStyle = vm.meta.statusStyle;
+  const docTypeLabel = vm.meta.documentTypeLabel;
+  const lineCols = vm.columns;
+  const hasProjectDates_ = vm.project.hasProjectDates;
+  const safeTemplate = vm.meta.template;
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER HELPERS (reusable sections)
