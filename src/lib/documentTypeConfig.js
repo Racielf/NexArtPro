@@ -11,6 +11,7 @@
 export const DOC_TYPES = {
   BID: 'BID',
   PROPOSAL: 'PROPOSAL',
+  ESTIMATE: 'ESTIMATE',
 };
 
 export const DOC_TYPE_OPTIONS = [
@@ -23,7 +24,7 @@ export const DOC_TYPE_OPTIONS = [
  * Falls back to PROPOSAL if type is unknown/null (backward compat).
  */
 export function getDocTypeConfig(documentType) {
-  const type = documentType || DOC_TYPES.PROPOSAL;
+  const type = documentType || DOC_TYPES.ESTIMATE;
 
   if (type === DOC_TYPES.BID) {
     return {
@@ -51,27 +52,44 @@ export function getDocTypeConfig(documentType) {
     };
   }
 
-  // PROPOSAL (default)
+  if (type === DOC_TYPES.PROPOSAL) {
+    return {
+      type: DOC_TYPES.PROPOSAL,
+      label: 'Proposal',
+      labelUpper: 'PROPOSAL',
+      labelPlural: 'Proposals',
+      abbreviation: 'PROP',
+      numberLabel: 'Proposal #',
+      documentTitle: 'Proposal',
+      tone: 'client-friendly',
+      prioritize: 'trust',
+      requiresJobRef: false,
+      jobRefValidationMsg: '',
+      scopeLabel: 'Scope of Work',
+      inclusionsLabel: "What's Included",
+      exclusionsLabel: "What's Excluded",
+      notesLabel: 'Customer Notes',
+      internalNotesLabel: 'Internal Notes',
+    };
+  }
+
+  // ESTIMATE (default fallback for null, undefined, or unknown types)
   return {
-    type: DOC_TYPES.PROPOSAL,
-    // Labels
-    label: 'Proposal',
-    labelUpper: 'PROPOSAL',
-    labelPlural: 'Proposals',
-    abbreviation: 'PROP',
-    numberLabel: 'Proposal #',
-    documentTitle: 'Proposal',
-    // Presentation
+    type: DOC_TYPES.ESTIMATE,
+    label: 'Estimate',
+    labelUpper: 'ESTIMATE',
+    labelPlural: 'Estimates',
+    abbreviation: 'EST',
+    numberLabel: 'Estimate #',
+    documentTitle: 'Estimate',
     tone: 'client-friendly',
-    prioritize: 'trust',        // service explanation, clarity, trust
-    // Required fields
+    prioritize: 'trust',
     requiresJobRef: false,
     jobRefValidationMsg: '',
-    // Section labels
     scopeLabel: 'Scope of Work',
     inclusionsLabel: "What's Included",
     exclusionsLabel: "What's Excluded",
-    notesLabel: 'Customer Notes',
+    notesLabel: 'Notes',
     internalNotesLabel: 'Internal Notes',
   };
 }
