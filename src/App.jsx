@@ -41,6 +41,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import ProfitabilityDashboard from './pages/ProfitabilityDashboard';
 import Proposals from './pages/Proposals.jsx';
+import SalesPipeline from './pages/SalesPipeline';
 import ProposalEditor from './pages/ProposalEditor';
 import PublicProposalView from './pages/PublicProposalView';
 import ClientDocumentView from './pages/ClientDocumentView';
@@ -129,6 +130,7 @@ const AuthenticatedApp = () => {
         <Route path="/reports" element={<Reports />} />
         <Route path="/profitability" element={<ProfitabilityDashboard />} />
         <Route path="/proposals" element={<Proposals />} />
+        <Route path="/sales-pipeline" element={<SalesPipeline />} />
         <Route path="/proposal-editor" element={<ProposalEditor />} />
         <Route path="/settings" element={<Settings />} />
 
