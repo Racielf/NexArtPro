@@ -8,6 +8,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
 import { ScrollText, Plus, Search, Pencil, Trash2, CheckCircle, Send, Clock, AlertCircle, FileText, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { getNextDocumentNumber } from '@/lib/documentNumbering';
 
 const STATUS_CONFIG = {
   draft:                   { label: 'Draft',              icon: Clock,         cls: 'bg-slate-100 text-slate-600' },
@@ -47,10 +48,7 @@ export default function Proposals() {
     setLoading(false);
   };
 
-  const nextProposalNumber = async () => {
-    const list = await base44.entities.Proposal.list('-created_date');
-    return list.length ? Math.max(...list.map(p => p.proposal_number || 0)) + 1 : 1001;
-  };
+  // Removed: inline nextProposalNumber — now uses shared getNextDocumentNumber
 
   const handleNew = () => {
     setShowClientModal(true);
@@ -58,7 +56,7 @@ export default function Proposals() {
 
   const handleClientSelected = async (client) => {
     setCreating(true);
-    const num = await nextProposalNumber();
+    const num = await getNextDocumentNumber('proposal');
     const created = await base44.entities.Proposal.create({
       proposal_number: num,
       status: 'draft',
@@ -89,7 +87,7 @@ export default function Proposals() {
 
   const handleFromEstimate = async (estimate) => {
     setCreating(true);
-    const num = await nextProposalNumber();
+    const num = await getNextDocumentNumber('proposal');
     const items = estimate.groups
       ? estimate.groups.flatMap(g => g.items || [])
       : (estimate.line_items || []);

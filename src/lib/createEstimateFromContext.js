@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { getNextDocumentNumber } from '@/lib/documentNumbering';
 
 /**
  * Creates a pre-filled Estimate from a client/appointment context
@@ -9,9 +10,7 @@ import { base44 } from '@/api/base44Client';
  * @param {function} params.navigate    - react-router navigate fn
  */
 export async function createEstimateFromContext({ client, appointment, navigate }) {
-  const allEstimates = await base44.entities.Estimate.list('-created_date', 1);
-  const lastNum = allEstimates.length > 0 ? (allEstimates[0].estimate_number || 0) : 0;
-  const estimateNumber = lastNum + 1;
+  const estimateNumber = await getNextDocumentNumber('estimate');
 
   // Build address from client
   const addressParts = [];

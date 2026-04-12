@@ -8,6 +8,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { FileText, Plus, Pencil, Search, X, Trash2 } from 'lucide-react';
+import { getNextDocumentNumber } from '@/lib/documentNumbering';
 
 export default function Estimates() {
   const navigate = useNavigate();
@@ -30,10 +31,7 @@ export default function Estimates() {
     setLoading(false);
   };
 
-  const getNextNumber = (list) => {
-    if (!list.length) return 1;
-    return Math.max(...list.map(e => e.estimate_number || 0)) + 1;
-  };
+  // Removed: inline getNextNumber — now uses shared getNextDocumentNumber
 
   const handleNewEstimate = () => {
     setShowConfirm(true);
@@ -42,9 +40,9 @@ export default function Estimates() {
   const handleConfirmCreate = async () => {
     setShowConfirm(false);
     setCreating(true);
-    const list = await base44.entities.Estimate.list('-created_date');
+    const nextNum = await getNextDocumentNumber('estimate');
     const created = await base44.entities.Estimate.create({
-      estimate_number: getNextNumber(list),
+      estimate_number: nextNum,
       status: 'draft',
       client_name: '',
       line_items: [],

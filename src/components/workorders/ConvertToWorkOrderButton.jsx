@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { ClipboardList, Loader2 } from 'lucide-react';
 import { prepareDownstreamDocument } from '@/lib/downstreamItemMapper';
+import { getNextDocumentNumber } from '@/lib/documentNumbering';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -38,7 +39,7 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted }) {
       }
 
       const user = await base44.auth.me();
-      const woNum = Math.floor(Math.random() * 9000) + 1000;
+      const woNum = await getNextDocumentNumber('work_order');
 
       const wo = await base44.entities.WorkOrder.create({
         work_order_number: woNum,

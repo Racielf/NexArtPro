@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { FileText, Loader2 } from 'lucide-react';
 import { prepareDownstreamDocument } from '@/lib/downstreamItemMapper';
+import { getNextDocumentNumber } from '@/lib/documentNumbering';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -36,7 +37,7 @@ export default function ConvertToInvoiceButton({ estimate, onConverted }) {
       }
 
       // Create new invoice
-      const invoiceNum = Math.floor(Math.random() * 9000) + 1000;
+      const invoiceNum = await getNextDocumentNumber('invoice');
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 30);
 
