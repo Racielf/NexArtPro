@@ -199,7 +199,7 @@ export default function EstimateEditor() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0 hidden md:block" />
             <div className="hidden md:block">
               <EstimateTemplateSelector
-                currentTemplate={estimate.document_config?.template || 'professional'}
+                currentTemplate={estimate.document_config?.template || 'clean'}
                 onTemplateChange={handleTemplateChange}
                 onShowOptions={() => setShowDocumentOptions(true)}
               />
