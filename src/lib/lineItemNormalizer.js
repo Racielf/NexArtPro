@@ -12,7 +12,24 @@
  *   - Never mutates the original object
  *   - NaN-safe: every numeric field falls back to a safe default
  *   - Backward-compatible: preserves any extra fields on the object
+ *   - Reconciles service_name → service_id when possible
  */
+import { getServices } from '@/lib/catalogCache';
+import { buildServiceIndex, findBestMatch } from '@/lib/serviceReconciler';
+
+// Lazy-built index, refreshed when services cache changes
+let _indexCache = null;
+let _indexServicesRef = null;
+
+function getServiceIndex() {
+  const services = getServices();
+  // Rebuild if the services array reference changed
+  if (services !== _indexServicesRef) {
+    _indexServicesRef = services;
+    _indexCache = buildServiceIndex(services);
+  }
+  return _indexCache;
+}
 
 const safeNum = (v, fallback = 0) => {
   if (v === null || v === undefined) return fallback;
@@ -47,7 +64,16 @@ export function normalizeLineItem(raw = {}) {
 
   // service_id: preserve string IDs, reject non-string truthy garbage
   const rawSid = raw.service_id;
-  const service_id = (typeof rawSid === 'string' && rawSid.length > 0) ? rawSid : null;
+  let service_id = (typeof rawSid === 'string' && rawSid.length > 0) ? rawSid : null;
+
+  // Reconcile: if no service_id but we have a name, try matching against canonical Services
+  if (!service_id && resolvedName && resolvedName !== '(unnamed)') {
+    const index = getServiceIndex();
+    const match = findBestMatch(resolvedName, index);
+    if (match) {
+      service_id = match.service.id;
+    }
+  }
 
   return {
     ...raw,

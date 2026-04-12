@@ -1,16 +1,20 @@
 /**
  * autolinkServiceIds.js — Resolves service_id on price book entries
- * by normalized name matching against the services catalog.
+ * by matching against the services catalog.
+ *
+ * Matching cascade (per PB entry):
+ *   1. Existing truthy service_id → keep
+ *   2. Exact normalized name match (name or _service_name_ref)
+ *   3. Alias match from Service.aliases
+ *   4. Fuzzy token-overlap match (unambiguous, score ≥ 0.55)
  *
  * RULES:
  * - Never overwrites an existing truthy service_id
- * - Normalizes names for comparison (lowercase, trimmed, collapsed whitespace)
  * - Detects duplicate service names
  * - Reports unmatched price book entries
  * - Never throws — returns stats for safe logging
  */
-
-const normalize = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+import { buildServiceIndex, findBestMatch } from './serviceReconciler';
 
 /**
  * @param {Array} services  — Service catalog entries (each must have .id and .name)
@@ -18,17 +22,20 @@ const normalize = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
  * @returns {{ linked: Array, stats: { totalPB, alreadyLinked, newlyLinked, unmatched, duplicateServices }, unmatched: Array, duplicates: Array }}
  */
 export function autolinkServiceIds(services = [], priceBook = []) {
-  // Build name → service map, detect duplicates
-  const nameMap = new Map();
-  const duplicates = [];
+  // Build index with exact + alias + fuzzy support
+  const index = buildServiceIndex(services);
 
+  // Detect duplicate service names
+  const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const seenNames = new Map();
+  const duplicates = [];
   for (const svc of services) {
-    const key = normalize(svc.name);
+    const key = norm(svc.name);
     if (!key) continue;
-    if (nameMap.has(key)) {
-      duplicates.push({ name: svc.name, ids: [nameMap.get(key).id, svc.id] });
+    if (seenNames.has(key)) {
+      duplicates.push({ name: svc.name, ids: [seenNames.get(key), svc.id] });
     } else {
-      nameMap.set(key, svc);
+      seenNames.set(key, svc.id);
     }
   }
 
@@ -43,17 +50,17 @@ export function autolinkServiceIds(services = [], priceBook = []) {
       return pb;
     }
 
-    // Resolve by normalized name
-    const refName = normalize(pb._service_name_ref || pb.display_name);
-    const match = nameMap.get(refName);
+    // Try matching using the reconciler (exact → alias → fuzzy)
+    const refName = pb._service_name_ref || pb.display_name;
+    const match = findBestMatch(refName, index);
 
     if (match) {
       newlyLinked++;
-      return { ...pb, service_id: match.id };
+      return { ...pb, service_id: match.service.id };
     }
 
     unmatchedEntries.push({
-      name: pb._service_name_ref || pb.display_name,
+      name: refName,
       category: pb.category,
       id: pb.id,
     });
