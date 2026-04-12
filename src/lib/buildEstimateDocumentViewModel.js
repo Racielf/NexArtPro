@@ -73,25 +73,13 @@ function buildTermsArray(textObj) {
     .map(t => ({ key: t.key, label: t.label, value: textObj[t.key] }));
 }
 
-// ─── Group name remapping for proposal-style documents ────────────────────────
-const GROUP_RENAMES = {
-  'general': 'Scope of Work',
-  'base bid': 'Scope of Work',
-};
-
-function renameGroup(name) {
-  if (!name) return name;
-  const lower = name.toLowerCase().trim();
-  return GROUP_RENAMES[lower] || name;
-}
-
 // ─── Groups resolution (groups[] or legacy line_items[] fallback) ──────────────
 function resolveGroups(estimate) {
   if (estimate?.groups?.length) {
     return estimate.groups.map(g => {
       const items = (g.items || []).map(normalizeLineItem);
       const subtotal = items.reduce((s, i) => s + (i.line_total || 0), 0);
-      return { id: g.id, name: renameGroup(g.name), collapsed: !!g.collapsed, items, subtotal };
+      return { id: g.id, name: g.name || null, collapsed: !!g.collapsed, items, subtotal };
     });
   }
   if (estimate?.line_items?.length) {
@@ -288,25 +276,6 @@ export function buildEstimateDocumentViewModel({
   // ─── Pre-built terms array for templates ─────────────────────────────────
   const termsArray = buildTermsArray(text);
 
-  // ─── Proposal enhancements (computed helpers for templates) ───────────────
-  const whatsIncludedBullets = [];
-  groups.forEach(g => {
-    (g.items || []).forEach(item => {
-      const name = item.service_name || '';
-      if (name) whatsIncludedBullets.push(name);
-    });
-  });
-  if (materialsItems.length > 0) whatsIncludedBullets.push('All materials as specified');
-  whatsIncludedBullets.push('Professional workmanship and quality assurance');
-  whatsIncludedBullets.push('Project site cleanup upon completion');
-
-  const proposalEnhancements = {
-    whatsIncludedBullets,
-    hasExclusions: !!text.exclusions,
-    hasWarranty: true, // always show warranty section
-    hasTimeline: !!(project.startDate || project.endDate),
-  };
-
   return {
     meta,
     company,
@@ -320,6 +289,5 @@ export function buildEstimateDocumentViewModel({
     text,
     columns,
     termsArray,
-    proposalEnhancements,
   };
 }

@@ -3,7 +3,7 @@ import CompanyLogoBlock from '../../documents/CompanyLogoBlock';
 import FlexibleDocDates from '../../documents/FlexibleDocDates';
 import PaymentMethodsSection from '../../documents/PaymentMethodsSection';
 import {
-  WhatsIncludedSection, ExclusionsSection, WarrantySection,
+  ExclusionsSection, WarrantySection,
   TimelineSection, PaymentTermsBullets, AcceptanceSection,
 } from '../../documents/ProposalSections';
 
@@ -23,7 +23,7 @@ const LIGHT_BG = '#f8fafc';
 const sectionLabel = { fontSize: 11, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, paddingBottom: 6, borderBottom: `2px solid ${BORDER}` };
 
 export default function CleanTemplate({ vm }) {
-  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray, proposalEnhancements } = vm;
+  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray } = vm;
   const { isWorkOrder, isEstimate, showPrices } = opts;
 
   return (
@@ -201,15 +201,6 @@ export default function CleanTemplate({ vm }) {
         </div>
       )}
 
-      {/* ─── WHAT'S INCLUDED ─────────────────────────────────── */}
-      <div style={{ padding: `0 ${P}px` }}>
-        <WhatsIncludedSection
-          groups={groups} materials={vm.materials || []}
-          font={FONT} dark={DARK} muted="#475569" border={BORDER}
-          sectionLabelStyle={sectionLabel}
-        />
-      </div>
-
       {/* ─── NOTES ──────────────────────────────────────────── */}
       {opts.showNotes && text.notes && (
         <div style={{ padding: `0 ${P}px 16px`, borderTop: `1px solid ${BORDER}`, paddingTop: 16 }}>
@@ -219,23 +210,29 @@ export default function CleanTemplate({ vm }) {
       )}
 
       {/* ─── EXCLUSIONS ─────────────────────────────────────── */}
-      <div style={{ padding: `0 ${P}px` }}>
-        <ExclusionsSection exclusions={text.exclusions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />
-      </div>
+      {text.exclusions && (
+        <div style={{ padding: `0 ${P}px` }}>
+          <ExclusionsSection exclusions={text.exclusions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />
+        </div>
+      )}
 
       {/* ─── WARRANTY ───────────────────────────────────────── */}
-      <div style={{ padding: `0 ${P}px` }}>
-        <WarrantySection warrantyTerms={text.warrantyTerms} font={FONT} muted="#475569" sectionLabelStyle={sectionLabel} />
-      </div>
+      {text.warrantyTerms && (
+        <div style={{ padding: `0 ${P}px` }}>
+          <WarrantySection warrantyTerms={text.warrantyTerms} font={FONT} muted="#475569" sectionLabelStyle={sectionLabel} />
+        </div>
+      )}
 
       {/* ─── ESTIMATED TIMELINE ─────────────────────────────── */}
-      <div style={{ padding: `0 ${P}px` }}>
-        <TimelineSection
-          startDate={project.startDate} endDate={project.endDate}
-          font={FONT} dark={DARK} muted={MUTED} border={BORDER}
-          sectionLabelStyle={sectionLabel}
-        />
-      </div>
+      {(project.startDate || project.endDate) && (
+        <div style={{ padding: `0 ${P}px` }}>
+          <TimelineSection
+            startDate={project.startDate} endDate={project.endDate}
+            font={FONT} dark={DARK} muted={MUTED} border={BORDER}
+            sectionLabelStyle={sectionLabel}
+          />
+        </div>
+      )}
 
       {/* ─── PAYMENT TERMS (bullet format) ──────────────────── */}
       {opts.showTerms && (

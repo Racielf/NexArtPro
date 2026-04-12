@@ -3,7 +3,7 @@ import CompanyLogoBlock from '../../documents/CompanyLogoBlock';
 import FlexibleDocDates from '../../documents/FlexibleDocDates';
 import PaymentMethodsSection from '../../documents/PaymentMethodsSection';
 import {
-  WhatsIncludedSection, ExclusionsSection, WarrantySection,
+  ExclusionsSection, WarrantySection,
   TimelineSection, PaymentTermsBullets, AcceptanceSection,
 } from '../../documents/ProposalSections';
 
@@ -27,7 +27,7 @@ const sectionLabel = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase'
 const cardSectionLabel = { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8', marginBottom: 8 };
 
 export default function ModernCardTemplate({ vm }) {
-  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray, proposalEnhancements } = vm;
+  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray } = vm;
   const { isWorkOrder, isEstimate, showPrices } = opts;
 
   return (
@@ -214,15 +214,6 @@ export default function ModernCardTemplate({ vm }) {
         </div>
       )}
 
-      {/* ─── WHAT'S INCLUDED CARD ────────────────────────────── */}
-      <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
-        <WhatsIncludedSection
-          groups={groups} materials={vm.materials || []}
-          font={FONT} dark={DARK} muted="#475569" border={BORDER}
-          sectionLabelStyle={sectionLabel}
-        />
-      </div>
-
       {/* ─── NOTES CARD ─────────────────────────────────────── */}
       {opts.showNotes && text.notes && (
         <div style={{ ...card(), padding: '22px 24px', marginBottom: 20, borderLeft: `4px solid ${ACCENT}` }}>
@@ -234,13 +225,13 @@ export default function ModernCardTemplate({ vm }) {
       {/* ─── EXCLUSIONS + WARRANTY + TIMELINE CARD ──────────── */}
       {(text.exclusions || text.warrantyTerms || project.startDate || project.endDate) && (
         <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
-          <ExclusionsSection exclusions={text.exclusions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />
-          <WarrantySection warrantyTerms={text.warrantyTerms} font={FONT} muted="#475569" sectionLabelStyle={sectionLabel} accentColor={ACCENT} />
-          <TimelineSection
+          {text.exclusions && <ExclusionsSection exclusions={text.exclusions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />}
+          {text.warrantyTerms && <WarrantySection warrantyTerms={text.warrantyTerms} font={FONT} muted="#475569" sectionLabelStyle={sectionLabel} accentColor={ACCENT} />}
+          {(project.startDate || project.endDate) && <TimelineSection
             startDate={project.startDate} endDate={project.endDate}
             font={FONT} dark={DARK} muted={MUTED} border={BORDER}
             sectionLabelStyle={sectionLabel}
-          />
+          />}
         </div>
       )}
 

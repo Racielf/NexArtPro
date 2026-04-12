@@ -9,22 +9,9 @@ import React from 'react';
  */
 
 // ─── What's Included ───────────────────────────────────────────────────────
-export function WhatsIncludedSection({ groups = [], materials = [], font, dark, muted, border, sectionLabelStyle }) {
-  // Build bullet list from line items across all groups
-  const bullets = [];
-  groups.forEach(g => {
-    (g.items || []).forEach(item => {
-      const name = item.service_name || item.name;
-      if (name) bullets.push(name);
-    });
-  });
-  if (materials.length > 0) {
-    bullets.push('All materials as specified');
-  }
-  // Standard inclusions
-  bullets.push('Professional workmanship and quality assurance');
-  bullets.push('Project site cleanup upon completion');
-
+// Only renders when explicit bullet data is passed via the `bullets` prop.
+// Does NOT auto-generate content from line items.
+export function WhatsIncludedSection({ bullets = [], font, dark, muted, border, sectionLabelStyle }) {
   if (bullets.length === 0) return null;
 
   return (
@@ -76,8 +63,9 @@ export function ExclusionsSection({ exclusions, font, muted, sectionLabelStyle }
 }
 
 // ─── Warranty ──────────────────────────────────────────────────────────────
+// Only renders when warrantyTerms is provided. No fallback content.
 export function WarrantySection({ warrantyTerms, font, muted, sectionLabelStyle, accentColor }) {
-  const defaultWarranty = 'All workmanship is backed by our quality guarantee. We stand behind every project and will address any workmanship-related issues promptly. Please contact us within the warranty period for any concerns.';
+  if (!warrantyTerms) return null;
 
   return (
     <div style={{ marginBottom: 20 }}>
@@ -88,7 +76,7 @@ export function WarrantySection({ warrantyTerms, font, muted, sectionLabelStyle,
         border: `1px solid ${accentColor ? `${accentColor}20` : '#e2e8f0'}`,
       }}>
         <p style={{ fontFamily: font, fontSize: 12, color: muted || '#475569', lineHeight: 1.7, margin: 0 }}>
-          {warrantyTerms || defaultWarranty}
+          {warrantyTerms}
         </p>
       </div>
     </div>
