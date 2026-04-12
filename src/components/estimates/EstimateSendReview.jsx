@@ -14,8 +14,9 @@ import EstimateTemplateRenderer from './EstimateTemplateRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import LossPreventionModal from './internal/LossPreventionModal';
+import AttachmentWarningModal from './internal/AttachmentWarningModal';
 import { markEstimateSent } from '@/lib/estimateSalesLifecycle';
-import { validateEstimatePricing } from '@/lib/pricingValidation';
+import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 
 async function logDocument(estimateId, estimate, action, extra = {}) {
@@ -113,6 +114,8 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
    const [confirmOpen, setConfirmOpen] = useState(false);
    const [lossModalOpen, setLossModalOpen] = useState(false);
    const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [], materialsWithoutCost: [] });
+   const [attachWarningOpen, setAttachWarningOpen] = useState(false);
+   const [attachWarningReasons, setAttachWarningReasons] = useState([]);
 
   if (!open) return null;
 
@@ -160,6 +163,17 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
   // In Estimate flow, always use Estimate label — only BID overrides
   const docConfig = estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE');
 
+  // Proceeds past attachment check to pricing validation
+  const proceedToPricingValidation = () => {
+    const pv = validateEstimatePricing(estimate);
+    if (!pv.canProceed || pv.requiresConfirmation) {
+      setLossValidation(pv);
+      setLossModalOpen(true);
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
   const handleConfirmSend = () => {
     if (!recipientEmail) { toast.error('Recipient email is required'); return; }
     // Document type validation — BID requires job_number or plan_reference
@@ -168,14 +182,15 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       dtv.errors.forEach(e => toast.error(e));
       return;
     }
-    // Loss prevention gate — block losses, warn zero-profit
-    const pv = validateEstimatePricing(estimate);
-    if (!pv.canProceed || pv.requiresConfirmation) {
-      setLossValidation(pv);
-      setLossModalOpen(true);
+    // Attachment completeness check — warn if likely needed but missing
+    const ac = checkAttachmentCompleteness(estimate);
+    if (ac.needsWarning) {
+      setAttachWarningReasons(ac.reasons);
+      setAttachWarningOpen(true);
       return;
     }
-    setConfirmOpen(true);
+    // Loss prevention gate — block losses, warn zero-profit
+    proceedToPricingValidation();
   };
 
   const handleSend = async () => {
@@ -475,6 +490,14 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       </div>
 
       {/* LOSS PREVENTION MODAL */}
+      {/* ATTACHMENT WARNING MODAL */}
+      <AttachmentWarningModal
+        open={attachWarningOpen}
+        onClose={() => setAttachWarningOpen(false)}
+        onSendWithout={() => { setAttachWarningOpen(false); proceedToPricingValidation(); }}
+        reasons={attachWarningReasons}
+      />
+
       <LossPreventionModal
         open={lossModalOpen}
         onClose={() => setLossModalOpen(false)}
