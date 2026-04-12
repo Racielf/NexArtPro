@@ -248,7 +248,13 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       }
       const fullMessage = `${message}\n\nView & approve your estimate here:\n${clientLink}${attachmentSection}`;
       try {
-      await base44.integrations.Core.SendEmail({ to: recipientEmail, subject, body: fullMessage });
+      const emailRes = await base44.functions.invoke('sendEstimateEmail', {
+        to: recipientEmail,
+        subject,
+        body: fullMessage,
+        from_name: appConfig.appName || 'RC Art Construction',
+      });
+      if (emailRes.data?.error) throw new Error(emailRes.data.error);
       await logDocument(estimate.id, estimate, 'sent_email', { recipient_email: recipientEmail, subject, secure_link: clientLink });
       // ── Audit log: estimate sent ──
       const currentUser = await base44.auth.me().catch(() => null);
@@ -280,8 +286,9 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
           estimate_id: estimate.id,
           subject,
         });
-        setSentError('Failed to send email. Please try again.');
-        toast.error('Failed to send email');
+        const errMsg = error?.message || 'Failed to send email';
+        setSentError(errMsg);
+        toast.error(errMsg);
       }
     } catch (error) {
       setSentError('Failed to update estimate. Please try again.');
