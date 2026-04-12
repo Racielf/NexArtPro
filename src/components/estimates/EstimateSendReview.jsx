@@ -43,7 +43,7 @@ const DEFAULT_VISIBILITY = {
   serviceDate: true,
   technicianName: true,
   services: true,
-  materials: true,
+  materialsSection: true,
 };
 
 const VISIBILITY_LABELS = {

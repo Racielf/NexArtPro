@@ -255,8 +255,20 @@ export function buildEstimateDocumentViewModel({
     paymentTerms: safeStr(estimate.payment_terms),
     warrantyTerms: safeStr(estimate.warranty_terms),
     legalTerms: safeStr(estimate.legal_terms),
-    materialsNotes: safeStr(estimate.materials_notes),
   };
+
+  // ─── Materials ────────────────────────────────────────────────────────────
+  const materialsRaw = Array.isArray(estimate.materials) ? estimate.materials : [];
+  const materialsItems = materialsRaw.map(m => ({
+    id: m.id || '',
+    name: safeStr(m.name),
+    description: safeStr(m.description),
+    quantity: safeNum(m.quantity),
+    unit: safeStr(m.unit, 'ea'),
+    unit_price: safeNum(m.unit_price),
+    line_total: safeNum(m.line_total),
+  }));
+  const materialsSubtotal = materialsItems.reduce((s, m) => s + m.line_total, 0);
 
   // ─── Columns ─────────────────────────────────────────────────────────────
   const columns = getLineItemColumns(documentType);
@@ -271,6 +283,8 @@ export function buildEstimateDocumentViewModel({
     project,
     visibility,
     groups,
+    materials: materialsItems,
+    materialsSubtotal,
     totals,
     text,
     columns,

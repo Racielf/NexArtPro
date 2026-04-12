@@ -184,10 +184,37 @@ export default function ModernCardTemplate({ vm }) {
       )}
 
       {/* ─── MATERIALS CARD ──────────────────────────────────── */}
-      {opts.showMaterials && text.materialsNotes && (
-        <div style={{ ...card(), padding: '22px 24px', marginBottom: 20, borderLeft: '4px solid #16a34a' }}>
-          <div style={sectionLabel}>Materials</div>
-          <p style={{ color: '#475569', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{text.materialsNotes}</p>
+      {opts.showMaterials && vm.materials && vm.materials.length > 0 && (
+        <div style={{ ...card(), marginBottom: 20 }}>
+          <div style={{ background: '#166534', color: 'white', padding: '9px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Materials</span>
+            {showPrices && <span style={{ fontSize: 11, color: '#bbf7d0' }}>${vm.materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>}
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: `2px solid ${BORDER}` }}>
+                <th style={{ textAlign: 'left', padding: '10px 24px', fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Material</th>
+                <th style={{ textAlign: 'center', padding: '10px 12px', fontSize: 10, fontWeight: 700, color: MUTED, width: 55, textTransform: 'uppercase' }}>Qty</th>
+                <th style={{ textAlign: 'center', padding: '10px 12px', fontSize: 10, fontWeight: 700, color: MUTED, width: 55, textTransform: 'uppercase' }}>Unit</th>
+                {showPrices && <th style={{ textAlign: 'right', padding: '10px 20px', fontSize: 10, fontWeight: 700, color: MUTED, width: 100, textTransform: 'uppercase' }}>Price</th>}
+                {showPrices && <th style={{ textAlign: 'right', padding: '10px 24px', fontSize: 10, fontWeight: 700, color: MUTED, width: 110, textTransform: 'uppercase' }}>Total</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {vm.materials.map((m, idx) => (
+                <tr key={m.id || idx} style={{ background: idx % 2 === 0 ? 'white' : '#fafbfc', borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '12px 24px' }}>
+                    <div style={{ fontWeight: 600, color: DARK }}>{m.name}</div>
+                    {m.description && <div style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>{m.description}</div>}
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '12px', color: '#475569' }}>{m.quantity}</td>
+                  <td style={{ textAlign: 'center', padding: '12px', color: '#475569', fontSize: 12 }}>{m.unit}</td>
+                  {showPrices && <td style={{ textAlign: 'right', padding: '12px 20px', color: '#475569' }}>${m.unit_price.toFixed(2)}</td>}
+                  {showPrices && <td style={{ textAlign: 'right', padding: '12px 24px', fontWeight: 700, color: DARK }}>${m.line_total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

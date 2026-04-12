@@ -144,9 +144,22 @@ export default function BidDocumentRenderer({ estimate, options = {}, lang: lang
         )}
 
         {/* ═══ 5c. MATERIALS ═══ */}
-        {estimate.materials_notes && (
+        {Array.isArray(estimate.materials) && estimate.materials.length > 0 && (
           <PDFSectionBlock title="Materials" accent={SECTION_COLOR} spacing="tight">
-            <p style={S.body}>{estimate.materials_notes}</p>
+            <PDFLineItemsTable
+              groups={[{ id: 'materials', name: null, items: estimate.materials.map(m => ({
+                id: m.id,
+                service_name: m.name || '',
+                description: m.description || '',
+                quantity: m.quantity || 0,
+                unit: m.unit || 'ea',
+                unit_price: m.unit_price || 0,
+                line_total: m.line_total || 0,
+              })) }]}
+              showPrices={opts.showPrices}
+              lang={primaryLang}
+              variant="bid"
+            />
           </PDFSectionBlock>
         )}
 

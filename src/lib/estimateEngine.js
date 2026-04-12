@@ -179,6 +179,7 @@ export function runEstimateEngine(groups = [], {
   discountType = 'percent',
   discountValue = 0,
   depositPercent = 0,
+  materials = [],
 } = {}) {
   // Flatten all items across groups and recalculate each line_total
   const allItems = [];
@@ -192,7 +193,17 @@ export function runEstimateEngine(groups = [], {
     }),
   }));
 
-  const subtotal     = calculateSubtotal(allItems);
+  // Process materials items
+  const processedMaterials = (materials || []).map(item => {
+    const line_total = calculateLineTotal(item.quantity, item.unit_price);
+    return { ...item, line_total };
+  });
+  const materialsSubtotal = toMoney(
+    processedMaterials.reduce((acc, item) => acc.plus(D(item.line_total)), new Decimal(0))
+  );
+
+  const servicesSubtotal = calculateSubtotal(allItems);
+  const subtotal     = toMoney(D(servicesSubtotal).plus(D(materialsSubtotal)));
   const taxableBase  = calculateTaxableBase(allItems);
   const discountAmt  = calculateDiscount(subtotal, discountType, discountValue);
   const taxAmount    = calculateTax(toMoney(D(taxableBase).minus(D(discountAmt))), taxRate);
@@ -200,11 +211,13 @@ export function runEstimateEngine(groups = [], {
   const depositAmt   = calculateDeposit(grandTotal, depositPercent);
 
   // ── Internal / Audit data (never sent to client) ──
-  const totalCost = toMoney(
-    allItems.reduce((acc, item) => {
-      return acc.plus(D(item.unit_cost).times(D(item.quantity)));
-    }, new Decimal(0))
+  const materialsCost = toMoney(
+    processedMaterials.reduce((acc, item) => acc.plus(D(item.unit_cost).times(D(item.quantity))), new Decimal(0))
   );
+  const servicesCost = toMoney(
+    allItems.reduce((acc, item) => acc.plus(D(item.unit_cost).times(D(item.quantity))), new Decimal(0))
+  );
+  const totalCost = toMoney(D(servicesCost).plus(D(materialsCost)));
 
   const totalVariance = toMoney(
     allItems.reduce((acc, item) => {
@@ -234,6 +247,8 @@ export function runEstimateEngine(groups = [], {
   return {
     // Processed data
     groups: processedGroups,
+    materials: processedMaterials,
+    materialsSubtotal,
     // Customer-facing financials
     subtotal,
     discountAmount: discountAmt,
@@ -242,9 +257,9 @@ export function runEstimateEngine(groups = [], {
     depositAmount: depositAmt,
     // Internal audit (admin only)
     totalCost,
-    totalBookValue,      // sum of book_price * qty across all items with book data
-    totalVariance,       // sum of (unit_price - book_price) * qty — positive = selling above book
-    marginPercentage,    // totalVariance / totalBookValue * 100
+    totalBookValue,
+    totalVariance,
+    marginPercentage,
     grossMargin,
     grossMarginPct,
   };

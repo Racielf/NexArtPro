@@ -26,6 +26,7 @@ import { logChange } from '@/lib/estimateAuditLog';
 import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
 import { logFieldChange } from '@/lib/pricingAuditService';
 import ConcreteMetrics from '@/components/estimates/internal/ConcreteMetrics';
+import MaterialsSection from '@/components/estimates/MaterialsSection';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -505,7 +506,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [warrantyTerms, setWarrantyTerms] = useState(estimate?.warranty_terms || '');
   const [paymentTerms, setPaymentTerms] = useState(estimate?.payment_terms || '');
   const [legalTerms, setLegalTerms] = useState(estimate?.legal_terms || '');
-  const [materialsNotes, setMaterialsNotes] = useState(estimate?.materials_notes || '');
+  const [materials, setMaterials] = useState(estimate?.materials || []);
   const [showCost, setShowCost] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [fixedItemIds, setFixedItemIds] = useState(new Set());
@@ -555,7 +556,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     setWarrantyTerms(estimate.warranty_terms || '');
     setPaymentTerms(estimate.payment_terms || '');
     setLegalTerms(estimate.legal_terms || '');
-    setMaterialsNotes(estimate.materials_notes || '');
+    setMaterials(estimate.materials || []);
   }, [estimate?.id]);
 
   // Debounced auto-save
@@ -563,11 +564,13 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     // Signal parent that local changes exist before debounce fires
     if (onDirty) onDirty();
     const t = setTimeout(() => {
-      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
+      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials });
 
       onSave({
         ...estimate,
         groups: result.groups,
+        materials: result.materials,
+        materials_subtotal: result.materialsSubtotal,
         tax_rate: taxRate,
         discount_type: discountType,
         discount_value: discountValue,
@@ -579,7 +582,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         warranty_terms: warrantyTerms,
         payment_terms: paymentTerms,
         legal_terms: legalTerms,
-        materials_notes: materialsNotes,
         subtotal: result.subtotal,
         discount_amount: result.discountAmount,
         tax_amount: result.taxAmount,
@@ -591,7 +593,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, materialsNotes]);
+  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, materials]);
 
   const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
@@ -600,8 +602,8 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   // Live reactive calculation
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
           totalCost, grossMargin, grossMarginPct,
-          totalVariance, totalBookValue, marginPercentage } =
-    runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent });
+          totalVariance, totalBookValue, marginPercentage, materialsSubtotal } =
+    runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials });
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
@@ -666,6 +668,11 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary border-2 border-dashed border-slate-200 hover:border-primary/40 rounded-xl w-full py-3 justify-center transition-colors mb-4">
         <Plus className="w-4 h-4" />Add work group
       </button>
+
+      {/* ── MATERIALS SECTION ── */}
+      <div className="mb-4">
+        <MaterialsSection materials={materials} onChange={setMaterials} showCost={showCost} />
+      </div>
 
       {/* ── TOTALS CARD ── */}
       <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
@@ -770,10 +777,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
           <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent />
           <NotesSection label="Exclusions" placeholder="What is NOT included in this estimate…" value={exclusions} onChange={setExclusions} />
           <NotesSection label="Payment Terms" placeholder="e.g. 50% deposit, balance on completion…" value={paymentTerms} onChange={setPaymentTerms} />
-        </div>
-
-        <div className="mt-4">
-          <NotesSection label="Materials" placeholder="e.g. concrete, wire mesh, gravel, supplier notes…" value={materialsNotes} onChange={setMaterialsNotes} />
         </div>
 
         <button onClick={() => setShowTerms(v => !v)}

@@ -150,6 +150,39 @@
         }
       }
     },
+    "materials": {
+      "type": "array",
+      "description": "Optional structured materials items (concrete, mesh, gravel, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "unit_cost": {
+            "type": "number"
+          },
+          "line_total": {
+            "type": "number"
+          }
+        }
+      }
+    },
     "line_items": {
       "type": "array",
       "description": "Legacy flat line items (kept for backward compat)",
@@ -179,8 +212,7 @@
               "internal_only",
               "send_to_client"
             ],
-            "default": "internal_only",
-            "description": "internal_only = company use; send_to_client = included in client email"
+            "default": "internal_only"
           },
           "uploaded_by": {
             "type": "string"
@@ -237,6 +269,11 @@
     "gross_margin_pct": {
       "type": "number"
     },
+    "materials_subtotal": {
+      "type": "number",
+      "default": 0,
+      "description": "Sum of materials line totals"
+    },
     "notes": {
       "type": "string"
     },
@@ -254,10 +291,6 @@
     },
     "legal_terms": {
       "type": "string"
-    },
-    "materials_notes": {
-      "type": "string",
-      "description": "Client-facing materials information (concrete, mesh, gravel, suppliers, etc.)"
     },
     "sent_at": {
       "type": "string"
@@ -331,7 +364,7 @@
       "properties": {
         "template": {
           "type": "string",
-          "description": "Template key: minimal, compact, professional, modern, executive, detailed",
+          "description": "Template key",
           "default": "professional"
         },
         "options": {
