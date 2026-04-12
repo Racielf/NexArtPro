@@ -3,8 +3,11 @@ import DocumentHeader from '../documents/DocumentHeader';
 import DocumentFooter from '../documents/DocumentFooter';
 import DocumentSummary from '../documents/DocumentSummary';
 import CompanyLogoBlock from '../documents/CompanyLogoBlock';
+import FlexibleDocHeader from '../documents/FlexibleDocHeader';
+import FlexibleDocClientProject from '../documents/FlexibleDocClientProject';
 import useCompanyConfig from '@/hooks/useCompanyConfig';
 import { buildEstimateDocumentViewModel } from '@/lib/buildEstimateDocumentViewModel';
+import { getTemplateLayout } from '@/lib/templateLayouts';
 
 /**
  * EstimateTemplateRenderer — Universal document renderer with 6 distinct templates
@@ -58,6 +61,25 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   const { isWorkOrder, isInvoice, isEstimate, showPrices } = opts;
 
   // ═══════════════════════════════════════════════════════════════════════
+  // LAYOUT CONFIG — structural decisions per template
+  // ═══════════════════════════════════════════════════════════════════════
+  const layout = getTemplateLayout(meta.template);
+
+  // Props for FlexibleDocHeader
+  const flexHeaderCompany = {
+    name: company.name,
+    tagline: company.tagline,
+    address: company.address,
+    email: company.email,
+    phone: company.phone,
+    logoUrl: company.logoUrl,
+  };
+
+  // Props for FlexibleDocClientProject
+  const flexClient = { name: client.name, address: client.address, email: client.email, phone: client.phone };
+  const flexProject = { title: project.title, startDate: project.startDate, endDate: project.endDate, hasProjectDates: project.hasProjectDates, assignedTo: project.assignedTo };
+
+  // ═══════════════════════════════════════════════════════════════════════
   // SHARED CHILD PROPS — fully vm-driven, no raw estimate references
   // ═══════════════════════════════════════════════════════════════════════
   const headerProps = {
@@ -91,55 +113,25 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE: MINIMAL
   // ═══════════════════════════════════════════════════════════════════════
-  const renderMinimalTemplate = () => (
-    <div style={{ fontFamily: 'Arial, sans-serif', fontSize: 11, color: '#222', padding: '40px', background: 'white', lineHeight: 1.6, maxWidth: 760 }}>
+  const renderMinimalTemplate = () => {
+    const minLayout = getTemplateLayout('minimal');
+    return (
+    <div style={{ fontFamily: minLayout.font, fontSize: 11, color: '#222', padding: '0', background: 'white', lineHeight: 1.6, maxWidth: 760 }}>
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, paddingBottom: 16, borderBottom: '2px solid #222' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {company.logoUrl && <CompanyLogoBlock logoUrl={company.logoUrl} size={40} borderColor="#222" bgColor="#f5f5f5" />}
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 'bold', color: '#111', marginBottom: 4 }}>{company.name}</div>
-            <div style={{ fontSize: 10, color: '#555', lineHeight: 1.7 }}>
-              {company.address}<br />
-              {company.email} &nbsp;·&nbsp; {company.phone}
-            </div>
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 16, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{meta.documentTypeLabel}</div>
-          <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 4 }}>#{meta.documentNumber || '—'}</div>
-          <div style={{ fontSize: 10, color: '#555' }}>{meta.today}</div>
-          {meta.expirationDate && <div style={{ fontSize: 10, color: '#555' }}>Expires: {meta.expirationDate}</div>}
-        </div>
-      </div>
+      {/* HEADER — layout-driven */}
+      <FlexibleDocHeader layout={minLayout} company={flexHeaderCompany} meta={meta} />
 
-      {/* BILL TO + PROJECT DATES */}
-      <div style={{ display: 'flex', gap: 40, marginBottom: 24 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, color: '#888', marginBottom: 6 }}>Bill To</div>
-          <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 3 }}>{client.name}</div>
-          {client.address && <div style={{ color: '#444', fontSize: 11 }}>{client.address}</div>}
-          {client.email && <div style={{ color: '#555', fontSize: 10 }}>{client.email}</div>}
-          {client.phone && <div style={{ color: '#555', fontSize: 10 }}>{client.phone}</div>}
-        </div>
-        {opts.showProjectDates && project.hasProjectDates && (
-          <div>
-            <div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, color: '#888', marginBottom: 6 }}>Project Schedule</div>
-            {project.startDate && <div style={{ fontSize: 11, marginBottom: 3 }}><span style={{ color: '#888' }}>Start: </span>{project.startDate}</div>}
-            {project.endDate && <div style={{ fontSize: 11 }}><span style={{ color: '#888' }}>End: </span>{project.endDate}</div>}
-          </div>
-        )}
-      </div>
+      {/* CLIENT + PROJECT — layout-driven */}
+      <FlexibleDocClientProject layout={minLayout} client={flexClient} project={flexProject} meta={meta} showProjectDates={opts.showProjectDates} />
 
       {/* Project title */}
       {project.title && (
-        <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 16 }}>{project.title}</div>
+        <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 16, padding: '0 44px' }}>{project.title}</div>
       )}
 
       {/* LINE ITEMS */}
       {opts.showBreakdown && groups.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 20, padding: '0 44px' }}>
           {groups.map((group, gi) => (
             <div key={group.id || gi} style={{ marginBottom: gi < groups.length - 1 ? 16 : 0 }}>
               {group.name && (
@@ -224,72 +216,28 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       )}
 
       {/* FOOTER */}
-      <div style={{ marginTop: 32, paddingTop: 10, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#aaa' }}>
+      <div style={{ marginTop: 32, paddingTop: 10, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#aaa', padding: '10px 44px' }}>
         <span>{company.name} · {company.city}</span>
         <span>{meta.today}</span>
       </div>
     </div>
   );
+  };
 
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE: STANDARD
   // ═══════════════════════════════════════════════════════════════════════
   const renderStandardTemplate = () => (
-    <div id="estimate-document" style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: 13, lineHeight: 1.5, background: 'white', color: '#0f172a', minWidth: 640 }}>
-      {/* HEADER */}
-      <div style={{ background: '#0f172a', padding: '36px 52px 30px', color: 'white' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-              <CompanyLogoBlock logoUrl={company.logoUrl} size={48} />
-              <div>
-                <div style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '-0.4px' }}>{company.name}</div>
-                <div style={{ color: '#64748b', fontSize: 11 }}>{company.tagline}</div>
-              </div>
-            </div>
-            <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.8 }}>
-              {company.address}<br />{company.email}<br />{company.phone}
-            </div>
-          </div>
-          <DocumentHeader
-            {...headerProps}
-            showStatus={true}
-            variant="standard"
-            style={{ textAlign: 'right', color: 'white' }}
-          />
-        </div>
-      </div>
+    <div id="estimate-document" style={{ fontFamily: layout.font, fontSize: 13, lineHeight: 1.5, background: 'white', color: '#0f172a', minWidth: 640 }}>
+      {/* HEADER — layout-driven */}
+      <FlexibleDocHeader layout={layout} company={flexHeaderCompany} meta={meta} />
 
-      {/* BILL TO + PROJECT */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid #e2e8f0' }}>
-        <div style={{ padding: '28px 52px', borderRight: '1px solid #e2e8f0' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>Bill To</div>
-          <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>{client.name}</div>
-          {client.address && <div style={{ color: '#475569', fontSize: 13, marginBottom: 4 }}>{client.address}</div>}
-          {client.email && <div style={{ color: '#64748b', fontSize: 12, marginBottom: 3 }}>✉ {client.email}</div>}
-          {client.phone && <div style={{ color: '#64748b', fontSize: 12 }}>📞 {client.phone}</div>}
-        </div>
-        <div style={{ padding: '28px 52px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>Project Details</div>
-          {project.title && <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 14, marginBottom: 10 }}>{project.title}</div>}
-          {opts.showProjectDates && project.hasProjectDates && (
-            <div style={{ display: 'flex', gap: 24, marginBottom: 10 }}>
-              {project.startDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Start</div><div style={{ color: '#334155', fontSize: 12 }}>{project.startDate}</div></div>}
-              {project.endDate && <div><div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>End</div><div style={{ color: '#334155', fontSize: 12 }}>{project.endDate}</div></div>}
-            </div>
-          )}
-          {project.assignedTo && (
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Assigned To</div>
-              <div style={{ color: '#334155', fontSize: 12 }}>{project.assignedTo}</div>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* BILL TO + PROJECT — layout-driven */}
+      <FlexibleDocClientProject layout={layout} client={flexClient} project={flexProject} meta={meta} showProjectDates={opts.showProjectDates} />
 
       {/* LINE ITEMS */}
       {opts.showBreakdown && groups.length > 0 && (
-        <div style={{ padding: '28px 52px 0' }}>
+        <div style={{ padding: '28px 44px 0' }}>
           {groups.map((group, gi) => {
             const showGroupHeader = group.name && groups.length > 1;
             const th = { textAlign: 'right', padding: '9px 12px', fontWeight: 600, color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid #e2e8f0', borderTop: '1px solid #e2e8f0' };
@@ -404,49 +352,28 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   // TEMPLATE: MODERN
   // ═══════════════════════════════════════════════════════════════════════
   const renderModernTemplate = () => {
-    const accentColor = '#7c3aed';
+    const modernLayout = getTemplateLayout('modern');
     return (
-      <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 12, color: '#1f2937', background: 'white', padding: '40px' }}>
-        {/* Header */}
-        <div style={{ marginBottom: 30, paddingBottom: 20, borderBottom: `4px solid ${accentColor}` }}>
-          <DocumentHeader
-            {...headerProps}
-            showStatus={false}
-            variant="modern"
-            style={{ color: '#111' }}
-          />
-        </div>
+      <div style={{ fontFamily: modernLayout.font, fontSize: 12, color: '#1f2937', background: 'white', padding: '0' }}>
+        {/* Header — layout-driven */}
+        <FlexibleDocHeader layout={modernLayout} company={flexHeaderCompany} meta={meta} />
 
-        {/* Two-column */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 30, marginBottom: 30 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 'bold', color: accentColor, textTransform: 'uppercase', marginBottom: 8 }}>Bill To</div>
-            <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 5 }}>{client.name}</div>
-            <div style={{ fontSize: 11, color: '#666', lineHeight: 1.8 }}>
-              {client.address && <div>{client.address}</div>}
-              {client.email && <div>{client.email}</div>}
-              {client.phone && <div>{client.phone}</div>}
+        {/* Client + Project — layout-driven */}
+        <FlexibleDocClientProject layout={modernLayout} client={flexClient} project={flexProject} meta={meta} showProjectDates={opts.showProjectDates} />
+
+        {/* Amount Due callout */}
+        {showPrices && (
+          <div style={{ padding: '0 44px 24px' }}>
+            <div style={{ background: '#f3f4f6', padding: '16px 20px', borderRadius: 8, display: 'inline-block' }}>
+              <div style={{ fontSize: 10, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', marginBottom: 6 }}>Amount Due</div>
+              <div style={{ fontSize: 24, fontWeight: 'bold', color: modernLayout.accentColor }}>${totals.total.toFixed(2)}</div>
             </div>
           </div>
-          <div>
-            {project.title && (
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 'bold', color: accentColor, textTransform: 'uppercase', marginBottom: 8 }}>Project</div>
-                <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 10 }}>{project.title}</div>
-              </div>
-            )}
-            {showPrices && (
-              <div style={{ background: '#f3f4f6', padding: '15px', borderRadius: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', marginBottom: 8 }}>Amount Due</div>
-                <div style={{ fontSize: 24, fontWeight: 'bold', color: accentColor }}>${totals.total.toFixed(2)}</div>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Notes */}
         {text.notes && (
-          <div style={{ background: '#f0f9ff', border: `1px solid ${accentColor}`, borderRadius: 8, padding: 15, marginBottom: 30 }}>
+          <div style={{ background: '#f0f9ff', border: `1px solid ${modernLayout.accentColor}`, borderRadius: 8, padding: 15, marginBottom: 30, margin: '0 44px 30px' }}>
             <div style={{ fontWeight: 'bold', marginBottom: 8 }}>Notes</div>
             <div style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{text.notes}</div>
           </div>
@@ -457,7 +384,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
           <div style={{ marginBottom: 30 }}>
             {groups.map((group, gi) => (
               <div key={group.id || gi} style={{ marginBottom: 20 }}>
-                {group.name && <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 10, paddingBottom: 8, borderBottom: `2px solid ${accentColor}` }}>{group.name}</div>}
+                {group.name && <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 10, paddingBottom: 8, borderBottom: `2px solid ${modernLayout.accentColor}` }}>{group.name}</div>}
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#f9fafb' }}>
@@ -478,7 +405,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
                         {lineCols.quantity && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.quantity}</td>}
                         {lineCols.unit && <td style={{ textAlign: 'center', padding: '10px', fontSize: 11 }}>{item.unit}</td>}
                         {lineCols.price && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11 }}>${item.unit_price.toFixed(2)}</td>}
-                        {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: accentColor }}>${item.line_total.toFixed(2)}</td>}
+                        {lineCols.total && <td style={{ textAlign: 'right', padding: '10px', fontSize: 11, fontWeight: 'bold', color: modernLayout.accentColor }}>${item.line_total.toFixed(2)}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -492,7 +419,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
         <DocumentSummary {...summaryProps} variant="modern" style={{ marginBottom: 30 }} />
 
         {/* Footer */}
-        <DocumentFooter today={meta.today} companyName={company.name} licenseNumber="" variant="modern" showDate={true} showCompany={true} showLicense={false} style={{ borderTop: `2px solid ${accentColor}`, paddingTop: 20, marginTop: 20, textAlign: 'center' }} />
+        <DocumentFooter today={meta.today} companyName={company.name} licenseNumber="" variant="modern" showDate={true} showCompany={true} showLicense={false} style={{ borderTop: `2px solid ${modernLayout.accentColor}`, paddingTop: 20, marginTop: 20, textAlign: 'center' }} />
       </div>
     );
   };
@@ -500,51 +427,25 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE: EXECUTIVE
   // ═══════════════════════════════════════════════════════════════════════
-  const renderExecutiveTemplate = () => (
-    <div style={{ fontFamily: 'Georgia, serif', fontSize: 12, color: '#2d2d2d', background: 'white', padding: '50px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40, paddingBottom: 30, borderBottom: '2px solid #d4a574' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          {company.logoUrl && <CompanyLogoBlock logoUrl={company.logoUrl} size={44} borderColor="#d4a574" bgColor="#faf8f3" />}
-          <div>
-            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 5 }}>{company.name}</div>
-            <div style={{ fontSize: 11, color: '#7a7a7a', letterSpacing: 2, textTransform: 'uppercase' }}>{company.tagline}</div>
-          </div>
-        </div>
-        <DocumentHeader {...headerProps} today={null} expDate={null} showStatus={false} variant="executive" style={{ textAlign: 'right' }} />
-      </div>
+  const renderExecutiveTemplate = () => {
+    const execLayout = getTemplateLayout('executive');
+    return (
+    <div style={{ fontFamily: execLayout.font, fontSize: 12, color: '#2d2d2d', background: 'white', padding: '0' }}>
+      {/* Header — layout-driven (split-premium) */}
+      <FlexibleDocHeader layout={execLayout} company={flexHeaderCompany} meta={meta} />
 
-      {/* Client & Details */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginBottom: 40 }}>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 'bold', color: '#7a7a7a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Prepared For</div>
-          <div style={{ fontSize: 16, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 8 }}>{client.name}</div>
-          <div style={{ fontSize: 11, color: '#555', lineHeight: 1.8 }}>
-            {client.address && <div>{client.address}</div>}
-            {client.email && <div>{client.email}</div>}
-            {client.phone && <div>{client.phone}</div>}
+      {/* Client + Project — layout-driven */}
+      <FlexibleDocClientProject layout={execLayout} client={flexClient} project={flexProject} meta={meta} showProjectDates={opts.showProjectDates} />
+
+      {/* Total Amount callout */}
+      {showPrices && (
+        <div style={{ padding: '0 44px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 15, borderTop: `1px solid ${execLayout.accentColor}`, fontSize: 13 }}>
+            <span style={{ fontWeight: 'bold', color: execLayout.accentColor }}>Total Amount:</span>
+            <span style={{ fontWeight: 'bold', color: '#1a1a1a', fontSize: 16 }}>${totals.total.toFixed(2)}</span>
           </div>
         </div>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 'bold', color: '#7a7a7a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Document Details</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-            <span>Date:</span>
-            <span style={{ fontWeight: 'bold' }}>{meta.today}</span>
-          </div>
-          {meta.expirationDate && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-              <span>Expiration:</span>
-              <span style={{ fontWeight: 'bold' }}>{meta.expirationDate}</span>
-            </div>
-          )}
-          {showPrices && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 15, paddingTop: 15, borderTop: '1px solid #d4a574', fontSize: 13 }}>
-              <span style={{ fontWeight: 'bold', color: '#d4a574' }}>Total Amount:</span>
-              <span style={{ fontWeight: 'bold', color: '#1a1a1a', fontSize: 16 }}>${totals.total.toFixed(2)}</span>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Title */}
       {project.title && (
@@ -555,7 +456,7 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
 
       {/* Notes */}
       {text.notes && (
-        <div style={{ marginBottom: 30, padding: '20px', background: '#faf8f3', borderLeft: '4px solid #d4a574' }}>
+        <div style={{ marginBottom: 30, padding: '20px', margin: '0 44px', background: '#faf8f3', borderLeft: `4px solid ${execLayout.accentColor}` }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8, color: '#1a1a1a' }}>Summary</div>
           <div style={{ fontSize: 11, lineHeight: 1.8, color: '#555', whiteSpace: 'pre-wrap' }}>{text.notes}</div>
         </div>
@@ -601,9 +502,10 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
       <DocumentSummary {...summaryProps} variant="executive" style={{ marginBottom: 40 }} />
 
       {/* Footer */}
-      <DocumentFooter today={meta.today} companyName={company.name} licenseNumber="" variant="executive" showDate={true} showCompany={false} showLicense={false} style={{ paddingTop: 20, borderTop: '2px solid #d4a574', textAlign: 'center', marginTop: 40 }} />
+      <DocumentFooter today={meta.today} companyName={company.name} licenseNumber="" variant="executive" showDate={true} showCompany={false} showLicense={false} style={{ paddingTop: 20, borderTop: `2px solid ${execLayout.accentColor}`, textAlign: 'center', marginTop: 40 }} />
     </div>
   );
+  };
 
   // ═══════════════════════════════════════════════════════════════════════
   // TEMPLATE: COMPACT
@@ -700,7 +602,8 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
   // TEMPLATE: PRO
   // ═══════════════════════════════════════════════════════════════════════
   const renderProTemplate = () => {
-    const PRO_ACCENT = '#1e40af';
+    const proLayout = getTemplateLayout('pro');
+    const PRO_ACCENT = proLayout.accentColor;
     const PRO_ACCENT_LIGHT = '#dbeafe';
     const PRO_DARK = '#0f172a';
 
@@ -712,69 +615,17 @@ export default function EstimateTemplateRenderer({ estimate, template = 'standar
     const label = { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8', marginBottom: 6 };
 
     return (
-      <div style={{ fontFamily: 'Inter, Arial, sans-serif', fontSize: 13, lineHeight: 1.55, background: '#f1f5f9', color: PRO_DARK, minWidth: 680, padding: '40px' }}>
+      <div style={{ fontFamily: proLayout.font, fontSize: 13, lineHeight: 1.55, background: '#f1f5f9', color: PRO_DARK, minWidth: 680, padding: '0' }}>
 
-        {/* HEADER CARD */}
-        <div style={{ ...card(), background: PRO_DARK, color: 'white', padding: '32px 36px', marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <CompanyLogoBlock logoUrl={company.logoUrl} size={52} />
-              <div>
-                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.4px', lineHeight: 1.1 }}>{company.name}</div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{company.tagline} · {company.address || company.city}</div>
-                <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>{company.email} · {company.phone}</div>
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px', color: 'white', lineHeight: 1 }}>{meta.documentTypeLabel}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#38bdf8', marginTop: 6 }}>#{meta.documentNumber || '—'}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>{meta.today}</div>
-              {meta.expirationDate && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Expires: {meta.expirationDate}</div>}
-              {meta.status && meta.status !== 'draft' && (
-                <div style={{ display: 'inline-block', marginTop: 8, padding: '3px 10px', borderRadius: 20, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}>
-                  {meta.statusLabel}
-                </div>
-              )}
-            </div>
+        {/* HEADER — layout-driven (inside a card) */}
+        <div style={{ padding: '40px 40px 0' }}>
+          <div style={{ ...card(), background: PRO_DARK, color: 'white', overflow: 'hidden', marginBottom: 24 }}>
+            <FlexibleDocHeader layout={proLayout} company={flexHeaderCompany} meta={meta} />
           </div>
         </div>
 
-        {/* CLIENT + PROJECT */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-          <div style={{ ...card(), padding: '22px 24px' }}>
-            <div style={label}>Prepared For</div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: PRO_DARK, marginBottom: 6 }}>{client.name}</div>
-            <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.75 }}>
-              {client.address && <div>{client.address}</div>}
-              {client.email && <div>✉ {client.email}</div>}
-              {client.phone && <div>📞 {client.phone}</div>}
-            </div>
-          </div>
-
-          <div style={{ ...card(), padding: '22px 24px' }}>
-            <div style={label}>Project Details</div>
-            {project.title && <div style={{ fontWeight: 700, fontSize: 14, color: PRO_DARK, marginBottom: 10 }}>{project.title}</div>}
-            {opts.showProjectDates && project.hasProjectDates && (
-              <div style={{ display: 'flex', gap: 20, marginTop: project.title ? 4 : 0 }}>
-                {project.startDate && (
-                  <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: 3 }}>Start Date</div>
-                    <div style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{project.startDate}</div>
-                  </div>
-                )}
-                {project.endDate && (
-                  <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: 3 }}>Completion</div>
-                    <div style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{project.endDate}</div>
-                  </div>
-                )}
-              </div>
-            )}
-            {!project.title && !opts.showProjectDates && (
-              <div style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No project details specified</div>
-            )}
-          </div>
-        </div>
+        {/* CLIENT + PROJECT — layout-driven (cards mode) */}
+        <FlexibleDocClientProject layout={proLayout} client={flexClient} project={flexProject} meta={meta} showProjectDates={opts.showProjectDates} />
 
         {/* SERVICES TABLE */}
         {opts.showBreakdown && groups.length > 0 && (
