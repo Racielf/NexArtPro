@@ -13,7 +13,7 @@ import React from 'react';
  */
 export default function CompanyLogoBlock({
   logoUrl,
-  size = 48,
+  size = 96,
   borderColor = '#38bdf8',
   bgColor = '#1e293b',
   style = {},

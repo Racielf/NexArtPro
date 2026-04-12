@@ -29,7 +29,7 @@ export default function CleanTemplate({ vm }) {
       <div style={{ background: DARK, padding: `32px ${P}px 28px`, color: 'white' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-            {opts.showBusinessLogo && <CompanyLogoBlock logoUrl={company.logoUrl} size={46} borderColor="#3b82f6" bgColor={DARK} />}
+            {opts.showBusinessLogo && <CompanyLogoBlock logoUrl={company.logoUrl} size={96} borderColor="#3b82f6" bgColor={DARK} />}
             <div>
               {opts.showBusinessName && <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.3px' }}>{company.name}</div>}
               {opts.showBusinessName && company.tagline && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{company.tagline}</div>}

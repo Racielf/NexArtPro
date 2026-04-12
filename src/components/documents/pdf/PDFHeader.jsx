@@ -18,7 +18,7 @@ export default function PDFHeader({ docLabel, number, date, expDate, variant = '
           {/* Company */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
-              <CompanyLogoBlock logoUrl={logoUrl} size={44} borderColor={accentColor} bgColor="#1e293b" />
+              <CompanyLogoBlock logoUrl={logoUrl} size={96} borderColor={accentColor} bgColor="#1e293b" />
               <div>
                 <div style={{ fontWeight: FONT.weight.extrabold, fontSize: FONT.size['2xl'], letterSpacing: '-0.3px' }}>{appConfig.company.name}</div>
                 <div style={{ color: COLORS.text.muted, fontSize: FONT.size.xs }}>{appConfig.company.tagline}</div>
@@ -47,7 +47,7 @@ export default function PDFHeader({ docLabel, number, date, expDate, variant = '
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 4 }}>
-            {logoUrl && <CompanyLogoBlock logoUrl={logoUrl} size={48} borderColor={accentColor} bgColor="#f8fafc" />}
+            {logoUrl && <CompanyLogoBlock logoUrl={logoUrl} size={96} borderColor={accentColor} bgColor="#f8fafc" />}
             <div style={{ fontSize: FONT.size['5xl'], fontWeight: FONT.weight.extrabold, color: COLORS.text.primary, letterSpacing: '-0.5px' }}>{appConfig.company.name}</div>
           </div>
           <div style={{ fontSize: FONT.size.sm, color: COLORS.text.muted, marginBottom: SPACE.lg }}>

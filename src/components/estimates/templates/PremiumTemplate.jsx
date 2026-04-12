@@ -29,7 +29,7 @@ export default function PremiumTemplate({ vm }) {
       {/* ─── HEADER (centered branding) ─────────────────────── */}
       <div style={{ padding: `40px ${P}px 0`, textAlign: 'center' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-          {opts.showBusinessLogo && <CompanyLogoBlock logoUrl={company.logoUrl} size={52} borderColor={ACCENT} bgColor="#faf8f3" />}
+          {opts.showBusinessLogo && <CompanyLogoBlock logoUrl={company.logoUrl} size={96} borderColor={ACCENT} bgColor="#faf8f3" />}
           <div style={{ textAlign: 'left' }}>
             {opts.showBusinessName && <div style={{ fontSize: 24, fontWeight: 'bold', color: DARK, letterSpacing: '-0.3px' }}>{company.name}</div>}
             {opts.showBusinessName && company.tagline && <div style={{ fontSize: 11, color: MUTED, letterSpacing: 1, textTransform: 'uppercase' }}>{company.tagline}</div>}
