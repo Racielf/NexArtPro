@@ -10,8 +10,8 @@ import { logComm } from '@/lib/commTracking';
 import ClientSignaturePad from '@/components/estimates/ClientSignaturePad';
 import ClientChangesRequest from '@/components/estimates/ClientChangesRequest';
 import FinalDocumentRenderer from '@/components/documents/FinalDocumentRenderer';
-import { EstimateToDocumentMapper } from '@/lib/mappers/EstimateToDocumentMapper';
 import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
+import { downloadEstimate } from '@/lib/estimatePrint';
 import ClientAttachmentsSection from '@/components/estimates/ClientAttachmentsSection';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
@@ -158,8 +158,7 @@ export default function ClientEstimateView() {
   const handlePrint = () => window.print();
 
   const handleDownload = async () => {
-    // Simple print-to-PDF trigger
-    window.print();
+    await downloadEstimate(estimate);
   };
 
   if (loading) return (
@@ -178,7 +177,6 @@ export default function ClientEstimateView() {
     </div>
   );
 
-  const documentData = EstimateToDocumentMapper(estimate);
   const isFinal = ['approved', 'signed', 'declined', 'converted'].includes(estimate.status);
   const canAct = !isFinal && estimate.status !== 'changes_requested';
 
@@ -274,7 +272,7 @@ export default function ClientEstimateView() {
             </Button>,
           ]}
           banners={banners}
-          documentContent={<FinalDocumentRenderer documentData={documentData} />}
+          documentContent={<FinalDocumentRenderer estimate={estimate} />}
           footer={footer}
         />
       </div>
