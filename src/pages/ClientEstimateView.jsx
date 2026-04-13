@@ -29,7 +29,6 @@ import {
   declineEstimate,
   requestEstimateChanges,
 } from '@/lib/estimateSalesLifecycle';
-import ClientAttachmentsSection from '@/components/estimates/ClientAttachmentsSection';
 
 export default function ClientEstimateView() {
   const urlParams = new URLSearchParams(window.location.search);
