@@ -2,38 +2,22 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
-import BidDocumentRenderer from '@/components/documents/BidDocumentRenderer';
-import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import FinalDocumentRenderer from '@/components/documents/FinalDocumentRenderer';
 
 /**
- * Resolves the correct React element for rendering based on document_type.
- * BID → BidDocumentRenderer (structured sections)
- * All other → EstimateTemplateRenderer (template-based)
+ * Creates the React element for print/PDF rendering via FinalDocumentRenderer.
+ * All document type routing happens inside FinalDocumentRenderer.
  *
  * @param {Object} estimate — The estimate record
  * @param {Object} [overrideOptions] — Visibility options (from Review & Send toggles)
  * @param {string} [overrideTemplate] — Template key (from Review & Send selector)
  */
 function resolveRendererElement(estimate, overrideOptions, overrideTemplate) {
-  const mergedOpts = { ...DEFAULT_OPTIONS, ...estimate?.document_config?.options, ...overrideOptions, hideInternalNotes: true };
-  const lang = estimate?.document_language || 'en';
-
-  if (estimate?.document_type === 'BID') {
-    return React.createElement(BidDocumentRenderer, {
-      estimate,
-      options: mergedOpts,
-      lang,
-    });
-  }
-
-  const template = overrideTemplate || estimate?.document_config?.template || 'clean';
-
-  return React.createElement(EstimateTemplateRenderer, {
+  return React.createElement(FinalDocumentRenderer, {
     estimate,
-    template,
-    options: mergedOpts,
-    documentType: 'estimate',
+    options: overrideOptions || {},
+    template: overrideTemplate,
+    lang: estimate?.document_language || 'en',
   });
 }
 
