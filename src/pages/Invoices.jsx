@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/shared/PageHeader';
+import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2 } from 'lucide-react';
@@ -131,7 +132,7 @@ export default function Invoices() {
     <div className="flex flex-col h-full">
       <PageHeader title="Invoices" subtitle={`${invoices.length} total`} />
 
-      <div className="p-6 space-y-4 flex-1">
+      <PageShell>
         {/* Summary */}
         <div className="grid grid-cols-2 gap-4">
           <Card>
@@ -160,14 +161,14 @@ export default function Invoices() {
 
         <div className="flex items-center gap-3">
           {filtered.length > 0 && (
-            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+            <label className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
               <input
                 type="checkbox"
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
                 onChange={toggleSelectAll}
                 className="w-4 h-4 cursor-pointer"
               />
-              <span className="text-xs font-medium text-slate-600">Select all</span>
+              <span className="text-xs font-medium text-muted-foreground">Select all</span>
             </label>
           )}
           <div className="relative flex-1">
@@ -186,9 +187,9 @@ export default function Invoices() {
         ) : (
           <div className="space-y-3">
             {selectedIds.size > 0 && (
-              <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
-                <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5" onClick={() => {
+              <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                <span className="text-sm font-semibold text-primary">{selectedIds.size} selected</span>
+                <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => {
                   if (confirm(`Delete ${selectedIds.size} invoice(s)?`)) handleDeleteSelected();
                 }}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete Selected
@@ -196,7 +197,7 @@ export default function Invoices() {
               </div>
             )}
             {filtered.map(inv => (
-              <Card key={inv.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
+              <Card key={inv.id} className="bg-white hover:shadow-sm hover:border-border/70 transition-all border-border cursor-pointer" onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -212,7 +213,7 @@ export default function Invoices() {
                          <span className="font-bold text-primary">INV#{inv.invoice_number}</span>
                          <h3 className="font-semibold text-foreground">{inv.client_name}</h3>
                          {inv.amount_paid > 0 && inv.amount_paid < inv.total ? (
-                           <span className="inline-block px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">Partial</span>
+                           <StatusBadge status="partial" />
                          ) : (
                            <StatusBadge status={inv.status} />
                          )}
@@ -239,7 +240,7 @@ export default function Invoices() {
             ))}
           </div>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

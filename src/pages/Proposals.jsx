@@ -5,22 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import PageHeader from '@/components/shared/PageHeader';
+import PageShell from '@/components/layout/PageShell';
+import StatusBadge from '@/components/shared/StatusBadge';
 import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
-import { ScrollText, Plus, Search, Pencil, Trash2, CheckCircle, Send, Clock, AlertCircle, FileText, ChevronDown } from 'lucide-react';
+import { ScrollText, Plus, Search, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
-
-const STATUS_CONFIG = {
-  draft:                   { label: 'Draft',              icon: Clock,         cls: 'bg-slate-100 text-slate-600' },
-  review_needed:           { label: 'Review Needed',      icon: AlertCircle,   cls: 'bg-amber-100 text-amber-700' },
-  sent:                    { label: 'Sent',               icon: Send,          cls: 'bg-blue-100 text-blue-700' },
-  approved:                { label: 'Approved',           icon: CheckCircle,   cls: 'bg-emerald-100 text-emerald-800' },
-  accepted:                { label: 'Accepted',           icon: CheckCircle,   cls: 'bg-emerald-100 text-emerald-800' },
-  rejected:                { label: 'Rejected',           icon: AlertCircle,   cls: 'bg-red-100 text-red-700' },
-  converted_to_invoice:    { label: 'Invoiced',           icon: FileText,      cls: 'bg-teal-100 text-teal-800' },
-  converted_to_work_order: { label: 'Work Order',         icon: CheckCircle,   cls: 'bg-purple-100 text-purple-800' },
-  pending_adjustment:      { label: 'Pending Adjustment', icon: AlertCircle,   cls: 'bg-amber-100 text-amber-800' },
-};
 
 export default function Proposals() {
   const navigate = useNavigate();
@@ -232,20 +222,21 @@ export default function Proposals() {
         subtitle={`${proposals.length} total · Draft → Review → Sent → Approved → Invoice`}
         actionLabel={creating ? 'Creating…' : 'New Proposal'}
         onAction={handleNew}
+        disabled={creating}
       />
 
-      <div className="p-6 space-y-4 flex-1">
+      <PageShell>
         {/* Toolbar */}
         <div className="flex items-center gap-3">
           {filtered.length > 0 && (
-            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+            <label className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
               <input
                 type="checkbox"
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
                 onChange={toggleSelectAll}
                 className="w-4 h-4 cursor-pointer"
               />
-              <span className="text-xs font-medium text-slate-600">Select all</span>
+              <span className="text-xs font-medium text-muted-foreground">Select all</span>
             </label>
           )}
           <div className="relative flex-1">
@@ -259,9 +250,9 @@ export default function Proposals() {
 
         {/* Action Bar */}
         {selectedIds.size > 0 && (
-          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-            <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
-            <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5"
+          <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+            <span className="text-sm font-semibold text-primary">{selectedIds.size} selected</span>
+            <Button size="sm" variant="destructive" className="gap-1.5"
               onClick={() => setDeleteModal({ open: true, proposal: null })}>
               <Trash2 className="w-3.5 h-3.5" /> Delete Selected
             </Button>
@@ -286,10 +277,9 @@ export default function Proposals() {
         ) : (
           <div className="space-y-3">
             {filtered.map(p => {
-              const cfg = STATUS_CONFIG[p.status] || STATUS_CONFIG.draft;
-              const Icon = cfg.icon;
+
               return (
-                <Card key={p.id} className="hover:shadow-md transition-shadow">
+                <Card key={p.id} className="bg-white hover:shadow-sm hover:border-border/70 transition-all border-border">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-3">
                       <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -302,13 +292,11 @@ export default function Proposals() {
                       </label>
                       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/proposal-editor?id=${p.id}`)}>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-primary">#{p.proposal_number}</span>
-                          <span className="font-semibold text-foreground">
-                            {p.client_name || <span className="text-muted-foreground italic">No client</span>}
+                          <span className="font-bold text-primary text-sm">#{p.proposal_number}</span>
+                          <span className="font-semibold text-foreground text-sm">
+                            {p.client_name || <span className="text-muted-foreground italic font-normal">No client</span>}
                           </span>
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${cfg.cls}`}>
-                            <Icon className="w-3 h-3" />{cfg.label}
-                          </span>
+                          <StatusBadge status={p.status} />
                           {p.source_estimate_id && (
                             <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">From EST</span>
                           )}
@@ -345,7 +333,7 @@ export default function Proposals() {
             })}
           </div>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

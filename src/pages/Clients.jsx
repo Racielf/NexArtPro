@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import PageHeader from '@/components/shared/PageHeader';
+import PageShell from '@/components/layout/PageShell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, User, Phone, Mail, MapPin, Pencil, Trash2, Calendar, FileText, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -91,17 +92,17 @@ export default function Clients() {
     <div className="flex flex-col h-full">
       <PageHeader title="Clients" subtitle={`${clients.length} total clients`} actionLabel="New Client" onAction={openCreate} />
 
-      <div className="p-6 space-y-4 flex-1">
+      <PageShell>
         <div className="flex items-center gap-3">
           {filtered.length > 0 && (
-            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+            <label className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
               <input
                 type="checkbox"
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
                 onChange={toggleSelectAll}
                 className="w-4 h-4 cursor-pointer"
               />
-              <span className="text-xs font-medium text-slate-600">Select all</span>
+              <span className="text-xs font-medium text-muted-foreground">Select all</span>
             </label>
           )}
           <div className="relative flex-1">
@@ -121,9 +122,9 @@ export default function Clients() {
         ) : (
           <div className="grid gap-3">
             {selectedIds.size > 0 && (
-              <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
-                <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5" onClick={() => {
+              <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
+                <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => {
                   if (confirm(`Delete ${selectedIds.size} client(s)?`)) handleDeleteSelected();
                 }}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete Selected
@@ -131,7 +132,7 @@ export default function Clients() {
               </div>
             )}
             {filtered.map(client => (
-              <Card key={client.id} className="hover:shadow-md transition-shadow">
+              <Card key={client.id} className="hover:shadow-sm hover:border-border/70 transition-all">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <label className="flex-shrink-0 mt-1" onClick={e => e.stopPropagation()}>
@@ -165,19 +166,19 @@ export default function Clients() {
                           </button>
                           <button
                             onClick={() => setExpandedComm(expandedComm === client.id ? null : client.id)}
-                            className="text-xs text-slate-500 hover:underline flex items-center gap-1"
+                            className="text-xs text-muted-foreground hover:underline flex items-center gap-1"
                           >
                             <Mail className="w-3 h-3" />
                             {expandedComm === client.id ? 'Hide Comms' : 'Communications'}
                           </button>
                         </div>
                         {expandedDocs === client.id && (
-                          <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                          <div className="mt-2 p-3 bg-muted/30 rounded-xl border border-border">
                             <ClientDocuments client={client} />
                           </div>
                         )}
                         {expandedComm === client.id && (
-                          <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                          <div className="mt-2 p-3 bg-muted/30 rounded-xl border border-border">
                             <CommTimeline clientId={client.id} limit={15} />
                           </div>
                         )}
@@ -197,7 +198,7 @@ export default function Clients() {
             ))}
           </div>
         )}
-      </div>
+      </PageShell>
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>

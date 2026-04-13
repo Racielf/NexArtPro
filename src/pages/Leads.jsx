@@ -4,14 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/shared/PageHeader';
+import PageShell from '@/components/layout/PageShell';
+import StatusBadge from '@/components/shared/StatusBadge';
 import { Search, Phone, Mail, MapPin, Calendar, ChevronRight, Trash2 } from 'lucide-react';
-
-const statusConfig = {
-  new: { label: 'New', bg: 'bg-blue-100', text: 'text-blue-700' },
-  contacted: { label: 'Contacted', bg: 'bg-yellow-100', text: 'text-yellow-700' },
-  converted: { label: 'Converted', bg: 'bg-green-100', text: 'text-green-700' },
-  declined: { label: 'Declined', bg: 'bg-red-100', text: 'text-red-700' },
-};
 
 export default function Leads() {
   const [leads, setLeads] = useState([]);
@@ -75,7 +70,7 @@ export default function Leads() {
     <div className="flex flex-col h-full">
       <PageHeader title="Leads" subtitle={`${stats.total} total`} />
 
-      <div className="p-6 space-y-4 flex-1 overflow-auto">
+      <PageShell>
         {/* Summary Cards */}
         <div className="grid grid-cols-4 gap-3">
           {[
@@ -106,9 +101,9 @@ export default function Leads() {
 
         {/* Action Bar */}
         {selectedIds.size > 0 && (
-          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-            <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
-            <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5"
+          <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+            <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
+            <Button size="sm" variant="destructive" className="gap-1.5"
               onClick={() => {
                 if (confirm(`Delete ${selectedIds.size} lead(s)?`)) handleDeleteSelected();
               }}>
@@ -132,11 +127,11 @@ export default function Leads() {
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-border overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
+                  <tr className="border-b border-border bg-muted/40">
                     <th className="px-3 py-3">
                       <input
                         type="checkbox"
@@ -145,23 +140,22 @@ export default function Leads() {
                         className="w-4 h-4 cursor-pointer"
                       />
                     </th>
-                    <th className="px-6 py-3 text-left font-semibold text-slate-700">Name</th>
-                    <th className="px-6 py-3 text-left font-semibold text-slate-700">Contact</th>
-                    <th className="px-6 py-3 text-left font-semibold text-slate-700">Service</th>
-                    <th className="px-6 py-3 text-left font-semibold text-slate-700">Status</th>
-                    <th className="px-6 py-3 text-left font-semibold text-slate-700">Date</th>
-                    <th className="px-6 py-3 text-right font-semibold text-slate-700">Action</th>
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">Name</th>
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">Contact</th>
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">Service</th>
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">Status</th>
+                    <th className="px-6 py-3 text-left font-semibold text-foreground">Date</th>
+                    <th className="px-6 py-3 text-right font-semibold text-foreground">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((lead, i) => {
-                    const statusInfo = statusConfig[lead.status] || statusConfig.new;
                     const createdDate = lead.created_date
                       ? new Date(lead.created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                       : '—';
 
                     return (
-                      <tr key={lead.id || i} className="border-b border-slate-100 hover:bg-slate-50 transition">
+                      <tr key={lead.id || i} className="border-b border-border/50 hover:bg-accent/50 transition">
                         <td className="px-3 py-4">
                           <input
                             type="checkbox"
@@ -171,26 +165,24 @@ export default function Leads() {
                             onClick={e => e.stopPropagation()}
                           />
                         </td>
-                        <td className="px-6 py-4 font-medium text-slate-900">{lead.name}</td>
+                        <td className="px-6 py-4 font-medium text-foreground">{lead.name}</td>
                         <td className="px-6 py-4">
                           <div className="space-y-1 text-xs">
-                            <div className="flex items-center gap-2 text-slate-600">
+                            <div className="flex items-center gap-2 text-muted-foreground">
                               <Mail className="w-3 h-3 flex-shrink-0" />
                               {lead.email}
                             </div>
-                            <div className="flex items-center gap-2 text-slate-600">
+                            <div className="flex items-center gap-2 text-muted-foreground">
                               <Phone className="w-3 h-3 flex-shrink-0" />
                               {lead.phone}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-700">{lead.service}</td>
+                        <td className="px-6 py-4 text-foreground">{lead.service}</td>
                         <td className="px-6 py-4">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.text}`}>
-                            {statusInfo.label}
-                          </span>
+                          <StatusBadge status={lead.status} />
                         </td>
-                        <td className="px-6 py-4 text-slate-600">
+                        <td className="px-6 py-4 text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3 flex-shrink-0" />
                             {createdDate}
@@ -209,7 +201,7 @@ export default function Leads() {
             </div>
           </div>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

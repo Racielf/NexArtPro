@@ -31,9 +31,15 @@ const statusConfig = {
   viewed:            { label: 'Viewed',             variant: 'sky' },
   changes_requested: { label: 'Changes Requested',  variant: 'warning' },
   approved:          { label: 'Approved',           variant: 'success' },
+  accepted:          { label: 'Accepted',           variant: 'success' },
   signed:            { label: 'Signed',             variant: 'success' },
   declined:          { label: 'Declined',           variant: 'danger' },
+  rejected:          { label: 'Rejected',           variant: 'danger' },
   converted:         { label: 'Converted',          variant: 'purple' },
+  review_needed:           { label: 'Review Needed',      variant: 'warning' },
+  converted_to_invoice:    { label: 'Invoiced',           variant: 'teal' },
+  converted_to_work_order: { label: 'Work Order',         variant: 'purple' },
+  pending_adjustment:      { label: 'Pending Adjustment', variant: 'warning' },
 
   // Work Orders
   pending:  { label: 'Pending',  variant: 'warning' },
@@ -41,8 +47,13 @@ const statusConfig = {
   invoiced: { label: 'Invoiced', variant: 'purple' },
 
   // Invoices
+  partial: { label: 'Partial',  variant: 'warning' },
   paid:    { label: 'Paid',    variant: 'success' },
   overdue: { label: 'Overdue', variant: 'danger' },
+
+  // Leads
+  new:       { label: 'New',       variant: 'info' },
+  contacted: { label: 'Contacted', variant: 'warning' },
 };
 
 export default function StatusBadge({ status }) {
