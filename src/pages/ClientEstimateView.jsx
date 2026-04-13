@@ -43,87 +43,116 @@ export default function ClientEstimateView() {
   useEffect(() => {
     const load = async () => {
       if (!estimateId) { setLoading(false); return; }
-      const list = await base44.entities.Estimate.filter({ id: estimateId });
-      if (list.length) {
-        const est = list[0];
-        setEstimate(est);
-        // Mark as viewed — lifecycle handles view_count, timestamps, stage
-        if (est.status === 'sent' || est.status === 'viewed') {
-          const updates = await markEstimateViewed(estimateId, est);
-          setEstimate(e => ({ ...e, ...updates }));
-          // Log internal comm event (only on first view transition)
-          if (est.status === 'sent') {
-            logComm({
-              event_type: 'estimate_viewed',
-              channel: 'system',
-              client_id: est.client_id || '',
-              client_name: est.client_name,
-              client_email: est.client_email || '',
-              estimate_id: est.id,
-              subject: `Estimate #${est.estimate_number} Viewed by Client`,
-              status: 'delivered',
-            }).catch(() => {});
-            notifyEstimateViewed(est).catch(err => console.warn('[notify] viewed failed:', err?.message));
+      try {
+        const list = await base44.entities.Estimate.filter({ id: estimateId });
+        if (list.length) {
+          const est = list[0];
+          setEstimate(est);
+          // Mark as viewed — lifecycle handles view_count, timestamps, stage
+          if (est.status === 'sent' || est.status === 'viewed') {
+            try {
+              const updates = await markEstimateViewed(estimateId, est);
+              setEstimate(e => ({ ...e, ...updates }));
+            } catch (viewErr) {
+              console.warn('[ClientEstimateView] markEstimateViewed failed:', viewErr?.message);
+            }
+            // Log internal comm event (only on first view transition)
+            if (est.status === 'sent') {
+              logComm({
+                event_type: 'estimate_viewed',
+                channel: 'system',
+                client_id: est.client_id || '',
+                client_name: est.client_name,
+                client_email: est.client_email || '',
+                estimate_id: est.id,
+                subject: `Estimate #${est.estimate_number} Viewed by Client`,
+                status: 'delivered',
+              }).catch(() => {});
+              notifyEstimateViewed(est).catch(err => console.warn('[notify] viewed failed:', err?.message));
+            }
           }
         }
+      } catch (err) {
+        console.warn('[ClientEstimateView] load failed:', err?.message);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     load();
   }, [estimateId]);
 
   const handleApprove = async () => {
     setActing(true);
-    const updates = await approveEstimate(estimateId, { approvedBy: estimate.client_name, estimate });
-    setEstimate(e => ({ ...e, ...updates }));
-    // Notify business
-    notifyEstimateApproved(estimate).catch(err => console.warn('[notify] approved failed:', err?.message));
-    setActing(false);
-    toast.success('Estimate approved! We will be in touch soon.');
+    try {
+      const updates = await approveEstimate(estimateId, { approvedBy: estimate.client_name, estimate });
+      setEstimate(e => ({ ...e, ...updates }));
+      notifyEstimateApproved(estimate).catch(err => console.warn('[notify] approved failed:', err?.message));
+      toast.success('Estimate approved! We will be in touch soon.');
+    } catch (err) {
+      console.warn('[handleApprove] failed:', err?.message);
+      toast.error('Could not approve. Please try again.');
+    } finally {
+      setActing(false);
+    }
   };
 
   const handleDecline = async () => {
     setActing(true);
-    const updates = await declineEstimate(estimateId);
-    setEstimate(e => ({ ...e, ...updates }));
-    // Notify business
-    notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
-    setActing(false);
-    toast.success('Estimate declined. Thank you for letting us know.');
+    try {
+      const updates = await declineEstimate(estimateId);
+      setEstimate(e => ({ ...e, ...updates }));
+      notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
+      toast.success('Estimate declined. Thank you for letting us know.');
+    } catch (err) {
+      console.warn('[handleDecline] failed:', err?.message);
+      toast.error('Could not decline. Please try again.');
+    } finally {
+      setActing(false);
+    }
   };
 
   const handleSign = async ({ base64, signerName, signerEmail }) => {
     setShowSignPad(false);
     setActing(true);
-    const updates = await signEstimate(estimateId, { signerName, signerEmail, signatureBase64: base64, estimate });
-    setEstimate(e => ({ ...e, ...updates }));
-    // Notify business with signed document link
-    notifyEstimateSigned(estimate, { signerName, signerEmail }).catch(err => console.warn('[notify] signed failed:', err?.message));
-    setActing(false);
-    toast.success('Estimate signed successfully!');
+    try {
+      const updates = await signEstimate(estimateId, { signerName, signerEmail, signatureBase64: base64, estimate });
+      setEstimate(e => ({ ...e, ...updates }));
+      notifyEstimateSigned(estimate, { signerName, signerEmail }).catch(err => console.warn('[notify] signed failed:', err?.message));
+      toast.success('Estimate signed successfully!');
+    } catch (err) {
+      console.warn('[handleSign] failed:', err?.message);
+      toast.error('Could not save signature. Please try again.');
+    } finally {
+      setActing(false);
+    }
   };
 
   const handleChangesRequest = async (note) => {
     setShowChanges(false);
     setActing(true);
-    // Archive current version
-    await base44.entities.EstimateVersionHistory.create({
-      estimate_id: estimate.id,
-      estimate_number: estimate.estimate_number,
-      version: estimate.version || 1,
-      client_name: estimate.client_name,
-      status_at_archive: estimate.status,
-      archived_reason: 'changes_requested',
-      changes_note: note,
-      snapshot: estimate,
-      total_at_archive: estimate.total || 0,
-    });
-    const updates = await requestEstimateChanges(estimateId, { note, currentVersion: estimate.version });
-    setEstimate(e => ({ ...e, ...updates }));
-    // Notify business
-    notifyEstimateChangesRequested(estimate, note).catch(err => console.warn('[notify] changes failed:', err?.message));
-    setActing(false);
-    toast.success('Change request sent! We\'ll review and send a revised estimate.');
+    try {
+      // Archive current version
+      await base44.entities.EstimateVersionHistory.create({
+        estimate_id: estimate.id,
+        estimate_number: estimate.estimate_number,
+        version: estimate.version || 1,
+        client_name: estimate.client_name,
+        status_at_archive: estimate.status,
+        archived_reason: 'changes_requested',
+        changes_note: note,
+        snapshot: estimate,
+        total_at_archive: estimate.total || 0,
+      });
+      const updates = await requestEstimateChanges(estimateId, { note, currentVersion: estimate.version });
+      setEstimate(e => ({ ...e, ...updates }));
+      notifyEstimateChangesRequested(estimate, note).catch(err => console.warn('[notify] changes failed:', err?.message));
+      toast.success('Change request sent! We\'ll review and send a revised estimate.');
+    } catch (err) {
+      console.warn('[handleChangesRequest] failed:', err?.message);
+      toast.error('Could not send request. Please try again.');
+    } finally {
+      setActing(false);
+    }
   };
 
   const handlePrint = () => window.print();
