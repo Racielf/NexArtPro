@@ -12,9 +12,10 @@ import GlobalDocumentCloseButton from '@/components/ui/GlobalDocumentCloseButton
  * - documentContent: ReactNode (documento renderizado)
  * - title: string | ReactNode (título en toolbar)
  * - actions: ReactNode[] (botones adicionales en toolbar)
- * - onClose: () => void
+ * - onClose: () => void (opcional)
  * - banners: ReactNode (optional — rendered above toolbar)
  * - sidePanel: ReactNode (optional — left panel for split layout)
+ * - footer: ReactNode (optional — rendered below document, inside scroll area)
  * - variant: 'simple' | 'fullscreen' (default: 'simple')
  */
 export default function DocumentViewerShell({
@@ -24,6 +25,7 @@ export default function DocumentViewerShell({
   onClose,
   banners,
   sidePanel,
+  footer,
   variant = 'simple',
 }) {
   const isFullscreen = variant === 'fullscreen';
@@ -53,21 +55,23 @@ export default function DocumentViewerShell({
         <div className="flex flex-1 overflow-hidden min-h-0">
           {sidePanel}
           <div className="flex-1 overflow-y-auto p-8 flex justify-center min-h-0">
-            <div className="w-full max-w-3xl">
+            <div className="w-full max-w-3xl space-y-4">
               {documentContent}
+              {footer}
             </div>
           </div>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto bg-slate-200 p-6 min-h-0 flex justify-center">
-          <div className="w-full max-w-4xl">
+          <div className="w-full max-w-4xl space-y-4">
             {documentContent}
+            {footer}
           </div>
         </div>
       )}
 
-      {/* Close Button — Absolute, no empuja contenido */}
-      {!isFullscreen && <GlobalDocumentCloseButton onClick={onClose} />}
+      {/* Close Button — Absolute, solo si onClose está definido y no es fullscreen */}
+      {!isFullscreen && onClose && <GlobalDocumentCloseButton onClick={onClose} />}
     </div>
   );
 }

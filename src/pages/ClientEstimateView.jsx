@@ -9,9 +9,10 @@ import { toast } from 'sonner';
 import { logComm } from '@/lib/commTracking';
 import ClientSignaturePad from '@/components/estimates/ClientSignaturePad';
 import ClientChangesRequest from '@/components/estimates/ClientChangesRequest';
-import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
-import BidDocumentRenderer from '@/components/documents/BidDocumentRenderer';
-import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import FinalDocumentRenderer from '@/components/documents/FinalDocumentRenderer';
+import { EstimateToDocumentMapper } from '@/lib/mappers/EstimateToDocumentMapper';
+import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
+import ClientAttachmentsSection from '@/components/estimates/ClientAttachmentsSection';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import {
@@ -149,17 +150,7 @@ export default function ClientEstimateView() {
     </div>
   );
 
-  const groups = estimate.groups?.length
-    ? estimate.groups
-    : estimate.line_items?.length
-      ? [{ id: 'legacy', name: null, items: estimate.line_items.map(li => ({
-          id: li.id, service_name: li.name || '', description: li.description,
-          quantity: li.quantity || 1, unit_price: li.unit_price || 0,
-          line_total: li.total_price || li.line_total || 0,
-        })) }]
-      : [];
-
-  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const documentData = EstimateToDocumentMapper(estimate);
   const isFinal = ['approved', 'signed', 'declined', 'converted'].includes(estimate.status);
   const canAct = !isFinal && estimate.status !== 'changes_requested';
 
@@ -174,136 +165,92 @@ export default function ClientEstimateView() {
     viewed: { bg: 'bg-blue-50 border-blue-200', icon: <Eye className="w-5 h-5 text-blue-500" />, title: `${docLabel} Viewed`, body: 'Please review below and take action when ready.' },
   }[estimate.status];
 
+  const banners = (statusBanner || (estimate.version || 1) > 1) ? (
+    <div className="space-y-2 print:hidden">
+      {statusBanner && (
+        <div className={`flex items-start gap-3 border rounded-xl px-5 py-4 ${statusBanner.bg}`}>
+          <div className="flex-shrink-0 mt-0.5">{statusBanner.icon}</div>
+          <div>
+            <p className="font-semibold text-slate-800 text-sm">{statusBanner.title}</p>
+            <p className="text-sm text-slate-600 mt-0.5">{statusBanner.body}</p>
+          </div>
+        </div>
+      )}
+      {(estimate.version || 1) > 1 && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
+          <Clock className="w-3.5 h-3.5" />
+          <span>This is version <strong>{estimate.version}</strong> of this estimate.</span>
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const footer = (
+    <div className="print:hidden space-y-4">
+      <ClientAttachmentsSection attachments={estimate.attachments} />
+      {canAct && (
+        <div className="px-8 py-7 bg-slate-50 border border-slate-200 rounded-xl">
+          <p className="text-sm text-slate-500 mb-5 text-center">Please review this estimate and choose an action below.</p>
+          <div className="flex flex-col gap-3">
+            <Button
+              onClick={() => setShowSignPad(true)}
+              disabled={acting}
+              className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 gap-2 text-sm font-semibold"
+            >
+              <PenLine className="w-4 h-4" />Sign &amp; Accept Estimate
+            </Button>
+            <Button
+              onClick={handleApprove}
+              disabled={acting}
+              variant="outline"
+              className="w-full border-green-300 text-green-700 hover:bg-green-50 rounded-xl h-10 gap-2 text-sm"
+            >
+              <CheckCircle className="w-4 h-4" />Approve without Signature
+            </Button>
+            <Button
+              onClick={() => setShowChanges(true)}
+              disabled={acting}
+              variant="outline"
+              className="w-full border-amber-300 text-amber-700 hover:bg-amber-50 rounded-xl h-10 gap-2 text-sm"
+            >
+              <MessageSquare className="w-4 h-4" />Request Changes
+            </Button>
+            <Button
+              onClick={handleDecline}
+              disabled={acting}
+              variant="ghost"
+              className="w-full text-red-500 hover:bg-red-50 rounded-xl h-9 gap-2 text-sm"
+            >
+              <XCircle className="w-4 h-4" />Decline
+            </Button>
+          </div>
+        </div>
+      )}
+      <p className="text-center text-[10px] text-slate-400 py-2">
+        This estimate was issued by {appConfig.appName}. Questions? Contact us at {appConfig.company.email}
+      </p>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-slate-100 py-8 px-4 print:bg-white print:py-0">
-
-      {/* Print/Download bar */}
-      <div className="max-w-2xl mx-auto mb-4 flex items-center justify-between print:hidden">
-        <div className="flex items-center gap-1.5">
-          <div className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center">
-            <svg viewBox="0 0 40 40" className="w-4 h-4" fill="none">
-              <path d="M8 28L20 12L32 28" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M15 28V22H25V28" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <span className="text-sm font-bold text-slate-700">{appConfig.appName}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs">
-            <Printer className="w-3.5 h-3.5" />Print
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleDownload} className="gap-1.5 text-xs">
-            <Download className="w-3.5 h-3.5" />Download PDF
-          </Button>
-        </div>
+    <>
+      <div className="h-screen bg-slate-100 print:bg-white print:h-auto">
+        <DocumentViewerShell
+          title={`${docLabel} #${estimate.estimate_number}`}
+          actions={[
+            <Button key="print" size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs print:hidden">
+              <Printer className="w-3.5 h-3.5" />Print
+            </Button>,
+            <Button key="download" size="sm" variant="outline" onClick={handleDownload} className="gap-1.5 text-xs print:hidden">
+              <Download className="w-3.5 h-3.5" />Download PDF
+            </Button>,
+          ]}
+          banners={banners}
+          documentContent={<FinalDocumentRenderer documentData={documentData} />}
+          footer={footer}
+        />
       </div>
 
-      <div className="max-w-2xl mx-auto space-y-4">
-
-        {/* Status Banner */}
-        {statusBanner && (
-          <div className={`flex items-start gap-3 border rounded-xl px-5 py-4 print:hidden ${statusBanner.bg}`}>
-            <div className="flex-shrink-0 mt-0.5">{statusBanner.icon}</div>
-            <div>
-              <p className="font-semibold text-slate-800 text-sm">{statusBanner.title}</p>
-              <p className="text-sm text-slate-600 mt-0.5">{statusBanner.body}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Version indicator */}
-        {(estimate.version || 1) > 1 && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700 print:hidden">
-            <Clock className="w-3.5 h-3.5" />
-            <span>This is version <strong>{estimate.version}</strong> of this estimate.</span>
-          </div>
-        )}
-
-        {/* Main document card */}
-        <div className="bg-slate-200 flex-1 overflow-auto p-8 flex justify-center">
-          <div className="w-full max-w-4xl shadow-xl rounded-sm bg-white">
-
-            {estimate?.document_type === 'BID' ? (
-              <BidDocumentRenderer
-                estimate={estimate}
-                options={{
-                  ...DEFAULT_OPTIONS,
-                  ...(estimate?.document_config?.options || {}),
-                  hideInternalNotes: true,
-                }}
-              />
-            ) : (
-              <EstimateTemplateRenderer
-                estimate={estimate}
-                template={estimate?.document_config?.template || 'clean'}
-                options={{
-                  ...DEFAULT_OPTIONS,
-                  ...(estimate?.document_config?.options || {}),
-                  hideInternalNotes: true,
-                }}
-                documentType="estimate"
-              />
-            )}
-
-          </div>
-        </div>
-
-        {/* Client Attachments — only send_to_client files */}
-        <ClientAttachmentsSection attachments={estimate.attachments} />
-
-        {/* CTA */}
-        {canAct && (
-            <div className="px-8 py-7 bg-slate-50 print:hidden">
-              <p className="text-sm text-slate-500 mb-5 text-center">Please review this estimate and choose an action below.</p>
-              <div className="flex flex-col gap-3">
-                {/* Primary: Sign */}
-                <Button
-                  onClick={() => setShowSignPad(true)}
-                  disabled={acting}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 gap-2 text-sm font-semibold"
-                >
-                  <PenLine className="w-4 h-4" />Sign &amp; Accept Estimate
-                </Button>
-
-                {/* Secondary: approve without sig */}
-                <Button
-                  onClick={handleApprove}
-                  disabled={acting}
-                  variant="outline"
-                  className="w-full border-green-300 text-green-700 hover:bg-green-50 rounded-xl h-10 gap-2 text-sm"
-                >
-                  <CheckCircle className="w-4 h-4" />Approve without Signature
-                </Button>
-
-                {/* Request changes */}
-                <Button
-                  onClick={() => setShowChanges(true)}
-                  disabled={acting}
-                  variant="outline"
-                  className="w-full border-amber-300 text-amber-700 hover:bg-amber-50 rounded-xl h-10 gap-2 text-sm"
-                >
-                  <MessageSquare className="w-4 h-4" />Request Changes
-                </Button>
-
-                {/* Decline */}
-                <Button
-                  onClick={handleDecline}
-                  disabled={acting}
-                  variant="ghost"
-                  className="w-full text-red-500 hover:bg-red-50 rounded-xl h-9 gap-2 text-sm"
-                >
-                  <XCircle className="w-4 h-4" />Decline
-                </Button>
-              </div>
-            </div>
-          )}
-
-        <p className="text-center text-[10px] text-slate-400 pb-6 print:hidden">
-          This estimate was issued by {appConfig.appName}. Questions? Contact us at {appConfig.company.email}
-        </p>
-      </div>
-
-      {/* Modals */}
       {showSignPad && (
         <ClientSignaturePad
           onSign={handleSign}
@@ -316,6 +263,6 @@ export default function ClientEstimateView() {
           onCancel={() => setShowChanges(false)}
         />
       )}
-    </div>
+    </>
   );
 }
