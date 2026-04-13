@@ -1,39 +1,57 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 
+// Semantic variant → Tailwind classes (calmer -50 surfaces, token-aligned)
+const VARIANTS = {
+  success:  'bg-emerald-50 text-emerald-700 border-emerald-200',
+  info:     'bg-blue-50 text-blue-700 border-blue-200',
+  sky:      'bg-sky-50 text-sky-700 border-sky-200',
+  warning:  'bg-amber-50 text-amber-700 border-amber-200',
+  danger:   'bg-red-50 text-red-600 border-red-200',
+  neutral:  'bg-slate-100 text-slate-600 border-slate-200',
+  purple:   'bg-violet-50 text-violet-700 border-violet-200',
+  teal:     'bg-teal-50 text-teal-700 border-teal-200',
+  orange:   'bg-orange-50 text-orange-700 border-orange-200',
+};
+
 const statusConfig = {
   // Appointments
-  scheduled: { label: 'Scheduled', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-  omw: { label: 'On My Way', className: 'bg-orange-100 text-orange-700 border-orange-200' },
-  in_progress: { label: 'In Progress', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  completed: { label: 'Completed', className: 'bg-green-100 text-green-700 border-green-200' },
-  visit_completed: { label: 'Visit Completed', className: 'bg-teal-100 text-teal-700 border-teal-200' },
-  on_my_way: { label: 'On My Way', className: 'bg-orange-100 text-orange-700 border-orange-200' },
-  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-gray-600 border-gray-200' },
-  // Estimates
-  draft: { label: 'Draft', className: 'bg-gray-100 text-gray-600 border-gray-200' },
-  sent: { label: 'Sent', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-  viewed: { label: 'Viewed', className: 'bg-sky-100 text-sky-700 border-sky-200' },
-  changes_requested: { label: 'Changes Requested', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  approved: { label: 'Approved', className: 'bg-green-100 text-green-700 border-green-200' },
-  signed: { label: 'Signed', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  declined: { label: 'Declined', className: 'bg-red-100 text-red-700 border-red-200' },
-  converted: { label: 'Converted', className: 'bg-purple-100 text-purple-700 border-purple-200' },
+  scheduled:        { label: 'Scheduled',        variant: 'info' },
+  omw:              { label: 'On My Way',         variant: 'orange' },
+  on_my_way:        { label: 'On My Way',         variant: 'orange' },
+  on_the_way:       { label: 'On the Way',        variant: 'orange' },
+  in_progress:      { label: 'In Progress',       variant: 'warning' },
+  completed:        { label: 'Completed',         variant: 'success' },
+  visit_completed:  { label: 'Visit Completed',   variant: 'teal' },
+  cancelled:        { label: 'Cancelled',         variant: 'neutral' },
+
+  // Estimates / Proposals
+  draft:             { label: 'Draft',              variant: 'neutral' },
+  sent:              { label: 'Sent',               variant: 'info' },
+  viewed:            { label: 'Viewed',             variant: 'sky' },
+  changes_requested: { label: 'Changes Requested',  variant: 'warning' },
+  approved:          { label: 'Approved',           variant: 'success' },
+  signed:            { label: 'Signed',             variant: 'success' },
+  declined:          { label: 'Declined',           variant: 'danger' },
+  converted:         { label: 'Converted',          variant: 'purple' },
+
   // Work Orders
-  pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  assigned: { label: 'Assigned', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-  on_the_way: { label: 'On the Way', className: 'bg-orange-100 text-orange-700 border-orange-200' },
-  invoiced: { label: 'Invoiced', className: 'bg-purple-100 text-purple-700 border-purple-200' },
+  pending:  { label: 'Pending',  variant: 'warning' },
+  assigned: { label: 'Assigned', variant: 'info' },
+  invoiced: { label: 'Invoiced', variant: 'purple' },
+
   // Invoices
-  paid: { label: 'Paid', className: 'bg-green-100 text-green-700 border-green-200' },
-  overdue: { label: 'Overdue', className: 'bg-red-100 text-red-700 border-red-200' },
+  paid:    { label: 'Paid',    variant: 'success' },
+  overdue: { label: 'Overdue', variant: 'danger' },
 };
 
 export default function StatusBadge({ status }) {
-  const config = statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-600' };
+  const cfg = statusConfig[status];
+  const label = cfg?.label ?? status ?? '—';
+  const cls = VARIANTS[cfg?.variant] ?? VARIANTS.neutral;
   return (
-    <Badge variant="outline" className={`text-xs font-medium border ${config.className}`}>
-      {config.label}
+    <Badge variant="outline" className={`text-[11px] font-medium border whitespace-nowrap ${cls}`}>
+      {label}
     </Badge>
   );
 }

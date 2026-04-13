@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import PageHeader from '@/components/shared/PageHeader';
+import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { ClipboardList, Search, Pencil, Trash2, User, MapPin, DollarSign } from 'lucide-react';
@@ -79,17 +80,17 @@ export default function WorkOrders() {
     <div className="flex flex-col h-full">
       <PageHeader title="Work Orders" subtitle={`${workOrders.length} total`} />
 
-      <div className="p-6 space-y-4 flex-1">
+      <PageShell>
         <div className="flex items-center gap-3">
           {filtered.length > 0 && (
-            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+            <label className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
               <input
                 type="checkbox"
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
                 onChange={toggleSelectAll}
                 className="w-4 h-4 cursor-pointer"
               />
-              <span className="text-xs font-medium text-slate-600">Select all</span>
+              <span className="text-xs font-medium text-muted-foreground">Select all</span>
             </label>
           )}
           <div className="relative flex-1">
@@ -99,19 +100,33 @@ export default function WorkOrders() {
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-muted-foreground">Loading...</div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white border border-border rounded-2xl p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-muted rounded w-1/3" />
+                    <div className="h-3 bg-muted rounded w-1/2" />
+                  </div>
+                  <div className="h-6 w-20 bg-muted rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <ClipboardList className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No work orders yet</p>
+          <div className="text-center py-20">
+            <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mx-auto mb-4">
+              <ClipboardList className="w-6 h-6 text-muted-foreground/40" />
+            </div>
+            <p className="text-muted-foreground font-medium">No work orders yet</p>
             <p className="text-sm text-muted-foreground mt-1">Convert an approved estimate to create one</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {selectedIds.size > 0 && (
-              <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
-                <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white gap-1.5" onClick={() => {
+              <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                <span className="text-sm font-semibold text-primary">{selectedIds.size} selected</span>
+                <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => {
                   if (confirm(`Delete ${selectedIds.size} work order${selectedIds.size === 1 ? '' : 's'}?`)) handleDeleteSelected();
                 }}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete Selected
@@ -119,7 +134,7 @@ export default function WorkOrders() {
               </div>
             )}
             {filtered.map(wo => (
-              <Card key={wo.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/work-orders/${wo.id}`)}>
+              <Card key={wo.id} className="bg-white hover:shadow-sm hover:border-border/70 transition-all border-border cursor-pointer" onClick={() => navigate(`/work-orders/${wo.id}`)}>
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -164,7 +179,7 @@ export default function WorkOrders() {
             ))}
           </div>
         )}
-      </div>
+      </PageShell>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-lg">
