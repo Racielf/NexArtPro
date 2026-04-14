@@ -197,8 +197,8 @@ function StatusOverviewBlock({ estimate, s, visitDone, isSent, isViewed, isAppro
   );
 }
 
-// ── NextBestActionBlock ───────────────────────────────────────────────────────
-function NextBestActionBlock({ next }) {
+// ── NextActionBlock ───────────────────────────────────────────────────────────
+function NextActionBlock({ next }) {
   if (!next) return null;
   return (
     <div className="mx-3 mt-3 mb-3 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 flex items-start gap-2">
@@ -218,10 +218,26 @@ function NextBestActionBlock({ next }) {
 }
 
 // ── ActionButtonsBlock ────────────────────────────────────────────────────────
-function ActionButtonsBlock({ estimate, omwActive, handleOMW, handleStopOMW, setScheduleOpen, setFinishOpen, setApprovalOpen, onOpenSendReview, role, setLossValidation, setOverrideAction, setOverrideModalOpen, setLossModalOpen }) {
+function ActionButtonsBlock({
+  estimate,
+  omwActive,
+  handleOMW,
+  handleStopOMW,
+  setSchedDate,
+  setSchedTime,
+  setScheduleOpen,
+  setFinishOpen,
+  setApprovalOpen,
+  onOpenSendReview,
+  role,
+  setLossValidation,
+  setOverrideAction,
+  setOverrideModalOpen,
+  setLossModalOpen,
+}) {
   return (
     <div className="px-2 pb-2 space-y-1 flex-1 flex flex-col gap-1">
-      <button onClick={() => { setScheduleOpen(true); }}
+      <button onClick={() => { setSchedDate(estimate?.scheduled_date || ''); setSchedTime(estimate?.scheduled_time || '09:00'); setScheduleOpen(true); }}
         className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
         <Calendar className="w-3.5 h-3.5 text-blue-500" />
         Schedule
@@ -279,238 +295,6 @@ function ActionButtonsBlock({ estimate, omwActive, handleOMW, handleStopOMW, set
         <ThumbsUp className="w-3.5 h-3.5 text-green-500" />
         Approve/Decline
       </button>
-    </div>
-  );
-}
-
-// ── ScheduleModal ─────────────────────────────────────────────────────────────
-function ScheduleModal({ scheduleOpen, setScheduleOpen, hasAppointment, estimate, schedDate, setSchedDate, schedTime, setSchedTime, schedNotes, setSchedNotes, handleSchedule }) {
-  return (
-    <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-500" />
-            {hasAppointment ? 'Reschedule Appointment' : 'Schedule Appointment'}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 pt-1">
-          <div>
-            <label className="text-xs text-slate-500 mb-1 block font-medium">Date *</label>
-            <Input type="date" value={schedDate} onChange={e => setSchedDate(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs text-slate-500 mb-1 block font-medium">Time</label>
-            <Input type="time" value={schedTime} onChange={e => setSchedTime(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs text-slate-500 mb-1 block font-medium">Notes</label>
-            <Textarea value={schedNotes} onChange={e => setSchedNotes(e.target.value)} placeholder="Description of work..." rows={2} />
-          </div>
-          <div className="text-xs text-slate-500 bg-slate-50 rounded p-2">
-            Client: <span className="font-semibold text-slate-700">{estimate?.client_name}</span>
-            {estimate?.client_address && <><br />{estimate.client_address}</>}
-          </div>
-        </div>
-        <div className="flex gap-2 pt-1">
-          <Button variant="outline" className="flex-1" onClick={() => setScheduleOpen(false)}>Cancel</Button>
-          <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleSchedule}>Save & Notify Client</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── ApprovalModal ─────────────────────────────────────────────────────────────
-function ApprovalModal({ approvalOpen, setApprovalOpen, estimate, declineReason, setDeclineReason, handleDeclineConfirm, handleApproveConfirm }) {
-  return (
-    <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ThumbsUp className="w-5 h-5 text-green-500" />Approve or Decline
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 pt-1">
-          <div className="bg-slate-50 rounded-lg p-3">
-            <p className="text-xs text-slate-500 font-medium">Estimate #{estimate?.estimate_number}</p>
-            <p className="text-sm font-semibold text-slate-800 mt-1">{estimate?.client_name}</p>
-            <p className="text-xs text-slate-500 mt-1">Total: ${(estimate?.total || 0).toFixed(2)}</p>
-          </div>
-          <div>
-            <label className="text-xs text-slate-500 mb-1 block font-medium">Note (required to decline)</label>
-            <Textarea
-              value={declineReason}
-              onChange={e => setDeclineReason(e.target.value)}
-              placeholder="Optional for approval, required to decline..."
-              rows={2}
-            />
-          </div>
-        </div>
-        <div className="flex gap-2 pt-1">
-          <Button variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50" onClick={handleDeclineConfirm}>
-            <XCircle className="w-3.5 h-3.5 mr-1 text-red-500" />Decline
-          </Button>
-          <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleApproveConfirm}>
-            <CheckCircle className="w-3.5 h-3.5 mr-1" />Approve
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── FinishModal ───────────────────────────────────────────────────────────────
-function FinishModal({ finishOpen, setFinishOpen, finishNotes, setFinishNotes, omwMiles, handleFinish }) {
-  return (
-    <Dialog open={finishOpen} onOpenChange={setFinishOpen}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CheckSquare className="w-5 h-5 text-emerald-600" />Finish Visit
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 pt-1">
-          <p className="text-sm text-slate-500">Mark the visit as completed and add any field notes.</p>
-          <div>
-            <label className="text-xs text-slate-500 mb-1 block font-medium">Visit Notes</label>
-            <Textarea value={finishNotes} onChange={e => setFinishNotes(e.target.value)} placeholder="What was done on site..." rows={3} />
-          </div>
-          {omwMiles > 0 && (
-            <div className="text-xs text-emerald-700 bg-emerald-50 rounded p-2 flex items-center gap-1.5">
-              <Navigation2 className="w-3.5 h-3.5 text-amber-500" />{omwMiles} miles tracked on this visit
-            </div>
-          )}
-        </div>
-        <div className="flex gap-2 pt-1">
-          <Button variant="outline" className="flex-1" onClick={() => setFinishOpen(false)}>Cancel</Button>
-          <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleFinish}>Mark as Finished</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── DeleteConfirmModal ────────────────────────────────────────────────────────
-function DeleteConfirmModal({ deleteModal, setDeleteModal, estimate, s, handleConfirmDelete }) {
-  if (!deleteModal.open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-        <h2 className="text-base font-bold text-slate-900 mb-2">Delete Estimate?</h2>
-        <p className="text-sm text-slate-500 mb-4">
-          Are you sure you want to delete Estimate #{estimate?.estimate_number}? This action cannot be undone.
-        </p>
-        {s === 'sent' && (
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-xs text-amber-700"><strong>Warning:</strong> This estimate has been sent to the client.</p>
-          </div>
-        )}
-        {deleteModal.error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-xs text-red-700">{deleteModal.error}</p>
-          </div>
-        )}
-        <div className="flex gap-2 justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setDeleteModal({ open: false, loading: false, error: null })}
-            disabled={deleteModal.loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            className="bg-red-500 hover:bg-red-600 text-white"
-            onClick={handleConfirmDelete}
-            disabled={deleteModal.loading}
-          >
-            {deleteModal.loading ? 'Deleting...' : 'Delete Estimate'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── LossPrevention & PricingOverride modals wrapper ───────────────────────────
-function PricingModalsBlock({ lossModalOpen, setLossModalOpen, overrideModalOpen, setOverrideModalOpen, overrideAction, lossValidation, estimate, currentUser, role, onOpenSendReview }) {
-  return (
-    <>
-      {/* ── LOSS PREVENTION MODAL (zero-profit confirmation — all roles) ── */}
-      <LossPreventionModal
-        open={lossModalOpen}
-        onClose={() => setLossModalOpen(false)}
-        onProceed={() => {
-          setLossModalOpen(false);
-          // Log zero-profit confirmation (NOT an override)
-          if (estimate?.id && lossValidation.zeroProfitItems?.length > 0) {
-            logZeroProfitConfirmation({
-              documentId: estimate.id,
-              documentKind: estimate.document_type === 'BID' ? 'bid' : 'estimate',
-              userEmail: currentUser?.email,
-              userRole: role,
-              metadata: {
-                margin_at_event: parseFloat(estimate.gross_margin_pct) || null,
-                total_at_event: parseFloat(estimate.total) || null,
-              },
-            });
-          }
-          onOpenSendReview?.();
-        }}
-        lossItems={lossValidation.lossItems}
-        zeroProfitItems={lossValidation.zeroProfitItems}
-      />
-
-      {/* ── PRICING OVERRIDE MODAL (loss pricing only — manager/admin with PIN + reason) ── */}
-      <PricingOverrideModal
-        open={overrideModalOpen}
-        onClose={() => setOverrideModalOpen(false)}
-        onApproved={() => {
-          setOverrideModalOpen(false);
-          onOpenSendReview?.();
-        }}
-        action={overrideAction}
-        role={role}
-        currentUser={currentUser}
-        document={estimate}
-        documentType="estimate"
-        pricingResult={lossValidation}
-        lossItems={lossValidation.lossItems}
-        zeroProfitItems={lossValidation.zeroProfitItems}
-      />
-    </>
-  );
-}
-
-// ── MoreActionsBlock ──────────────────────────────────────────────────────────
-function MoreActionsBlock({ moreActionsOpen, setMoreActionsOpen, canDelete, getDeleteBlockReason, handleDelete }) {
-  return (
-    <div className="mx-3 mt-3 pt-3 border-t border-slate-200">
-      <Collapsible open={moreActionsOpen} onOpenChange={setMoreActionsOpen}>
-        <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors group">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">More Actions</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${moreActionsOpen ? 'rotate-180' : ''}`} />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-2 pb-3 space-y-1.5">
-          <button
-            onClick={handleDelete}
-            disabled={!canDelete()}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors text-xs font-medium ${
-              canDelete()
-                ? 'bg-white border border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700'
-                : 'bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed'
-            }`}
-            title={!canDelete() ? getDeleteBlockReason() : 'Delete this estimate'}
-          >
-            <Trash2 className="w-3.5 h-3.5 text-red-500" />
-            Delete Estimate
-          </button>
-        </CollapsibleContent>
-      </Collapsible>
     </div>
   );
 }
@@ -801,19 +585,21 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       />
 
       {/* ── NEXT BEST ACTION ──────────────────────────────────────────────── */}
-      <NextBestActionBlock next={next} />
+      <NextActionBlock next={next} />
 
       {/* divider */}
       <div className="border-t border-slate-100 mb-2" />
       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-3.5 mb-2">Other Actions</p>
 
-      {/* ── ACTION BUTTONS ───────────────────────────────────────────────── */}
+      {/* ── ACTION CARDS (Compact buttons with icon colors) ──────────────────────── */}
       <ActionButtonsBlock
         estimate={estimate}
         omwActive={omwActive}
         handleOMW={handleOMW}
         handleStopOMW={handleStopOMW}
-        setScheduleOpen={(open) => { if (open) { setSchedDate(estimate?.scheduled_date || ''); setSchedTime(estimate?.scheduled_time || '09:00'); } setScheduleOpen(open); }}
+        setSchedDate={setSchedDate}
+        setSchedTime={setSchedTime}
+        setScheduleOpen={setScheduleOpen}
         setFinishOpen={setFinishOpen}
         setApprovalOpen={setApprovalOpen}
         onOpenSendReview={onOpenSendReview}
@@ -825,72 +611,210 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       />
 
       {/* ── SCHEDULE MODAL ─────────────────────────────────────────────────── */}
-      <ScheduleModal
-        scheduleOpen={scheduleOpen}
-        setScheduleOpen={setScheduleOpen}
-        hasAppointment={hasAppointment}
-        estimate={estimate}
-        schedDate={schedDate}
-        setSchedDate={setSchedDate}
-        schedTime={schedTime}
-        setSchedTime={setSchedTime}
-        schedNotes={schedNotes}
-        setSchedNotes={setSchedNotes}
-        handleSchedule={handleSchedule}
-      />
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-500" />
+              {hasAppointment ? 'Reschedule Appointment' : 'Schedule Appointment'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block font-medium">Date *</label>
+              <Input type="date" value={schedDate} onChange={e => setSchedDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block font-medium">Time</label>
+              <Input type="time" value={schedTime} onChange={e => setSchedTime(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block font-medium">Notes</label>
+              <Textarea value={schedNotes} onChange={e => setSchedNotes(e.target.value)} placeholder="Description of work..." rows={2} />
+            </div>
+            <div className="text-xs text-slate-500 bg-slate-50 rounded p-2">
+              Client: <span className="font-semibold text-slate-700">{estimate?.client_name}</span>
+              {estimate?.client_address && <><br />{estimate.client_address}</>}
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1" onClick={() => setScheduleOpen(false)}>Cancel</Button>
+            <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleSchedule}>Save & Notify Client</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── APPROVAL MODAL ─────────────────────────────────────────────────── */}
-      <ApprovalModal
-        approvalOpen={approvalOpen}
-        setApprovalOpen={setApprovalOpen}
-        estimate={estimate}
-        declineReason={declineReason}
-        setDeclineReason={setDeclineReason}
-        handleDeclineConfirm={handleDeclineConfirm}
-        handleApproveConfirm={handleApproveConfirm}
-      />
+      <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ThumbsUp className="w-5 h-5 text-green-500" />Approve or Decline
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-xs text-slate-500 font-medium">Estimate #{estimate?.estimate_number}</p>
+              <p className="text-sm font-semibold text-slate-800 mt-1">{estimate?.client_name}</p>
+              <p className="text-xs text-slate-500 mt-1">Total: ${(estimate?.total || 0).toFixed(2)}</p>
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block font-medium">Note (required to decline)</label>
+              <Textarea
+                value={declineReason}
+                onChange={e => setDeclineReason(e.target.value)}
+                placeholder="Optional for approval, required to decline..."
+                rows={2}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50" onClick={handleDeclineConfirm}>
+              <XCircle className="w-3.5 h-3.5 mr-1 text-red-500" />Decline
+            </Button>
+            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleApproveConfirm}>
+              <CheckCircle className="w-3.5 h-3.5 mr-1" />Approve
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── FINISH MODAL ───────────────────────────────────────────────────── */}
-      <FinishModal
-        finishOpen={finishOpen}
-        setFinishOpen={setFinishOpen}
-        finishNotes={finishNotes}
-        setFinishNotes={setFinishNotes}
-        omwMiles={omwMiles}
-        handleFinish={handleFinish}
-      />
+      <Dialog open={finishOpen} onOpenChange={setFinishOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckSquare className="w-5 h-5 text-emerald-600" />Finish Visit
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <p className="text-sm text-slate-500">Mark the visit as completed and add any field notes.</p>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block font-medium">Visit Notes</label>
+              <Textarea value={finishNotes} onChange={e => setFinishNotes(e.target.value)} placeholder="What was done on site..." rows={3} />
+            </div>
+            {omwMiles > 0 && (
+              <div className="text-xs text-emerald-700 bg-emerald-50 rounded p-2 flex items-center gap-1.5">
+                <Navigation2 className="w-3.5 h-3.5 text-amber-500" />{omwMiles} miles tracked on this visit
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1" onClick={() => setFinishOpen(false)}>Cancel</Button>
+            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleFinish}>Mark as Finished</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── DELETE CONFIRM MODAL ───────────────────────────────────────────── */}
-      <DeleteConfirmModal
-        deleteModal={deleteModal}
-        setDeleteModal={setDeleteModal}
-        estimate={estimate}
-        s={s}
-        handleConfirmDelete={handleConfirmDelete}
+      {deleteModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h2 className="text-base font-bold text-slate-900 mb-2">Delete Estimate?</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Are you sure you want to delete Estimate #{estimate?.estimate_number}? This action cannot be undone.
+            </p>
+            {s === 'sent' && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-700"><strong>Warning:</strong> This estimate has been sent to the client.</p>
+              </div>
+            )}
+            {deleteModal.error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-xs text-red-700">{deleteModal.error}</p>
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteModal({ open: false, loading: false, error: null })}
+                disabled={deleteModal.loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="bg-red-500 hover:bg-red-600 text-white"
+                onClick={handleConfirmDelete}
+                disabled={deleteModal.loading}
+              >
+                {deleteModal.loading ? 'Deleting...' : 'Delete Estimate'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── LOSS PREVENTION MODAL (zero-profit confirmation — all roles) ── */}
+      <LossPreventionModal
+        open={lossModalOpen}
+        onClose={() => setLossModalOpen(false)}
+        onProceed={() => {
+          setLossModalOpen(false);
+          // Log zero-profit confirmation (NOT an override)
+          if (estimate?.id && lossValidation.zeroProfitItems?.length > 0) {
+            logZeroProfitConfirmation({
+              documentId: estimate.id,
+              documentKind: estimate.document_type === 'BID' ? 'bid' : 'estimate',
+              userEmail: currentUser?.email,
+              userRole: role,
+              metadata: {
+                margin_at_event: parseFloat(estimate.gross_margin_pct) || null,
+                total_at_event: parseFloat(estimate.total) || null,
+              },
+            });
+          }
+          onOpenSendReview?.();
+        }}
+        lossItems={lossValidation.lossItems}
+        zeroProfitItems={lossValidation.zeroProfitItems}
       />
 
-      {/* ── PRICING MODALS ─────────────────────────────────────────────────── */}
-      <PricingModalsBlock
-        lossModalOpen={lossModalOpen}
-        setLossModalOpen={setLossModalOpen}
-        overrideModalOpen={overrideModalOpen}
-        setOverrideModalOpen={setOverrideModalOpen}
-        overrideAction={overrideAction}
-        lossValidation={lossValidation}
-        estimate={estimate}
-        currentUser={currentUser}
+      {/* ── PRICING OVERRIDE MODAL (loss pricing only — manager/admin with PIN + reason) ── */}
+      <PricingOverrideModal
+        open={overrideModalOpen}
+        onClose={() => setOverrideModalOpen(false)}
+        onApproved={() => {
+          setOverrideModalOpen(false);
+          onOpenSendReview?.();
+        }}
+        action={overrideAction}
         role={role}
-        onOpenSendReview={onOpenSendReview}
+        currentUser={currentUser}
+        document={estimate}
+        documentType="estimate"
+        pricingResult={lossValidation}
+        lossItems={lossValidation.lossItems}
+        zeroProfitItems={lossValidation.zeroProfitItems}
       />
 
       {/* ── MORE ACTIONS ──────────────────────────────────────────────────── */}
-      <MoreActionsBlock
-        moreActionsOpen={moreActionsOpen}
-        setMoreActionsOpen={setMoreActionsOpen}
-        canDelete={canDelete}
-        getDeleteBlockReason={getDeleteBlockReason}
-        handleDelete={handleDelete}
-      />
+      <div className="mx-3 mt-3 pt-3 border-t border-slate-200">
+        <Collapsible open={moreActionsOpen} onOpenChange={setMoreActionsOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors group">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">More Actions</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${moreActionsOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 pb-3 space-y-1.5">
+            <button
+              onClick={handleDelete}
+              disabled={!canDelete()}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors text-xs font-medium ${
+                canDelete()
+                  ? 'bg-white border border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700'
+                  : 'bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+              title={!canDelete() ? getDeleteBlockReason() : 'Delete this estimate'}
+            >
+              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+              Delete Estimate
+            </button>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
     </div>
   );
 }
