@@ -54,24 +54,34 @@ function getNextAction(estimate, omwActive) {
   return null;
 }
 
-// ── status summary chip ───────────────────────────────────────────────────────
+// ── status summary chip — dot indicator row ───────────────────────────────────
 function SummaryChip({ label, value, variant }) {
-  const variants = {
-    success: 'bg-green-50 border-green-200 text-green-700',
-    warning: 'bg-amber-50 border-amber-200 text-amber-700',
-    info:    'bg-blue-50 border-blue-200 text-blue-700',
-    neutral: 'bg-slate-50 border-slate-200 text-slate-500',
-    error:   'bg-red-50 border-red-200 text-red-700',
+  const dot = {
+    success: 'bg-emerald-400',
+    warning: 'bg-amber-400',
+    info:    'bg-blue-400',
+    neutral: 'bg-slate-300',
+    error:   'bg-red-400',
+  };
+  const val = {
+    success: 'text-emerald-600',
+    warning: 'text-amber-600',
+    info:    'text-blue-600',
+    neutral: 'text-slate-400',
+    error:   'text-red-600',
   };
   return (
-    <div className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-[10px] font-medium ${variants[variant] || variants.neutral}`}>
-      <span className="text-[10px] text-current opacity-70">{label}</span>
-      <span className="font-semibold">{value}</span>
+    <div className="flex items-center justify-between py-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot[variant] || dot.neutral}`} />
+        <span className="text-[10px] text-slate-400">{label}</span>
+      </div>
+      <span className={`text-[10px] font-semibold ${val[variant] || val.neutral}`}>{value}</span>
     </div>
   );
 }
 
-// ── smart action card ─────────────────────────────────────────────────────────
+// ── smart action card (unchanged) ─────────────────────────────────────────────
 function ActionCard({ icon: Icon, title, subtitle, badge, badgeVariant, ctaLabel, ctaVariant, onClick, isDone, isActive, isError, isRunning, children }) {
   const badgeColors = {
     success: 'bg-green-100 text-green-700',
@@ -159,65 +169,86 @@ function ActionCard({ icon: Icon, title, subtitle, badge, badgeVariant, ctaLabel
   );
 }
 
-// ── EstimateSummaryBlock ──────────────────────────────────────────────────────
+// ── EstimateSummaryBlock — dark header with dynamic status badge ───────────────
 function EstimateSummaryBlock({ estimate }) {
   const s = estimate?.status;
+  const statusConfig = {
+    draft:             { label: 'Draft',         cls: 'bg-slate-600 text-slate-200' },
+    scheduled:         { label: 'Scheduled',     cls: 'bg-blue-600/70 text-blue-100' },
+    on_my_way:         { label: 'On My Way',     cls: 'bg-amber-500/70 text-amber-100' },
+    visit_completed:   { label: 'Visit Done',    cls: 'bg-sky-600/70 text-sky-100' },
+    sent:              { label: 'Sent',          cls: 'bg-indigo-600/70 text-indigo-100' },
+    viewed:            { label: 'Viewed',        cls: 'bg-violet-600/70 text-violet-100' },
+    changes_requested: { label: 'Changes Req.',  cls: 'bg-amber-600/70 text-amber-100' },
+    approved:          { label: 'Approved',      cls: 'bg-emerald-600/70 text-emerald-100' },
+    signed:            { label: 'Signed',        cls: 'bg-emerald-600/70 text-emerald-100' },
+    declined:          { label: 'Declined',      cls: 'bg-red-600/70 text-red-100' },
+    converted:         { label: 'Converted',     cls: 'bg-teal-600/70 text-teal-100' },
+  };
+  const badge = statusConfig[s] || statusConfig.draft;
+
   return (
-    <div className="px-3 pt-3 pb-3 border-b border-slate-100">
-      <div className="space-y-2">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
-          <span className="text-lg font-bold text-slate-900">${(estimate?.total || 0).toFixed(2)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Status</span>
-          <span className="text-xs font-semibold text-slate-700 capitalize">{s || 'Draft'}</span>
-        </div>
+    <div className="bg-slate-900 px-4 pt-4 pb-4 flex-shrink-0">
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Estimate Total</p>
+        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>
+          {badge.label}
+        </span>
       </div>
+      <p className="text-[26px] font-black text-white leading-none tracking-tight">
+        ${(estimate?.total || 0).toFixed(2)}
+      </p>
+      {estimate?.client_name && (
+        <p className="text-[10px] text-slate-400 mt-1.5 truncate">{estimate.client_name}</p>
+      )}
     </div>
   );
 }
 
-// ── StatusOverviewBlock ───────────────────────────────────────────────────────
+// ── StatusOverviewBlock — clean dot-row layout ────────────────────────────────
 function StatusOverviewBlock({ estimate, s, visitDone, isSent, isViewed, isApproved, isDeclined, isSigned, isChangesReq, apptSummaryValue, apptSummaryVariant, sentValue, sentVariant, approvalValue, approvalVariant }) {
   return (
-    <div className="px-3 pt-3 pb-2 space-y-1.5 border-b border-slate-100">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-0.5">Status Overview</p>
-      <SummaryChip label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
-      <SummaryChip label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
-      <SummaryChip label="Sent"        value={sentValue}    variant={sentVariant} />
-      <SummaryChip label="Approval"    value={approvalValue} variant={approvalVariant} />
-      {isSigned && estimate?.signer_name && (
-        <SummaryChip label="Signed by" value={estimate.signer_name} variant="success" />
-      )}
-      {isChangesReq && estimate?.changes_requested_at && (
-        <SummaryChip label="Changes" value={fmt(estimate.changes_requested_at)} variant="warning" />
-      )}
-    </div>
-  );
-}
-
-// ── NextActionBlock ───────────────────────────────────────────────────────────
-function NextActionBlock({ next }) {
-  if (!next) return null;
-  return (
-    <div className="mx-3 mt-3 mb-3 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 flex items-start gap-2">
-      <next.icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
-        next.color === 'green'  ? 'text-emerald-500' :
-        next.color === 'orange' ? 'text-amber-500' :
-        next.color === 'red'    ? 'text-red-500' :
-        next.color === 'purple' ? 'text-violet-500' :
-        'text-blue-500'
-      }`} />
-      <div>
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5">Next step</p>
-        <p className="text-[10px] font-medium text-slate-700 leading-snug">{next.text}</p>
+    <div className="bg-white px-4 pt-3 pb-2 border-b border-slate-100">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Status</p>
+      <div className="divide-y divide-slate-50">
+        <SummaryChip label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
+        <SummaryChip label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
+        <SummaryChip label="Sent"        value={sentValue}    variant={sentVariant} />
+        <SummaryChip label="Approval"    value={approvalValue} variant={approvalVariant} />
+        {isSigned && estimate?.signer_name && (
+          <SummaryChip label="Signed by" value={estimate.signer_name} variant="success" />
+        )}
+        {isChangesReq && estimate?.changes_requested_at && (
+          <SummaryChip label="Changes" value={fmt(estimate.changes_requested_at)} variant="warning" />
+        )}
       </div>
     </div>
   );
 }
 
-// ── ActionButtonsBlock ────────────────────────────────────────────────────────
+// ── NextActionBlock — contextual accent border, color-responsive ──────────────
+function NextActionBlock({ next }) {
+  if (!next) return null;
+  const colorMap = {
+    green:  { bg: 'bg-emerald-50', accent: 'border-l-emerald-400', text: 'text-emerald-700', icon: 'text-emerald-500' },
+    orange: { bg: 'bg-amber-50',   accent: 'border-l-amber-400',   text: 'text-amber-700',   icon: 'text-amber-500' },
+    red:    { bg: 'bg-red-50',     accent: 'border-l-red-400',     text: 'text-red-700',     icon: 'text-red-500' },
+    purple: { bg: 'bg-violet-50',  accent: 'border-l-violet-400',  text: 'text-violet-700',  icon: 'text-violet-500' },
+    blue:   { bg: 'bg-blue-50',    accent: 'border-l-blue-400',    text: 'text-blue-700',    icon: 'text-blue-500' },
+  };
+  const c = colorMap[next.color] || colorMap.blue;
+  return (
+    <div className={`mx-3 mt-3 mb-1 rounded-xl border-l-4 ${c.bg} ${c.accent} px-3 py-2.5 flex items-start gap-2`}>
+      <next.icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${c.icon}`} />
+      <div>
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-0.5">Next step</p>
+        <p className={`text-[10px] font-semibold leading-snug ${c.text}`}>{next.text}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── ActionButtonsBlock — primary CTA dark + outline secondaries ───────────────
 function ActionButtonsBlock({
   estimate,
   omwActive,
@@ -236,25 +267,37 @@ function ActionButtonsBlock({
   setLossModalOpen,
 }) {
   return (
-    <div className="px-2 pb-2 space-y-1 flex-1 flex flex-col gap-1">
-      <button onClick={() => { setSchedDate(estimate?.scheduled_date || ''); setSchedTime(estimate?.scheduled_time || '09:00'); setScheduleOpen(true); }}
-        className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
-        <Calendar className="w-3.5 h-3.5 text-blue-500" />
+    <div className="px-3 pb-3 flex-1 flex flex-col gap-1.5">
+      <button
+        onClick={() => { setSchedDate(estimate?.scheduled_date || ''); setSchedTime(estimate?.scheduled_time || '09:00'); setScheduleOpen(true); }}
+        className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-xs font-medium bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors"
+      >
+        <Calendar className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
         Schedule
       </button>
-      <button onClick={omwActive ? handleStopOMW : handleOMW}
-        className={`flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${
-          omwActive ? 'bg-orange-100 hover:bg-orange-200 text-orange-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-        }`}>
-        <Navigation2 className="w-3.5 h-3.5 text-amber-500" />
+
+      <button
+        onClick={omwActive ? handleStopOMW : handleOMW}
+        className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+          omwActive
+            ? 'bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-700'
+            : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700'
+        }`}
+      >
+        <Navigation2 className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
         {omwActive ? 'Stop OMW' : 'On My Way'}
       </button>
-      <button onClick={() => setFinishOpen(true)}
-        className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
-        <CheckSquare className="w-3.5 h-3.5 text-green-500" />
+
+      <button
+        onClick={() => setFinishOpen(true)}
+        className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-xs font-medium bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors"
+      >
+        <CheckSquare className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
         Finish Visit
       </button>
-      <button onClick={() => {
+
+      <button
+        onClick={() => {
           if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
           // Document type validation
           const dtv = validateDocTypeFields(estimate);
@@ -286,13 +329,17 @@ function ActionButtonsBlock({
           }
           onOpenSendReview?.();
         }}
-        className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
-        <Send className="w-3.5 h-3.5 text-indigo-500" />
+        className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-sm"
+      >
+        <Send className="w-3.5 h-3.5 flex-shrink-0" />
         Review & Send
       </button>
-      <button onClick={() => setApprovalOpen(true)}
-        className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
-        <ThumbsUp className="w-3.5 h-3.5 text-green-500" />
+
+      <button
+        onClick={() => setApprovalOpen(true)}
+        className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-xs font-medium bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors"
+      >
+        <ThumbsUp className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
         Approve/Decline
       </button>
     </div>
@@ -560,12 +607,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     : null;
 
   return (
-    <div className="w-52 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto min-h-0">
+    <div className="w-52 flex-shrink-0 border-r border-slate-100 bg-slate-50 flex flex-col overflow-y-auto min-h-0">
 
-      {/* ── ESTIMATE SUMMARY (Total, Status) ──────────────────────────────── */}
+      {/* ── ESTIMATE SUMMARY ──────────────────────────────────────────────── */}
       <EstimateSummaryBlock estimate={estimate} />
 
-      {/* ── STATUS OVERVIEW ─────────────────────────────────────────────────– */}
+      {/* ── STATUS OVERVIEW ───────────────────────────────────────────────── */}
       <StatusOverviewBlock
         estimate={estimate}
         s={s}
@@ -587,11 +634,11 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       {/* ── NEXT BEST ACTION ──────────────────────────────────────────────── */}
       <NextActionBlock next={next} />
 
-      {/* divider */}
-      <div className="border-t border-slate-100 mb-2" />
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-3.5 mb-2">Other Actions</p>
+      {/* ── ACTIONS SECTION ───────────────────────────────────────────────── */}
+      <div className="px-3 pt-3 pb-1">
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Actions</p>
+      </div>
 
-      {/* ── ACTION CARDS (Compact buttons with icon colors) ──────────────────────── */}
       <ActionButtonsBlock
         estimate={estimate}
         omwActive={omwActive}
@@ -790,26 +837,26 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       />
 
       {/* ── MORE ACTIONS ──────────────────────────────────────────────────── */}
-      <div className="mx-3 mt-3 pt-3 border-t border-slate-200">
+      <div className="mx-3 mt-2 pt-2 border-t border-slate-200 pb-3">
         <Collapsible open={moreActionsOpen} onOpenChange={setMoreActionsOpen}>
           <CollapsibleTrigger asChild>
-            <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors group">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">More Actions</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${moreActionsOpen ? 'rotate-180' : ''}`} />
+            <button className="w-full flex items-center justify-between px-1 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">More</span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${moreActionsOpen ? 'rotate-180' : ''}`} />
             </button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="pt-2 pb-3 space-y-1.5">
+          <CollapsibleContent className="pt-1 pb-1">
             <button
               onClick={handleDelete}
               disabled={!canDelete()}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors text-xs font-medium ${
+              className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-colors text-[10px] font-medium ${
                 canDelete()
-                  ? 'bg-white border border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700'
-                  : 'bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed'
+                  ? 'text-red-600 hover:bg-red-50'
+                  : 'text-slate-400 cursor-not-allowed'
               }`}
               title={!canDelete() ? getDeleteBlockReason() : 'Delete this estimate'}
             >
-              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+              <Trash2 className={`w-3.5 h-3.5 flex-shrink-0 ${canDelete() ? 'text-red-500' : 'text-slate-300'}`} />
               Delete Estimate
             </button>
           </CollapsibleContent>
