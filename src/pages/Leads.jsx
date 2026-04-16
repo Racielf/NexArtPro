@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
-import { Search, Phone, Mail, MapPin, Calendar, ChevronRight, Trash2 } from 'lucide-react';
+import { Search, Phone, Mail, Calendar, ChevronRight, Trash2, Users, UserPlus, PhoneCall, CheckCircle2 } from 'lucide-react';
+
+// ── KPI Card ─────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, icon: Icon, accent }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 px-5 py-4 flex items-center gap-4 shadow-sm">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: accent + '18' }}>
+        <Icon className="w-5 h-5" style={{ color: accent }} />
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-slate-900 leading-none">{value}</p>
+        <p className="text-[11px] text-slate-400 font-medium mt-1 uppercase tracking-wide">{label}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function Leads() {
   const [leads, setLeads] = useState([]);
@@ -14,9 +28,7 @@ export default function Leads() {
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
 
-  useEffect(() => {
-    loadLeads();
-  }, []);
+  useEffect(() => { loadLeads(); }, []);
 
   const loadLeads = async () => {
     try {
@@ -67,137 +79,147 @@ export default function Leads() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <PageHeader title="Leads" subtitle={`${stats.total} total`} />
+    <div className="flex flex-col h-full bg-slate-50">
+      <PageHeader title="Leads" subtitle={`${stats.total} total leads`} />
 
       <PageShell>
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: 'Total Leads', value: stats.total, color: 'text-slate-800' },
-            { label: 'New', value: stats.new, color: 'text-blue-600' },
-            { label: 'Contacted', value: stats.contacted, color: 'text-yellow-600' },
-            { label: 'Converted', value: stats.converted, color: 'text-green-600' },
-          ].map(stat => (
-            <Card key={stat.label}>
-              <CardContent className="p-4">
-                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
-              </CardContent>
-            </Card>
-          ))}
+
+        {/* ── KPI Row ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <KpiCard label="Total Leads"  value={stats.total}     icon={Users}        accent="#2563EB" />
+          <KpiCard label="New"          value={stats.new}       icon={UserPlus}     accent="#0ea5e9" />
+          <KpiCard label="Contacted"    value={stats.contacted} icon={PhoneCall}    accent="#f59e0b" />
+          <KpiCard label="Converted"    value={stats.converted} icon={CheckCircle2} accent="#10b981" />
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, email, phone, or service..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        {/* Action Bar */}
-        {selectedIds.size > 0 && (
-          <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
-            <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
-            <Button size="sm" variant="destructive" className="gap-1.5"
-              onClick={() => {
-                if (confirm(`Delete ${selectedIds.size} lead(s)?`)) handleDeleteSelected();
-              }}>
-              <Trash2 className="w-3.5 h-3.5" /> Delete Selected
-            </Button>
+        {/* ── Toolbar ── */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by name, email, phone or service..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full h-9 pl-9 pr-4 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
+            />
           </div>
-        )}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+              <span className="text-sm font-semibold text-red-700">{selectedIds.size} selected</span>
+              <Button size="sm" variant="destructive" className="gap-1.5 h-7 text-xs"
+                onClick={() => { if (confirm(`Delete ${selectedIds.size} lead(s)?`)) handleDeleteSelected(); }}>
+                <Trash2 className="w-3 h-3" /> Delete
+              </Button>
+            </div>
+          )}
+        </div>
 
-        {/* Table */}
+        {/* ── Table ── */}
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading leads...</div>
+          <div className="bg-white rounded-xl border border-slate-200 py-16 text-center text-sm text-slate-400 shadow-sm">
+            Loading leads...
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-3">
+          <div className="bg-white rounded-xl border border-slate-200 py-16 text-center shadow-sm">
+            <p className="text-slate-400 text-sm mb-1">
               {leads.length === 0 ? 'No leads yet' : 'No leads match your search'}
             </p>
             {leads.length === 0 && (
-              <p className="text-xs text-slate-400">
-                Leads from the website contact form will appear here.
-              </p>
+              <p className="text-xs text-slate-300">Leads from the website contact form will appear here.</p>
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-border overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-muted/40">
-                    <th className="px-3 py-3">
+                  <tr className="border-b border-slate-100" style={{ background: '#f8fafc' }}>
+                    <th className="px-4 py-3 w-10">
                       <input
                         type="checkbox"
                         checked={selectedIds.size === filtered.length && filtered.length > 0}
                         onChange={toggleSelectAll}
-                        className="w-4 h-4 cursor-pointer"
+                        className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
                       />
                     </th>
-                    <th className="px-6 py-3 text-left font-semibold text-foreground">Name</th>
-                    <th className="px-6 py-3 text-left font-semibold text-foreground">Contact</th>
-                    <th className="px-6 py-3 text-left font-semibold text-foreground">Service</th>
-                    <th className="px-6 py-3 text-left font-semibold text-foreground">Status</th>
-                    <th className="px-6 py-3 text-left font-semibold text-foreground">Date</th>
-                    <th className="px-6 py-3 text-right font-semibold text-foreground">Action</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Contact</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Service</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 w-20" />
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {filtered.map((lead, i) => {
                     const createdDate = lead.created_date
                       ? new Date(lead.created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                       : '—';
+                    const isSelected = selectedIds.has(lead.id);
 
                     return (
-                      <tr key={lead.id || i} className="border-b border-border/50 hover:bg-accent/50 transition">
-                        <td className="px-3 py-4">
+                      <tr
+                        key={lead.id || i}
+                        className="transition-colors duration-100"
+                        style={{ background: isSelected ? '#eff6ff' : undefined }}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = ''; }}
+                      >
+                        <td className="px-4 py-3.5">
                           <input
                             type="checkbox"
-                            checked={selectedIds.has(lead.id)}
+                            checked={isSelected}
                             onChange={() => toggleSelect(lead.id)}
-                            className="w-4 h-4 cursor-pointer"
+                            className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
                             onClick={e => e.stopPropagation()}
                           />
                         </td>
-                        <td className="px-6 py-4 font-medium text-foreground">{lead.name}</td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-1 text-xs">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Mail className="w-3 h-3 flex-shrink-0" />
-                              {lead.email}
-                            </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Phone className="w-3 h-3 flex-shrink-0" />
-                              {lead.phone}
-                            </div>
+                        <td className="px-4 py-3.5">
+                          <span className="font-semibold text-slate-800 text-[13px]">{lead.name}</span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="space-y-1">
+                            {lead.email && (
+                              <div className="flex items-center gap-1.5 text-[12px] text-slate-500">
+                                <Mail className="w-3 h-3 flex-shrink-0 text-slate-300" />
+                                {lead.email}
+                              </div>
+                            )}
+                            {lead.phone && (
+                              <div className="flex items-center gap-1.5 text-[12px] text-slate-500">
+                                <Phone className="w-3 h-3 flex-shrink-0 text-slate-300" />
+                                {lead.phone}
+                              </div>
+                            )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-foreground">{lead.service}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3.5">
+                          <span className="text-[13px] text-slate-600">{lead.service || '—'}</span>
+                        </td>
+                        <td className="px-4 py-3.5">
                           <StatusBadge status={lead.status} />
                         </td>
-                        <td className="px-6 py-4 text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 flex-shrink-0" />
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-1.5 text-[12px] text-slate-400">
+                            <Calendar className="w-3 h-3 flex-shrink-0 text-slate-300" />
                             {createdDate}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
-                            View <ChevronRight className="w-3 h-3 ml-1" />
-                          </Button>
+                        <td className="px-4 py-3.5 text-right">
+                          <button className="inline-flex items-center gap-1 text-[12px] font-semibold text-blue-600 hover:text-blue-800 transition-colors">
+                            View <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+            </div>
+            {/* Table footer count */}
+            <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50">
+              <p className="text-[11px] text-slate-400">{filtered.length} lead{filtered.length !== 1 ? 's' : ''} shown</p>
             </div>
           </div>
         )}
