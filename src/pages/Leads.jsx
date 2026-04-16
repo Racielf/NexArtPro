@@ -80,7 +80,7 @@ export default function Leads() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
-      <PageHeader title="Leads" subtitle={`${stats.total} total leads`} />
+      <PageHeader eyebrow="CRM" title="Leads" subtitle={`${stats.total} total leads`} />
 
       <PageShell>
 
