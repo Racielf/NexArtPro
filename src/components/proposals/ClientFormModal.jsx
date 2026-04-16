@@ -75,40 +75,40 @@ export default function ClientFormModal({ open, onOpenChange, client = null, onS
         
         {mode === 'form' && (
         <div className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Full Name *</Label>
-              <Input className="h-8 text-sm" value={form.full_name} onChange={e => set('full_name', e.target.value)} placeholder="John Smith" />
+              <Label className="text-sm font-medium">Full Name *</Label>
+              <Input className="h-11 text-base" value={form.full_name} onChange={e => set('full_name', e.target.value)} placeholder="John Smith" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Phone *</Label>
-              <Input className="h-8 text-sm" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="(503) 555-0100" />
+              <Label className="text-sm font-medium">Phone *</Label>
+              <Input className="h-11 text-base" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="(503) 555-0100" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Email</Label>
-              <Input className="h-8 text-sm" value={form.email} onChange={e => set('email', e.target.value)} placeholder="john@email.com" />
+              <Label className="text-sm font-medium">Email</Label>
+              <Input className="h-11 text-base" value={form.email} onChange={e => set('email', e.target.value)} placeholder="john@email.com" />
             </div>
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Street Address</Label>
-              <Input className="h-8 text-sm" value={form.address} onChange={e => set('address', e.target.value)} placeholder="1440 SE 143rd Ave" />
+              <Label className="text-sm font-medium">Street Address</Label>
+              <Input className="h-11 text-base" value={form.address} onChange={e => set('address', e.target.value)} placeholder="1440 SE 143rd Ave" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">City</Label>
-              <Input className="h-8 text-sm" value={form.city} onChange={e => set('city', e.target.value)} placeholder="Portland" />
+              <Label className="text-sm font-medium">City</Label>
+              <Input className="h-11 text-base" value={form.city} onChange={e => set('city', e.target.value)} placeholder="Portland" />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
-                <Label className="text-xs">State</Label>
-                <Input className="h-8 text-sm" value={form.state} onChange={e => set('state', e.target.value)} placeholder="OR" />
+                <Label className="text-sm font-medium">State</Label>
+                <Input className="h-11 text-base" value={form.state} onChange={e => set('state', e.target.value)} placeholder="OR" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">ZIP</Label>
-                <Input className="h-8 text-sm" value={form.zip} onChange={e => set('zip', e.target.value)} placeholder="97233" />
+                <Label className="text-sm font-medium">ZIP</Label>
+                <Input className="h-11 text-base" value={form.zip} onChange={e => set('zip', e.target.value)} placeholder="97233" />
               </div>
             </div>
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Notes</Label>
-              <Input className="h-8 text-sm" value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional notes..." />
+              <Label className="text-sm font-medium">Notes</Label>
+              <Input className="h-11 text-base" value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional notes..." />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
