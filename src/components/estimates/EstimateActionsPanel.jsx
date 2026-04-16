@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calendar, Navigation2, CheckSquare, Send, ThumbsUp,
-  CheckCircle, XCircle, AlertCircle, Zap, Trash2, ChevronDown
+  CheckCircle, XCircle, AlertCircle, Zap, Trash2, ChevronDown,
+  CalendarDays, MapPin, Mail, BadgeCheck
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -49,31 +50,63 @@ function getNextAction(estimate, omwActive) {
   return null;
 }
 
-// ── status summary chip ───────────────────────────────────────────────────────
-function SummaryChip({ label, value, variant }) {
-  const dots = {
-    success: 'bg-emerald-500',
-    warning: 'bg-amber-400',
-    info:    'bg-blue-500',
-    neutral: 'bg-slate-300',
-    error:   'bg-red-500',
-  };
-  const valueColors = {
-    success: 'text-emerald-700',
-    warning: 'text-amber-700',
-    info:    'text-blue-700',
-    neutral: 'text-slate-500',
-    error:   'text-red-600',
-  };
+// ── pipeline row ─────────────────────────────────────────────────────────────
+const STEP_ICONS = {
+  Appointment: CalendarDays,
+  Visit:       MapPin,
+  Sent:        Mail,
+  Approval:    BadgeCheck,
+  'Signed by': CheckCircle,
+  Changes:     AlertCircle,
+};
+
+const VARIANT_DOT = {
+  success: 'bg-emerald-500',
+  warning: 'bg-amber-400',
+  info:    'bg-blue-500',
+  neutral: 'bg-slate-300',
+  error:   'bg-red-500',
+};
+const VARIANT_VALUE = {
+  success: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+  warning: 'text-amber-700 bg-amber-50 border-amber-200',
+  info:    'text-blue-700 bg-blue-50 border-blue-200',
+  neutral: 'text-slate-400 bg-slate-50 border-slate-200',
+  error:   'text-red-600 bg-red-50 border-red-200',
+};
+const VARIANT_ICON = {
+  success: 'text-emerald-500 bg-emerald-50',
+  warning: 'text-amber-500 bg-amber-50',
+  info:    'text-blue-500 bg-blue-50',
+  neutral: 'text-slate-300 bg-slate-50',
+  error:   'text-red-400 bg-red-50',
+};
+
+function PipelineRow({ label, value, variant }) {
+  const Icon = STEP_ICONS[label] || CalendarDays;
+  const iconCls  = VARIANT_ICON[variant]  || VARIANT_ICON.neutral;
+  const valueCls = VARIANT_VALUE[variant] || VARIANT_VALUE.neutral;
+  const dotCls   = VARIANT_DOT[variant]   || VARIANT_DOT.neutral;
   return (
-    <div className="flex items-center justify-between py-1.5 px-1">
-      <div className="flex items-center gap-2">
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dots[variant] || dots.neutral}`} />
-        <span className="text-[11px] text-slate-500">{label}</span>
+    <div className="flex items-center gap-2.5">
+      {/* Step icon */}
+      <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${iconCls}`}>
+        <Icon className="w-3 h-3" />
       </div>
-      <span className={`text-[11px] font-semibold ${valueColors[variant] || valueColors.neutral}`}>{value}</span>
+      {/* Label */}
+      <span className="flex-1 text-[11px] font-medium text-slate-600 truncate">{label}</span>
+      {/* Status badge */}
+      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border leading-none ${valueCls}`}>
+        <span className={`w-1 h-1 rounded-full flex-shrink-0 ${dotCls}`} />
+        {value}
+      </span>
     </div>
   );
+}
+
+// kept for backward compat if used elsewhere — delegates to PipelineRow
+function SummaryChip({ label, value, variant }) {
+  return <PipelineRow label={label} value={value} variant={variant} />;
 }
 
 // ── EstimateSummaryBlock ──────────────────────────────────────────────────────
@@ -117,18 +150,18 @@ function StatusOverviewBlock({ estimate }) {
   const approvalValue   = isSigned ? 'Signed' : isApproved ? 'Approved' : isDeclined ? 'Declined' : isChangesReq ? 'Changes Req.' : isSent ? 'Pending' : '—';
 
   return (
-    <div className="px-5 pt-4 pb-4 border-b border-slate-100">
+    <div className="px-4 pt-4 pb-4 border-b border-slate-100">
       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Pipeline</p>
-      <div className="space-y-2.5">
-        <SummaryChip label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
-        <SummaryChip label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
-        <SummaryChip label="Sent"        value={sentValue}    variant={sentVariant} />
-        <SummaryChip label="Approval"    value={approvalValue} variant={approvalVariant} />
+      <div className="space-y-2">
+        <PipelineRow label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
+        <PipelineRow label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
+        <PipelineRow label="Sent"        value={sentValue}   variant={sentVariant} />
+        <PipelineRow label="Approval"    value={approvalValue} variant={approvalVariant} />
         {isSigned && estimate?.signer_name && (
-          <SummaryChip label="Signed by" value={estimate.signer_name} variant="success" />
+          <PipelineRow label="Signed by" value={estimate.signer_name} variant="success" />
         )}
         {isChangesReq && estimate?.changes_requested_at && (
-          <SummaryChip label="Changes" value={fmt(estimate.changes_requested_at)} variant="warning" />
+          <PipelineRow label="Changes" value={fmt(estimate.changes_requested_at)} variant="warning" />
         )}
       </div>
     </div>
