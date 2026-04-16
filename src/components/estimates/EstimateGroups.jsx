@@ -86,13 +86,13 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   const negMeta     = !isPreview ? getNegotiationMeta(cost, price) : { status: 'none' };
 
   return (
-    <div className={`border-b border-slate-100 last:border-0 transition-colors ${isFixed ? 'bg-emerald-50/60 ring-1 ring-inset ring-emerald-300' : expanded ? 'bg-blue-50/20' : 'hover:bg-slate-50/60'}`}>
+    <div className={`border-b border-slate-100 last:border-0 transition-colors group/row ${isFixed ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-200' : expanded ? 'bg-blue-50/10' : 'hover:bg-slate-50/70'}`}>
       {/* Main row — shared grid template */}
-      <div className="grid items-center gap-2 px-4 py-2.5"
+      <div className="grid items-center gap-2 px-4 py-3"
         style={{ gridTemplateColumns: GRID_COLS }}>
 
         {/* Grip */}
-        <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing flex justify-center">
+        <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing flex justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
           <GripVertical className="w-3.5 h-3.5" />
         </button>
 
@@ -150,85 +150,77 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 }
               }}
             placeholder="Service name"
-            className="h-8 w-full text-sm font-semibold border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-1 focus:ring-primary/30 transition"
+            className="h-8 w-full text-sm font-medium text-slate-800 border-transparent hover:border-slate-200 focus:border-blue-400 bg-transparent hover:bg-white focus:bg-white px-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/15 transition placeholder:text-slate-300"
           />
 
           {/* Description — always visible below service name */}
           {!expanded && item.description && (
-            <p className="text-[11px] text-slate-400 px-2 leading-snug truncate mt-0.5">{item.description}</p>
+            <p className="text-[11px] text-slate-400 px-2 leading-snug truncate mt-0.5 font-normal">{item.description}</p>
           )}
           {!expanded && (
-            <button onClick={() => setExpanded(true)} className="text-[10px] text-primary/60 hover:text-primary px-2 mt-0.5 font-medium">
-              {item.description ? 'edit details' : '+ add description'}
+            <button onClick={() => setExpanded(true)} className="text-[10px] text-slate-400 hover:text-primary px-2 mt-0.5 font-medium opacity-0 group-hover/row:opacity-100 transition-opacity">
+              {item.description ? 'edit' : '+ desc'}
             </button>
           )}
 
           {/* === INTERNAL-ONLY: concrete metrics === */}
           {!isPreview && <ConcreteMetrics item={item} />}
 
-          {/* === INTERNAL-ONLY: line margin + loss prevention + negotiation helpers ===
-              Rule 8: placed inside Service column, below description.
-              Rule 9: hidden in preview/PDF/client-facing mode. */}
+          {/* === INTERNAL-ONLY: line margin + loss prevention + negotiation helpers === */}
           {!isPreview && (cost > 0 || book > 0) && (
-            <div className="px-2 mt-1 space-y-1">
-              {/* Line margin % — rule 3: ((unit_price - unit_cost) / unit_price) * 100 */}
+            <div className="px-2 mt-1.5 flex flex-wrap gap-1">
+              {/* Line margin % — subtle pill */}
               {lineMarginPct !== null && (
-                <span className={`inline-flex items-center gap-1 text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${
-                  lineMarginPct >= 30 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
-                  lineMarginPct >= 20 ? 'bg-amber-50 border-amber-200 text-amber-600' :
-                  lineMarginPct >= 0  ? 'bg-red-50 border-red-200 text-red-600' :
-                                        'bg-red-100 border-red-300 text-red-700'
+                <span className={`inline-flex items-center gap-1 text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border ${
+                  lineMarginPct >= 30 ? 'bg-emerald-50/80 border-emerald-100 text-emerald-600' :
+                  lineMarginPct >= 20 ? 'bg-amber-50/80 border-amber-100 text-amber-600' :
+                  lineMarginPct >= 0  ? 'bg-red-50/80 border-red-100 text-red-500' :
+                                        'bg-red-50 border-red-200 text-red-600'
                 }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                    lineMarginPct >= 30 ? 'bg-emerald-500' :
-                    lineMarginPct >= 20 ? 'bg-amber-400' : 'bg-red-500'
+                  <span className={`w-1 h-1 rounded-full flex-shrink-0 ${
+                    lineMarginPct >= 30 ? 'bg-emerald-400' :
+                    lineMarginPct >= 20 ? 'bg-amber-400' : 'bg-red-400'
                   }`} />
-                  {lineMarginPct.toFixed(1)}% margin
+                  {lineMarginPct.toFixed(1)}%
                 </span>
               )}
 
-              {/* ⚠️ Loss prevention alerts — rule 10 */}
+              {/* ⚠️ Loss alert — compact inline */}
               {isLoss && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-100 border border-red-300">
-                  <span className="text-red-600 text-[10px] font-bold">⚠ LOSS:</span>
-                  <span className="text-red-600 text-[10px]">Price ${price.toFixed(2)} &lt; Cost ${cost.toFixed(2)} — losing ${(cost - price).toFixed(2)}/unit</span>
-                </div>
+                <span className="inline-flex items-center gap-1 text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border bg-red-50/80 border-red-200 text-red-600">
+                  ↓ −${(cost - price).toFixed(2)}/u
+                </span>
               )}
               {isZeroProfit && !isLoss && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-100 border border-amber-300">
-                  <span className="text-amber-700 text-[10px] font-bold">⚠ Zero Profit:</span>
-                  <span className="text-amber-600 text-[10px]">Price equals cost — no margin on this item</span>
-                </div>
+                <span className="inline-flex items-center gap-1 text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border bg-amber-50/80 border-amber-100 text-amber-600">
+                  0% profit
+                </span>
               )}
 
-              {/* Negotiation helper — shows suggested & floor when margin is below target */}
+              {/* Negotiation helper — very compact */}
               {negMeta.status !== 'none' && negMeta.status !== 'healthy' && (
-                <div className={`flex flex-col gap-0.5 px-1.5 py-1 rounded text-[9px] border ${
-                  negMeta.status === 'critical' ? 'bg-red-50/60 border-red-200' : 'bg-amber-50/60 border-amber-200'
+                <span className={`inline-flex items-center gap-1 text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border ${
+                  negMeta.status === 'critical' ? 'bg-red-50/60 border-red-100 text-red-500' : 'bg-amber-50/60 border-amber-100 text-amber-500'
                 }`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-500">Suggested (30%): <strong className="text-emerald-600">${negMeta.suggested.toFixed(2)}</strong></span>
-                    <span className="text-slate-500">Min (20%): <strong className="text-amber-600">${negMeta.floor.toFixed(2)}</strong></span>
-                  </div>
-                </div>
+                  sug ${negMeta.suggested.toFixed(0)}
+                </span>
               )}
 
-              {/* Book price variance badge */}
+              {/* Book price variance */}
               {book > 0 && (() => {
                 const diff = price - book;
                 const pct = (diff / book) * 100;
                 const isDanger  = pct < -15;
                 const isWarning = pct < 0 && pct >= -15;
-                const dotColor  = isDanger ? 'bg-red-500' : isWarning ? 'bg-amber-400' : 'bg-emerald-500';
-                const textColor = isDanger ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-emerald-600';
-                const bgColor   = isDanger ? 'bg-red-50 border-red-200' : isWarning ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200';
-                const label     = isDanger  ? `Critical ${pct.toFixed(1)}%`
-                                : isWarning ? `−${Math.abs(pct).toFixed(1)}% disc`
-                                : diff > 0 ? `+${pct.toFixed(1)}%`
-                                : '✓ at book';
+                const cls = isDanger ? 'bg-red-50/60 border-red-100 text-red-500'
+                          : isWarning ? 'bg-amber-50/60 border-amber-100 text-amber-500'
+                          : 'bg-emerald-50/60 border-emerald-100 text-emerald-500';
+                const label = isDanger  ? `−${Math.abs(pct).toFixed(0)}%↓`
+                            : isWarning ? `−${Math.abs(pct).toFixed(0)}%`
+                            : diff > 0  ? `+${pct.toFixed(0)}%`
+                            : '✓';
                 return (
-                  <span className={`inline-flex items-center gap-1 text-[9px] font-bold leading-none px-1.5 py-0.5 rounded-full border ${bgColor} ${textColor}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
+                  <span className={`inline-flex items-center text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border ${cls}`}>
                     {label}
                   </span>
                 );
@@ -240,12 +232,12 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         {/* Qty */}
         <Input
           type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
-          className="h-8 text-sm text-center border-slate-200 font-semibold px-1 w-full" min={0}
+          className="h-8 text-sm text-center border-slate-200 font-semibold px-1 w-full tabular-nums rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" min={0}
         />
 
         {/* UOM */}
         <select value={item.unit} onChange={e => update('unit', e.target.value)}
-          className="h-8 text-[11px] border border-slate-200 rounded px-1.5 bg-white text-slate-600 w-full font-medium">
+          className="h-8 text-[11px] border border-slate-200 rounded-lg px-1.5 bg-white text-slate-500 w-full font-medium focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 focus:outline-none">
           {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
 
@@ -257,10 +249,10 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
               type="number" step="0.01" value={item.unit_price}
               onChange={e => update('unit_price', e.target.value)}
               onBlur={() => handlePriceBlur('unit_price')}
-              className={`h-8 pl-4 pr-2 text-sm text-right font-semibold border-slate-200 ${
-                isLoss ? 'border-red-400 bg-red-50/60 text-red-700' :
-                isZeroProfit ? 'border-amber-400 bg-amber-50/60 text-amber-700' :
-                'text-slate-900'
+              className={`h-8 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-lg border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 ${
+                isLoss ? 'border-red-300 bg-red-50/40 text-red-600' :
+                isZeroProfit ? 'border-amber-300 bg-amber-50/40 text-amber-600' :
+                'text-slate-800'
               }`}
               min={0}
             />
@@ -322,45 +314,45 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           if (book === 0) return <div className="text-right text-xs text-slate-200">—</div>;
           return (
             <div className="text-right leading-tight min-w-0">
-              <div className="text-[10px] text-slate-400 font-medium">${book.toFixed(2)}</div>
-              <div className="text-[9px] text-slate-300 leading-none">book ref</div>
+              <div className="text-[10px] text-slate-400 font-medium tabular-nums">${book.toFixed(2)}</div>
+              <div className="text-[9px] text-slate-300 leading-none">book</div>
             </div>
           );
         })() : <div />}
 
         {/* Line total — quantity * unit_price */}
         <div className="text-right min-w-0">
-          <div className="font-bold text-slate-900 text-sm tabular-nums">
+          <div className="font-bold text-slate-800 text-sm tabular-nums">
             ${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           {(qty > 0 && price > 0) && (
             <div className="text-[9px] text-slate-400 leading-none mt-0.5 tabular-nums">
-              {qty % 1 === 0 ? parseInt(qty) : qty.toFixed(2)} {item.unit} × ${price.toFixed(2)}
+              {qty % 1 === 0 ? parseInt(qty) : qty.toFixed(2)} × ${price.toFixed(2)}
             </div>
           )}
         </div>
 
-        {/* Remove */}
+        {/* Remove — only visible on row hover */}
         <button onClick={() => onRemove(item.id)}
-          className="flex justify-center p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+          className="flex justify-center p-1 rounded text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover/row:opacity-100">
           <X className="w-3 h-3" />
         </button>
       </div>
 
       {/* Expanded detail row — editable description + taxable */}
       {expanded && (
-        <div className="px-10 pb-4 space-y-2">
+        <div className="px-10 pb-4 pt-0.5 space-y-2">
           <Input value={item.description} onChange={e => update('description', e.target.value)}
             placeholder="Description (optional)…"
-            className="h-8 text-sm border-slate-200 text-slate-600" />
+            className="h-8 text-sm border-slate-200 text-slate-600 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 placeholder:text-slate-300" />
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer select-none hover:text-slate-600 transition-colors">
               <input type="checkbox" checked={item.taxable !== false}
-                onChange={e => update('taxable', e.target.checked)} className="rounded" />
+                onChange={e => update('taxable', e.target.checked)} className="rounded accent-primary" />
               Taxable
             </label>
             <button onClick={() => setExpanded(false)}
-              className="text-xs text-slate-400 hover:text-slate-600">collapse</button>
+              className="text-[11px] text-slate-400 hover:text-slate-600 transition-colors">↑ collapse</button>
           </div>
         </div>
       )}
@@ -441,21 +433,21 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
       {/* Column headers */}
       {!group.collapsed && (
         <>
-          <div className="grid text-[10px] text-slate-400 font-semibold uppercase tracking-wide px-4 py-2 bg-slate-50 border-b border-slate-100"
+          <div className="grid text-[9px] text-slate-400 font-bold uppercase tracking-widest px-4 py-2 bg-slate-50/80 border-b border-slate-100"
             style={{ gridTemplateColumns: GRID_COLS }}>
             <div />
-            <div>Service</div>
-            <div className="text-center text-slate-500">Qty</div>
-            <div className="text-center text-slate-500">UOM</div>
-            <div className="text-right text-slate-600">Unit Price</div>
-            {!isPreview ? <div className="text-right text-slate-400 text-[9px]">Book<br/>ref</div> : <div />}
-            <div className="text-right">Line Total</div>
+            <div className="text-slate-500">Service</div>
+            <div className="text-center">Qty</div>
+            <div className="text-center">UOM</div>
+            <div className="text-right">Unit Price</div>
+            {!isPreview ? <div className="text-right text-slate-300">Book</div> : <div />}
+            <div className="text-right">Total</div>
             <div />
           </div>
 
-          <div className="divide-y divide-slate-100 min-h-[40px]">
+          <div className="divide-y divide-slate-100/80 min-h-[40px]">
             {group.items.length === 0 && (
-              <div className="py-6 text-center text-slate-300 text-xs">No items yet — click below to add</div>
+              <div className="py-8 text-center text-slate-300 text-xs">No items yet — click below to add</div>
             )}
             {group.items.map(item => (
               <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} isPreview={isPreview} />
