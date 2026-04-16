@@ -269,7 +269,7 @@ export default function EstimateEditor() {
             <button
               onClick={handleCancel}
               title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
