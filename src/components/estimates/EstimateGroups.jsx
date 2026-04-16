@@ -481,6 +481,23 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
   );
 }
 
+// ─── LiveClock ─────────────────────────────────────────────────────────────────
+function LiveClock() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+  const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return (
+    <div className="flex flex-col items-end gap-0.5 shrink-0">
+      <span className="text-[13px] font-bold text-slate-700 tabular-nums leading-none">{time}</span>
+      <span className="text-[10px] text-slate-400 leading-none">{date}</span>
+    </div>
+  );
+}
+
 // ─── Notes Section ─────────────────────────────────────────────────────────────
 function NotesSection({ label, placeholder, value, onChange, accent, badge }) {
   return (
@@ -664,10 +681,19 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
             </h3>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expires</span>
-          <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
-            className="h-8 text-xs w-40 min-w-[160px] shrink-0 border-slate-200 bg-white" />
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Current time — auto-updates every minute */}
+          <LiveClock />
+          {/* Expires — editable date picker, reflected in document */}
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Expires</span>
+            <Input
+              type="date"
+              value={expirationDate}
+              onChange={e => setExpirationDate(e.target.value)}
+              className="h-7 text-xs w-36 shrink-0 border-slate-200 bg-white"
+            />
+          </div>
         </div>
       </div>
 
