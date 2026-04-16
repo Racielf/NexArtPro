@@ -94,158 +94,171 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
   return (
     <div className="flex flex-col h-full text-sm bg-white overflow-y-auto min-h-0">
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-slate-50">
-        <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">Customer</span>
+      {/* ── PANEL HEADER ─────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer</p>
+        </div>
         <div className="flex items-center gap-1">
           <button onClick={() => { setShowSearch(v => !v); setEditing(false); }}
-            className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition-colors" title="Search existing">
+            className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Search existing">
             <Search className="w-3.5 h-3.5" />
           </button>
           <button
-            onClick={() => {
-              setShowCustomerModal(true);
-              setEditing(false);
-              setShowSearch(false);
-            }}
-            className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition-colors" title="Edit contact">
+            onClick={() => { setShowCustomerModal(true); setEditing(false); setShowSearch(false); }}
+            className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Edit contact">
             <Pencil className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* SEARCH EXISTING */}
+      {/* ── SEARCH EXISTING ──────────────────────────────────────────────── */}
       {showSearch && (
-        <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/60">
+        <div className="px-3 py-3 border-b border-slate-100 bg-slate-50">
           <Input
             autoFocus
             placeholder="Search by name, phone, email…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="h-7 text-xs mb-2"
+            className="h-8 text-xs mb-2 border-slate-200 focus:ring-blue-500/20 focus:border-blue-400"
           />
-          <div className="max-h-40 overflow-y-auto space-y-0.5">
+          <div className="max-h-44 overflow-y-auto space-y-0.5">
             {filteredClients.length === 0 && (
-              <p className="text-xs text-slate-400 py-2 text-center">No clients found</p>
+              <p className="text-xs text-slate-400 py-3 text-center">No clients found</p>
             )}
             {filteredClients.map(c => (
               <button key={c.id} onClick={() => handleSelectClient(c)}
-                className="w-full text-left px-2 py-1.5 rounded hover:bg-primary/5 hover:text-primary transition-colors text-xs">
-                <span className="font-semibold text-slate-800">{c.full_name}</span>
-                {c.phone && <span className="text-slate-400 ml-2">{c.phone}</span>}
+                className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all text-xs">
+                <span className="font-semibold text-slate-800 block">{c.full_name}</span>
+                {c.phone && <span className="text-slate-400 text-[11px]">{c.phone}</span>}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* INLINE EDIT FORM */}
+      {/* ── INLINE EDIT FORM ─────────────────────────────────────────────── */}
       {editing && (
-        <div className="px-3 py-3 border-b border-slate-100 space-y-2 bg-blue-50/30">
-          <Input placeholder="Full name *" value={form.client_name} onChange={e => set('client_name', e.target.value)} className="h-7 text-xs" />
-          <Input placeholder="Email" value={form.client_email} onChange={e => set('client_email', e.target.value)} className="h-7 text-xs" />
-          <Input placeholder="Phone" value={form.client_phone} onChange={e => set('client_phone', e.target.value)} className="h-7 text-xs" />
-          <Input placeholder="Address" value={form.client_address} onChange={e => set('client_address', e.target.value)} className="h-7 text-xs" />
-          <div className="flex gap-1.5 pt-1">
+        <div className="px-4 py-4 border-b border-slate-100 space-y-2.5 bg-slate-50/60">
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Full Name *</label>
+            <Input placeholder="John Smith" value={form.client_name} onChange={e => set('client_name', e.target.value)}
+              className="h-8 text-xs border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Email</label>
+            <Input placeholder="email@example.com" value={form.client_email} onChange={e => set('client_email', e.target.value)}
+              className="h-8 text-xs border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Phone</label>
+            <Input placeholder="(555) 000-0000" value={form.client_phone} onChange={e => set('client_phone', e.target.value)}
+              className="h-8 text-xs border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Address</label>
+            <Input placeholder="123 Main St, City, ST" value={form.client_address} onChange={e => set('client_address', e.target.value)}
+              className="h-8 text-xs border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+          </div>
+          <div className="flex gap-2 pt-1">
             <button onClick={handleSave} disabled={!form.client_name.trim()}
-              className="flex-1 flex items-center justify-center gap-1 text-xs font-semibold py-1.5 rounded-md bg-primary text-white hover:bg-primary/90 disabled:opacity-40 transition-colors">
-              <Check className="w-3 h-3" />Save
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-slate-900 text-white hover:bg-black disabled:opacity-40 transition-colors">
+              <Check className="w-3 h-3" /> Save Customer
             </button>
             {estimate?.client_name && (
               <button onClick={() => setEditing(false)}
-                className="px-2 py-1.5 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors text-xs">
-                <X className="w-3 h-3" />
+                className="w-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 transition-colors text-xs">
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* FILLED CUSTOMER VIEW */}
+      {/* ── FILLED CUSTOMER VIEW ─────────────────────────────────────────── */}
       {!editing && form.client_name && (
         <>
-          {/* Property image placeholder */}
+          {/* Hero image with name overlay */}
           <div className="relative flex-shrink-0">
             <img
               src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&h=160&fit=crop&auto=format"
               alt="Property"
               className="w-full object-cover"
-              style={{ height: 120 }}
+              style={{ height: 110 }}
             />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 px-4 py-3">
               <p className="text-white font-bold text-sm leading-tight truncate">{form.client_name}</p>
+              <div className={`inline-flex items-center gap-1 mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${form.client_email ? 'bg-emerald-500/80 text-white' : 'bg-white/20 text-white/70'}`}>
+                {form.client_email ? <Bell className="w-2.5 h-2.5" /> : <BellOff className="w-2.5 h-2.5" />}
+                {form.client_email ? 'Notifications on' : 'No email'}
+              </div>
             </div>
           </div>
 
-          {/* Details */}
-          <div className="px-4 py-3 space-y-2 border-b border-slate-100">
-            {form.client_address && (
-              <div className="flex items-start gap-2">
-                <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
-                <a href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`} target="_blank" rel="noreferrer"
-                  className="text-primary hover:underline text-xs leading-snug">{form.client_address}</a>
+          {/* Contact details */}
+          <div className="px-4 py-3.5 space-y-2.5 border-b border-slate-100">
+            {form.client_phone && (
+              <div className="flex items-center gap-2.5">
+                <Phone className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+                <a href={`tel:${form.client_phone}`} className="text-[13px] font-semibold text-slate-700 hover:text-blue-600 transition-colors">
+                  {form.client_phone}
+                </a>
               </div>
             )}
             {form.client_email && (
-              <div className="flex items-center gap-2">
-                <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                <a href={`mailto:${form.client_email}`} className="text-primary hover:underline text-xs truncate">{form.client_email}</a>
+              <div className="flex items-center gap-2.5">
+                <Mail className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+                <a href={`mailto:${form.client_email}`} className="text-[12px] text-slate-500 hover:text-blue-600 transition-colors truncate">
+                  {form.client_email}
+                </a>
               </div>
             )}
-            {form.client_phone && (
-              <div className="flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                <a href={`tel:${form.client_phone}`} className="text-slate-700 hover:text-primary text-xs">{form.client_phone}</a>
+            {form.client_address && (
+              <div className="flex items-start gap-2.5">
+                <MapPin className="w-3.5 h-3.5 text-slate-300 flex-shrink-0 mt-0.5" />
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`} target="_blank" rel="noreferrer"
+                  className="text-[12px] text-slate-500 hover:text-blue-600 transition-colors leading-snug">
+                  {form.client_address}
+                </a>
               </div>
             )}
-            <div className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full font-medium ${form.client_email ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-              {form.client_email ? <Bell className="w-3 h-3" /> : <BellOff className="w-3 h-3" />}
-              {form.client_email ? 'Notifications on' : 'No email'}
-            </div>
             {estimate?.client_id && (
-              <Link to="/clients" className="block text-xs text-primary hover:underline font-medium">View customer profile →</Link>
+              <Link to="/clients" className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-semibold transition-colors mt-1">
+                View customer profile →
+              </Link>
             )}
           </div>
 
-          {/* Map - Compact with toggle */}
+          {/* Location / Map */}
           {address && (
-            <div className="flex flex-col border-t border-slate-100 mt-3">
-              {/* Map header with toggle */}
-              <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
-                <span className="text-xs font-semibold text-slate-600">Location</span>
+            <div className="border-b border-slate-100">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Location</span>
                 <button onClick={() => setMapExpanded(!mapExpanded)}
-                  className="text-xs text-primary hover:underline font-medium">
+                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
+                  {mapExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                   {mapExpanded ? 'Collapse' : 'Expand'}
                 </button>
               </div>
-
-              {/* Compact map view (always visible) */}
-              <div className="relative bg-slate-100" style={{ minHeight: mapExpanded ? 240 : 120 }}>
-                <iframe title="map" width="100%" height="100%" style={{ border: 0, display: 'block', minHeight: mapExpanded ? 240 : 120 }}
+              <div className="relative overflow-hidden" style={{ height: mapExpanded ? 200 : 100 }}>
+                <iframe title="map" width="100%" height="100%"
+                  style={{ border: 0, display: 'block', height: mapExpanded ? 200 : 100 }}
                   src={mapSrc} allowFullScreen />
               </div>
-
-              {/* Travel status below map */}
-              <div className="bg-white border-t border-slate-100 px-3 py-2 text-xs">
-                {estimate?.status === 'on_my_way' ? (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                    <span className="font-semibold text-slate-900">
-                      On the way
-                      {estimate?.miles_traveled > 0 ? ` · ${estimate.miles_traveled} mi` : ''}
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-slate-400">No active travel</span>
-                )}
-              </div>
-
-              {/* Tabs (visible when expanded) */}
+              {estimate?.status === 'on_my_way' && (
+                <div className="px-4 py-2 bg-amber-50 border-t border-amber-100 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse flex-shrink-0" />
+                  <span className="text-[11px] font-semibold text-amber-800">
+                    On the way{estimate?.miles_traveled > 0 ? ` · ${estimate.miles_traveled} mi` : ''}
+                  </span>
+                </div>
+              )}
               {mapExpanded && (
-                <div className="flex border-t border-slate-200 bg-slate-50 flex-shrink-0">
+                <div className="flex border-t border-slate-200 bg-slate-50">
                   {['map', 'hybrid'].map(t => (
                     <button key={t} onClick={() => setMapTab(t)}
-                      className={`flex-1 py-1.5 text-xs font-semibold capitalize transition-colors ${mapTab === t ? 'text-slate-900 border-b-2 border-primary bg-white' : 'text-slate-500 hover:text-slate-700'}`}>
+                      className={`flex-1 py-1.5 text-[11px] font-semibold capitalize transition-colors ${mapTab === t ? 'text-slate-900 border-b-2 border-blue-500 bg-white' : 'text-slate-400 hover:text-slate-600'}`}>
                       {t === 'map' ? 'Map' : 'Satellite'}
                     </button>
                   ))}
@@ -256,18 +269,22 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
         </>
       )}
 
-      {/* Empty state */}
+      {/* ── EMPTY STATE ──────────────────────────────────────────────────── */}
       {!editing && !form.client_name && (
-        <div className="flex flex-col items-center justify-center flex-1 px-4 py-8 text-center">
-          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+        <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
+          <div className="w-11 h-11 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
             <UserPlus className="w-5 h-5 text-slate-400" />
           </div>
-          <p className="text-xs font-medium text-slate-500 mb-1">No customer yet</p>
-          <button onClick={() => setEditing(true)} className="text-xs text-primary hover:underline font-medium">+ Add customer</button>
+          <p className="text-sm font-semibold text-slate-600 mb-1">No customer linked</p>
+          <p className="text-xs text-slate-400 mb-3">Link a customer to this estimate</p>
+          <button onClick={() => setEditing(true)}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">
+            + Add customer
+          </button>
         </div>
       )}
 
-      {/* Extra fields */}
+      {/* ── EXTRA FIELDS (footer actions) ────────────────────────────────── */}
       {form.client_name && !editing && (
         <div className="border-t border-slate-100 divide-y divide-slate-100 mt-auto">
           {[
@@ -275,9 +292,12 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
             { label: 'Private notes', icon: '📋' },
             { label: 'Attachments', icon: '📎' },
           ].map(({ label, icon }) => (
-            <button key={label} className="w-full flex items-center justify-between px-4 py-2 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
-              <span className="flex items-center gap-2"><span>{icon}</span><span className="font-medium">{label}</span></span>
-              <span className="text-slate-300 text-base leading-none">+</span>
+            <button key={label} className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
+              <span className="flex items-center gap-2.5">
+                <span className="text-slate-300">{icon}</span>
+                <span className="font-medium text-slate-600">{label}</span>
+              </span>
+              <span className="text-slate-300 text-sm leading-none">+</span>
             </button>
           ))}
         </div>
