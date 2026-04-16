@@ -634,68 +634,74 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   }));
 
   return (
-    <div className="w-full space-y-0">
+    <div className="w-full space-y-0 max-w-5xl mx-auto">
 
       {/* ── SERVICES SECTION HEADER ── */}
-      <div className="bg-white rounded-lg border border-slate-200 mb-4 px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-bold text-slate-900">
-            Services
-            {isPreview && (
-              <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                Read-only
-              </span>
-            )}
-          </h3>
-          <div className="flex items-center gap-3 text-xs text-slate-500">
-            <div className="flex items-center gap-1.5">
-              <span className="font-medium">Expires</span>
-              <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
-                className="h-7 text-xs w-32 border-slate-200" />
-            </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Document</p>
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              Services
+              {isPreview && (
+                <span className="text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                  Read-only
+                </span>
+              )}
+            </h3>
           </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="font-medium text-slate-400">Expires</span>
+          <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
+            className="h-7 text-xs w-32 border-slate-200 bg-white" />
         </div>
       </div>
 
       {/* ── ESTIMATE-LEVEL LOSS WARNING — warning-only, not blocking ── */}
       {!isPreview && lossItems.length > 0 && (
-        <div className="bg-red-50 border border-red-300 rounded-lg px-5 py-3 mb-4 flex items-start gap-3">
-          <span className="text-lg flex-shrink-0">🚨</span>
+        <div className="bg-white border border-red-200 rounded-xl px-4 py-3 mb-4 flex items-start gap-3 shadow-sm">
+          <div className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span className="text-sm leading-none">⚠</span>
+          </div>
           <div>
-            <p className="text-sm font-bold text-red-800">Loss Prevention Warning</p>
-            <p className="text-xs text-red-700 mt-0.5">
-              {lossItems.length} item{lossItems.length > 1 ? 's' : ''} priced below cost — you will lose money on {lossItems.length > 1 ? 'these items' : 'this item'}.
-              Review pricing before sending to client.
+            <p className="text-xs font-bold text-red-700">Loss Prevention</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {lossItems.length} item{lossItems.length > 1 ? 's' : ''} priced below cost.
+              Review pricing before sending.
             </p>
           </div>
         </div>
       )}
 
-      {groups.map(group => (
-        <WorkGroup key={group.id} group={group} onUpdate={updateGroup} onRemove={removeGroup}
-          showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} onLogChange={handleFieldAudit} isPreview={isPreview} />
-      ))}
+      {/* ── WORK GROUPS ── */}
+      <div className="space-y-3 mb-3">
+        {groups.map(group => (
+          <WorkGroup key={group.id} group={group} onUpdate={updateGroup} onRemove={removeGroup}
+            showCost={showCost} isOnly={groups.length === 1} fixedItemIds={fixedItemIds} onLogChange={handleFieldAudit} isPreview={isPreview} />
+        ))}
+      </div>
 
       {/* Add group button */}
       <button onClick={addGroup}
-        className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary border-2 border-dashed border-slate-200 hover:border-primary/40 rounded-xl w-full py-3 justify-center transition-colors mb-4">
-        <Plus className="w-4 h-4" />Add work group
+        className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-primary border border-dashed border-slate-200 hover:border-primary/30 rounded-xl w-full py-2.5 justify-center transition-colors mb-5 bg-white/60 hover:bg-white">
+        <Plus className="w-3.5 h-3.5" />Add work group
       </button>
 
       {/* ── MATERIALS SECTION ── */}
-      <div className="mb-4">
+      <div className="mb-5">
         <MaterialsSection materials={materials} onChange={setMaterials} showCost={showCost} />
       </div>
 
       {/* ── OTHER COSTS SECTION (internal only) ── */}
       {!isPreview && (
-        <div className="mb-4">
+        <div className="mb-5">
           <OtherCostsSection otherCosts={otherCosts} onChange={setOtherCosts} />
         </div>
       )}
 
       {/* ── TOTALS CARD ── */}
-      <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
+      <div className="bg-white rounded-xl border border-slate-200 px-6 py-5 mb-5 shadow-sm">
         <div className="flex gap-8 flex-wrap justify-between">
 
           {/* ── INTERNAL COST SUMMARY ── */}
@@ -816,7 +822,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       </div>
 
       {/* ── NOTES & TERMS ── */}
-      <div className="bg-white rounded-lg border border-slate-200 px-6 py-5 mb-4">
+      <div className="bg-white rounded-xl border border-slate-200 px-6 py-5 mb-5 shadow-sm">
         <div className="grid grid-cols-2 gap-6">
           <NotesSection label="Customer Notes" placeholder="Visible to client…" value={notes} onChange={setNotes} />
           <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent />
@@ -838,11 +844,13 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         )}
       </div>
 
-      {/* ── INTERNAL PRICE AUDIT LOG (session) ── */}
-      {!isPreview && <PriceAuditLog entries={priceLog} onClear={clearLog} />}
-
-      {/* ── INTERNAL AUDIT HISTORY (legacy) ── */}
-      {!isPreview && estimate?.id && <EstimateAuditHistory estimateId={estimate.id} />}
+      {/* ── INTERNAL AUDIT TRAIL ── */}
+      {!isPreview && (
+        <div className="space-y-3 mt-2">
+          <PriceAuditLog entries={priceLog} onClear={clearLog} />
+          {estimate?.id && <EstimateAuditHistory estimateId={estimate.id} />}
+        </div>
+      )}
 
     </div>
   );

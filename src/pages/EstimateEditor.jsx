@@ -340,7 +340,7 @@ export default function EstimateEditor() {
         )}
 
         {/* RIGHT CANVAS — Document workspace */}
-        <div className="flex-1 overflow-auto bg-slate-100 px-6 py-5">
+        <div className="flex-1 overflow-auto bg-slate-100/80 px-8 py-6" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, hsl(220 12% 87% / 0.4) 1px, transparent 0)', backgroundSize: '24px 24px' }}>
 
           {/* No-client tip banner */}
           {!hasClient && (
