@@ -216,19 +216,21 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
         <>
           {/* ── HERO BLOCK ─────────────────────────────────────────────── */}
           <div className="relative flex-shrink-0 overflow-hidden" style={{ height: 116 }}>
-            <img
-              src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=480&h=240&fit=crop&auto=format&q=80"
-              alt="Property"
-              className="w-full h-full object-cover"
-            />
+            {displayAddress ? (
+              <img
+                src={`https://maps.googleapis.com/maps/api/streetview?size=480x240&location=${encodedAddress}&key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY`}
+                alt="Property"
+                className="w-full h-full object-cover"
+                onError={e => { e.target.src = 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=480&h=240&fit=crop&auto=format&q=80'; }}
+              />
+            ) : (
+              <img
+                src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=480&h=240&fit=crop&auto=format&q=80"
+                alt="Property"
+                className="w-full h-full object-cover"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
-            <button
-              onClick={() => setEditing(true)}
-              className="absolute top-2.5 right-2.5 w-6 h-6 rounded-md bg-black/30 hover:bg-black/50 flex items-center justify-center transition-colors"
-              title="Edit customer"
-            >
-              <Pencil className="w-3 h-3 text-white/80" />
-            </button>
             <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-6">
               <p className="text-white font-bold text-[15px] leading-tight truncate drop-shadow">{displayName}</p>
               <div className="flex items-center gap-1.5 mt-1">
