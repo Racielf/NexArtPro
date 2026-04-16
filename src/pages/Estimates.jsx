@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
@@ -186,134 +184,157 @@ export default function Estimates() {
       )}
 
       <PageHeader
+        eyebrow="OPERATIONS"
         title="Estimates"
-        subtitle={`${estimates.length} total`}
+        subtitle={`${estimates.length} total estimates`}
         actionLabel={creating ? 'Creating...' : 'New Estimate'}
         onAction={handleNewEstimate}
         disabled={creating}
       />
 
       <PageShell>
-        <div className="flex items-center gap-3">
-          {filtered.length > 0 && (
-            <label className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
-              <input
-                type="checkbox"
-                checked={selectedIds.size === filtered.length && filtered.length > 0}
-                onChange={toggleSelectAll}
-                className="w-4 h-4 cursor-pointer"
-              />
-              <span className="text-xs font-medium text-muted-foreground">Select all</span>
-            </label>
-          )}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search estimates..."
+        {/* ── Toolbar ── */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by client name or estimate #..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-10"
+              className="w-full h-9 pl-9 pr-4 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
             />
           </div>
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+              <span className="text-sm font-semibold text-red-700">{selectedIds.size} selected</span>
+              <Button size="sm" variant="destructive" className="gap-1.5 h-7 text-xs"
+                onClick={() => setDeleteModal({ open: true, estimate: null, canDelete: true })}>
+                <Trash2 className="w-3 h-3" /> Delete
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Selection action bar */}
-        {selectedIds.size > 0 && (
-          <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
-            <span className="text-sm font-semibold text-primary">{selectedIds.size} selected</span>
-            <Button size="sm" variant="destructive" className="gap-1.5"
-              onClick={() => setDeleteModal({ open: true, estimate: null, canDelete: true })}>
-              <Trash2 className="w-3.5 h-3.5" /> Delete Selected
-            </Button>
-          </div>
-        )}
-
+        {/* ── List ── */}
         {loading ? (
-          <div className="space-y-3">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm divide-y divide-slate-100">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-white border border-border rounded-2xl p-4 animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-muted rounded w-1/3" />
-                    <div className="h-3 bg-muted rounded w-1/2" />
-                  </div>
-                  <div className="h-6 w-20 bg-muted rounded-full" />
+              <div key={i} className="px-4 py-4 animate-pulse flex items-center gap-4">
+                <div className="w-4 h-4 bg-slate-100 rounded" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-slate-100 rounded w-1/4" />
+                  <div className="h-3 bg-slate-100 rounded w-1/3" />
                 </div>
+                <div className="h-5 w-16 bg-slate-100 rounded-full" />
               </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mx-auto mb-4">
-              <FileText className="w-6 h-6 text-muted-foreground/40" />
-            </div>
-            <p className="font-semibold text-foreground mb-1">No estimates yet</p>
-            <p className="text-sm text-muted-foreground mb-4">Create your first estimate to get started</p>
-            <Button onClick={handleNewEstimate} disabled={creating} size="sm">
-              <Plus className="w-4 h-4 mr-1.5" />
-              {creating ? 'Creating...' : 'New Estimate'}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm py-20 text-center">
+            <FileText className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+            <p className="text-slate-500 font-medium text-sm mb-1">No estimates found</p>
+            <p className="text-xs text-slate-400 mb-4">Create your first estimate to get started</p>
+            <Button onClick={handleNewEstimate} disabled={creating} size="sm" className="gap-1.5">
+              <Plus className="w-3.5 h-3.5" />{creating ? 'Creating...' : 'New Estimate'}
             </Button>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filtered.map(est => (
-              <Card
-                key={est.id}
-                className="bg-white hover:shadow-sm hover:border-border/70 transition-all border-border"
-              >
-                <CardContent className="p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(est.id)}
-                        onChange={() => toggleSelect(est.id)}
-                        className="w-4 h-4 cursor-pointer"
-                      />
-                    </label>
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/estimate-editor?id=${est.id}`)}>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-primary text-sm">#{est.estimate_number}</span>
-                        <h3 className="font-semibold text-foreground text-sm">
-                          {est.client_name || <span className="text-muted-foreground italic font-normal">No client</span>}
-                        </h3>
-                        <StatusBadge status={est.status} />
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        {est.title && <span className="text-xs text-muted-foreground">{est.title}</span>}
-                        <span className="text-sm font-semibold text-foreground">
-                          ${(est.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* Table header */}
+            <div className="grid items-center px-4 py-3 border-b border-slate-100 bg-slate-50/80 gap-4"
+              style={{ gridTemplateColumns: '20px 1fr 140px 100px 80px' }}>
+              <input
+                type="checkbox"
+                checked={selectedIds.size === filtered.length && filtered.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+              />
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Client / Estimate</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-right">Total</span>
+              <div />
+            </div>
+
+            {/* Rows */}
+            <div className="divide-y divide-slate-100">
+              {filtered.map(est => {
+                const isSelected = selectedIds.has(est.id);
+                return (
+                  <div
+                    key={est.id}
+                    className="grid items-center px-4 py-3.5 gap-4 transition-colors duration-100 group cursor-pointer"
+                    style={{
+                      gridTemplateColumns: '20px 1fr 140px 100px 80px',
+                      background: isSelected ? '#eff6ff' : undefined,
+                    }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = ''; }}
+                    onClick={() => navigate(`/estimate-editor?id=${est.id}`)}
+                  >
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(est.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                    />
+
+                    {/* Client + number */}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-400 tabular-nums">#{est.estimate_number}</span>
+                        <span className="font-semibold text-slate-800 text-[13px] truncate">
+                          {est.client_name || <span className="italic text-slate-400 font-normal">No client</span>}
                         </span>
-                        {est.expiration_date && (
-                          <span className="text-xs text-muted-foreground">Exp: {est.expiration_date}</span>
-                        )}
-                        {est.client_address && (
-                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">{est.client_address}</span>
-                        )}
                       </div>
+                      {est.title && (
+                        <p className="text-[12px] text-slate-400 truncate mt-0.5">{est.title}</p>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={e => { e.stopPropagation(); navigate(`/estimate-editor?id=${est.id}`); }}
+
+                    {/* Status */}
+                    <div>
+                      <StatusBadge status={est.status} />
+                    </div>
+
+                    {/* Total */}
+                    <div className="text-right">
+                      <span className="text-[13px] font-bold text-slate-800 tabular-nums">
+                        ${(est.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                      {est.expiration_date && (
+                        <p className="text-[11px] text-slate-400 mt-0.5">Exp {est.expiration_date}</p>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => navigate(`/estimate-editor?id=${est.id}`)}
+                        className="p-1.5 rounded-md hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition-colors"
+                        title="Open"
                       >
-                        <Pencil className="w-3.5 h-3.5" /> Open
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-2"
-                        onClick={e => { e.stopPropagation(); handleDeleteClick(est); }}
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(est)}
+                        className="p-1.5 rounded-md hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
+                        title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      </button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50">
+              <p className="text-[11px] text-slate-400">{filtered.length} estimate{filtered.length !== 1 ? 's' : ''} shown</p>
+            </div>
           </div>
         )}
       </PageShell>
