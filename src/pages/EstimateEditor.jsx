@@ -203,21 +203,30 @@ export default function EstimateEditor() {
     : '—';
 
   return (
-    <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 font-inter">
+    <div className="fixed inset-0 bg-slate-100 flex flex-col z-50 font-inter">
 
-      {/* TOP BAR */}
-      <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
-        <div className="flex items-center px-4 h-12 gap-3">
-          {/* Left: Document title + template selector */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <h1 className="text-base font-bold text-slate-900 flex-shrink-0">
-              Estimate <span className="text-primary">#{estimate.estimate_number}</span>
-            </h1>
-            {hasClient && (
-              <span className="text-sm text-slate-500 truncate hidden sm:inline">· {estimate.client_name}</span>
-            )}
-            <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0 hidden md:block" />
-            <div className="hidden md:block">
+      {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200 flex-shrink-0" style={{ boxShadow: '0 1px 3px 0 rgba(0,0,0,0.06)' }}>
+        <div className="flex items-center px-5 h-14 gap-4">
+
+          {/* Left: eyebrow + doc identity */}
+          <div className="flex flex-col justify-center min-w-0 flex-1">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-baseline gap-1.5 flex-shrink-0">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">EST</span>
+                <span className="text-base font-bold text-slate-900">#{estimate.estimate_number}</span>
+              </div>
+              {hasClient && (
+                <>
+                  <span className="text-slate-300 flex-shrink-0">·</span>
+                  <span className="text-sm font-medium text-slate-600 truncate">{estimate.client_name}</span>
+                </>
+              )}
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide flex-shrink-0 ${statusBadge.cls}`}>
+                {statusBadge.label}
+              </span>
+            </div>
+            <div className="hidden md:block mt-0.5">
               <EstimateTemplateSelector
                 currentTemplate={estimate.document_config?.template || 'clean'}
                 onTemplateChange={handleTemplateChange}
@@ -226,19 +235,17 @@ export default function EstimateEditor() {
             </div>
           </div>
 
-          {/* Right: Status + Actions */}
+          {/* Right: actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${statusBadge.cls}`}>
-              {statusBadge.label}
-            </span>
+            <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
 
-            <div className="w-px h-5 bg-slate-200 mx-1" />
+            <div className="w-px h-5 bg-slate-200" />
 
             <button
               onClick={() => setShowPreviewModal(true)}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
             >
-              <Eye className="w-3.5 h-3.5" />
+              <Eye className="w-3.5 h-3.5 text-slate-400" />
               Client View
             </button>
 
@@ -249,14 +256,14 @@ export default function EstimateEditor() {
                   if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
                   setShowSendModal(true);
                 }}
-                className="rounded-r-none gap-1.5 h-8 px-3 text-xs font-medium"
+                className="rounded-r-none gap-1.5 h-8 px-3 text-xs font-semibold bg-slate-900 hover:bg-black text-white border-slate-900"
               >
                 <Send className="w-3.5 h-3.5" />
                 Review & Send
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" className="rounded-l-none border-l border-primary-foreground/20 h-8 px-1.5">
+                  <Button size="sm" className="rounded-l-none border-l border-white/20 h-8 px-1.5 bg-slate-900 hover:bg-black text-white">
                     <ChevronDown className="w-3.5 h-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -267,12 +274,10 @@ export default function EstimateEditor() {
               </DropdownMenu>
             </div>
 
-            <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
-
             <button
               onClick={handleCancel}
               title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
-              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
             >
               <X className="w-4 h-4" />
             </button>
@@ -280,20 +285,21 @@ export default function EstimateEditor() {
         </div>
       </div>
 
-      {/* MAIN 2-PANEL LAYOUT */}
+      {/* ── MAIN 3-PANEL LAYOUT ──────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* LEFT SIDEBAR */}
-        <div className="w-56 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col min-h-0">
+        {/* LEFT SIDEBAR — Customer context */}
+        <div className="w-60 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col min-h-0">
           {isNew && !hasClient ? (
-            <div className="flex flex-col items-center justify-center flex-1 px-4 py-8 text-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <span className="text-lg">👤</span>
+            <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+                <FileText className="w-5 h-5 text-slate-400" />
               </div>
-              <p className="text-xs font-medium text-slate-500 mb-2">No customer yet</p>
+              <p className="text-sm font-semibold text-slate-600 mb-1">No customer yet</p>
+              <p className="text-xs text-slate-400 mb-3">Link a customer to unlock the full estimate workflow</p>
               <button
                 onClick={() => { setDismissedCustomerModal(false); setShowNewCustomerModal(true); }}
-                className="text-xs font-semibold text-primary hover:underline"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
               >
                 + Select or Create Customer
               </button>
@@ -306,7 +312,7 @@ export default function EstimateEditor() {
           )}
           {hasClient && (
             <div className="px-4 pb-5 pt-3 border-t border-slate-100 flex-shrink-0">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Attachments</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Attachments</p>
               <EstimateAttachments
                 attachments={estimate.attachments}
                 onUpdate={async (newAttachments) => {
@@ -315,7 +321,7 @@ export default function EstimateEditor() {
                   await base44.entities.Estimate.update(estimateId, { attachments: newAttachments });
                 }}
               />
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2 mt-4">Communications</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-5">Communications</p>
               <CommTimeline estimateId={estimate.id} />
             </div>
           )}
@@ -333,15 +339,24 @@ export default function EstimateEditor() {
           />
         )}
 
-        {/* RIGHT CANVAS */}
-        <div className="flex-1 overflow-auto px-4 py-3">
+        {/* RIGHT CANVAS — Document workspace */}
+        <div className="flex-1 overflow-auto bg-slate-100 px-6 py-5">
+
+          {/* No-client tip banner */}
           {!hasClient && (
-            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-center gap-2 text-sm text-amber-700">
-              <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow.
+            <div className="mb-5 bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <ClipboardList className="w-4 h-4 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Link a customer to get started</p>
+                <p className="text-xs text-slate-400 mt-0.5">Add a customer in the left panel to unlock the full estimate workflow.</p>
+              </div>
             </div>
           )}
-          {/* Bid fields + view toggle */}
-          <div className="flex items-center gap-3 mb-3 flex-wrap">
+
+          {/* Canvas toolbar: BID fields + view mode toggle */}
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
             {estimate.document_type === 'BID' && (
               <div className="flex items-center gap-2">
                 <input
@@ -350,7 +365,7 @@ export default function EstimateEditor() {
                   onChange={e => setJobNumber(e.target.value)}
                   onBlur={() => base44.entities.Estimate.update(estimateId, { job_number: jobNumber })}
                   placeholder="Job #"
-                  className="h-7 w-28 text-xs border border-slate-200 rounded px-2 bg-white placeholder:text-slate-300"
+                  className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
                 />
                 <input
                   type="text"
@@ -358,22 +373,23 @@ export default function EstimateEditor() {
                   onChange={e => setPlanReference(e.target.value)}
                   onBlur={() => base44.entities.Estimate.update(estimateId, { plan_reference: planReference })}
                   placeholder="Plan Ref"
-                  className="h-7 w-28 text-xs border border-slate-200 rounded px-2 bg-white placeholder:text-slate-300"
+                  className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
                 />
               </div>
             )}
             <button
               onClick={() => setIsPreview(!isPreview)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full border transition-colors ${
+              className={`inline-flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-full border transition-colors ${
                 isPreview
-                  ? 'bg-amber-50 border-amber-300 text-amber-700'
-                  : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${isPreview ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPreview ? 'bg-amber-500' : 'bg-emerald-500'}`} />
               {isPreview ? 'Preview Mode' : 'Editing'}
             </button>
           </div>
+
           <EstimateGroups
             estimate={estimate}
             onSave={handleSave}
@@ -382,6 +398,7 @@ export default function EstimateEditor() {
             currentUser={currentUser}
             onDirty={() => setDirty(true)}
           />
+
           {/* Persisted pricing audit trail — internal only */}
           {!isPreview && estimate?.id && (
             <PricingAuditHistory documentId={estimate.id} />
