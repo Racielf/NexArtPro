@@ -80,14 +80,14 @@ function SummaryChip({ label, value, variant }) {
 function EstimateSummaryBlock({ estimate }) {
   const s = estimate?.status;
   return (
-    <div className="px-4 pt-4 pb-4 border-b border-slate-200">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Estimate Total</p>
-      <p className="text-2xl font-bold text-slate-900 tabular-nums leading-none mb-2">
+    <div className="px-5 pt-6 pb-5 border-b border-slate-100 text-center">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Estimate Total</p>
+      <p className="text-3xl font-bold text-slate-900 tabular-nums leading-none mb-3">
         ${(estimate?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
       </p>
-      <div className="flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
-        <span className="text-[11px] font-semibold text-slate-500 capitalize">{s?.replace(/_/g, ' ') || 'Draft'}</span>
+      <div className="inline-flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+        <span className="text-[11px] font-semibold text-slate-400 capitalize">{s?.replace(/_/g, ' ') || 'Draft'}</span>
       </div>
     </div>
   );
@@ -117,18 +117,20 @@ function StatusOverviewBlock({ estimate }) {
   const approvalValue   = isSigned ? 'Signed' : isApproved ? 'Approved' : isDeclined ? 'Declined' : isChangesReq ? 'Changes Req.' : isSent ? 'Pending' : '—';
 
   return (
-    <div className="px-4 pt-3.5 pb-3 space-y-1.5 border-b border-slate-200">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Pipeline</p>
-      <SummaryChip label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
-      <SummaryChip label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
-      <SummaryChip label="Sent"        value={sentValue}    variant={sentVariant} />
-      <SummaryChip label="Approval"    value={approvalValue} variant={approvalVariant} />
-      {isSigned && estimate?.signer_name && (
-        <SummaryChip label="Signed by" value={estimate.signer_name} variant="success" />
-      )}
-      {isChangesReq && estimate?.changes_requested_at && (
-        <SummaryChip label="Changes" value={fmt(estimate.changes_requested_at)} variant="warning" />
-      )}
+    <div className="px-5 pt-4 pb-4 border-b border-slate-100">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Pipeline</p>
+      <div className="space-y-2.5">
+        <SummaryChip label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
+        <SummaryChip label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
+        <SummaryChip label="Sent"        value={sentValue}    variant={sentVariant} />
+        <SummaryChip label="Approval"    value={approvalValue} variant={approvalVariant} />
+        {isSigned && estimate?.signer_name && (
+          <SummaryChip label="Signed by" value={estimate.signer_name} variant="success" />
+        )}
+        {isChangesReq && estimate?.changes_requested_at && (
+          <SummaryChip label="Changes" value={fmt(estimate.changes_requested_at)} variant="warning" />
+        )}
+      </div>
     </div>
   );
 }
@@ -150,13 +152,13 @@ function NextActionBlock({ estimate, omwActive }) {
     red:    'border-red-200',     purple: 'border-violet-200', blue: 'border-blue-200',
   };
   return (
-    <div className={`mx-3 mt-3 mb-1 rounded-xl border px-3 py-3 flex items-start gap-3 ${borderColor[next.color] || 'border-blue-200'} bg-white shadow-sm`}>
-      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg[next.color] || 'bg-blue-100'}`}>
-        <next.icon className={`w-3.5 h-3.5 ${iconColor[next.color] || 'text-blue-600'}`} />
+    <div className={`mx-4 mt-4 mb-1 rounded-2xl border px-4 py-3.5 flex items-start gap-3 ${borderColor[next.color] || 'border-blue-200'} bg-emerald-50/60`}>
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${iconBg[next.color] || 'bg-blue-100'}`}>
+        <next.icon className={`w-4 h-4 ${iconColor[next.color] || 'text-blue-600'}`} />
       </div>
       <div className="min-w-0">
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Next Step</p>
-        <p className="text-[11px] font-semibold text-slate-700 leading-snug">{next.text}</p>
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5">Next Step</p>
+        <p className="text-[12px] font-semibold text-slate-800 leading-snug">{next.text}</p>
       </div>
     </div>
   );
@@ -165,35 +167,29 @@ function NextActionBlock({ estimate, omwActive }) {
 // ── ActionButtonsBlock ────────────────────────────────────────────────────────
 function ActionButtonsBlock({ estimate, omwActive, onSchedule, onOMW, onStopOMW, onFinishVisit, onSend, onApproveDecline }) {
   return (
-    <div className="px-3 pb-3 pt-1 space-y-1.5 flex-1 flex flex-col">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pt-2 pb-1">Actions</p>
+    <div className="px-4 pb-4 pt-3 space-y-2 flex-1 flex flex-col">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pt-1 pb-0.5">Actions</p>
 
       <button onClick={onSchedule}
-        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
-        <div className="w-5 h-5 rounded-md bg-blue-50 flex items-center justify-center flex-shrink-0">
-          <Calendar className="w-3 h-3 text-blue-500" />
-        </div>
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm">
+        <Calendar className="w-4 h-4 flex-shrink-0" />
         Schedule
       </button>
 
       <button onClick={omwActive ? onStopOMW : onOMW}
-        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors shadow-sm ${
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold border transition-colors shadow-sm ${
           omwActive
             ? 'bg-amber-50 border-amber-200 hover:bg-amber-100 text-amber-800'
-            : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700'
+            : 'bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-900'
         }`}>
-        <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${omwActive ? 'bg-amber-100' : 'bg-amber-50'}`}>
-          <Navigation2 className="w-3 h-3 text-amber-500" />
-        </div>
+        <Navigation2 className="w-4 h-4 flex-shrink-0" />
         {omwActive ? 'Stop OMW' : 'On My Way'}
-        {omwActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
+        {omwActive && <span className="ml-auto w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
       </button>
 
       <button onClick={onFinishVisit}
-        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
-        <div className="w-5 h-5 rounded-md bg-emerald-50 flex items-center justify-center flex-shrink-0">
-          <CheckSquare className="w-3 h-3 text-emerald-500" />
-        </div>
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
+        <CheckSquare className="w-4 h-4 flex-shrink-0 text-emerald-500" />
         Finish Visit
       </button>
 
@@ -202,16 +198,14 @@ function ActionButtonsBlock({ estimate, omwActive, onSchedule, onOMW, onStopOMW,
       </div>
 
       <button onClick={onSend}
-        className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-black text-white border border-slate-900 transition-colors shadow-sm">
-        <Send className="w-3.5 h-3.5 flex-shrink-0" />
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold bg-slate-900 hover:bg-black text-white transition-colors shadow-sm">
+        <Send className="w-4 h-4 flex-shrink-0" />
         Review &amp; Send
       </button>
 
       <button onClick={onApproveDecline}
-        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
-        <div className="w-5 h-5 rounded-md bg-emerald-50 flex items-center justify-center flex-shrink-0">
-          <ThumbsUp className="w-3 h-3 text-emerald-500" />
-        </div>
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
+        <ThumbsUp className="w-4 h-4 flex-shrink-0 text-emerald-500" />
         Approve / Decline
       </button>
     </div>
@@ -461,7 +455,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   };
 
   return (
-    <div className="w-52 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-y-auto min-h-0">
+    <div className="w-56 flex-shrink-0 flex flex-col overflow-y-auto min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 mx-0">
 
       <EstimateSummaryBlock estimate={estimate} />
 
@@ -639,21 +633,21 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       />
 
       {/* ── MORE ACTIONS ──────────────────────────────────────────────────── */}
-      <div className="px-3 pt-2 pb-4 border-t border-slate-100 mt-auto">
+      <div className="px-4 pt-2 pb-4 border-t border-slate-100 mt-auto">
         <Collapsible open={moreActionsOpen} onOpenChange={setMoreActionsOpen}>
           <CollapsibleTrigger asChild>
-            <button className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+            <button className="w-full flex items-center justify-between px-2 py-2 rounded-xl hover:bg-slate-50 transition-colors">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">More</span>
               <ChevronDown className={`w-3 h-3 text-slate-300 transition-transform ${moreActionsOpen ? 'rotate-180' : ''}`} />
             </button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="pt-1.5 space-y-1">
+          <CollapsibleContent className="pt-1 space-y-1">
             <button
               onClick={handleDelete}
               disabled={!canDelete()}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors text-xs font-medium border ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors text-xs font-semibold border ${
                 canDelete()
-                  ? 'bg-white border-red-100 hover:bg-red-50 hover:border-red-200 text-red-600'
+                  ? 'bg-white border-red-100 hover:bg-red-50 hover:border-red-200 text-red-500'
                   : 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed'
               }`}
               title={!canDelete() ? getDeleteBlockReason() : 'Delete this estimate'}
