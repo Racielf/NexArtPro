@@ -1,21 +1,22 @@
 /**
- * Inline customer panel in the estimate editor sidebar.
- * Always visible — shows filled data when available, inline edit form otherwise.
+ * EstimateSidebarCustomer — Premium customer card for the Estimate Editor sidebar.
+ * Uses client prop (loaded entity) with fallback to estimate fields for display.
+ * All handlers, DB writes, and data flow are unchanged.
  */
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import {
   MapPin, Mail, Phone, Bell, BellOff, Pencil, ChevronDown, ChevronUp,
-  Search, UserPlus, Check, X
+  Search, UserPlus, Check, X, ExternalLink, User
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ClientFormModal from '@/components/proposals/ClientFormModal';
 
-export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) {
+export default function EstimateSidebarCustomer({ estimate, client: clientProp, onCustomerChange }) {
   const [editing, setEditing] = useState(!estimate?.client_name);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [linkedClient, setLinkedClient] = useState(null);
+  const [linkedClient, setLinkedClient] = useState(clientProp || null);
   const [form, setForm] = useState({
     client_name: estimate?.client_name || '',
     client_email: estimate?.client_email || '',
@@ -32,18 +33,23 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
     base44.entities.Client.list('-created_date', 50).then(setClients).catch(() => {});
   }, []);
 
+  // Sync linkedClient when parent loads the client entity
+  useEffect(() => {
+    if (clientProp) setLinkedClient(clientProp);
+  }, [clientProp]);
+
   // Load linked Client entity when client_id changes
   useEffect(() => {
     if (estimate?.client_id) {
       base44.entities.Client.filter({ id: estimate.client_id }).then(res => {
-        setLinkedClient(res[0] || null);
+        if (res[0]) setLinkedClient(res[0]);
       }).catch(() => {});
     } else {
       setLinkedClient(null);
     }
   }, [estimate?.client_id]);
 
-  // Sync if estimate changes externally
+  // Sync form when estimate changes externally
   useEffect(() => {
     setForm({
       client_name: estimate?.client_name || '',
@@ -79,8 +85,23 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
     setSearch('');
   };
 
-  const address = form.client_address;
-  const encodedAddress = encodeURIComponent(address);
+  // ── Resolve display values: client entity takes priority over estimate fields ──
+  const displayName    = linkedClient?.full_name   || form.client_name;
+  const displayEmail   = linkedClient?.email       || form.client_email;
+  const displayPhone   = linkedClient?.phone       || form.client_phone;
+  const displayAddress = (() => {
+    if (linkedClient) {
+      return [
+        linkedClient.address,
+        [linkedClient.city, linkedClient.state, linkedClient.zip].filter(Boolean).join(' '),
+      ].filter(Boolean).join(', ');
+    }
+    return form.client_address || '';
+  })();
+
+  const hasDisplay = !!(estimate?.client_id || estimate?.client_name || displayName);
+
+  const encodedAddress = encodeURIComponent(displayAddress);
   const mapSrc = mapTab === 'map'
     ? `https://www.google.com/maps?q=${encodedAddress}&output=embed`
     : `https://www.google.com/maps?q=${encodedAddress}&output=embed&t=k`;
@@ -91,22 +112,34 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
     c.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const initials = displayName
+    ? displayName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : '?';
+
   return (
-    <div className="flex flex-col h-full text-sm bg-white overflow-y-auto min-h-0">
+    <div className="flex flex-col h-full bg-white overflow-y-auto min-h-0">
 
       {/* ── PANEL HEADER ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white flex-shrink-0">
-        <div>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center">
+            <User className="w-3 h-3 text-slate-400" />
+          </div>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer</p>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => { setShowSearch(v => !v); setEditing(false); }}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Search existing">
+          <button
+            onClick={() => { setShowSearch(v => !v); setEditing(false); }}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            title="Search existing clients"
+          >
             <Search className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => { setShowCustomerModal(true); setEditing(false); setShowSearch(false); }}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Edit contact">
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            title="Edit contact"
+          >
             <Pencil className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -114,7 +147,7 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
 
       {/* ── SEARCH EXISTING ──────────────────────────────────────────────── */}
       {showSearch && (
-        <div className="px-3 py-3 border-b border-slate-100 bg-slate-50">
+        <div className="px-3 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
           <Input
             autoFocus
             placeholder="Search by name, phone, email…"
@@ -139,7 +172,7 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
 
       {/* ── INLINE EDIT FORM ─────────────────────────────────────────────── */}
       {editing && (
-        <div className="px-4 py-4 border-b border-slate-100 space-y-2.5 bg-slate-50/60">
+        <div className="px-4 py-4 border-b border-slate-100 space-y-2.5 bg-slate-50/60 flex-shrink-0">
           <div>
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Full Name *</label>
             <Input placeholder="John Smith" value={form.client_name} onChange={e => set('client_name', e.target.value)}
@@ -175,77 +208,178 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
         </div>
       )}
 
-      {/* ── FILLED CUSTOMER VIEW ─────────────────────────────────────────── */}
-      {!editing && form.client_name && (
+      {/* ── FILLED CUSTOMER CARD ─────────────────────────────────────────── */}
+      {!editing && hasDisplay && (
         <>
-          {/* Hero image with name overlay */}
-          <div className="relative flex-shrink-0">
+          {/* ── HERO BLOCK ─────────────────────────────────────────────── */}
+          <div className="relative flex-shrink-0 overflow-hidden" style={{ height: 116 }}>
             <img
-              src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&h=160&fit=crop&auto=format"
+              src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=480&h=240&fit=crop&auto=format&q=80"
               alt="Property"
-              className="w-full object-cover"
-              style={{ height: 110 }}
+              className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 px-4 py-3">
-              <p className="text-white font-bold text-sm leading-tight truncate">{form.client_name}</p>
-              <div className={`inline-flex items-center gap-1 mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${form.client_email ? 'bg-emerald-500/80 text-white' : 'bg-white/20 text-white/70'}`}>
-                {form.client_email ? <Bell className="w-2.5 h-2.5" /> : <BellOff className="w-2.5 h-2.5" />}
-                {form.client_email ? 'Notifications on' : 'No email'}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+            <button
+              onClick={() => setEditing(true)}
+              className="absolute top-2.5 right-2.5 w-6 h-6 rounded-md bg-black/30 hover:bg-black/50 flex items-center justify-center transition-colors"
+              title="Edit customer"
+            >
+              <Pencil className="w-3 h-3 text-white/80" />
+            </button>
+            <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-6">
+              <p className="text-white font-bold text-[15px] leading-tight truncate drop-shadow">{displayName}</p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none ${
+                  displayEmail ? 'bg-emerald-500/85 text-white' : 'bg-white/15 text-white/60'
+                }`}>
+                  {displayEmail
+                    ? <><Bell className="w-2.5 h-2.5" /> Notifications on</>
+                    : <><BellOff className="w-2.5 h-2.5" /> No email</>
+                  }
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Contact details */}
-          <div className="px-4 py-3.5 space-y-2.5 border-b border-slate-100">
-            {form.client_phone && (
+          {/* ── IDENTITY + CONTACT BLOCK ──────────────────────────────── */}
+          <div className="px-4 pt-4 pb-3 space-y-3 flex-shrink-0">
+            {/* Avatar row + profile link */}
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <Phone className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                <a href={`tel:${form.client_phone}`} className="text-[13px] font-semibold text-slate-700 hover:text-blue-600 transition-colors">
-                  {form.client_phone}
-                </a>
+                <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <span className="text-[11px] font-bold text-white tracking-wide">{initials}</span>
+                </div>
+                <div>
+                  <p className="text-[13px] font-bold text-slate-900 leading-tight">{displayName}</p>
+                  {(estimate?.client_id || linkedClient?.id) && (
+                    <Link
+                      to="/clients"
+                      className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 hover:text-blue-700 font-semibold transition-colors leading-none mt-0.5"
+                    >
+                      Customer profile <ExternalLink className="w-2.5 h-2.5" />
+                    </Link>
+                  )}
+                </div>
               </div>
-            )}
-            {form.client_email && (
-              <div className="flex items-center gap-2.5">
-                <Mail className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                <a href={`mailto:${form.client_email}`} className="text-[12px] text-slate-500 hover:text-blue-600 transition-colors truncate">
-                  {form.client_email}
+            </div>
+
+            <div className="h-px bg-slate-100" />
+
+            {/* Contact rows */}
+            <div className="space-y-2">
+              {displayPhone && (
+                <a href={`tel:${displayPhone}`} className="flex items-center gap-3 group">
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-3.5 h-3.5 text-blue-500" />
+                  </div>
+                  <span className="text-[13px] font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">
+                    {displayPhone}
+                  </span>
                 </a>
-              </div>
-            )}
-            {form.client_address && (
-              <div className="flex items-start gap-2.5">
-                <MapPin className="w-3.5 h-3.5 text-slate-300 flex-shrink-0 mt-0.5" />
-                <a href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`} target="_blank" rel="noreferrer"
-                  className="text-[12px] text-slate-500 hover:text-blue-600 transition-colors leading-snug">
-                  {form.client_address}
+              )}
+              {displayEmail && (
+                <a href={`mailto:${displayEmail}`} className="flex items-center gap-3 group">
+                  <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                  <span className="text-[12px] text-slate-500 group-hover:text-blue-600 transition-colors truncate">
+                    {displayEmail}
+                  </span>
                 </a>
-              </div>
-            )}
-            {estimate?.client_id && (
-              <Link to="/clients" className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-semibold transition-colors mt-1">
-                View customer profile →
-              </Link>
-            )}
+              )}
+              {displayAddress && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-start gap-3 group"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                  <span className="text-[12px] text-slate-500 group-hover:text-blue-600 transition-colors leading-snug">
+                    {displayAddress}
+                  </span>
+                </a>
+              )}
+            </div>
           </div>
 
-          {/* Location / Map */}
-          {address && (
-            <div className="border-b border-slate-100">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Location</span>
-                <button onClick={() => setMapExpanded(!mapExpanded)}
-                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
-                  {mapExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  {mapExpanded ? 'Collapse' : 'Expand'}
-                </button>
+          {/* ── QUICK ACTIONS ROW ─────────────────────────────────────── */}
+          <div className="px-4 pb-4 flex-shrink-0">
+            <div className="grid grid-cols-3 gap-2">
+              {displayPhone && (
+                <a href={`tel:${displayPhone}`}
+                  className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
+                  <Phone className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                  <span className="text-[9px] font-semibold text-slate-400 group-hover:text-blue-600 uppercase tracking-wide">Call</span>
+                </a>
+              )}
+              {displayEmail && (
+                <a href={`mailto:${displayEmail}`}
+                  className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
+                  <Mail className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                  <span className="text-[9px] font-semibold text-slate-400 group-hover:text-blue-600 uppercase tracking-wide">Email</span>
+                </a>
+              )}
+              {displayAddress && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`}
+                  target="_blank" rel="noreferrer"
+                  className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
+                  <MapPin className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                  <span className="text-[9px] font-semibold text-slate-400 group-hover:text-blue-600 uppercase tracking-wide">Directions</span>
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* ── MAP SECTION — always rendered when address exists ─────── */}
+          {displayAddress && (
+            <div className="flex-shrink-0 border-t border-slate-100">
+              {/* Map header */}
+              <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/70">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Location</span>
+                <div className="flex items-center gap-2">
+                  {mapExpanded && (
+                    <div className="flex rounded-md overflow-hidden border border-slate-200 bg-white">
+                      {['map', 'hybrid'].map(t => (
+                        <button key={t} onClick={() => setMapTab(t)}
+                          className={`px-2 py-1 text-[10px] font-semibold capitalize transition-colors ${
+                            mapTab === t ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'
+                          }`}>
+                          {t === 'map' ? 'Map' : 'Sat'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setMapExpanded(!mapExpanded)}
+                    className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                  >
+                    {mapExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+                </div>
               </div>
-              <div className="relative overflow-hidden" style={{ height: mapExpanded ? 200 : 100 }}>
-                <iframe title="map" width="100%" height="100%"
-                  style={{ border: 0, display: 'block', height: mapExpanded ? 200 : 100 }}
-                  src={mapSrc} allowFullScreen />
+
+              {/* Map iframe — always visible at default height */}
+              <div className="relative overflow-hidden" style={{ height: mapExpanded ? 200 : 130 }}>
+                <iframe
+                  key={`${displayAddress}-${mapTab}`}
+                  title="map"
+                  width="100%"
+                  height={mapExpanded ? 200 : 130}
+                  style={{ border: 0, display: 'block' }}
+                  src={mapSrc}
+                  allowFullScreen
+                  loading="lazy"
+                />
+                {!mapExpanded && (
+                  <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white/40 to-transparent pointer-events-none" />
+                )}
               </div>
+
+              {/* OMW status bar */}
               {estimate?.status === 'on_my_way' && (
                 <div className="px-4 py-2 bg-amber-50 border-t border-amber-100 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse flex-shrink-0" />
@@ -254,25 +388,32 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
                   </span>
                 </div>
               )}
-              {mapExpanded && (
-                <div className="flex border-t border-slate-200 bg-slate-50">
-                  {['map', 'hybrid'].map(t => (
-                    <button key={t} onClick={() => setMapTab(t)}
-                      className={`flex-1 py-1.5 text-[11px] font-semibold capitalize transition-colors ${mapTab === t ? 'text-slate-900 border-b-2 border-blue-500 bg-white' : 'text-slate-400 hover:text-slate-600'}`}>
-                      {t === 'map' ? 'Map' : 'Satellite'}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           )}
+
+          {/* ── FOOTER META ACTIONS ───────────────────────────────────── */}
+          <div className="border-t border-slate-100 divide-y divide-slate-100 mt-auto flex-shrink-0">
+            {[
+              { label: 'Tags', icon: '🏷️' },
+              { label: 'Private notes', icon: '📋' },
+              { label: 'Attachments', icon: '📎' },
+            ].map(({ label, icon }) => (
+              <button key={label} className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
+                <span className="flex items-center gap-2.5">
+                  <span className="text-slate-300">{icon}</span>
+                  <span className="font-medium text-slate-600">{label}</span>
+                </span>
+                <span className="text-slate-300 text-sm leading-none">+</span>
+              </button>
+            ))}
+          </div>
         </>
       )}
 
       {/* ── EMPTY STATE ──────────────────────────────────────────────────── */}
-      {!editing && !form.client_name && (
+      {!editing && !hasDisplay && (
         <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
-          <div className="w-11 h-11 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
             <UserPlus className="w-5 h-5 text-slate-400" />
           </div>
           <p className="text-sm font-semibold text-slate-600 mb-1">No customer linked</p>
@@ -284,26 +425,7 @@ export default function EstimateSidebarCustomer({ estimate, onCustomerChange }) 
         </div>
       )}
 
-      {/* ── EXTRA FIELDS (footer actions) ────────────────────────────────── */}
-      {form.client_name && !editing && (
-        <div className="border-t border-slate-100 divide-y divide-slate-100 mt-auto">
-          {[
-            { label: 'Tags', icon: '🏷️' },
-            { label: 'Private notes', icon: '📋' },
-            { label: 'Attachments', icon: '📎' },
-          ].map(({ label, icon }) => (
-            <button key={label} className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
-              <span className="flex items-center gap-2.5">
-                <span className="text-slate-300">{icon}</span>
-                <span className="font-medium text-slate-600">{label}</span>
-              </span>
-              <span className="text-slate-300 text-sm leading-none">+</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Customer edit modal — uses Client entity (same as proposals) */}
+      {/* ── CLIENT FORM MODAL ────────────────────────────────────────────── */}
       <ClientFormModal
         open={showCustomerModal}
         onOpenChange={setShowCustomerModal}

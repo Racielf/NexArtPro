@@ -307,6 +307,7 @@ export default function EstimateEditor() {
           ) : (
             <EstimateSidebarCustomer
               estimate={estimate}
+              client={client}
               onCustomerChange={handleCustomerChange}
             />
           )}
