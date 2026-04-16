@@ -281,7 +281,7 @@ export default function EstimateEditor() {
       <div className="flex flex-1 gap-4 px-4 py-3 bg-slate-100 overflow-hidden">
 
         {/* LEFT SIDEBAR — Customer context */}
-        <div className="w-60 flex-shrink-0 overflow-y-auto flex flex-col min-h-0 bg-white rounded-xl shadow-sm border border-slate-200">
+        <div className="w-60 flex-shrink-0 overflow-y-auto flex flex-col min-h-0 bg-white rounded-xl border border-slate-100" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
           {isNew && !hasClient ? (
             <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
@@ -323,7 +323,7 @@ export default function EstimateEditor() {
         )}
 
         {/* RIGHT CANVAS — Document workspace */}
-        <div className="flex-1 overflow-auto bg-white rounded-xl shadow-sm border border-slate-200 px-8 py-6">
+        <div className="flex-1 overflow-auto bg-white rounded-xl border border-slate-100 px-8 py-6" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
 
           {/* No-client tip banner */}
           {!hasClient && (

@@ -488,7 +488,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   };
 
   return (
-    <div className="w-48 flex-shrink-0 flex flex-col overflow-y-auto min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 mx-0">
+    <div className="w-48 flex-shrink-0 flex flex-col overflow-y-auto min-h-0 bg-white rounded-xl border border-slate-100 mx-0" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
 
       <EstimateSummaryBlock estimate={estimate} />
 

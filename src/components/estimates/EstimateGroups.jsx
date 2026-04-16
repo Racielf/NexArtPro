@@ -384,7 +384,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
       {/* Responsive scroll wrapper for narrow screens */}
       <div className="overflow-x-auto">
       {/* Group header */}
@@ -739,7 +739,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       )}
 
       {/* ── TOTALS CARD ── */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-5 shadow-sm">
+      <div className="bg-white rounded-xl border border-slate-100 overflow-hidden mb-5" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
 
         {/* Card header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-slate-50/60">
@@ -872,7 +872,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       </div>
 
       {/* ── NOTES & TERMS ── */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-5 shadow-sm">
+      <div className="bg-white rounded-xl border border-slate-100 overflow-hidden mb-5" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
         {/* Card header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-slate-50/60">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Notes & Terms</p>
