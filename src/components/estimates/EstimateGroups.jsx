@@ -99,6 +99,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         {/* === SERVICE COLUMN ===
             Order per rules: service name → description → internal margin/warnings */}
         <div className="min-w-0">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-0.5 leading-none">Service</p>
           <SmartServicePicker
             value={item.service_name}
             onChange={v => update('service_name', v)}
@@ -149,7 +150,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   });
                 }
               }}
-            placeholder="Service name"
+            placeholder="Search service from Price Book…"
             className="h-8 w-full text-sm font-medium text-slate-800 border-transparent hover:border-slate-200 focus:border-blue-400 bg-transparent hover:bg-white focus:bg-white px-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/15 transition placeholder:text-slate-300"
           />
 
@@ -342,9 +343,10 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
       {/* Expanded detail row — editable description + taxable */}
       {expanded && (
         <div className="px-10 pb-4 pt-0.5 space-y-2">
+          <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest leading-none">Description</p>
           <Input value={item.description} onChange={e => update('description', e.target.value)}
-            placeholder="Description (optional)…"
-            className="h-8 text-sm border-slate-200 text-slate-600 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 placeholder:text-slate-300" />
+            placeholder="Service description / scope details…"
+            className="h-8 text-sm border-slate-100 bg-slate-50/60 text-slate-400 rounded-lg focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 placeholder:text-slate-300 focus:bg-white transition" />
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer select-none hover:text-slate-600 transition-colors">
               <input type="checkbox" checked={item.taxable !== false}
