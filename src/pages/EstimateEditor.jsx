@@ -208,24 +208,17 @@ export default function EstimateEditor() {
       <div className="bg-white border-b border-slate-200 flex-shrink-0" style={{ boxShadow: '0 1px 3px 0 rgba(0,0,0,0.06)' }}>
         <div className="flex items-center px-5 h-14 gap-4">
 
-          {/* Left: eyebrow + doc identity */}
-          <div className="flex flex-col justify-center min-w-0 flex-1">
+          {/* Left: client name + status */}
+          <div className="flex items-center gap-6 min-w-0 flex-1">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="flex items-baseline gap-1.5 flex-shrink-0">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">EST</span>
-                <span className="text-base font-bold text-slate-900">#{estimate.estimate_number}</span>
-              </div>
               {hasClient && (
-                <>
-                  <span className="text-slate-300 flex-shrink-0">·</span>
-                  <span className="text-sm font-medium text-slate-600 truncate">{estimate.client_name}</span>
-                </>
+                <span className="text-base font-bold text-slate-900 truncate">{estimate.client_name}</span>
               )}
               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide flex-shrink-0 ${statusBadge.cls}`}>
                 {statusBadge.label}
               </span>
             </div>
-            <div className="hidden md:block mt-0.5">
+            <div className="hidden md:block">
               <EstimateTemplateSelector
                 currentTemplate={estimate.document_config?.template || 'clean'}
                 onTemplateChange={handleTemplateChange}
