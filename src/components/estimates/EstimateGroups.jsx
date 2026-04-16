@@ -664,10 +664,10 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
             </h3>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expires</span>
           <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
-            className="h-7 text-xs w-32 border-slate-200 bg-white" />
+            className="h-8 text-xs w-40 min-w-[160px] shrink-0 border-slate-200 bg-white" />
         </div>
       </div>
 
