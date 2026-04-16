@@ -15,13 +15,6 @@ import JobPipelineCard from '@/components/dashboard/JobPipelineCard';
 import RevenueBreakdownCard from '@/components/dashboard/RevenueBreakdownCard';
 import AlertsPanel from '@/components/dashboard/AlertsPanel';
 
-const WORKFLOW_STEPS = [
-  { label: 'Customer', link: '/customers' },
-  { label: 'Appointment', link: '/appointments' },
-  { label: 'Estimate', link: '/estimates' },
-  { label: 'Work Order', link: '/work-orders' },
-  { label: 'Invoice', link: '/invoices' },
-];
 
 function KPICard({ label, value, sub, icon: Icon, color, bg, link, loading }) {
   return (
@@ -166,194 +159,130 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-screen-xl mx-auto">
+    <div className="min-h-screen bg-slate-100">
 
-      {/* ── HEADER ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[22px] font-bold text-foreground tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/appointments"><Plus className="w-3.5 h-3.5 mr-1.5" />Appointment</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/work-orders"><Plus className="w-3.5 h-3.5 mr-1.5" />Work Order</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link to="/estimates"><Plus className="w-3.5 h-3.5 mr-1.5" />Estimate</Link>
-          </Button>
+      {/* ── DARK HEADER ── */}
+      <div className="bg-slate-900 px-6 py-5">
+        <div className="max-w-screen-xl mx-auto flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-tight">Dashboard</h1>
+            <p className="text-sm text-slate-400 mt-0.5">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button asChild variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white">
+              <Link to="/appointments"><Plus className="w-3.5 h-3.5 mr-1.5" />Appointment</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white">
+              <Link to="/work-orders"><Plus className="w-3.5 h-3.5 mr-1.5" />Work Order</Link>
+            </Button>
+            <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-white">
+              <Link to="/estimates"><Plus className="w-3.5 h-3.5 mr-1.5" />Estimate</Link>
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* ── WORKFLOW PROGRESS BAR ── */}
-      <div className="bg-white border border-border rounded-2xl px-6 py-4">
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Business Workflow</p>
-        <div className="flex items-center gap-0">
-          {WORKFLOW_STEPS.map((step, idx) => (
-            <React.Fragment key={step.label}>
-              <Link to={step.link} className="flex-1 flex flex-col items-center gap-1.5 group">
-                <div className="w-full h-1.5 rounded-full bg-primary/15 group-hover:bg-primary/35 transition-colors" />
-                <span className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">{step.label}</span>
-              </Link>
-              {idx < WORKFLOW_STEPS.length - 1 && (
-                <ChevronRight className="w-3.5 h-3.5 text-border flex-shrink-0 -mt-4" />
-              )}
-            </React.Fragment>
+      <div className="max-w-screen-xl mx-auto px-6 py-5 space-y-5">
+
+        {/* ── KPI STRIP ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {kpiCards.map(card => (
+            <KPICard key={card.label} {...card} loading={loading} />
           ))}
         </div>
-      </div>
 
-      {/* ── 6 KPIs ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpiCards.map(card => (
-          <KPICard key={card.label} {...card} loading={loading} />
-        ))}
-      </div>
+        {/* ── MAIN 2-COLUMN GRID ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1fr] gap-5 items-start">
 
-      {/* ── SUMMARY BANDS ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-slate-900 text-white rounded-2xl px-6 py-5">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Today</p>
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-4xl font-bold">{loading ? '—' : todayAppointments.length}</p>
-              <p className="text-sm text-slate-400 mt-1">appointments</p>
+          {/* ── LEFT COLUMN ── */}
+          <div className="space-y-5">
+
+            {/* Funnel + Revenue side by side on large screens */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <SalesFunnelCard counts={funnelCounts} loading={loading} />
+              <RevenueBreakdownCard invoices={allInvoices} loading={loading} />
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-blue-400">{loading ? '—' : kpis.activeJobs ?? 0}</p>
-              <p className="text-sm text-slate-500">active jobs</p>
+
+            {/* Lists row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+              <SectionList title="Today's Appointments" icon={Calendar} iconColor="text-blue-500" link="/appointments" empty="No appointments today">
+                {loading ? <LoadingRows /> : todayAppointments.length === 0 ? null : (
+                  todayAppointments.map(appt => (
+                    <Link key={appt.id} to="/appointments">
+                      <div className="px-5 py-3.5 hover:bg-accent/50 transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{appt.customer_display_name || appt.client_name}</p>
+                            <p className="text-xs text-muted-foreground">{appt.start_time || appt.scheduled_time || '—'}</p>
+                          </div>
+                          <StatusBadge status={appt.status} />
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </SectionList>
+
+              <SectionList title="Active Work Orders" icon={ClipboardList} iconColor="text-purple-500" link="/work-orders" empty="No active work orders">
+                {loading ? <LoadingRows /> : activeWorkOrders.length === 0 ? null : (
+                  activeWorkOrders.map(wo => (
+                    <Link key={wo.id} to={`/work-orders/${wo.id}`}>
+                      <div className="px-5 py-3.5 hover:bg-accent/50 transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              <span className="text-purple-600 font-semibold">#{wo.work_order_number}</span> {wo.client_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">{wo.title}</p>
+                          </div>
+                          <StatusBadge status={wo.status} />
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </SectionList>
+
+              <SectionList title="Recent Estimates" icon={FileText} iconColor="text-amber-500" link="/estimates" empty="No estimates yet">
+                {loading ? <LoadingRows /> : recentEstimates.length === 0 ? null : (
+                  recentEstimates.map(est => (
+                    <Link key={est.id} to={`/estimate-editor?id=${est.id}`}>
+                      <div className="px-5 py-3.5 hover:bg-accent/50 transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              <span className="text-amber-600 font-semibold">#{est.estimate_number}</span> {est.client_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">${(est.total || 0).toLocaleString()}</p>
+                          </div>
+                          <StatusBadge status={est.status} />
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </SectionList>
+
             </div>
           </div>
-        </div>
 
-        <div className="bg-amber-500 text-white rounded-2xl px-6 py-5">
-          <p className="text-[10px] font-bold text-amber-200/70 uppercase tracking-widest mb-3">Pipeline</p>
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-4xl font-bold">{loading ? '—' : kpis.estimatesSent ?? 0}</p>
-              <p className="text-sm text-amber-100/80 mt-1">pending estimates</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold">{loading ? '—' : kpis.approvalRate ?? '—'}</p>
-              <p className="text-sm text-amber-100/80">approval rate</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-emerald-700 text-white rounded-2xl px-6 py-5">
-          <p className="text-[10px] font-bold text-emerald-300/60 uppercase tracking-widest mb-3">Revenue</p>
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-3xl font-bold">${(kpis.monthRevenue || 0).toLocaleString()}</p>
-              <p className="text-sm text-emerald-200/70 mt-1">this month</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xl font-bold text-red-300">${(kpis.outstanding || 0).toLocaleString()}</p>
-              <p className="text-sm text-emerald-200/70">outstanding</p>
+          {/* ── RIGHT COLUMN ── */}
+          <div className="space-y-5">
+            <JobPipelineCard workOrders={allWorkOrders} loading={loading} />
+            <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                <span className="text-sm font-semibold text-slate-800">Notifications</span>
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                <NotificationsPanel />
+              </div>
             </div>
           </div>
+
         </div>
-      </div>
-
-      {/* ── ALERTS ── */}
-      <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
-
-      {/* ── FUNNEL + JOB PIPELINE ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <SalesFunnelCard counts={funnelCounts} loading={loading} />
-        <JobPipelineCard workOrders={allWorkOrders} loading={loading} />
-      </div>
-
-      {/* ── REVENUE CHART ── */}
-      <RevenueBreakdownCard invoices={allInvoices} loading={loading} />
-
-      {/* ── NOTIFICATIONS ── */}
-      <NotificationsPanel />
-
-      {/* ── LISTS ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-        {/* Today's Appointments */}
-        <SectionList
-          title="Today's Appointments"
-          icon={Calendar}
-          iconColor="text-blue-500"
-          link="/appointments"
-          empty="No appointments today"
-        >
-          {loading ? <LoadingRows /> : todayAppointments.length === 0 ? null : (
-            todayAppointments.map(appt => (
-              <Link key={appt.id} to="/appointments">
-                <div className="px-5 py-3.5 hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{appt.customer_display_name || appt.client_name}</p>
-                      <p className="text-xs text-muted-foreground">{appt.start_time || appt.scheduled_time || '—'}</p>
-                    </div>
-                    <StatusBadge status={appt.status} />
-                  </div>
-                </div>
-              </Link>
-            ))
-          )}
-        </SectionList>
-
-        {/* Active Work Orders */}
-        <SectionList
-          title="Active Work Orders"
-          icon={ClipboardList}
-          iconColor="text-purple-500"
-          link="/work-orders"
-          empty="No active work orders"
-        >
-          {loading ? <LoadingRows /> : activeWorkOrders.length === 0 ? null : (
-            activeWorkOrders.map(wo => (
-              <Link key={wo.id} to={`/work-orders/${wo.id}`}>
-                <div className="px-5 py-3.5 hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        <span className="text-purple-600 font-semibold">#{wo.work_order_number}</span> {wo.client_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">{wo.title}</p>
-                    </div>
-                    <StatusBadge status={wo.status} />
-                  </div>
-                </div>
-              </Link>
-            ))
-          )}
-        </SectionList>
-
-        {/* Recent Estimates */}
-        <SectionList
-          title="Recent Estimates"
-          icon={FileText}
-          iconColor="text-amber-500"
-          link="/estimates"
-          empty="No estimates yet"
-        >
-          {loading ? <LoadingRows /> : recentEstimates.length === 0 ? null : (
-            recentEstimates.map(est => (
-              <Link key={est.id} to={`/estimate-editor?id=${est.id}`}>
-                <div className="px-5 py-3.5 hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        <span className="text-amber-600 font-semibold">#{est.estimate_number}</span> {est.client_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">${(est.total || 0).toLocaleString()}</p>
-                    </div>
-                    <StatusBadge status={est.status} />
-                  </div>
-                </div>
-              </Link>
-            ))
-          )}
-        </SectionList>
-
       </div>
     </div>
   );
