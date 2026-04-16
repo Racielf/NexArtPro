@@ -356,7 +356,7 @@ export default function EstimateEditor() {
           )}
 
           {/* Canvas toolbar: BID fields + view mode toggle */}
-          <div className="flex items-center gap-3 mb-4 flex-wrap">
+          <div className="flex items-center gap-3 mb-5 flex-wrap">
             {estimate.document_type === 'BID' && (
               <div className="flex items-center gap-2">
                 <input
@@ -401,7 +401,9 @@ export default function EstimateEditor() {
 
           {/* Persisted pricing audit trail — internal only */}
           {!isPreview && estimate?.id && (
-            <PricingAuditHistory documentId={estimate.id} />
+            <div className="mt-3">
+              <PricingAuditHistory documentId={estimate.id} />
+            </div>
           )}
         </div>
       </div>

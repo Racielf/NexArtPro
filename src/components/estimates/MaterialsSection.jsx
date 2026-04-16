@@ -104,7 +104,7 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
     return (
       <button
         onClick={() => onChange([emptyMaterial()])}
-        className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-emerald-600 border-2 border-dashed border-slate-200 hover:border-emerald-400 rounded-xl w-full py-3 justify-center transition-colors"
+        className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-emerald-600 border border-dashed border-slate-200 hover:border-emerald-300 rounded-xl w-full py-2.5 justify-center transition-colors bg-white/60 hover:bg-white"
       >
         <Package className="w-4 h-4" />
         Add materials section
@@ -123,7 +123,7 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
   const addItem = () => onChange([...materials, emptyMaterial()]);
 
   return (
-    <div className="bg-white rounded-lg border border-emerald-200 overflow-hidden mb-3">
+    <div className="bg-white rounded-xl border border-emerald-200 overflow-hidden shadow-sm">
       {/* Header */}
       <div className="flex items-center gap-3 px-6 py-3 bg-emerald-700 text-white">
         <button onClick={() => setCollapsed(!collapsed)}
@@ -168,8 +168,8 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
           </div>
 
           {/* Section Total Row */}
-          <div className="px-6 py-3 border-t-2 border-emerald-300 bg-emerald-50 flex items-center justify-between">
-            <span className="text-sm font-extrabold text-emerald-900 uppercase tracking-wide">Materials Total</span>
+          <div className="px-6 py-3 border-t border-emerald-200 bg-emerald-50/60 flex items-center justify-between">
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest">Materials Total</span>
             <div className="flex items-center gap-6">
               {showCost && materialsCost > 0 && (
                 <div className="text-right">

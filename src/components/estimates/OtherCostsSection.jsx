@@ -107,7 +107,7 @@ export default function OtherCostsSection({ otherCosts = [], onChange }) {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-amber-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-sm">
       {/* Header */}
       <button
         type="button"
@@ -141,9 +141,9 @@ export default function OtherCostsSection({ otherCosts = [], onChange }) {
 
           {/* Section Total Row */}
           {total > 0 && (
-            <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-amber-300 bg-amber-50 -mx-5 px-5 pb-3 rounded-b">
-              <span className="text-sm font-extrabold text-amber-900 uppercase tracking-wide">Other Costs Total</span>
-              <span className="text-lg font-extrabold text-amber-900 tabular-nums">
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-amber-200 bg-amber-50/60 -mx-5 px-5 pb-3 rounded-b">
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">Other Costs Total</span>
+              <span className="text-base font-bold text-amber-900 tabular-nums">
                 ${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
             </div>
