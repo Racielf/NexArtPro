@@ -285,10 +285,10 @@ export default function EstimateEditor() {
       </div>
 
       {/* ── MAIN 3-PANEL LAYOUT ──────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 gap-4 px-4 py-3 bg-slate-100 overflow-hidden">
 
         {/* LEFT SIDEBAR — Customer context */}
-        <div className="w-60 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col min-h-0">
+        <div className="w-60 flex-shrink-0 overflow-y-auto flex flex-col min-h-0 bg-white rounded-xl shadow-sm border border-slate-200">
           {isNew && !hasClient ? (
             <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
@@ -330,7 +330,7 @@ export default function EstimateEditor() {
         )}
 
         {/* RIGHT CANVAS — Document workspace */}
-        <div className="flex-1 overflow-auto bg-slate-100/80 px-8 py-6" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, hsl(220 12% 87% / 0.4) 1px, transparent 0)', backgroundSize: '24px 24px' }}>
+        <div className="flex-1 overflow-auto bg-white rounded-xl shadow-sm border border-slate-200 px-8 py-6">
 
           {/* No-client tip banner */}
           {!hasClient && (
