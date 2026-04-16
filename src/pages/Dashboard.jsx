@@ -5,10 +5,15 @@ import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/shared/StatusBadge';
 import {
   Calendar, FileText, ClipboardList, TrendingUp,
-  AlertCircle, CheckCircle2, ArrowRight, Plus, ChevronRight
+  AlertCircle, CheckCircle2, ArrowRight, Plus, ChevronRight,
+  DollarSign, Percent
 } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
+import SalesFunnelCard from '@/components/dashboard/SalesFunnelCard';
+import JobPipelineCard from '@/components/dashboard/JobPipelineCard';
+import RevenueBreakdownCard from '@/components/dashboard/RevenueBreakdownCard';
+import AlertsPanel from '@/components/dashboard/AlertsPanel';
 
 const WORKFLOW_STEPS = [
   { label: 'Customer', link: '/customers' },
@@ -79,8 +84,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [todayAppointments, setTodayAppointments] = useState([]);
   const [activeWorkOrders, setActiveWorkOrders] = useState([]);
+  const [allWorkOrders, setAllWorkOrders] = useState([]);
   const [recentEstimates, setRecentEstimates] = useState([]);
+  const [allEstimates, setAllEstimates] = useState([]);
+  const [allInvoices, setAllInvoices] = useState([]);
   const [kpis, setKpis] = useState({});
+  const [funnelCounts, setFunnelCounts] = useState({});
 
   useEffect(() => { loadDashboard(); }, []);
 
@@ -121,9 +130,14 @@ export default function Dashboard() {
       .filter(i => ['sent', 'overdue'].includes(i.status))
       .reduce((s, i) => s + Math.max((i.total || 0) - (i.amount_paid || 0), 0), 0);
 
+    const leads = await base44.entities.Lead.list('-created_date', 100).catch(() => []);
+
     setTodayAppointments(todayAppts);
     setActiveWorkOrders(active.slice(0, 6));
+    setAllWorkOrders(workOrders);
     setRecentEstimates(estimates.slice(0, 6));
+    setAllEstimates(estimates);
+    setAllInvoices(invoices);
     setKpis({
       activeJobs: active.length,
       completedJobs: completed.length,
@@ -132,15 +146,22 @@ export default function Dashboard() {
       monthRevenue,
       outstanding,
     });
+    setFunnelCounts({
+      leads: leads.length,
+      estimates: estimates.filter(e => e.status !== 'draft').length,
+      approved: approved.length,
+      jobs: workOrders.length,
+      paid: invoices.filter(i => i.status === 'paid').length,
+    });
     setLoading(false);
   };
 
   const kpiCards = [
-    { label: 'Active Jobs', value: kpis.activeJobs ?? 0, icon: ClipboardList, color: 'text-blue-600', bg: 'bg-blue-50', link: '/work-orders', sub: 'Operation' },
-    { label: 'Completed Jobs', value: kpis.completedJobs ?? 0, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/work-orders', sub: 'Operation' },
-    { label: 'Estimates Sent', value: kpis.estimatesSent ?? 0, icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50', link: '/estimates', sub: 'Sales' },
-    { label: 'Approval Rate', value: kpis.approvalRate ?? '—', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50', link: '/estimates', sub: 'Sales' },
-    { label: 'Revenue This Month', value: `$${(kpis.monthRevenue || 0).toLocaleString()}`, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50', link: '/invoices', sub: 'Finance' },
+    { label: 'Revenue This Month', value: `$${(kpis.monthRevenue || 0).toLocaleString()}`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/invoices', sub: 'Finance' },
+    { label: 'Estimates Sent', value: kpis.estimatesSent ?? 0, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', link: '/estimates', sub: 'Sales' },
+    { label: 'Approved', value: funnelCounts.approved ?? 0, icon: CheckCircle2, color: 'text-violet-600', bg: 'bg-violet-50', link: '/estimates', sub: 'Sales' },
+    { label: 'Conversion Rate', value: kpis.approvalRate ?? '—', icon: Percent, color: 'text-amber-600', bg: 'bg-amber-50', link: '/estimates', sub: 'Sales' },
+    { label: 'Active Jobs', value: kpis.activeJobs ?? 0, icon: ClipboardList, color: 'text-sky-600', bg: 'bg-sky-50', link: '/work-orders', sub: 'Operations' },
     { label: 'Outstanding', value: `$${(kpis.outstanding || 0).toLocaleString()}`, icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-50', link: '/invoices', sub: 'Finance' },
   ];
 
@@ -235,6 +256,18 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── ALERTS ── */}
+      <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
+
+      {/* ── FUNNEL + JOB PIPELINE ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <SalesFunnelCard counts={funnelCounts} loading={loading} />
+        <JobPipelineCard workOrders={allWorkOrders} loading={loading} />
+      </div>
+
+      {/* ── REVENUE CHART ── */}
+      <RevenueBreakdownCard invoices={allInvoices} loading={loading} />
 
       {/* ── NOTIFICATIONS ── */}
       <NotificationsPanel />
