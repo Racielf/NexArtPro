@@ -40,13 +40,24 @@ export default function DocumentViewerShell({
 
       {/* Toolbar */}
       <div className={`flex items-center justify-between px-5 py-3 border-b flex-shrink-0 ${
-        isFullscreen ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-200'
+        isFullscreen ? 'bg-white border-slate-200 shadow-sm' : 'bg-white border-slate-200'
       }`}>
         {typeof title === 'string' ? (
           <span className="text-sm font-semibold text-slate-700">{title}</span>
         ) : title}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {actions}
+          {!isFullscreen && onClose && (
+            <button
+              onClick={onClose}
+              className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+              aria-label="Close"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -70,8 +81,8 @@ export default function DocumentViewerShell({
         </div>
       )}
 
-      {/* Close Button — Absolute, solo si onClose está definido y no es fullscreen */}
-      {!isFullscreen && onClose && <GlobalDocumentCloseButton onClick={onClose} />}
+      {/* Close Button — handled inline in toolbar for non-fullscreen */}
+      {isFullscreen && onClose && <GlobalDocumentCloseButton onClick={onClose} />}
     </div>
   );
 }
