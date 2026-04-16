@@ -414,18 +414,21 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
           <div className="flex items-center gap-2 flex-1">
             <button onClick={() => !isPreview && setEditingName(true)}
               className={`flex items-center gap-2 text-left group ${isPreview ? 'cursor-default' : ''}`}>
-              <span className="font-bold text-base tracking-wide">{group.name}</span>
-              {!isPreview && <Pencil className="w-4 h-4 opacity-0 group-hover:opacity-60 transition-opacity" />}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/40 leading-none mb-0.5">Work Group</p>
+                <span className="font-bold text-sm tracking-wide">{group.name}</span>
+              </div>
+              {!isPreview && <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />}
             </button>
             {isPreview && (
-              <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-white/15 text-white/60">Read-only</span>
+              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10">Read-only</span>
             )}
           </div>
         )}
 
-        <div className="flex items-center gap-4 ml-auto text-sm font-semibold">
-          <span className="text-white/70">{group.items?.length || 0} items</span>
-          <span className="text-white">${groupSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        <div className="flex items-center gap-4 ml-auto">
+          <span className="text-[11px] text-white/60">{group.items?.length || 0} item{(group.items?.length || 0) !== 1 ? 's' : ''}</span>
+          <span className="text-sm font-bold text-white tabular-nums">${groupSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           {!isOnly && (
             <button onClick={() => onRemove(group.id)}
               className="p-1 rounded hover:bg-red-500/30 text-white/50 hover:text-white transition-colors ml-1">
@@ -487,13 +490,24 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
 }
 
 // ─── Notes Section ─────────────────────────────────────────────────────────────
-function NotesSection({ label, placeholder, value, onChange, accent }) {
+function NotesSection({ label, placeholder, value, onChange, accent, badge }) {
   return (
-    <div>
-      <label className={`text-sm font-semibold block mb-2 ${accent ? 'text-amber-700' : 'text-slate-700'}`}>{label}</label>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <label className={`text-[11px] font-bold uppercase tracking-widest ${accent ? 'text-amber-600' : 'text-slate-500'}`}>{label}</label>
+        {badge && (
+          <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-amber-50 border-amber-200 text-amber-600 leading-none">
+            {badge}
+          </span>
+        )}
+      </div>
       <Textarea value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder} rows={9}
-        className={`text-sm resize-none border-slate-200 ${accent ? 'bg-amber-50/30' : ''}`} />
+        placeholder={placeholder} rows={8}
+        className={`text-sm resize-none leading-relaxed placeholder:text-slate-300 ${
+          accent
+            ? 'border-amber-200 bg-amber-50/20 focus-visible:ring-amber-400/30'
+            : 'border-slate-200 bg-slate-50/40 focus-visible:ring-primary/20'
+        }`} />
     </div>
   );
 }
@@ -637,22 +651,29 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     <div className="w-full space-y-0 max-w-5xl mx-auto">
 
       {/* ── SERVICES SECTION HEADER ── */}
-      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="12" height="2" rx="1" fill="white" fillOpacity="0.8"/>
+              <rect x="1" y="5" width="8" height="2" rx="1" fill="white" fillOpacity="0.5"/>
+              <rect x="1" y="9" width="10" height="2" rx="1" fill="white" fillOpacity="0.5"/>
+            </svg>
+          </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Document</p>
-            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Scope of Work</p>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 leading-tight">
               Services
               {isPreview && (
-                <span className="text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
                   Read-only
                 </span>
               )}
             </h3>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span className="font-medium text-slate-400">Expires</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expires</span>
           <Input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)}
             className="h-7 text-xs w-32 border-slate-200 bg-white" />
         </div>
@@ -660,16 +681,15 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
 
       {/* ── ESTIMATE-LEVEL LOSS WARNING — warning-only, not blocking ── */}
       {!isPreview && lossItems.length > 0 && (
-        <div className="bg-white border border-red-200 rounded-xl px-4 py-3 mb-4 flex items-start gap-3 shadow-sm">
-          <div className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <span className="text-sm leading-none">⚠</span>
+        <div className="bg-red-50/60 border border-red-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+          <div className="w-6 h-6 rounded-md bg-red-100 border border-red-300 flex items-center justify-center flex-shrink-0">
+            <span className="text-[11px] leading-none font-bold text-red-600">!</span>
           </div>
-          <div>
-            <p className="text-xs font-bold text-red-700">Loss Prevention</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {lossItems.length} item{lossItems.length > 1 ? 's' : ''} priced below cost.
-              Review pricing before sending.
-            </p>
+          <div className="flex-1 min-w-0">
+            <span className="text-[11px] font-bold text-red-700">Loss Prevention · </span>
+            <span className="text-[11px] text-red-600">
+              {lossItems.length} item{lossItems.length > 1 ? 's' : ''} priced below cost — review before sending.
+            </span>
           </div>
         </div>
       )}
@@ -701,120 +721,132 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       )}
 
       {/* ── TOTALS CARD ── */}
-      <div className="bg-white rounded-xl border border-slate-200 px-6 py-5 mb-5 shadow-sm">
-        <div className="flex gap-8 flex-wrap justify-between">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-5 shadow-sm">
 
-          {/* ── INTERNAL COST SUMMARY ── */}
+        {/* Card header */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-slate-50/60">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Summary</p>
           {!isPreview && (() => {
             const marginStatus = grossMarginPct >= 60
-              ? { label: 'Good', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' }
+              ? { label: 'Good', dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' }
               : grossMarginPct >= 40
-              ? { label: 'Warning', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', dot: 'bg-amber-400' }
-              : { label: 'Low', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-500' };
+              ? { label: 'Warning', dot: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' }
+              : { label: 'Low margin', dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50 border-red-200' };
             return (
-              <div className="space-y-2" style={{ minWidth: 200 }}>
-                <div className="flex items-center gap-3">
-                  <p className="text-[9px] font-bold tracking-widest uppercase text-amber-600">🔒 Profit Analysis</p>
-                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold ${marginStatus.bg} ${marginStatus.border} ${marginStatus.text}`}>
-                    <span className={`w-2 h-2 rounded-full ${marginStatus.dot}`} />
-                    {marginStatus.label} — {grossMarginPct.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="flex gap-3 flex-wrap">
-                  {/* Services Total = sum of all group line items */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-blue-500 mb-1">Services Total</p>
-                    <p className="text-base font-bold text-blue-700">{fmt(subtotal)}</p>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${marginStatus.bg} ${marginStatus.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${marginStatus.dot}`} />
+                {marginStatus.label} · {grossMarginPct.toFixed(1)}%
+              </span>
+            );
+          })()}
+        </div>
+
+        <div className="flex gap-0 flex-wrap">
+
+          {/* ── LEFT: Internal Profit Analysis ── */}
+          {!isPreview && (() => {
+            const marginStatus = grossMarginPct >= 60
+              ? { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' }
+              : grossMarginPct >= 40
+              ? { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' }
+              : { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' };
+            return (
+              <div className="flex-1 min-w-[280px] px-6 py-5 border-r border-slate-100">
+                <p className="text-[9px] font-bold tracking-widest uppercase text-slate-400 mb-3">🔒 Internal · Profit Analysis</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Services</p>
+                    <p className="text-sm font-bold text-slate-800 tabular-nums">{fmt(subtotal)}</p>
                   </div>
                   {materialsSubtotal > 0 && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
-                      <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-500 mb-1">Materials Cost</p>
-                      <p className="text-base font-bold text-emerald-700">{fmt(materialsCost)}</p>
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
+                      <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-500 mb-1">Materials cost</p>
+                      <p className="text-sm font-bold text-emerald-700 tabular-nums">{fmt(materialsCost)}</p>
                     </div>
                   )}
                   {otherCostsTotal > 0 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
-                      <p className="text-[9px] font-bold uppercase tracking-wide text-amber-500 mb-1">Other Costs</p>
-                      <p className="text-base font-bold text-amber-700">{fmt(otherCostsTotal)}</p>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                      <p className="text-[9px] font-bold uppercase tracking-wide text-amber-500 mb-1">Other costs</p>
+                      <p className="text-sm font-bold text-amber-700 tabular-nums">{fmt(otherCostsTotal)}</p>
                     </div>
                   )}
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Total Cost</p>
-                    <p className="text-base font-bold text-slate-700">{fmt(totalCost)}</p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Total cost</p>
+                    <p className="text-sm font-bold text-slate-700 tabular-nums">{fmt(totalCost)}</p>
                   </div>
-                  <div className={`border rounded-lg px-4 py-3 flex-1 min-w-[100px] ${marginStatus.bg} ${marginStatus.border}`}>
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Gross Profit</p>
-                    <p className={`text-base font-bold ${marginStatus.text}`}>{fmt(grossMargin)} ({grossMarginPct.toFixed(1)}%)</p>
-                  </div>
-                  <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-3 flex-1 min-w-[100px]">
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-primary/70 mb-1">Client Total</p>
-                    <p className="text-base font-bold text-primary">{fmt(total)}</p>
+                  <div className={`border rounded-lg px-3 py-2.5 col-span-2 ${marginStatus.bg} ${marginStatus.border}`}>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Gross profit</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className={`text-base font-bold tabular-nums ${marginStatus.text}`}>{fmt(grossMargin)}</p>
+                      <p className={`text-[11px] font-bold tabular-nums ${marginStatus.text}`}>({grossMarginPct.toFixed(1)}%)</p>
+                    </div>
                   </div>
                 </div>
               </div>
             );
           })()}
 
-          {/* Right: Customer-facing totals */}
-          <div className="space-y-3 text-sm ml-auto w-80">
-            <div className="flex justify-between py-2">
-              <span className="text-slate-600">Subtotal</span>
-              <span className="font-semibold text-slate-800">{fmt(subtotal)}</span>
+          {/* ── RIGHT: Customer-facing totals ── */}
+          <div className="flex-shrink-0 w-80 px-6 py-5 space-y-2 text-sm">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Client-Facing Total</p>
+
+            <div className="flex justify-between py-1.5 border-b border-slate-100">
+              <span className="text-slate-500">Subtotal</span>
+              <span className="font-semibold text-slate-800 tabular-nums">{fmt(subtotal)}</span>
             </div>
 
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-slate-600">Discount</span>
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-slate-100">
+              <span className="text-slate-500">Discount</span>
               <div className="flex items-center gap-1.5">
                 {readOnlyDiscountType ? (
-                  <div className="h-8 px-2 flex items-center text-xs text-slate-500 font-medium bg-slate-50 rounded border border-slate-200">
+                  <div className="h-7 px-2 flex items-center text-xs text-slate-500 font-medium bg-slate-50 rounded border border-slate-200">
                     {discountType === 'percent' ? '%' : '$'}
                   </div>
                 ) : (
                   <select value={discountType} onChange={e => setDiscountType(e.target.value)}
-                    className="h-8 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600">
+                    className="h-7 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600">
                     <option value="percent">%</option>
                     <option value="fixed">$</option>
                   </select>
                 )}
                 <Input type="number" value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
-                  className="h-8 w-20 text-right text-sm border-slate-200" min={0} />
+                  className="h-7 w-20 text-right text-sm border-slate-200" min={0} />
               </div>
             </div>
             {discountAmount > 0 && (
-              <div className="flex justify-between text-xs text-slate-500">
-                <span>Discount amount</span>
-                <span className="text-red-500 font-medium">-{fmt(discountAmount)}</span>
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>Discount applied</span>
+                <span className="text-red-500 font-semibold tabular-nums">−{fmt(discountAmount)}</span>
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-slate-600">Tax (%)</span>
+            <div className="flex items-center justify-between gap-3 py-1.5 border-b border-slate-100">
+              <span className="text-slate-500">Tax (%)</span>
               <Input type="number" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
-                className="h-8 w-20 text-right text-sm border-slate-200" min={0} max={100} />
+                className="h-7 w-20 text-right text-sm border-slate-200" min={0} max={100} />
             </div>
             {taxAmount > 0 && (
-              <div className="flex justify-between text-xs text-slate-500">
+              <div className="flex justify-between text-xs text-slate-400">
                 <span>Tax ({taxRate}%)</span>
-                <span className="font-medium">{fmt(taxAmount)}</span>
+                <span className="font-semibold tabular-nums">{fmt(taxAmount)}</span>
               </div>
             )}
 
-            <div className="flex justify-between pt-4 border-t-2 border-slate-300">
-              <span className="font-bold text-slate-900 text-lg">Total</span>
-              <span className="font-bold text-primary text-3xl">{fmt(total)}</span>
+            {/* Grand total */}
+            <div className="flex items-center justify-between pt-4 mt-2 border-t-2 border-slate-200">
+              <span className="font-bold text-slate-900 text-base">Total</span>
+              <span className="font-bold text-primary tabular-nums" style={{ fontSize: '1.75rem', lineHeight: 1 }}>{fmt(total)}</span>
             </div>
 
             <div className="flex items-center justify-between gap-3 pt-2">
-              <span className="text-slate-600 text-xs font-medium">Deposit (%)</span>
-              <div className="flex items-center gap-1.5">
-                <Input type="number" value={depositPercent} onChange={e => setDepositPercent(parseFloat(e.target.value) || 0)}
-                  className="h-8 w-20 text-right text-sm border-slate-200" min={0} max={100} />
-              </div>
+              <span className="text-slate-500 text-xs">Deposit (%)</span>
+              <Input type="number" value={depositPercent} onChange={e => setDepositPercent(parseFloat(e.target.value) || 0)}
+                className="h-7 w-20 text-right text-sm border-slate-200" min={0} max={100} />
             </div>
             {depositAmount > 0 && (
-              <div className="flex justify-between text-sm text-green-700 font-medium bg-green-50 rounded px-3 py-2">
+              <div className="flex justify-between text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-1">
                 <span>Deposit due</span>
-                <span>{fmt(depositAmount)}</span>
+                <span className="tabular-nums">{fmt(depositAmount)}</span>
               </div>
             )}
           </div>
@@ -822,26 +854,33 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       </div>
 
       {/* ── NOTES & TERMS ── */}
-      <div className="bg-white rounded-xl border border-slate-200 px-6 py-5 mb-5 shadow-sm">
-        <div className="grid grid-cols-2 gap-6">
-          <NotesSection label="Customer Notes" placeholder="Visible to client…" value={notes} onChange={setNotes} />
-          <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent />
-          <NotesSection label="Exclusions" placeholder="What is NOT included in this estimate…" value={exclusions} onChange={setExclusions} />
-          <NotesSection label="Payment Terms" placeholder="e.g. 50% deposit, balance on completion…" value={paymentTerms} onChange={setPaymentTerms} />
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-5 shadow-sm">
+        {/* Card header */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-slate-50/60">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Notes & Terms</p>
         </div>
 
-        <button onClick={() => setShowTerms(v => !v)}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mt-5 font-medium transition-colors">
-          {showTerms ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          {showTerms ? 'Hide' : 'Show'} warranty & legal terms
-        </button>
-
-        {showTerms && (
-          <div className="grid grid-cols-2 gap-6 mt-5">
-            <NotesSection label="Warranty Terms" placeholder="e.g. 1-year labor warranty…" value={warrantyTerms} onChange={setWarrantyTerms} />
-            <NotesSection label="Legal Terms" placeholder="Terms and conditions…" value={legalTerms} onChange={setLegalTerms} />
+        <div className="px-6 py-5">
+          <div className="grid grid-cols-2 gap-5">
+            <NotesSection label="Customer Notes" placeholder="Visible to client — scope overview, access instructions…" value={notes} onChange={setNotes} />
+            <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent badge="Internal only" />
+            <NotesSection label="Exclusions" placeholder="What is NOT included in this estimate…" value={exclusions} onChange={setExclusions} />
+            <NotesSection label="Payment Terms" placeholder="e.g. 50% deposit, balance on completion…" value={paymentTerms} onChange={setPaymentTerms} />
           </div>
-        )}
+
+          <button onClick={() => setShowTerms(v => !v)}
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-slate-700 mt-5 transition-colors border border-slate-200 hover:border-slate-300 rounded-lg px-3 py-1.5 bg-white">
+            {showTerms ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            {showTerms ? 'Hide' : 'Show'} warranty & legal terms
+          </button>
+
+          {showTerms && (
+            <div className="grid grid-cols-2 gap-5 mt-5 pt-5 border-t border-slate-100">
+              <NotesSection label="Warranty Terms" placeholder="e.g. 1-year labor warranty…" value={warrantyTerms} onChange={setWarrantyTerms} />
+              <NotesSection label="Legal Terms" placeholder="Terms and conditions…" value={legalTerms} onChange={setLegalTerms} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── INTERNAL AUDIT TRAIL ── */}

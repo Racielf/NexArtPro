@@ -125,21 +125,26 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
   return (
     <div className="bg-white rounded-xl border border-emerald-200 overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-3 bg-emerald-700 text-white">
+      <div className="flex items-center gap-3 px-5 py-3 bg-emerald-800 text-white">
         <button onClick={() => setCollapsed(!collapsed)}
           className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0">
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <Package className="w-4 h-4" />
-          <span className="font-bold text-base tracking-wide">Materials</span>
+          <Package className="w-3.5 h-3.5 opacity-70" />
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 leading-none mb-0.5">Section</p>
+            <span className="font-bold text-sm tracking-wide">Materials</span>
+          </div>
         </div>
-        <div className="flex items-center gap-4 ml-auto text-sm font-semibold">
-          <span className="text-white/70">{materials.length} items</span>
-          <span className="text-white">${materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          {showCost && <span className="text-amber-300 text-xs">cost ${materialsCost.toFixed(2)}</span>}
+        <div className="flex items-center gap-4 ml-auto">
+          <span className="text-[11px] text-white/60">{materials.length} item{materials.length !== 1 ? 's' : ''}</span>
+          <span className="text-sm font-bold text-white tabular-nums">${materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          {showCost && materialsCost > 0 && (
+            <span className="text-[10px] font-semibold text-emerald-300 tabular-nums">cost ${materialsCost.toFixed(2)}</span>
+          )}
           <button onClick={() => onChange([])}
-            className="p-1 rounded hover:bg-red-500/30 text-white/50 hover:text-white transition-colors ml-1"
+            className="p-1 rounded hover:bg-red-500/30 text-white/40 hover:text-white transition-colors"
             title="Remove materials section">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -168,16 +173,16 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
           </div>
 
           {/* Section Total Row */}
-          <div className="px-6 py-3 border-t border-emerald-200 bg-emerald-50/60 flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest">Materials Total</span>
-            <div className="flex items-center gap-6">
+          <div className="px-6 py-3 border-t border-emerald-200 bg-emerald-50/50 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Materials Total</span>
+            <div className="flex items-center gap-5">
               {showCost && materialsCost > 0 && (
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">Cost: </span>
-                  <span className="text-sm font-bold text-amber-700">${materialsCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">Internal cost · </span>
+                  <span className="text-sm font-bold text-amber-700 tabular-nums">${materialsCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
               )}
-              <span className="text-lg font-extrabold text-emerald-900 tabular-nums">
+              <span className="text-base font-bold text-emerald-900 tabular-nums">
                 ${materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
             </div>
