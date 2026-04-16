@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
   Search, User, Phone, Mail, MapPin, Pencil,
-  Calendar, FileText, Plus, Building2, Home, HardHat, ChevronRight
+  Plus, Building2, Home, HardHat
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import CustomerFormModal from '@/components/customers/CustomerFormModal';
 
 const CUSTOMER_TYPES = [
