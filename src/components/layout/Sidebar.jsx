@@ -21,7 +21,6 @@ import {
   LogOut,
 } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
-import { isAdmin } from '@/lib/roleUtils';
 import useCompanyConfig from '@/hooks/useCompanyConfig';
 import { logout } from '@/lib/sessionManager';
 
@@ -68,36 +67,44 @@ export default function Sidebar() {
   const cc = useCompanyConfig();
 
   return (
-    <div className="w-[220px] flex-shrink-0 h-screen bg-sidebar flex flex-col border-r border-sidebar-border">
-      {/* Branding */}
-      <div className="px-4 py-5 flex-shrink-0">
+    <div
+      className="w-[224px] flex-shrink-0 h-screen flex flex-col"
+      style={{ background: '#1a2233', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+    >
+      {/* ── Branding ── */}
+      <div className="px-4 pt-5 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-3">
           {cc.logo_url ? (
-            <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-white/10 flex items-center justify-center p-1">
+            <div className="w-8 h-8 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+              style={{ background: 'rgba(255,255,255,0.08)' }}>
               <img src={cc.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
-            <div className="w-9 h-9 bg-sidebar-primary rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: '#2563EB' }}>
               <Wrench className="w-4 h-4 text-white" />
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-sidebar-accent-foreground font-semibold text-[13px] leading-tight truncate">
+            <p className="font-semibold text-[13px] leading-tight truncate"
+              style={{ color: '#f1f5f9' }}>
               {cc.name || appConfig.appName}
             </p>
-            <p className="text-sidebar-foreground text-[11px] leading-tight mt-0.5 truncate opacity-70">
+            <p className="text-[11px] leading-tight mt-0.5 truncate"
+              style={{ color: 'rgba(148,163,184,0.7)' }}>
               {cc.displayName || appConfig.company.displayName}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 pb-3 overflow-y-auto space-y-3">
+      {/* ── Nav ── */}
+      <nav className="flex-1 px-2.5 py-3 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
         {navGroups.map((group, gi) => (
-          <div key={gi}>
+          <div key={gi} className={gi > 0 ? 'mt-5' : ''}>
             {group.label && (
-              <p className="text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-widest px-3 mb-1.5 mt-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] px-3 mb-2"
+                style={{ color: 'rgba(100,116,139,0.8)' }}>
                 {group.label}
               </p>
             )}
@@ -109,14 +116,25 @@ export default function Sidebar() {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      isActive
-                        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
+                    style={isActive ? {
+                      background: 'rgba(37,99,235,0.18)',
+                      color: '#93c5fd',
+                      borderLeft: '2px solid #3b82f6',
+                      paddingLeft: '10px',
+                    } : {
+                      color: 'rgba(148,163,184,0.85)',
+                      borderLeft: '2px solid transparent',
+                      paddingLeft: '10px',
+                    }}
+                    className={`flex items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                      isActive ? '' : 'hover:bg-white/[0.05] hover:text-slate-200'
                     }`}
                   >
-                    <Icon className="w-4 h-4 flex-shrink-0 opacity-75" />
-                    {item.label}
+                    <Icon
+                      className="w-[15px] h-[15px] flex-shrink-0"
+                      style={{ color: isActive ? '#60a5fa' : 'rgba(100,116,139,0.9)', strokeWidth: 1.75 }}
+                    />
+                    <span className="truncate">{item.label}</span>
                   </Link>
                 );
               })}
@@ -125,25 +143,40 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom: Settings + Logout */}
-      <div className="flex-shrink-0 px-3 py-3 border-t border-sidebar-border space-y-0.5">
+      {/* ── Bottom: Settings + Logout ── */}
+      <div className="flex-shrink-0 px-2.5 py-3 space-y-0.5"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <Link
           to="/settings"
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-            location.pathname === '/settings'
-              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-              : 'text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
+          style={location.pathname === '/settings' ? {
+            background: 'rgba(37,99,235,0.18)',
+            color: '#93c5fd',
+            borderLeft: '2px solid #3b82f6',
+            paddingLeft: '10px',
+          } : {
+            color: 'rgba(148,163,184,0.85)',
+            borderLeft: '2px solid transparent',
+            paddingLeft: '10px',
+          }}
+          className={`flex items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+            location.pathname === '/settings' ? '' : 'hover:bg-white/[0.05] hover:text-slate-200'
           }`}
         >
-          <Settings className="w-4 h-4 opacity-75" />
-          Settings
+          <Settings
+            className="w-[15px] h-[15px] flex-shrink-0"
+            style={{ color: location.pathname === '/settings' ? '#60a5fa' : 'rgba(100,116,139,0.9)', strokeWidth: 1.75 }}
+          />
+          <span>Settings</span>
         </Link>
         <button
           onClick={() => logout(navigate)}
-          className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors text-sidebar-foreground hover:bg-red-500/10 hover:text-red-400"
+          className="flex w-full items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 hover:bg-red-500/10"
+          style={{ color: 'rgba(148,163,184,0.7)', paddingLeft: '12px' }}
+          onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+          onMouseLeave={e => e.currentTarget.style.color = 'rgba(148,163,184,0.7)'}
         >
-          <LogOut className="w-4 h-4 opacity-75" />
-          Logout
+          <LogOut className="w-[15px] h-[15px] flex-shrink-0" style={{ strokeWidth: 1.75 }} />
+          <span>Logout</span>
         </button>
       </div>
     </div>
