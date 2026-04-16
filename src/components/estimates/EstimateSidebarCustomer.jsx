@@ -12,8 +12,11 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ClientFormModal from '@/components/proposals/ClientFormModal';
+import EstimateAttachments from '@/components/estimates/EstimateAttachments';
+import CommTimeline from '@/components/shared/CommTimeline';
 
-export default function EstimateSidebarCustomer({ estimate, client: clientProp, onCustomerChange }) {
+
+export default function EstimateSidebarCustomer({ estimate, client: clientProp, onCustomerChange, onAttachmentsUpdate }) {
   const [editing, setEditing] = useState(!estimate?.client_name);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [linkedClient, setLinkedClient] = useState(clientProp || null);
@@ -391,22 +394,26 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
             </div>
           )}
 
-          {/* ── FOOTER META ACTIONS ───────────────────────────────────── */}
-          <div className="border-t border-slate-100 divide-y divide-slate-100 mt-auto flex-shrink-0">
-            {[
-              { label: 'Tags', icon: '🏷️' },
-              { label: 'Private notes', icon: '📋' },
-              { label: 'Attachments', icon: '📎' },
-            ].map(({ label, icon }) => (
-              <button key={label} className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-slate-500 hover:bg-slate-50 transition-colors">
-                <span className="flex items-center gap-2.5">
-                  <span className="text-slate-300">{icon}</span>
-                  <span className="font-medium text-slate-600">{label}</span>
-                </span>
-                <span className="text-slate-300 text-sm leading-none">+</span>
-              </button>
-            ))}
-          </div>
+          {/* ── ATTACHMENTS ───────────────────────────────────────────── */}
+          {estimate?.id && (
+            <div className="px-4 pt-1 pb-4 border-t border-slate-100 flex-shrink-0">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Attachments</p>
+              <EstimateAttachments
+                attachments={estimate.attachments}
+                onUpdate={async (newAttachments) => {
+                  if (onAttachmentsUpdate) onAttachmentsUpdate(newAttachments);
+                }}
+              />
+            </div>
+          )}
+
+          {/* ── COMMUNICATIONS ────────────────────────────────────────── */}
+          {estimate?.id && (
+            <div className="px-4 pt-1 pb-5 border-t border-slate-100 flex-shrink-0">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Communications</p>
+              <CommTimeline estimateId={estimate.id} />
+            </div>
+          )}
         </>
       )}
 

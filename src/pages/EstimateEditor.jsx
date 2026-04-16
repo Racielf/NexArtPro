@@ -12,7 +12,6 @@ import EstimateDocumentOptions from '@/components/estimates/EstimateDocumentOpti
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
-import CommTimeline from '@/components/shared/CommTimeline';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
@@ -309,22 +308,12 @@ export default function EstimateEditor() {
               estimate={estimate}
               client={client}
               onCustomerChange={handleCustomerChange}
+              onAttachmentsUpdate={async (newAttachments) => {
+                const updated = { ...estimate, attachments: newAttachments };
+                setEstimate(updated);
+                await base44.entities.Estimate.update(estimateId, { attachments: newAttachments });
+              }}
             />
-          )}
-          {hasClient && (
-            <div className="px-4 pb-5 pt-3 border-t border-slate-100 flex-shrink-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Attachments</p>
-              <EstimateAttachments
-                attachments={estimate.attachments}
-                onUpdate={async (newAttachments) => {
-                  const updated = { ...estimate, attachments: newAttachments };
-                  setEstimate(updated);
-                  await base44.entities.Estimate.update(estimateId, { attachments: newAttachments });
-                }}
-              />
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-5">Communications</p>
-              <CommTimeline estimateId={estimate.id} />
-            </div>
           )}
         </div>
 
