@@ -141,10 +141,10 @@ function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loadin
             </span>
             <span className={`text-2xl font-bold tabular-nums leading-none ${loading ? 'opacity-30 text-slate-300' : overdueAmt > 0 ? 'text-red-600' : 'text-slate-300'}`}>{loading ? '—' : fmt(overdueAmt)}</span>
           </div>
-          {/* Pe-M */}
+          {/* Jobs Activos */}
           <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-slate-50 border border-slate-100">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Pe-M!</span>
-            <span className="text-2xl font-bold tabular-nums leading-none text-slate-300">$0</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Jobs Activos</span>
+            <span className={`text-2xl font-bold tabular-nums leading-none text-slate-700 ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : allWorkOrders.filter(w => !['completed','invoiced','cancelled'].includes(w.status)).length}</span>
           </div>
         </div>
 
@@ -613,32 +613,8 @@ export default function Dashboard() {
           <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
         </div>
 
-        {/* ── FILA 3: Próximas Acciones (mini) + Work Orders + Estimados + Citas */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 overflow-visible`} style={{ minHeight: '220px' }}>
-
-          {/* Mini Próximas Acciones */}
-          <Card title="Próximas Acciones" icon={Zap} link="/estimates" linkLabel="Ver todas" className="h-full">
-            {loading ? <Empty text="Cargando…" /> : (() => {
-              const all = buildActions({ estimates: allEstimates, invoices: allInvoices, workOrders: allWorkOrders });
-              if (all.length === 0) return <Empty text="Sin acciones" />;
-              return (
-                <div className="px-4 py-3 space-y-2">
-                  {all.slice(0, 3).map(a => {
-                    const groupCfg = GROUP_CFG[a.group];
-                    return (
-                      <Link key={a.id} to={a.link} className="flex items-start gap-1.5 group">
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${groupCfg.dot}`} />
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-semibold text-slate-700 truncate">{a.group} · <span className="text-slate-400 font-normal">{a.sub}</span></p>
-                          <p className="text-[10px] text-slate-400 truncate">{a.label}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </Card>
+        {/* ── FILA 3: Work Orders + Estimados + Citas + Notificaciones */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 overflow-visible" style={{ minHeight: '220px' }}>
 
           {/* Work Orders */}
           <Card title="Work Orders" icon={ClipboardList} link="/work-orders" linkLabel="Ver →" className="h-full">
@@ -670,7 +646,7 @@ export default function Dashboard() {
           {/* Estimados */}
           <Card title="Estimados" icon={FileText} link="/estimates" linkLabel="Ver todas" className="h-full">
             {loading ? <Empty text="Cargando…" />
-              : recentEstimates.length === 0 ? <Empty text="Sin citas hoy" sub="No hay appointments programados" />
+              : recentEstimates.length === 0 ? <Empty text="Sin estimados recientes" sub="No hay estimados creados aún" />
               : recentEstimates.slice(0, 4).map(est => {
                 const needsFollowUp = ['sent','viewed'].includes(est.status) && est.sent_at && new Date(est.sent_at) < new Date(Date.now() - 5*24*60*60*1000);
                 const needsAction = est.status === 'changes_requested';
@@ -725,12 +701,12 @@ export default function Dashboard() {
             }
           </Card>
 
-        </div>
+          {/* Notificaciones */}
+          <Card title="Notificaciones" icon={Bell} className="h-full">
+            <NotificationsPanel />
+          </Card>
 
-        {/* ── FILA 4: Notificaciones full width */}
-        <Card title="Notificaciones" icon={Bell}>
-          <NotificationsPanel />
-        </Card>
+        </div>
 
       </div>
     </div>
