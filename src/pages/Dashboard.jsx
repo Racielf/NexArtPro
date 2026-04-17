@@ -631,7 +631,7 @@ export default function Dashboard() {
         <NextBestAction estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
 
         {/* ▸ ROW 1: Analytics panels */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${ROW_H}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${ROW_H} overflow-visible`}>
           <SalesFunnel counts={funnelCounts} kpis={kpis} loading={loading} />
           <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} />
           <JobPipeline workOrders={allWorkOrders} loading={loading} />
@@ -639,7 +639,7 @@ export default function Dashboard() {
         </div>
 
         {/* ▸ ROW 2: List panels */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${ROW_H}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${ROW_H} overflow-visible`}>
 
           {/* Citas de Hoy */}
           <Panel title="Citas de Hoy" headerBg="bg-blue-500" icon={Calendar} link="/appointments">
