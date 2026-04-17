@@ -273,51 +273,66 @@ function JobPipeline({ workOrders = [], loading }) {
   );
 }
 
-/* 1D · Alerts with recommended actions */
+/* 1D · Alerts with quick-action buttons */
 function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }) {
   const alerts = [];
   if (!loading) {
     const overdue = invoices.filter(i => i.status === 'overdue');
-    if (overdue.length) alerts.push({
-      icon: FileX, hex: '#ef4444', bg: '#fef2f2',
-      title: `${overdue.length} factura${overdue.length > 1 ? 's' : ''} vencida${overdue.length > 1 ? 's' : ''}`,
-      desc: `$${overdue.reduce((s,i) => s+(i.total||0)-(i.amount_paid||0),0).toLocaleString()} pendiente`,
-      action: 'Llamar al cliente hoy →',
-      link: '/invoices', badge: overdue.length, urgent: true,
-    });
+    if (overdue.length) {
+      const first = overdue[0];
+      alerts.push({
+        icon: FileX, hex: '#ef4444', bg: '#fef2f2',
+        title: `${overdue.length} factura${overdue.length > 1 ? 's' : ''} vencida${overdue.length > 1 ? 's' : ''}`,
+        btnLabel: 'Ver facturas', btnLink: '/invoices', urgent: true,
+        link: first.client_email ? `mailto:${first.client_email}` : '/invoices',
+        badge: overdue.length,
+      });
+    }
     const sevenAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
     const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at < sevenAgo);
-    if (stale.length) alerts.push({
-      icon: Clock, hex: '#f59e0b', bg: '#fffbeb',
-      title: `${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
-      desc: 'Enviado hace +7 días',
-      action: 'Enviar follow-up →',
-      link: '/estimates', badge: stale.length,
-    });
+    if (stale.length) {
+      const first = stale[0];
+      alerts.push({
+        icon: Clock, hex: '#f59e0b', bg: '#fffbeb',
+        title: `${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
+        btnLabel: 'Follow-up', btnLink: `/estimate-editor?id=${first.id}`,
+        link: `/estimate-editor?id=${first.id}`,
+        badge: stale.length,
+      });
+    }
     const changes = estimates.filter(e => e.status === 'changes_requested');
-    if (changes.length) alerts.push({
-      icon: AlertTriangle, hex: '#f97316', bg: '#fff7ed',
-      title: `${changes.length} cambio${changes.length>1?'s':''} solicitado${changes.length>1?'s':''}`,
-      desc: 'El cliente pidió revisiones',
-      action: 'Revisar y reenviar →',
-      link: '/estimates', badge: changes.length, urgent: true,
-    });
+    if (changes.length) {
+      const first = changes[0];
+      alerts.push({
+        icon: AlertTriangle, hex: '#f97316', bg: '#fff7ed',
+        title: `${changes.length} cambio${changes.length>1?'s':''} solicitado${changes.length>1?'s':''}`,
+        btnLabel: 'Revisar', btnLink: `/estimate-editor?id=${first.id}`,
+        link: `/estimate-editor?id=${first.id}`,
+        badge: changes.length, urgent: true,
+      });
+    }
     const approved = estimates.filter(e => ['approved','signed'].includes(e.status));
-    if (approved.length) alerts.push({
-      icon: CheckCircle2, hex: '#8b5cf6', bg: '#f5f3ff',
-      title: `${approved.length} aprobado${approved.length>1?'s':''} listo${approved.length>1?'s':''}`,
-      desc: 'Esperando conversión',
-      action: 'Crear Work Order →',
-      link: '/estimates', badge: approved.length,
-    });
+    if (approved.length) {
+      const first = approved[0];
+      alerts.push({
+        icon: CheckCircle2, hex: '#8b5cf6', bg: '#f5f3ff',
+        title: `${approved.length} aprobado${approved.length>1?'s':''} sin convertir`,
+        btnLabel: 'Convertir', btnLink: `/estimate-editor?id=${first.id}`,
+        link: `/estimate-editor?id=${first.id}`,
+        badge: approved.length,
+      });
+    }
     const unassigned = workOrders.filter(w => !['completed','invoiced','cancelled'].includes(w.status) && !w.assigned_worker_name);
-    if (unassigned.length) alerts.push({
-      icon: UserX, hex: '#64748b', bg: '#f8fafc',
-      title: `${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`,
-      desc: 'Sin técnico designado',
-      action: 'Asignar ahora →',
-      link: '/work-orders', badge: unassigned.length,
-    });
+    if (unassigned.length) {
+      const first = unassigned[0];
+      alerts.push({
+        icon: UserX, hex: '#64748b', bg: '#f8fafc',
+        title: `${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`,
+        btnLabel: 'Asignar', btnLink: `/work-orders/${first.id}`,
+        link: `/work-orders/${first.id}`,
+        badge: unassigned.length,
+      });
+    }
   }
   const visible = alerts.slice(0, 4);
   return (
@@ -333,21 +348,28 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
           : visible.map((a, i) => {
               const Icon = a.icon;
               return (
-                <Link key={i} to={a.link} className="flex items-start gap-2.5 px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/80 active:scale-[0.99] transition-all duration-150 group">
-                  <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: a.bg, border: `1px solid ${a.hex}25` }}>
+                <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors">
+                  <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: a.bg, border: `1px solid ${a.hex}25` }}>
                     <Icon className="w-3 h-3" style={{ color: a.hex }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-[11px] font-semibold text-slate-700 leading-tight">{a.title}</p>
-                      {a.urgent && <span className="text-[8px] font-bold px-1 py-px rounded bg-red-100 text-red-600 uppercase tracking-wide">Urgente</span>}
+                    <div className="flex items-center gap-1">
+                      <p className="text-[11px] font-semibold text-slate-700 leading-tight truncate">{a.title}</p>
+                      {a.urgent && <span className="text-[8px] font-bold px-1 py-px rounded bg-red-100 text-red-600 uppercase tracking-wide flex-shrink-0">!</span>}
                     </div>
-                    <p className="text-[10px] font-medium mt-0.5 leading-none" style={{ color: a.hex }}>{a.action}</p>
+                    <span className="text-[9px] font-bold px-1.5 py-px rounded-full" style={{ background: a.bg, color: a.hex }}>
+                      {a.badge} item{a.badge > 1 ? 's' : ''}
+                    </span>
                   </div>
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 mt-0.5" style={{ background: a.bg, color: a.hex, border: `1px solid ${a.hex}30` }}>
-                    {a.badge}
-                  </span>
-                </Link>
+                  <Link
+                    to={a.btnLink}
+                    onClick={e => e.stopPropagation()}
+                    className="flex-shrink-0 text-[9px] font-bold px-2 py-1 rounded-md border transition-all duration-150 hover:brightness-95 active:scale-[0.96]"
+                    style={{ background: a.bg, color: a.hex, borderColor: `${a.hex}40` }}
+                  >
+                    {a.btnLabel}
+                  </Link>
+                </div>
               );
             })
       }
@@ -358,16 +380,16 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
 /* ════════════════════════════════════════════════════════════════
    NEXT BEST ACTION BAR
    ════════════════════════════════════════════════════════════════ */
-function buildActions({ estimates, invoices, workOrders, todayAppts }) {
+function buildActions({ estimates, invoices, workOrders }) {
   const actions = [];
-  const today = format(new Date(), 'yyyy-MM-dd');
 
   const signed = estimates.filter(e => ['approved','signed'].includes(e.status));
   if (signed.length) actions.push({
     icon: RefreshCw, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200',
     label: `Convertir ${signed.length} estimado${signed.length>1?'s':''} aprobado${signed.length>1?'s':''}`,
-    sub: 'Los clientes están esperando — crea los Work Orders',
-    link: '/estimates', priority: 10,
+    sub: 'Los clientes esperan Work Orders',
+    // Link to the first approved estimate for 1-click action
+    link: `/estimate-editor?id=${signed[0].id}`, priority: 10,
   });
 
   const overdueInv = invoices.filter(i => i.status === 'overdue');
@@ -375,8 +397,8 @@ function buildActions({ estimates, invoices, workOrders, todayAppts }) {
     const amt = overdueInv.reduce((s,i) => s+(i.total||0)-(i.amount_paid||0), 0);
     actions.push({
       icon: DollarSign, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200',
-      label: `Cobrar $${amt.toLocaleString()} en facturas vencidas`,
-      sub: `${overdueInv.length} factura${overdueInv.length>1?'s':''} — contacta al cliente hoy`,
+      label: `Cobrar $${amt.toLocaleString()} vencido`,
+      sub: `${overdueInv.length} factura${overdueInv.length>1?'s':''} — contacta hoy`,
       link: '/invoices', priority: 9,
     });
   }
@@ -384,33 +406,33 @@ function buildActions({ estimates, invoices, workOrders, todayAppts }) {
   const changesReq = estimates.filter(e => e.status === 'changes_requested');
   if (changesReq.length) actions.push({
     icon: Send, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200',
-    label: `Responder ${changesReq.length} solicitud${changesReq.length>1?'es':''} de cambios`,
-    sub: 'El cliente espera una revisión — no dejes enfriar el deal',
-    link: '/estimates', priority: 8,
+    label: `Revisar ${changesReq.length} cambio${changesReq.length>1?'s':''} solicitado${changesReq.length>1?'s':''}`,
+    sub: 'El cliente espera respuesta',
+    link: `/estimate-editor?id=${changesReq[0].id}`, priority: 8,
   });
 
   const sevenAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
   const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at < sevenAgo);
   if (stale.length) actions.push({
     icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200',
-    label: `Hacer follow-up a ${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
-    sub: 'Más de 7 días enviados — un mensaje puede cerrar el trato',
-    link: '/estimates', priority: 7,
+    label: `Follow-up: ${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
+    sub: '+7 días — un mensaje puede cerrar el trato',
+    link: `/estimate-editor?id=${stale[0].id}`, priority: 7,
   });
 
   const unassigned = workOrders.filter(w => !['completed','invoiced','cancelled'].includes(w.status) && !w.assigned_worker_name);
   if (unassigned.length) actions.push({
     icon: UserX, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200',
-    label: `Asignar técnico a ${unassigned.length} job${unassigned.length>1?'s':''} pendiente${unassigned.length>1?'s':''}`,
-    sub: 'Los trabajos sin asignar no avanzan — asigna ahora',
-    link: '/work-orders', priority: 6,
+    label: `Asignar técnico: ${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`,
+    sub: 'Sin técnico = sin avance',
+    link: `/work-orders/${unassigned[0].id}`, priority: 6,
   });
 
   return actions.sort((a,b) => b.priority - a.priority).slice(0, 3);
 }
 
-function NextBestAction({ estimates = [], invoices = [], workOrders = [], todayAppts = 0, loading }) {
-  const actions = loading ? [] : buildActions({ estimates, invoices, workOrders, todayAppts });
+function NextBestAction({ estimates = [], invoices = [], workOrders = [], loading }) {
+  const actions = loading ? [] : buildActions({ estimates, invoices, workOrders });
   if (loading || actions.length === 0) return null;
   return (
     <div className="bg-white border border-slate-200/80 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] px-4 py-2.5 flex items-center gap-3 flex-wrap">
@@ -533,7 +555,7 @@ export default function Dashboard() {
       <div className="flex-1 max-w-screen-2xl mx-auto w-full px-3 py-3 flex flex-col gap-3">
 
         {/* ▸ NEXT BEST ACTION */}
-        <NextBestAction estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} todayAppts={kpis.todayAppts} loading={loading} />
+        <NextBestAction estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
 
         {/* ▸ ROW 1: Analytics panels */}
         <div className={`grid grid-cols-4 gap-3 ${ROW_H}`}>
@@ -556,9 +578,18 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-slate-700 truncate leading-tight">{appt.customer_display_name || appt.client_name}</p>
-                        <p className="text-[10px] text-slate-400">{appt.start_time || 'Sin hora'}</p>
+                        <p className="text-[10px] text-slate-400">{appt.start_time || 'Sin hora'} · {appt.service_type || 'Visita'}</p>
                       </div>
-                      <StatusBadge status={appt.status} />
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <StatusBadge status={appt.status} />
+                        {appt.customer_phone && (
+                          <a href={`tel:${appt.customer_phone}`} onClick={e => e.stopPropagation()}
+                            className="p-1 rounded bg-blue-50 hover:bg-blue-100 active:scale-95 transition-all"
+                            title={`Llamar: ${appt.customer_phone}`}>
+                            <span className="text-[9px] font-bold text-blue-600">☎</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </Row>
                 </Link>
@@ -574,10 +605,10 @@ export default function Dashboard() {
                 const isUnassigned = !wo.assigned_worker_name;
                 const isOverdue = wo.scheduled_date && wo.scheduled_date < format(new Date(), 'yyyy-MM-dd');
                 return (
-                  <Link key={wo.id} to={`/work-orders/${wo.id}`}>
+                  <div key={wo.id} className="group">
                     <Row>
                       <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
+                        <Link to={`/work-orders/${wo.id}`} className="min-w-0 flex-1">
                           <p className="text-xs font-semibold text-slate-700 truncate leading-tight">
                             <span className="text-violet-600 font-bold">#{wo.work_order_number}</span> {wo.client_name}
                           </p>
@@ -586,11 +617,17 @@ export default function Dashboard() {
                             {isOverdue && <span className="text-[8px] font-bold px-1 py-px rounded bg-red-50 text-red-500 uppercase tracking-wide">Vencido</span>}
                             {!isUnassigned && !isOverdue && <span className="text-[10px] text-slate-400 truncate">{wo.title}</span>}
                           </div>
+                        </Link>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <StatusBadge status={wo.status} />
+                          <Link to={`/work-orders/${wo.id}`}
+                            className="opacity-0 group-hover:opacity-100 text-[9px] font-bold px-1.5 py-px rounded bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 active:scale-95 transition-all whitespace-nowrap">
+                            Abrir →
+                          </Link>
                         </div>
-                        <StatusBadge status={wo.status} />
                       </div>
                     </Row>
-                  </Link>
+                  </div>
                 );
               })
             }
@@ -604,26 +641,33 @@ export default function Dashboard() {
                 const needsFollowUp = ['sent','viewed'].includes(est.status) && est.sent_at && new Date(est.sent_at) < new Date(Date.now() - 5*24*60*60*1000);
                 const needsAction = est.status === 'changes_requested';
                 const isWon = ['approved','signed'].includes(est.status);
+                // Determine the CTA button
+                const ctaLabel = needsFollowUp ? 'Follow-up' : needsAction ? 'Revisar' : isWon ? 'Convertir' : 'Abrir';
+                const ctaColor = needsFollowUp ? 'bg-amber-50 text-amber-600 border-amber-200'
+                  : needsAction ? 'bg-orange-50 text-orange-600 border-orange-200'
+                  : isWon ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                  : 'bg-slate-50 text-slate-500 border-slate-200';
                 return (
-                  <Link key={est.id} to={`/estimate-editor?id=${est.id}`}>
+                  <div key={est.id} className="group">
                     <Row>
                       <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 flex items-center gap-1.5">
+                        <Link to={`/estimate-editor?id=${est.id}`} className="min-w-0 flex-1 flex items-center gap-1.5">
                           <span className="text-[9px] font-bold text-amber-500 flex-shrink-0">#{est.estimate_number}</span>
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-slate-700 truncate leading-tight">{est.client_name}</p>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              {needsFollowUp && <span className="text-[8px] font-bold px-1 py-px rounded bg-amber-50 text-amber-600 uppercase tracking-wide">Follow-up</span>}
-                              {needsAction && <span className="text-[8px] font-bold px-1 py-px rounded bg-orange-50 text-orange-600 uppercase tracking-wide">Revisar</span>}
-                              {isWon && <span className="text-[8px] font-bold px-1 py-px rounded bg-emerald-50 text-emerald-600 uppercase tracking-wide">Aprobado</span>}
-                              {!needsFollowUp && !needsAction && !isWon && <span className="text-[10px] text-slate-400 tabular-nums">${(est.total||0).toLocaleString()}</span>}
-                            </div>
+                            <p className="text-[10px] text-slate-400 tabular-nums">${(est.total||0).toLocaleString()}</p>
                           </div>
+                        </Link>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <StatusBadge status={est.status} />
+                          <Link to={`/estimate-editor?id=${est.id}`}
+                            className={`text-[9px] font-bold px-1.5 py-px rounded border hover:brightness-95 active:scale-95 transition-all whitespace-nowrap ${ctaColor} ${(needsFollowUp || needsAction || isWon) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                            {ctaLabel} →
+                          </Link>
                         </div>
-                        <StatusBadge status={est.status} />
                       </div>
                     </Row>
-                  </Link>
+                  </div>
                 );
               })
             }
