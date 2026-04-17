@@ -25,21 +25,21 @@ const ROW_H = 'h-[240px]';
 /* Panel shell */
 function Panel({ title, headerBg, icon: Icon, link, children, bodyClass = '' }) {
   return (
-    <div className="flex flex-col h-full bg-white border border-slate-200 rounded-xl shadow-[0_2px_6px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_18px_rgba(0,0,0,0.13)] transition-all duration-200 overflow-hidden">
+    <div className="flex flex-col h-full bg-white border border-slate-200/80 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.09)] hover:-translate-y-[1px] active:scale-[0.995] transition-all duration-200 overflow-hidden">
       {/* Colored header */}
-      <div className={`flex items-center justify-between px-4 py-2 flex-shrink-0 border-b border-black/10 ${headerBg}`}>
+      <div className={`flex items-center justify-between px-4 py-2 flex-shrink-0 border-b border-black/8 ${headerBg}`}>
         <div className="flex items-center gap-2">
-          {Icon && <Icon className="w-3 h-3 text-white/70" />}
-          <span className="text-xs font-semibold uppercase tracking-wide text-white">{title}</span>
+          {Icon && <Icon className="w-3 h-3 text-white/60" />}
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-white/90">{title}</span>
         </div>
         {link && (
-          <Link to={link} className="text-[10px] text-white/60 hover:text-white font-semibold flex items-center gap-0.5 transition-colors">
+          <Link to={link} className="text-[10px] text-white/50 hover:text-white/90 font-medium flex items-center gap-0.5 transition-colors">
             Ver <ArrowRight className="w-2.5 h-2.5" />
           </Link>
         )}
       </div>
       {/* White body */}
-      <div className={`flex-1 overflow-y-auto bg-white ${bodyClass}`}>
+      <div className={`flex-1 overflow-y-auto scroll-smooth bg-white ${bodyClass}`}>
         {children}
       </div>
     </div>
@@ -49,25 +49,32 @@ function Panel({ title, headerBg, icon: Icon, link, children, bodyClass = '' }) 
 /* List row */
 function Row({ children }) {
   return (
-    <div className="px-3 py-[7px] border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+    <div className="px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/80 active:bg-slate-100 transition-colors duration-150 cursor-pointer">
       {children}
     </div>
   );
 }
 
 /* Empty state */
-function Empty({ text }) {
-  return <div className="flex items-center justify-center h-full text-[11px] text-slate-400">{text}</div>;
+function Empty({ text, sub }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-1 select-none">
+      <span className="text-[11px] font-medium text-slate-400">{text}</span>
+      {sub && <span className="text-[10px] text-slate-300">{sub}</span>}
+    </div>
+  );
 }
 
 /* KPI chip in header */
-function KpiChip({ label, value, dot, loading }) {
+function KpiChip({ label, value, dot, loading, tooltip }) {
   return (
-    <div className="flex items-center gap-1.5 px-2.5 py-[5px] bg-white border border-slate-200 rounded-lg flex-shrink-0 shadow-sm">
+    <div title={tooltip} className="flex items-center gap-1.5 px-2.5 py-[5px] bg-white border border-slate-200/80 rounded-lg flex-shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.08)] hover:-translate-y-[1px] active:scale-[0.97] transition-all duration-150 cursor-default select-none">
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
       <div className="leading-none">
         <div className="text-[8px] text-slate-400 uppercase tracking-wider">{label}</div>
-        <div className="text-[13px] font-bold text-slate-800 tabular-nums leading-tight">{loading ? '—' : value}</div>
+        <div className={`text-[13px] font-bold tabular-nums leading-tight transition-all duration-300 ${loading ? 'text-slate-300' : 'text-slate-800'}`}>
+          {loading ? '···' : value}
+        </div>
       </div>
     </div>
   );
@@ -139,17 +146,25 @@ function SalesFunnel({ counts = {}, kpis = {}, loading }) {
       </div>
       {/* Funnel bars */}
       <div className="px-3 py-2.5 space-y-2">
-        {STAGES.map(s => {
+        {STAGES.map((s, idx) => {
           const count = counts[s.key] || 0;
           const pct = max > 0 ? Math.max(3, Math.round((count / max) * 100)) : 3;
           return (
-            <Link key={s.key} to={s.link} className="flex items-center gap-2 group">
-              <span className="text-[9px] font-semibold text-slate-400 w-14 flex-shrink-0 group-hover:text-slate-600 transition-colors">{s.label}</span>
-              <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: s.bar, opacity: 0.8 }} />
+            <Link key={s.key} to={s.link} className="flex items-center gap-2 group active:scale-[0.99] transition-transform duration-100">
+              <span className="text-[9px] font-medium text-slate-400 w-14 flex-shrink-0 group-hover:text-slate-600 transition-colors">{s.label}</span>
+              <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: loading ? '0%' : `${pct}%`,
+                    background: s.bar,
+                    opacity: 0.75,
+                    transition: `width ${600 + idx * 80}ms cubic-bezier(0.4,0,0.2,1)`,
+                  }}
+                />
               </div>
-              <span className="text-[10px] font-bold tabular-nums w-5 text-right" style={{ color: s.bar }}>
-                {loading ? '—' : count}
+              <span className="text-[10px] font-bold tabular-nums w-5 text-right transition-colors duration-200" style={{ color: s.bar }}>
+                {loading ? '·' : count}
               </span>
             </Link>
           );
@@ -242,13 +257,13 @@ function JobPipeline({ workOrders = [], loading }) {
       {JP_STAGES.map(s => {
         const Icon = s.icon;
         return (
-          <Link key={s.key} to="/work-orders" className="flex items-center gap-2.5 px-3 py-3 hover:bg-slate-50 transition-colors">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg, border: `1px solid ${s.hex}30` }}>
-              <Icon className="w-4 h-4" style={{ color: s.hex }} />
+          <Link key={s.key} to="/work-orders" className="flex items-center gap-2.5 px-3 py-3 hover:bg-slate-50/80 active:bg-slate-100 active:scale-[0.98] transition-all duration-150 group">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-200" style={{ background: s.bg, border: `1px solid ${s.hex}22` }}>
+              <Icon className="w-3.5 h-3.5 opacity-70" style={{ color: s.hex }} />
             </div>
             <div>
-              <p className="text-2xl font-bold tabular-nums leading-none text-slate-900">{loading ? '—' : counts[s.key] || 0}</p>
-              <p className="text-xs text-slate-500 leading-tight mt-0.5">{s.label}</p>
+              <p className="text-2xl font-bold tabular-nums leading-none text-slate-900">{loading ? '·' : counts[s.key] || 0}</p>
+              <p className="text-[10px] text-slate-400 leading-tight mt-0.5 uppercase tracking-wide">{s.label}</p>
             </div>
           </Link>
         );
@@ -279,14 +294,15 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
       {loading
         ? <Empty text="Cargando…" />
         : alerts.length === 0
-          ? <div className="flex flex-col items-center justify-center h-full gap-1.5">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-              <span className="text-[11px] text-slate-400">Sin alertas activas</span>
+          ? <div className="flex flex-col items-center justify-center h-full gap-1.5 select-none">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <span className="text-[11px] font-medium text-slate-400">Sin alertas activas</span>
+              <span className="text-[10px] text-slate-300">Todo en orden</span>
             </div>
           : visible.map((a, i) => {
               const Icon = a.icon;
               return (
-                <Link key={i} to={a.link} className="flex items-start gap-2.5 px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors group">
+                <Link key={i} to={a.link} className="flex items-start gap-2.5 px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/80 active:bg-slate-100 active:scale-[0.99] transition-all duration-150 group">
                   <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: a.bg, border: `1px solid ${a.hex}25` }}>
                     <Icon className="w-3 h-3" style={{ color: a.hex }} />
                   </div>
@@ -373,12 +389,12 @@ export default function Dashboard() {
           </div>
           {/* KPI strip */}
           <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-none py-0.5">
-            <KpiChip label="Ingresos Mes"   value={`$${(kpis.monthRevenue||0).toLocaleString()}`} dot="#10b981" loading={loading} />
-            <KpiChip label="Jobs Activos"   value={kpis.activeJobs ?? 0}                          dot="#3b82f6" loading={loading} />
-            <KpiChip label="Por Cobrar"     value={`$${(kpis.outstanding||0).toLocaleString()}`}  dot="#ef4444" loading={loading} />
-            <KpiChip label="Citas Hoy"      value={kpis.todayAppts ?? 0}                          dot="#f59e0b" loading={loading} />
-            <KpiChip label="Estimados"      value={kpis.estimatesSent ?? 0}                       dot="#8b5cf6" loading={loading} />
-            <KpiChip label="Aprobación"     value={`${kpis.approvalRate ?? 0}%`}                  dot="#06b6d4" loading={loading} />
+            <KpiChip label="Ingresos Mes"   value={`$${(kpis.monthRevenue||0).toLocaleString()}`} dot="#10b981" loading={loading} tooltip="Revenue cobrado este mes" />
+            <KpiChip label="Jobs Activos"   value={kpis.activeJobs ?? 0}                          dot="#3b82f6" loading={loading} tooltip="Work orders en progreso" />
+            <KpiChip label="Por Cobrar"     value={`$${(kpis.outstanding||0).toLocaleString()}`}  dot="#ef4444" loading={loading} tooltip="Facturas pendientes de cobro" />
+            <KpiChip label="Citas Hoy"      value={kpis.todayAppts ?? 0}                          dot="#f59e0b" loading={loading} tooltip="Appointments programados hoy" />
+            <KpiChip label="Estimados"      value={kpis.estimatesSent ?? 0}                       dot="#8b5cf6" loading={loading} tooltip="Estimados enviados sin respuesta" />
+            <KpiChip label="Aprobación"     value={`${kpis.approvalRate ?? 0}%`}                  dot="#06b6d4" loading={loading} tooltip="Tasa de aprobación de estimados" />
           </div>
           {/* Actions */}
           <div className="flex gap-1.5 flex-shrink-0">
@@ -411,8 +427,8 @@ export default function Dashboard() {
 
           {/* Citas de Hoy */}
           <Panel title="Citas de Hoy" headerBg="bg-blue-500" icon={Calendar} link="/appointments">
-            {loading ? <Empty text="Cargando…" />
-              : todayAppointments.length === 0 ? <Empty text="Sin citas hoy" />
+            {loading ? <Empty text="Cargando…" sub="Un momento…" />
+              : todayAppointments.length === 0 ? <Empty text="Sin citas hoy" sub="No hay appointments programados" />
               : todayAppointments.map(appt => (
                 <Link key={appt.id} to="/appointments">
                   <Row>
@@ -431,8 +447,8 @@ export default function Dashboard() {
 
           {/* Work Orders Activos */}
           <Panel title="Work Orders" headerBg="bg-purple-500" icon={ClipboardList} link="/work-orders">
-            {loading ? <Empty text="Cargando…" />
-              : activeWorkOrders.length === 0 ? <Empty text="Sin work orders activos" />
+            {loading ? <Empty text="Cargando…" sub="Un momento…" />
+              : activeWorkOrders.length === 0 ? <Empty text="Sin work orders activos" sub="No hay jobs en curso" />
               : activeWorkOrders.map(wo => (
                 <Link key={wo.id} to={`/work-orders/${wo.id}`}>
                   <Row>
@@ -453,8 +469,8 @@ export default function Dashboard() {
 
           {/* Estimados Recientes */}
           <Panel title="Estimados Recientes" headerBg="bg-orange-500" icon={FileText} link="/estimates">
-            {loading ? <Empty text="Cargando…" />
-              : recentEstimates.length === 0 ? <Empty text="Sin estimados" />
+            {loading ? <Empty text="Cargando…" sub="Un momento…" />
+              : recentEstimates.length === 0 ? <Empty text="Sin estimados recientes" sub="Crea tu primer estimado" />
               : recentEstimates.map(est => (
                 <Link key={est.id} to={`/estimate-editor?id=${est.id}`}>
                   <Row>
