@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/shared/StatusBadge';
 import {
   Calendar, FileText, ClipboardList, ArrowRight, Plus,
-  DollarSign, TrendingUp, Briefcase, Bell,
+  DollarSign, TrendingUp, Bell,
   AlertTriangle, Clock, FileX, TrendingDown,
   Wrench, Navigation2, HardHat, CheckCircle2
 } from 'lucide-react';
@@ -18,8 +18,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
    ════════════════════════════════════════════════════════════════ */
 const PANEL_BG   = 'bg-[#0f1c2e]';
 const PANEL_BDR  = 'border border-[#1e3a5f]/70';
-const PANEL_H1   = 'h-[230px]'; // Row 1 fixed height
-const PANEL_H2   = 'h-[200px]'; // Row 2 fixed height
+const ROW_H      = 'h-[240px]'; // uniform height for all rows
 
 /* ════════════════════════════════════════════════════════════════
    SHARED MICRO-COMPONENTS
@@ -76,20 +75,6 @@ function KpiChip({ label, value, dot, loading }) {
   );
 }
 
-/* Donut SVG */
-function Donut({ pct = 0, hex = '#3b82f6', size = 40, sw = 4 }) {
-  const r = (size - sw) / 2;
-  const circ = 2 * Math.PI * r;
-  const dash = (Math.min(pct, 100) / 100) * circ;
-  return (
-    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#1e293b" strokeWidth={sw} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={hex} strokeWidth={sw}
-        strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round" />
-    </svg>
-  );
-}
-
 /* ════════════════════════════════════════════════════════════════
    DIGITAL CLOCK
    ════════════════════════════════════════════════════════════════ */
@@ -127,8 +112,8 @@ function DigitalClock() {
    ROW 1 PANELS — fixed height PANEL_H1
    ════════════════════════════════════════════════════════════════ */
 
-/* 1A · Sales Funnel */
-function SalesFunnel({ counts = {}, loading }) {
+/* 1A · Sales Funnel — with inline KPI mini-stats */
+function SalesFunnel({ counts = {}, kpis = {}, loading }) {
   const STAGES = [
     { key: 'leads',     label: 'Leads',     bar: '#64748b', link: '/leads' },
     { key: 'estimates', label: 'Estimates', bar: '#3b82f6', link: '/estimates' },
@@ -138,22 +123,40 @@ function SalesFunnel({ counts = {}, loading }) {
   ];
   const max = Math.max(1, ...STAGES.map(s => counts[s.key] || 0));
   return (
-    <Panel title="Sales Funnel" accent="bg-violet-800" icon={TrendingUp} iconCls="text-violet-300" bodyClass="px-3 py-2 space-y-1.5 flex flex-col justify-center">
-      {STAGES.map(s => {
-        const count = counts[s.key] || 0;
-        const pct = max > 0 ? Math.max(3, Math.round((count / max) * 100)) : 3;
-        return (
-          <Link key={s.key} to={s.link} className="flex items-center gap-2 group">
-            <span className="text-[9px] font-bold text-slate-500 w-14 flex-shrink-0 group-hover:text-slate-300 transition-colors">{s.label}</span>
-            <div className="flex-1 h-4 bg-slate-800 rounded overflow-hidden relative">
-              <div className="h-full rounded transition-all duration-500" style={{ width: `${pct}%`, background: s.bar, opacity: 0.8 }} />
-            </div>
-            <span className="text-[10px] font-black tabular-nums w-5 text-right" style={{ color: s.bar }}>
-              {loading ? '—' : count}
+    <Panel title="Sales Funnel" accent="bg-violet-800" icon={TrendingUp} iconCls="text-violet-300">
+      {/* 3 mini KPI stats */}
+      <div className="grid grid-cols-3 divide-x divide-white/5 border-b border-white/5">
+        {[
+          { l: 'Ingresos', v: `$${((kpis.monthRevenue||0)/1000).toFixed(1)}k`, hex: '#10b981' },
+          { l: 'Activos',  v: kpis.activeJobs ?? 0,                             hex: '#3b82f6' },
+          { l: 'Aprob.',   v: `${kpis.approvalRate ?? 0}%`,                     hex: '#8b5cf6' },
+        ].map(k => (
+          <div key={k.l} className="px-2 py-2 flex flex-col">
+            <span className="text-[8px] text-slate-600 uppercase tracking-widest leading-none">{k.l}</span>
+            <span className="text-[15px] font-black tabular-nums leading-tight mt-0.5" style={{ color: k.hex }}>
+              {loading ? '—' : k.v}
             </span>
-          </Link>
-        );
-      })}
+          </div>
+        ))}
+      </div>
+      {/* Funnel bars */}
+      <div className="px-3 py-2 space-y-1.5">
+        {STAGES.map(s => {
+          const count = counts[s.key] || 0;
+          const pct = max > 0 ? Math.max(3, Math.round((count / max) * 100)) : 3;
+          return (
+            <Link key={s.key} to={s.link} className="flex items-center gap-2 group">
+              <span className="text-[9px] font-bold text-slate-500 w-14 flex-shrink-0 group-hover:text-slate-300 transition-colors">{s.label}</span>
+              <div className="flex-1 h-3.5 bg-slate-800 rounded overflow-hidden">
+                <div className="h-full rounded transition-all duration-500" style={{ width: `${pct}%`, background: s.bar, opacity: 0.85 }} />
+              </div>
+              <span className="text-[10px] font-black tabular-nums w-5 text-right" style={{ color: s.bar }}>
+                {loading ? '—' : count}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
     </Panel>
   );
 }
@@ -184,26 +187,40 @@ const RevTooltip = ({ active, payload, label }) => {
     </div>
   );
 };
-function RevenueChart({ invoices = [], loading }) {
+function RevenueChart({ invoices = [], loading, monthRevenue = 0, outstanding = 0 }) {
   const data = buildMonthlyData(invoices);
   const maxVal = Math.max(...data.map(d => d.revenue), 1);
   return (
-    <Panel title="Ingresos — 6 Meses" accent="bg-emerald-800" icon={DollarSign} iconCls="text-emerald-300" bodyClass="px-1 pt-1 pb-0">
-      {loading
-        ? <div className="flex items-center justify-center h-full text-[10px] text-slate-600">Cargando…</div>
-        : <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 4, right: 4, left: -18, bottom: 0 }} barSize={18}>
-              <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 8, fill: '#334155' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
-              <Tooltip content={<RevTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-              <Bar dataKey="revenue" radius={[3,3,0,0]}>
-                {data.map((entry, idx) => (
-                  <Cell key={idx} fill={entry.revenue === maxVal ? '#10b981' : '#1d4ed8'} fillOpacity={0.85} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-      }
+    <Panel title="Ingresos — 6 Meses" accent="bg-emerald-800" icon={DollarSign} iconCls="text-emerald-300">
+      {/* Totals strip */}
+      <div className="grid grid-cols-2 divide-x divide-white/5 border-b border-white/5">
+        <div className="px-3 py-2">
+          <span className="text-[8px] text-slate-600 uppercase tracking-widest block">Este Mes</span>
+          <span className="text-[15px] font-black text-emerald-400 tabular-nums leading-tight">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
+        </div>
+        <div className="px-3 py-2">
+          <span className="text-[8px] text-slate-600 uppercase tracking-widest block">Por Cobrar</span>
+          <span className="text-[15px] font-black text-red-400 tabular-nums leading-tight">{loading ? '—' : `$${(outstanding||0).toLocaleString()}`}</span>
+        </div>
+      </div>
+      {/* Chart fills remaining space */}
+      <div className="px-1 pt-1 pb-0" style={{ height: 'calc(100% - 48px)' }}>
+        {loading
+          ? <div className="flex items-center justify-center h-full text-[10px] text-slate-600">Cargando…</div>
+          : <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 2, right: 4, left: -18, bottom: 0 }} barSize={20}>
+                <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 8, fill: '#334155' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
+                <Tooltip content={<RevTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Bar dataKey="revenue" radius={[3,3,0,0]}>
+                  {data.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.revenue === maxVal ? '#10b981' : '#1d4ed8'} fillOpacity={0.85} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+        }
+      </div>
     </Panel>
   );
 }
@@ -258,13 +275,17 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
     const approved = estimates.filter(e => ['approved','signed'].includes(e.status));
     if (approved.length) alerts.push({ icon: Bell, hex: '#8b5cf6', title: `${approved.length} aprobado${approved.length>1?'s':''} sin convertir`, desc: 'Convertir a Work Order', link: '/estimates', badge: approved.length });
   }
+  const visible = alerts.slice(0, 4);
   return (
-    <Panel title="Alertas" accent="bg-red-900" icon={Bell} iconCls="text-red-300">
+    <Panel title={`Alertas${alerts.length > 0 ? ` (${alerts.length})` : ''}`} accent="bg-red-900" icon={Bell} iconCls="text-red-300">
       {loading
         ? <Empty text="Cargando…" />
         : alerts.length === 0
-          ? <Empty text="Sin alertas activas ✓" />
-          : alerts.map((a, i) => {
+          ? <div className="flex flex-col items-center justify-center h-full gap-1">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <span className="text-[10px] text-slate-600">Sin alertas activas</span>
+            </div>
+          : visible.map((a, i) => {
               const Icon = a.icon;
               return (
                 <Link key={i} to={a.link} className="flex items-start gap-2.5 px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors group">
@@ -338,8 +359,6 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  const completionPct = kpis.totalWO > 0 ? Math.round(((kpis.completedJobs || 0) / kpis.totalWO) * 100) : 0;
-
   return (
     <div className="min-h-screen bg-[#070e1a] flex flex-col">
 
@@ -381,49 +400,16 @@ export default function Dashboard() {
       {/* ── MAIN GRID ─────────────────────────────────────────────────── */}
       <div className="flex-1 max-w-screen-2xl mx-auto w-full px-3 py-2 flex flex-col gap-2">
 
-        {/* ▸ KPI HERO ROW */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: 'Ingresos Este Mes', val: `$${(kpis.monthRevenue||0).toLocaleString()}`, sub: 'Facturas pagadas', sub2: { l: 'Por cobrar', v: `$${(kpis.outstanding||0).toLocaleString()}` }, pct: kpis.approvalRate??0, hex: '#10b981', icon: DollarSign, link: '/invoices' },
-            { label: 'Pipeline de Ventas', val: kpis.estimatesSent??0, sub: 'Estimados enviados', sub2: { l: 'Aprobados', v: funnelCounts.approved??0 }, pct: kpis.approvalRate??0, hex: '#3b82f6', icon: TrendingUp, link: '/estimates' },
-            { label: 'Operaciones', val: kpis.activeJobs??0, sub: 'WOs activos', sub2: { l: 'Completados', v: kpis.completedJobs??0 }, pct: completionPct, hex: '#8b5cf6', icon: Briefcase, link: '/work-orders' },
-          ].map(k => (
-            <Link key={k.label} to={k.link} className="block">
-              <div className={`${PANEL_BG} ${PANEL_BDR} rounded-lg p-3 hover:border-white/20 transition-all`} style={{ borderLeftWidth: 3, borderLeftColor: k.hex }}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1">{k.label}</div>
-                    <div className="text-2xl font-black tabular-nums leading-none" style={{ color: k.hex }}>
-                      {loading ? <span className="text-slate-700">—</span> : k.val}
-                    </div>
-                    <div className="text-[9px] text-slate-600 mt-1">{k.sub}</div>
-                  </div>
-                  <div className="relative flex-shrink-0">
-                    <Donut pct={k.pct} hex={k.hex} size={40} sw={4} />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-[8px] font-black tabular-nums" style={{ color: k.hex }}>{loading ? '—' : `${k.pct}%`}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between">
-                  <span className="text-[8px] text-slate-600 font-semibold">{k.sub2.l}</span>
-                  <span className="text-[11px] font-black tabular-nums" style={{ color: k.hex }}>{loading ? '—' : k.sub2.v}</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* ▸ ROW 1: 4 equal panels */}
-        <div className={`grid grid-cols-4 gap-2 ${PANEL_H1}`}>
-          <SalesFunnel counts={funnelCounts} loading={loading} />
-          <RevenueChart invoices={allInvoices} loading={loading} />
+        {/* ▸ ROW 1: Analytics panels */}
+        <div className={`grid grid-cols-4 gap-2 ${ROW_H}`}>
+          <SalesFunnel counts={funnelCounts} kpis={kpis} loading={loading} />
+          <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} />
           <JobPipeline workOrders={allWorkOrders} loading={loading} />
           <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
         </div>
 
-        {/* ▸ ROW 2: 4 equal list panels */}
-        <div className={`grid grid-cols-4 gap-2 ${PANEL_H2}`}>
+        {/* ▸ ROW 2: List panels */}
+        <div className={`grid grid-cols-4 gap-2 ${ROW_H}`}>
 
           {/* Citas de Hoy */}
           <Panel title="Citas de Hoy" accent="bg-blue-900" icon={Calendar} iconCls="text-blue-300" link="/appointments">
