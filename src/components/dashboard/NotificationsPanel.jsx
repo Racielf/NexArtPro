@@ -242,24 +242,24 @@ export default function NotificationsPanel() {
         </button>
       </div>
 
-      {/* List */}
-      <div className="divide-y divide-slate-50">
+      {/* List — max 3 visible, scroll if more */}
+      <div className="overflow-y-auto" style={{ maxHeight: '192px' }}>
         {notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-slate-300">
-            <Bell className="w-8 h-8 mb-2" />
-            <p className="text-sm font-medium text-slate-400">All clear!</p>
-            <p className="text-xs text-slate-300 mt-0.5">No alerts right now</p>
+            <Bell className="w-7 h-7 mb-2" />
+            <p className="text-sm font-semibold text-slate-400">Todo al día</p>
+            <p className="text-xs text-slate-300 mt-0.5">Sin alertas pendientes</p>
           </div>
         ) : (
           notifications.map(n => {
             const s = typeStyles[n.type];
             return (
               <Link key={n.id} to={n.link}>
-                <div className={`flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors relative overflow-hidden border-l-4 ${s.border} group`}>
-                  <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${s.bar}`} />
-                  <span className="text-base flex-shrink-0">{n.icon}</span>
-                  <p className={`flex-1 text-sm font-medium ${s.text}`}>{n.message}</p>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 transition-colors flex-shrink-0" />
+                <div className={`flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 group`}>
+                  <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${s.bar}`} />
+                  <span className="text-sm flex-shrink-0">{n.icon}</span>
+                  <p className={`flex-1 text-[11px] font-semibold ${s.text} leading-snug`}>{n.message}</p>
+                  <ChevronRight className="w-3 h-3 text-slate-300 group-hover:text-slate-500 transition-colors flex-shrink-0" />
                 </div>
               </Link>
             );

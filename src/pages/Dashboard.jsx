@@ -23,13 +23,13 @@ function Card({ title, icon: Icon, link, linkLabel = 'Ver todas', children, clas
   return (
     <div className={`flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 overflow-hidden ${className}`}>
       {/* Clean header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 flex-shrink-0">
         <div className="flex items-center gap-2">
           {Icon && <Icon className="w-3.5 h-3.5 text-slate-400" />}
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{title}</span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600">{title}</span>
         </div>
         {link && (
-          <Link to={link} className="text-[10px] text-slate-400 hover:text-slate-700 font-medium flex items-center gap-0.5 transition-colors">
+          <Link to={link} className="text-[10px] text-slate-400 hover:text-slate-700 font-semibold flex items-center gap-0.5 transition-colors">
             {linkLabel} <ArrowRight className="w-2.5 h-2.5" />
           </Link>
         )}
@@ -52,10 +52,11 @@ function Row({ children }) {
 }
 
 /* Empty state */
-function Empty({ text, sub }) {
+function Empty({ text, sub, icon: Icon }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-1 py-8 select-none">
-      <span className="text-[11px] font-medium text-slate-400">{text}</span>
+    <div className="flex flex-col items-center justify-center h-full gap-1.5 py-10 select-none">
+      {Icon && <Icon className="w-5 h-5 text-slate-300 mb-0.5" />}
+      <span className="text-[12px] font-semibold text-slate-400">{text}</span>
       {sub && <span className="text-[10px] text-slate-300">{sub}</span>}
     </div>
   );
@@ -119,42 +120,43 @@ function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loadin
 
   return (
     <Card title="Money Control" icon={DollarSign} className="h-full">
-      <div className="p-6 flex flex-col gap-4 h-full">
+      <div className="p-5 flex flex-col gap-4 h-full">
         {/* 4 métricas — 2 grandes arriba, 2 pequeñas abajo */}
-        <div className="grid grid-cols-2 gap-6 flex-1">
+        <div className="grid grid-cols-2 gap-4 flex-1">
           {/* Este mes — hero metric */}
-          <div className="flex flex-col gap-1 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-600">Este mes</span>
-            <span className={`text-4xl font-black tabular-nums text-emerald-700 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
-            <span className="text-[10px] text-emerald-500 mt-0.5">ingresos cobrados</span>
+          <div className="flex flex-col gap-1.5 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500">Este mes</span>
+            <span className={`text-3xl font-black tabular-nums text-emerald-700 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
+            <span className="text-[10px] text-emerald-400 mt-0.5">ingresos cobrados</span>
           </div>
           {/* Por cobrar */}
-          <div className="flex flex-col gap-1 p-4 rounded-xl bg-blue-50 border border-blue-100">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-blue-600">Por cobrar</span>
-            <span className={`text-4xl font-black tabular-nums text-blue-700 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
+          <div className="flex flex-col gap-1.5 p-4 rounded-xl bg-blue-50 border border-blue-100">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-blue-500">Por cobrar</span>
+            <span className={`text-3xl font-black tabular-nums text-blue-700 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
             <span className="text-[10px] text-blue-400 mt-0.5">pendiente de cobro</span>
           </div>
           {/* Vencido */}
-          <div className={`flex flex-col gap-0.5 p-3 rounded-lg border ${overdueAmt > 0 ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
+          <div className={`flex flex-col gap-1 p-3.5 rounded-xl border ${overdueAmt > 0 ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
             <span className={`text-[9px] font-bold uppercase tracking-widest ${overdueAmt > 0 ? 'text-red-500' : 'text-slate-400'}`}>
-              Vencido {!loading && overdueCount > 0 && <span className="normal-case font-normal">· {overdueCount}</span>}
+              Vencido {!loading && overdueCount > 0 && <span className="normal-case font-normal opacity-70">· {overdueCount} fact.</span>}
             </span>
             <span className={`text-2xl font-bold tabular-nums leading-none ${loading ? 'opacity-30 text-slate-300' : overdueAmt > 0 ? 'text-red-600' : 'text-slate-300'}`}>{loading ? '—' : fmt(overdueAmt)}</span>
           </div>
           {/* Jobs Activos */}
-          <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-slate-50 border border-slate-100">
+          <div className="flex flex-col gap-1 p-3.5 rounded-xl bg-slate-50 border border-slate-100">
             <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Jobs Activos</span>
             <span className={`text-2xl font-bold tabular-nums leading-none text-slate-700 ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : activeJobsCount}</span>
+            <span className="text-[10px] text-slate-400">en progreso</span>
           </div>
         </div>
 
         {/* CTA */}
-        <Link to="/invoices" className="flex items-center rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all text-white text-[12px] font-bold overflow-hidden">
-          <span className="flex items-center gap-1.5 flex-1 justify-center py-3">
+        <Link to="/invoices" className="flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all text-white overflow-hidden">
+          <span className="flex items-center gap-2 flex-1 justify-center py-3 text-[13px] font-bold">
             <DollarSign className="w-4 h-4" />
             Cobrar ahora
           </span>
-          <span className="border-l border-emerald-500 px-4 py-3 text-[10px] text-emerald-200 hover:text-white whitespace-nowrap">
+          <span className="border-l border-emerald-500/60 px-4 py-3 text-[11px] text-emerald-200 hover:text-white whitespace-nowrap font-medium">
             Ver facturas →
           </span>
         </Link>
@@ -268,13 +270,13 @@ function JobPipeline({ workOrders = [], loading }) {
       {JP_STAGES.map(s => {
         const Icon = s.icon;
         return (
-          <Link key={s.key} to="/work-orders" className="flex items-center gap-2.5 px-3 py-3 hover:bg-slate-50 transition-colors group">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
-              <Icon className="w-3.5 h-3.5" style={{ color: s.hex }} />
+          <Link key={s.key} to="/work-orders" className="flex items-center gap-3 px-4 py-4 hover:bg-slate-50/80 transition-colors group">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
+              <Icon className="w-4 h-4" style={{ color: s.hex }} />
             </div>
             <div>
-              <p className="text-2xl font-bold tabular-nums leading-none text-slate-800">{loading ? '·' : counts[s.key] || 0}</p>
-              <p className="text-[9px] text-slate-400 uppercase tracking-wide mt-0.5">{s.label}</p>
+              <p className="text-3xl font-bold tabular-nums leading-none text-slate-800">{loading ? '·' : counts[s.key] || 0}</p>
+              <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mt-1">{s.label}</p>
             </div>
           </Link>
         );
@@ -310,28 +312,36 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
   }
   const visible = alerts.filter(a => !dismissed.has(a.id)).sort((a,b) => b.order - a.order).slice(0, 4);
 
+  const titleWithCount = visible.length > 0
+    ? <span className="flex items-center gap-1.5">Alertas <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none">{visible.length}</span></span>
+    : 'Alertas';
+
   return (
-    <Card title={`Alertas${visible.length > 0 ? ` (${visible.length})` : ''}`} icon={Bell} className="h-full">
+    <Card title={titleWithCount} icon={Bell} className="h-full">
       {loading
         ? <Empty text="Cargando alertas…" />
         : visible.length === 0
-          ? <div className="flex flex-col items-center justify-center h-full gap-2 py-8 select-none">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              <span className="text-[11px] font-semibold text-slate-500">All caught up!</span>
-              <span className="text-[10px] text-slate-400">No urgent actions right now</span>
+          ? <div className="flex flex-col items-center justify-center h-full gap-2 py-10 select-none">
+              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+              <span className="text-[12px] font-semibold text-slate-500">Todo al día</span>
+              <span className="text-[10px] text-slate-400">Sin acciones urgentes</span>
             </div>
           : visible.map(a => {
               const Icon = a.icon;
               const pcfg = PRIORITY_CFG[a.priority];
               return (
-                <div key={a.id} className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors group/alert">
-                  <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: a.hex }} />
+                <div key={a.id} className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors group/alert">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-50 border border-slate-100">
+                    <Icon className="w-3.5 h-3.5" style={{ color: a.hex }} />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <span className={`text-[8px] font-bold px-1 py-px rounded border ${pcfg.cls} leading-none mr-1`}>{pcfg.label}</span>
-                    <p className="text-[11px] font-medium text-slate-700 leading-tight truncate mt-0.5">{a.title}</p>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className={`text-[8px] font-bold px-1.5 py-px rounded-full border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
+                    </div>
+                    <p className="text-[12px] font-semibold text-slate-700 leading-tight truncate">{a.title}</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <Link to={a.btnLink} className="text-[9px] font-semibold px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors whitespace-nowrap">
+                    <Link to={a.btnLink} className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors whitespace-nowrap shadow-sm">
                       {a.btnLabel}
                     </Link>
                     <button onClick={() => setDismissed(prev => new Set([...prev, a.id]))} className="opacity-0 group-hover/alert:opacity-100 transition-opacity text-slate-300 hover:text-slate-500 text-[10px] px-1 font-bold" title="Dismiss">✕</button>
@@ -571,33 +581,33 @@ export default function Dashboard() {
                         <p className="text-[11px] text-slate-400 mb-3">
                           <span className="font-bold text-slate-700">{Math.min(all.length, 4)} prioritarias</span> de {all.length} pendientes
                         </p>
-                        <div className="flex flex-col gap-2 flex-1">
-                          {all.slice(0, 4).map(a => {
-                            const Icon = a.icon;
-                            const groupCfg = GROUP_CFG[a.group];
-                            const pcfg = PRIORITY_CFG[a.priority];
-                            return (
-                              <div key={a.id} className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all group/row">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-white border border-slate-200">
-                                    <Icon className={`w-3.5 h-3.5 ${a.color}`} />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${groupCfg.dot}`} />
-                                      <span className={`text-[9px] font-bold uppercase tracking-wider ${groupCfg.color}`}>{a.group}</span>
-                                      <span className={`text-[8px] font-bold px-1 py-px rounded border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
-                                    </div>
-                                    <p className="text-[12px] font-semibold text-slate-700 truncate leading-tight">{a.label}</p>
-                                    <p className="text-[10px] text-slate-400 truncate">{a.sub}</p>
-                                  </div>
-                                </div>
-                                <Link to={a.link} className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors whitespace-nowrap shadow-sm">
-                                  {a.priority === 'urgent' ? 'Hacer follow-up' : a.group === 'Operations' ? 'Asignar' : 'Llamar'}
-                                </Link>
-                              </div>
-                            );
-                          })}
+                        <div className="flex flex-col gap-2.5 flex-1">
+                         {all.slice(0, 4).map(a => {
+                           const Icon = a.icon;
+                           const groupCfg = GROUP_CFG[a.group];
+                           const pcfg = PRIORITY_CFG[a.priority];
+                           return (
+                             <div key={a.id} className="flex items-center justify-between gap-3 py-3 px-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all group/row">
+                               <div className="flex items-center gap-3 min-w-0">
+                                 <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-white border border-slate-200 shadow-sm">
+                                   <Icon className={`w-4 h-4 ${a.color}`} />
+                                 </div>
+                                 <div className="min-w-0">
+                                   <div className="flex items-center gap-1.5 mb-1">
+                                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${groupCfg.dot}`} />
+                                     <span className={`text-[9px] font-semibold uppercase tracking-wide ${groupCfg.color} opacity-80`}>{a.group}</span>
+                                     <span className={`text-[8px] font-bold px-1.5 py-px rounded-full border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
+                                   </div>
+                                   <p className="text-[13px] font-semibold text-slate-700 truncate leading-tight">{a.label}</p>
+                                   <p className="text-[10px] text-slate-400 truncate mt-0.5">{a.sub}</p>
+                                 </div>
+                               </div>
+                               <Link to={a.link} className="flex-shrink-0 text-[11px] font-bold px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors whitespace-nowrap shadow-sm">
+                                 {a.priority === 'urgent' ? 'Actuar →' : a.group === 'Operations' ? 'Asignar →' : 'Ver →'}
+                               </Link>
+                             </div>
+                           );
+                         })}
                         </div>
                       </>
                     );
@@ -677,7 +687,7 @@ export default function Dashboard() {
           {/* Citas de Hoy */}
           <Card title="Citas de Hoy" icon={Calendar} link="/appointments" linkLabel="Ver →" className="h-full">
             {loading ? <Empty text="Cargando…" />
-              : todayAppointments.length === 0 ? <Empty text="Sin citas hoy" sub="No hay appointments programados" />
+              : todayAppointments.length === 0 ? <Empty icon={CheckCircle2} text="Sin citas hoy" sub="✔ Todo está al día" />
               : todayAppointments.map(appt => (
                 <div key={appt.id} className="group">
                   <Row>
