@@ -119,40 +119,36 @@ function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loadin
 
   return (
     <Card title="Money Control" icon={DollarSign} className="h-full">
-      <div className="p-6 flex flex-col gap-6 h-full">
-        {/* 2x2 métricas grid — números grandes, dominantes */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-6 flex-1">
-          <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
+      <div className="p-4 flex flex-col gap-3 h-full">
+        {/* 2x2 métricas grid */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 flex-1">
+          <div className="flex flex-col gap-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Este mes</span>
-            <span className={`text-4xl font-black tabular-nums text-emerald-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
-            <span className="text-[10px] text-slate-400 mt-0.5">cobrado este mes</span>
+            <span className={`text-3xl font-bold tabular-nums text-emerald-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
           </div>
-          <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
+          <div className="flex flex-col gap-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Por cobrar</span>
-            <span className={`text-4xl font-black tabular-nums text-blue-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
-            <span className="text-[10px] text-slate-400 mt-0.5">facturas pendientes</span>
+            <span className={`text-3xl font-bold tabular-nums text-blue-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-              Vencido {!loading && overdueCount > 0 && <span className="text-red-400 normal-case font-medium">· {overdueCount} fact.</span>}
+              Vencido {!loading && overdueCount > 0 && <span className="text-red-400 normal-case">· {overdueCount}</span>}
             </span>
-            <span className={`text-4xl font-black tabular-nums leading-none ${loading ? 'opacity-30 text-slate-300' : overdueAmt > 0 ? 'text-red-500' : 'text-slate-300'}`}>{loading ? '—' : fmt(overdueAmt)}</span>
-            <span className="text-[10px] text-slate-400 mt-0.5">requiere atención</span>
+            <span className={`text-3xl font-bold tabular-nums leading-none ${loading ? 'opacity-30 text-slate-300' : overdueAmt > 0 ? 'text-red-500' : 'text-slate-300'}`}>{loading ? '—' : fmt(overdueAmt)}</span>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Depósitos pend.</span>
-            <span className="text-4xl font-black tabular-nums leading-none text-slate-200">$0</span>
-            <span className="text-[10px] text-slate-300 mt-0.5">sin depósitos</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Pe-M!</span>
+            <span className="text-3xl font-bold tabular-nums leading-none text-slate-300">$0</span>
           </div>
         </div>
 
-        {/* CTA prominente */}
-        <Link to="/invoices" className="flex items-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all text-white font-bold overflow-hidden shadow-sm">
-          <span className="flex items-center gap-2 flex-1 justify-center py-3 text-sm">
-            <DollarSign className="w-4 h-4" />
+        {/* CTA con "Ver facturas →" a la derecha */}
+        <Link to="/invoices" className="flex items-center rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all text-white text-[11px] font-bold overflow-hidden">
+          <span className="flex items-center gap-1.5 flex-1 justify-center py-2.5">
+            <DollarSign className="w-3.5 h-3.5" />
             Cobrar ahora
           </span>
-          <span className="border-l border-emerald-500 px-4 py-3 text-[11px] text-emerald-200 hover:text-white whitespace-nowrap">
+          <span className="border-l border-emerald-500 px-3 py-2.5 text-[10px] text-emerald-200 hover:text-white whitespace-nowrap">
             Ver facturas →
           </span>
         </Link>
@@ -192,27 +188,13 @@ const RevTooltip = ({ active, payload, label }) => {
 function RevenueChart({ invoices = [], loading, monthRevenue = 0 }) {
   const data = buildMonthlyData(invoices);
   const maxVal = Math.max(...data.map(d => d.revenue), 1);
-  // Trend vs previous month
-  const prevMonthRevenue = data.length >= 2 ? data[data.length - 2].revenue : 0;
-  const currentMonthRevenue = data.length >= 1 ? data[data.length - 1].revenue : 0;
-  const trendPct = prevMonthRevenue > 0
-    ? Math.round(((currentMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100)
-    : null;
-
   return (
     <Card title="Ingresos — 6 Meses" icon={TrendingUp} link="/invoices" linkLabel="Ver todas" className="h-full">
       <div className="px-4 pt-3 pb-2 flex flex-col h-full gap-2">
-        {/* Este Mes stat + tendencia */}
-        <div className="flex items-end gap-3">
-          <div>
-            <span className="text-[9px] text-slate-400 uppercase tracking-wide block">Este Mes</span>
-            <span className="text-3xl font-bold text-emerald-600 tabular-nums leading-none">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
-          </div>
-          {!loading && trendPct !== null && (
-            <span className={`mb-0.5 text-[11px] font-bold px-2 py-0.5 rounded-full border ${trendPct >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-500 border-red-200'}`}>
-              {trendPct >= 0 ? '▲' : '▼'} {Math.abs(trendPct)}% vs mes ant.
-            </span>
-          )}
+        {/* Este Mes stat */}
+        <div>
+          <span className="text-[9px] text-slate-400 uppercase tracking-wide block">Este Mes</span>
+          <span className="text-3xl font-bold text-emerald-600 tabular-nums leading-none">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
         </div>
         {/* Area Chart */}
         <div className="flex-1 min-h-0">
@@ -539,18 +521,16 @@ export default function Dashboard() {
       {/* CONTENT */}
       <div className="flex-1 max-w-screen-2xl mx-auto w-full px-4 py-4 flex flex-col gap-4">
 
-        {/* ── FILA 1: Money Control dominante (col-span-2) + Revenue Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-visible" style={{ minHeight: '300px' }}>
-          <div className="lg:col-span-2">
-            <MoneyControl monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} invoices={allInvoices} loading={loading} />
-          </div>
+        {/* ── FILA 1: Money Control (izq) + Revenue Chart (der) */}
+        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 ${CARD_H} overflow-visible`}>
+          <MoneyControl monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} invoices={allInvoices} loading={loading} />
           <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} />
         </div>
 
-        {/* ── FILA 2: Próximas Acciones (col-span-2) + Job Pipeline + Alertas */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 overflow-visible" style={{ minHeight: '240px' }}>
-          {/* Próximas Acciones — ocupa 2 cols, foco de la fila */}
-          <Card title="Próximas Acciones" icon={Zap} link={null} linkLabel="" className="h-full xl:col-span-2">
+        {/* ── FILA 2: Próximas Acciones (ancho) + Job Pipeline + Alertas */}
+        <div className={`grid grid-cols-1 xl:grid-cols-3 gap-4 overflow-visible`} style={{ minHeight: '220px' }}>
+          {/* Próximas Acciones — ocupa 1 col xl, full card */}
+          <Card title="Próximas Acciones" icon={Zap} link={null} linkLabel="" className="h-full">
             <div className="px-4 py-3 h-full flex flex-col">
               {loading
                 ? <Empty text="Cargando…" />
