@@ -17,7 +17,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 /* ════════════════════════════════════════════════════════════════
    DESIGN TOKENS  — light / professional
    ════════════════════════════════════════════════════════════════ */
-const ROW_H = 'h-[240px]';
+const ROW_H = 'h-[240px] min-h-[200px]';
 
 /* ════════════════════════════════════════════════════════════════
    SHARED MICRO-COMPONENTS
@@ -307,8 +307,8 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
       btnLabel: 'Convertir', btnLink: `/estimate-editor?id=${approved[0].id}`,
       badge: approved.length, priority: 'high', order: 8,
     });
-    const sevenAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-    const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at < sevenAgo);
+    const sevenAgoMs = Date.now() - 7*24*60*60*1000;
+    const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at && new Date(e.sent_at).getTime() < sevenAgoMs);
     if (stale.length) alerts.push({
       id: 'stale-est', icon: Clock, hex: '#f59e0b', bg: '#fffbeb',
       title: `${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
@@ -416,8 +416,8 @@ function buildActions({ estimates, invoices, workOrders }) {
     link: `/estimate-editor?id=${signed[0].id}`, priority: 'high', order: 8, group: 'Sales',
   });
 
-  const sevenAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-  const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at < sevenAgo);
+  const sevenAgoMs = Date.now() - 7*24*60*60*1000;
+  const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at && new Date(e.sent_at).getTime() < sevenAgoMs);
   if (stale.length) actions.push({
     id: 'sales-followup',
     icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200',
@@ -631,7 +631,7 @@ export default function Dashboard() {
         <NextBestAction estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
 
         {/* ▸ ROW 1: Analytics panels */}
-        <div className={`grid grid-cols-4 gap-3 ${ROW_H}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${ROW_H}`}>
           <SalesFunnel counts={funnelCounts} kpis={kpis} loading={loading} />
           <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} />
           <JobPipeline workOrders={allWorkOrders} loading={loading} />
@@ -639,24 +639,24 @@ export default function Dashboard() {
         </div>
 
         {/* ▸ ROW 2: List panels */}
-        <div className={`grid grid-cols-4 gap-3 ${ROW_H}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${ROW_H}`}>
 
           {/* Citas de Hoy */}
           <Panel title="Citas de Hoy" headerBg="bg-blue-500" icon={Calendar} link="/appointments">
             {loading ? <Empty text="Cargando…" sub="Un momento…" />
               : todayAppointments.length === 0 ? <Empty text="Sin citas hoy" sub="No hay appointments programados" />
               : todayAppointments.map(appt => (
-                <Link key={appt.id} to="/appointments">
+                <div key={appt.id} className="group">
                   <Row>
                     <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
+                      <Link to="/appointments" className="min-w-0 flex-1">
                         <p className="text-xs font-semibold text-slate-700 truncate leading-tight">{appt.customer_display_name || appt.client_name}</p>
                         <p className="text-[10px] text-slate-400">{appt.start_time || 'Sin hora'} · {appt.service_type || 'Visita'}</p>
-                      </div>
+                      </Link>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <StatusBadge status={appt.status} />
                         {appt.customer_phone && (
-                          <a href={`tel:${appt.customer_phone}`} onClick={e => e.stopPropagation()}
+                          <a href={`tel:${appt.customer_phone}`}
                             className="p-1 rounded bg-blue-50 hover:bg-blue-100 active:scale-95 transition-all"
                             title={`Llamar: ${appt.customer_phone}`}>
                             <span className="text-[9px] font-bold text-blue-600">☎</span>
@@ -665,7 +665,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </Row>
-                </Link>
+                </div>
               ))
             }
           </Panel>
