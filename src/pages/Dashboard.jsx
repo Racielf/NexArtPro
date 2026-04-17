@@ -23,27 +23,23 @@ const ROW_H = 'h-[240px]';
    ════════════════════════════════════════════════════════════════ */
 
 /* Panel shell */
-function Panel({ title, accentColor, icon: Icon, link, children, bodyClass = '' }) {
+function Panel({ title, headerBg, icon: Icon, link, children, bodyClass = '' }) {
   return (
     <div className="flex flex-col h-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 flex-shrink-0 border-b border-slate-100">
+      {/* Colored header */}
+      <div className={`flex items-center justify-between px-4 py-2 flex-shrink-0 border-b border-black/10 ${headerBg}`}>
         <div className="flex items-center gap-2">
-          {Icon && (
-            <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0" style={{ background: accentColor + '18' }}>
-              <Icon className="w-3 h-3" style={{ color: accentColor }} />
-            </div>
-          )}
-          <span className="text-[11px] font-bold text-slate-700 tracking-wide">{title}</span>
+          {Icon && <Icon className="w-3.5 h-3.5 text-white/80" />}
+          <span className="text-sm font-semibold text-white">{title}</span>
         </div>
         {link && (
-          <Link to={link} className="text-[10px] text-slate-400 hover:text-slate-700 font-semibold flex items-center gap-0.5 transition-colors">
+          <Link to={link} className="text-[10px] text-white/60 hover:text-white font-semibold flex items-center gap-0.5 transition-colors">
             Ver <ArrowRight className="w-2.5 h-2.5" />
           </Link>
         )}
       </div>
-      {/* Body */}
-      <div className={`flex-1 overflow-y-auto ${bodyClass}`}>
+      {/* White body */}
+      <div className={`flex-1 overflow-y-auto bg-white ${bodyClass}`}>
         {children}
       </div>
     </div>
@@ -125,7 +121,7 @@ function SalesFunnel({ counts = {}, kpis = {}, loading }) {
   ];
   const max = Math.max(1, ...STAGES.map(s => counts[s.key] || 0));
   return (
-    <Panel title="Sales Funnel" accentColor="#8b5cf6" icon={TrendingUp}>
+    <Panel title="Sales Funnel" headerBg="bg-violet-500" icon={TrendingUp}>
       {/* 3 mini KPI stats */}
       <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
         {[
@@ -193,7 +189,7 @@ function RevenueChart({ invoices = [], loading, monthRevenue = 0, outstanding = 
   const data = buildMonthlyData(invoices);
   const maxVal = Math.max(...data.map(d => d.revenue), 1);
   return (
-    <Panel title="Ingresos — 6 Meses" accentColor="#10b981" icon={DollarSign}>
+    <Panel title="Ingresos — 6 Meses" headerBg="bg-emerald-500" icon={DollarSign}>
       {/* Totals strip */}
       <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
         <div className="px-3 py-2">
@@ -242,7 +238,7 @@ function JobPipeline({ workOrders = [], loading }) {
     completed:   workOrders.filter(w => w.status === 'completed').length,
   };
   return (
-    <Panel title="Job Pipeline" accentColor="#f59e0b" icon={Wrench} link="/work-orders" bodyClass="grid grid-cols-2 divide-x divide-y divide-slate-100">
+    <Panel title="Job Pipeline" headerBg="bg-amber-500" icon={Wrench} link="/work-orders" bodyClass="grid grid-cols-2 divide-x divide-y divide-slate-100">
       {JP_STAGES.map(s => {
         const Icon = s.icon;
         return (
@@ -279,7 +275,7 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
   }
   const visible = alerts.slice(0, 4);
   return (
-    <Panel title={`Alertas${alerts.length > 0 ? ` (${alerts.length})` : ''}`} accentColor="#ef4444" icon={Bell}>
+    <Panel title={`Alertas${alerts.length > 0 ? ` (${alerts.length})` : ''}`} headerBg="bg-red-500" icon={Bell}>
       {loading
         ? <Empty text="Cargando…" />
         : alerts.length === 0
@@ -414,7 +410,7 @@ export default function Dashboard() {
         <div className={`grid grid-cols-4 gap-3 ${ROW_H}`}>
 
           {/* Citas de Hoy */}
-          <Panel title="Citas de Hoy" accentColor="#3b82f6" icon={Calendar} link="/appointments">
+          <Panel title="Citas de Hoy" headerBg="bg-blue-500" icon={Calendar} link="/appointments">
             {loading ? <Empty text="Cargando…" />
               : todayAppointments.length === 0 ? <Empty text="Sin citas hoy" />
               : todayAppointments.map(appt => (
@@ -434,7 +430,7 @@ export default function Dashboard() {
           </Panel>
 
           {/* Work Orders Activos */}
-          <Panel title="Work Orders" accentColor="#8b5cf6" icon={ClipboardList} link="/work-orders">
+          <Panel title="Work Orders" headerBg="bg-purple-500" icon={ClipboardList} link="/work-orders">
             {loading ? <Empty text="Cargando…" />
               : activeWorkOrders.length === 0 ? <Empty text="Sin work orders activos" />
               : activeWorkOrders.map(wo => (
@@ -456,7 +452,7 @@ export default function Dashboard() {
           </Panel>
 
           {/* Estimados Recientes */}
-          <Panel title="Estimados Recientes" accentColor="#f59e0b" icon={FileText} link="/estimates">
+          <Panel title="Estimados Recientes" headerBg="bg-orange-500" icon={FileText} link="/estimates">
             {loading ? <Empty text="Cargando…" />
               : recentEstimates.length === 0 ? <Empty text="Sin estimados" />
               : recentEstimates.map(est => (
@@ -479,7 +475,7 @@ export default function Dashboard() {
           </Panel>
 
           {/* Notificaciones */}
-          <Panel title="Notificaciones" accentColor="#64748b" icon={Bell}>
+          <Panel title="Notificaciones" headerBg="bg-slate-700" icon={Bell}>
             <NotificationsPanel />
           </Panel>
 
