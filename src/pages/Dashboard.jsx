@@ -4,43 +4,38 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/shared/StatusBadge';
 import {
-  Calendar, FileText, ClipboardList, ArrowRight, Plus,
+  Calendar, FileText, ClipboardList, Plus,
   DollarSign, TrendingUp, Bell,
-  AlertTriangle, Clock, FileX, TrendingDown,
+  AlertTriangle, Clock, FileX,
   Wrench, Navigation2, HardHat, CheckCircle2,
-  Zap, ChevronRight, UserX, RefreshCw, Send
+  Zap, ChevronRight, UserX, RefreshCw, Send, ArrowRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-/* ════════════════════════════════════════════════════════════════
-   DESIGN TOKENS  — light / professional
-   ════════════════════════════════════════════════════════════════ */
-const ROW_H = 'h-[240px] min-h-[200px]';
+/* ══════════════════════════════════════════════
+   SHARED MICRO-COMPONENTS — clean SaaS style
+   ══════════════════════════════════════════════ */
 
-/* ════════════════════════════════════════════════════════════════
-   SHARED MICRO-COMPONENTS
-   ════════════════════════════════════════════════════════════════ */
-
-/* Panel shell */
-function Panel({ title, headerBg, icon: Icon, link, children, bodyClass = '' }) {
+/* Card shell — white, subtle border, no colored header */
+function Card({ title, icon: Icon, link, linkLabel = 'Ver todas', children, className = '', bodyClass = '' }) {
   return (
-    <div className="flex flex-col h-full bg-white border border-slate-200/80 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.09)] hover:-translate-y-[1px] active:scale-[0.995] transition-all duration-200 overflow-hidden">
-      {/* Colored header */}
-      <div className={`flex items-center justify-between px-4 py-2 flex-shrink-0 border-b border-black/8 ${headerBg}`}>
+    <div className={`flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 overflow-hidden ${className}`}>
+      {/* Clean header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 flex-shrink-0">
         <div className="flex items-center gap-2">
-          {Icon && <Icon className="w-3 h-3 text-white/60" />}
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-white/90">{title}</span>
+          {Icon && <Icon className="w-3.5 h-3.5 text-slate-400" />}
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{title}</span>
         </div>
         {link && (
-          <Link to={link} className="text-[10px] text-white/50 hover:text-white/90 font-medium flex items-center gap-0.5 transition-colors">
-            Ver <ArrowRight className="w-2.5 h-2.5" />
+          <Link to={link} className="text-[10px] text-slate-400 hover:text-slate-700 font-medium flex items-center gap-0.5 transition-colors">
+            {linkLabel} <ArrowRight className="w-2.5 h-2.5" />
           </Link>
         )}
       </div>
-      {/* White body */}
-      <div className={`flex-1 overflow-y-auto scroll-smooth bg-white ${bodyClass}`}>
+      {/* Body */}
+      <div className={`flex-1 overflow-y-auto scroll-smooth ${bodyClass}`}>
         {children}
       </div>
     </div>
@@ -50,7 +45,7 @@ function Panel({ title, headerBg, icon: Icon, link, children, bodyClass = '' }) 
 /* List row */
 function Row({ children }) {
   return (
-    <div className="px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/80 active:bg-slate-100 transition-colors duration-150 cursor-pointer">
+    <div className="px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/70 transition-colors duration-150 cursor-pointer">
       {children}
     </div>
   );
@@ -59,21 +54,21 @@ function Row({ children }) {
 /* Empty state */
 function Empty({ text, sub }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-1 select-none">
+    <div className="flex flex-col items-center justify-center h-full gap-1 py-8 select-none">
       <span className="text-[11px] font-medium text-slate-400">{text}</span>
       {sub && <span className="text-[10px] text-slate-300">{sub}</span>}
     </div>
   );
 }
 
-/* KPI chip in header */
+/* KPI chip in topbar */
 function KpiChip({ label, value, dot, loading, tooltip }) {
   return (
-    <div title={tooltip} className="flex items-center gap-1.5 px-2.5 py-[5px] bg-white border border-slate-200/80 rounded-lg flex-shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.08)] hover:-translate-y-[1px] active:scale-[0.97] transition-all duration-150 cursor-default select-none">
+    <div title={tooltip} className="flex items-center gap-1.5 px-2.5 py-[5px] bg-white border border-slate-200 rounded-lg flex-shrink-0 shadow-sm hover:shadow hover:-translate-y-[1px] transition-all duration-150 cursor-default select-none">
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
       <div className="leading-none">
         <div className="text-[8px] text-slate-400 uppercase tracking-wider">{label}</div>
-        <div className={`text-[13px] font-bold tabular-nums leading-tight transition-all duration-300 ${loading ? 'text-slate-300' : 'text-slate-800'}`}>
+        <div className={`text-[13px] font-bold tabular-nums leading-tight ${loading ? 'text-slate-300' : 'text-slate-800'}`}>
           {loading ? '···' : value}
         </div>
       </div>
@@ -81,9 +76,9 @@ function KpiChip({ label, value, dot, loading, tooltip }) {
   );
 }
 
-/* ════════════════════════════════════════════════════════════════
-   DIGITAL CLOCK  — light version
-   ════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════
+   DIGITAL CLOCK
+   ══════════════════════════════════════════════ */
 function DigitalClock() {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
@@ -114,143 +109,54 @@ function DigitalClock() {
   );
 }
 
-/* ════════════════════════════════════════════════════════════════
-   ROW 1 PANELS
-   ════════════════════════════════════════════════════════════════ */
-
-/* 1A · Money Control */
+/* ══════════════════════════════════════════════
+   MONEY CONTROL — wide card, financial focus
+   ══════════════════════════════════════════════ */
 function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loading }) {
-  const overdueAmt = invoices
-    .filter(i => i.status === 'overdue')
-    .reduce((s, i) => s + Math.max((i.total || 0) - (i.amount_paid || 0), 0), 0);
+  const overdueAmt = invoices.filter(i => i.status === 'overdue').reduce((s, i) => s + Math.max((i.total || 0) - (i.amount_paid || 0), 0), 0);
   const overdueCount = invoices.filter(i => i.status === 'overdue').length;
-
-  const fmt = (v) => `$${v.toLocaleString()}`;
+  const fmt = v => `$${v.toLocaleString()}`;
 
   return (
-    <Panel title="Money Control" headerBg="bg-emerald-600" icon={DollarSign} link="/invoices">
-      <div className="flex flex-col h-full px-4 py-3 gap-3">
-
-        {/* 3 métricas */}
-        <div className="flex flex-col gap-2.5 flex-1">
-          {/* Cobrado este mes */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Este mes</p>
-              <p className={`text-xl font-bold tabular-nums leading-tight text-emerald-600 transition-all duration-300 ${loading ? 'opacity-30' : ''}`}>
-                {loading ? '—' : fmt(monthRevenue)}
-              </p>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="w-4 h-4 text-emerald-500" />
-            </div>
+    <Card title="Money Control" icon={DollarSign} link="/invoices" linkLabel="Ver facturas" className="h-full">
+      <div className="p-4 flex flex-col gap-4 h-full">
+        {/* 3 métricas en grid */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Este mes</span>
+            <span className={`text-2xl font-bold tabular-nums text-emerald-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
+            <span className="text-[9px] text-slate-400">cobrado</span>
           </div>
-
-          <div className="h-px bg-slate-100" />
-
-          {/* Por cobrar */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Por cobrar</p>
-              <p className={`text-xl font-bold tabular-nums leading-tight text-blue-600 transition-all duration-300 ${loading ? 'opacity-30' : ''}`}>
-                {loading ? '—' : fmt(outstanding)}
-              </p>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
-              <Clock className="w-4 h-4 text-blue-400" />
-            </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Por cobrar</span>
+            <span className={`text-2xl font-bold tabular-nums text-blue-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
+            <span className="text-[9px] text-slate-400">pendiente</span>
           </div>
-
-          <div className="h-px bg-slate-100" />
-
-          {/* Vencido */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-                Vencido {!loading && overdueCount > 0 && <span className="text-red-400">· {overdueCount} fact.</span>}
-              </p>
-              <p className={`text-xl font-bold tabular-nums leading-tight transition-all duration-300 ${loading ? 'opacity-30 text-slate-400' : overdueAmt > 0 ? 'text-red-500' : 'text-slate-300'}`}>
-                {loading ? '—' : fmt(overdueAmt)}
-              </p>
-            </div>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${overdueAmt > 0 ? 'bg-red-50 border border-red-100' : 'bg-slate-50 border border-slate-100'}`}>
-              <FileX className={`w-4 h-4 ${overdueAmt > 0 ? 'text-red-400' : 'text-slate-300'}`} />
-            </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+              Vencido {!loading && overdueCount > 0 && <span className="text-red-400 normal-case font-normal">· {overdueCount}</span>}
+            </span>
+            <span className={`text-2xl font-bold tabular-nums leading-none ${loading ? 'opacity-30 text-slate-300' : overdueAmt > 0 ? 'text-red-500' : 'text-slate-300'}`}>{loading ? '—' : fmt(overdueAmt)}</span>
+            <span className="text-[9px] text-slate-400">overdue</span>
           </div>
         </div>
 
+        {/* Divider */}
+        <div className="h-px bg-slate-100" />
+
         {/* CTA */}
-        <Link
-          to="/invoices"
-          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all duration-150 text-white text-[11px] font-bold tracking-wide shadow-sm"
-        >
+        <Link to="/invoices" className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all text-white text-[11px] font-bold tracking-wide">
           <DollarSign className="w-3.5 h-3.5" />
           Cobrar ahora
         </Link>
-
       </div>
-    </Panel>
+    </Card>
   );
 }
 
-/* 1B · Sales Funnel */
-function SalesFunnel({ counts = {}, kpis = {}, loading }) {
-  const STAGES = [
-    { key: 'leads',     label: 'Leads',     bar: '#94a3b8', link: '/leads' },
-    { key: 'estimates', label: 'Estimates', bar: '#3b82f6', link: '/estimates' },
-    { key: 'approved',  label: 'Approved',  bar: '#8b5cf6', link: '/estimates' },
-    { key: 'jobs',      label: 'Jobs',      bar: '#f59e0b', link: '/work-orders' },
-    { key: 'paid',      label: 'Paid',      bar: '#10b981', link: '/invoices' },
-  ];
-  const max = Math.max(1, ...STAGES.map(s => counts[s.key] || 0));
-  return (
-    <Panel title="Sales Funnel" headerBg="bg-violet-500" icon={TrendingUp}>
-      {/* 3 mini KPI stats */}
-      <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
-        {[
-          { l: 'Ingresos', v: `$${((kpis.monthRevenue||0)/1000).toFixed(1)}k`, hex: '#10b981' },
-          { l: 'Activos',  v: kpis.activeJobs ?? 0,                             hex: '#3b82f6' },
-          { l: 'Aprob.',   v: `${kpis.approvalRate ?? 0}%`,                     hex: '#8b5cf6' },
-        ].map(k => (
-          <div key={k.l} className="px-2.5 py-2 flex flex-col">
-            <span className="text-[8px] text-slate-500 uppercase tracking-wide leading-none">{k.l}</span>
-            <span className="text-base font-bold tabular-nums leading-tight mt-0.5" style={{ color: k.hex }}>
-              {loading ? '—' : k.v}
-            </span>
-          </div>
-        ))}
-      </div>
-      {/* Funnel bars */}
-      <div className="px-3 py-2.5 space-y-2">
-        {STAGES.map((s, idx) => {
-          const count = counts[s.key] || 0;
-          const pct = max > 0 ? Math.max(3, Math.round((count / max) * 100)) : 3;
-          return (
-            <Link key={s.key} to={s.link} className="flex items-center gap-2 group active:scale-[0.99] transition-transform duration-100">
-              <span className="text-[9px] font-medium text-slate-400 w-14 flex-shrink-0 group-hover:text-slate-600 transition-colors">{s.label}</span>
-              <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: loading ? '0%' : `${pct}%`,
-                    background: s.bar,
-                    opacity: 0.75,
-                    transition: `width ${600 + idx * 80}ms cubic-bezier(0.4,0,0.2,1)`,
-                  }}
-                />
-              </div>
-              <span className="text-[10px] font-bold tabular-nums w-5 text-right transition-colors duration-200" style={{ color: s.bar }}>
-                {loading ? '·' : count}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-    </Panel>
-  );
-}
-
-/* 1C · Revenue 6m */
+/* ══════════════════════════════════════════════
+   REVENUE CHART — 6 months
+   ══════════════════════════════════════════════ */
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildMonthlyData(invoices) {
   const map = {};
@@ -280,41 +186,45 @@ function RevenueChart({ invoices = [], loading, monthRevenue = 0, outstanding = 
   const data = buildMonthlyData(invoices);
   const maxVal = Math.max(...data.map(d => d.revenue), 1);
   return (
-    <Panel title="Ingresos — 6 Meses" headerBg="bg-emerald-500" icon={DollarSign}>
-      {/* Totals strip */}
-      <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
-        <div className="px-3 py-1.5">
-          <span className="text-[8px] text-slate-500 uppercase tracking-wide block">Este Mes</span>
-          <span className="text-base font-bold text-emerald-600 tabular-nums leading-tight">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
+    <Card title="Ingresos — 6 Meses" icon={TrendingUp} className="h-full">
+      <div className="px-4 pt-2 pb-1 flex flex-col h-full gap-2">
+        {/* Mini stat */}
+        <div className="flex gap-4">
+          <div>
+            <span className="text-[9px] text-slate-400 uppercase tracking-wide block">Este Mes</span>
+            <span className="text-lg font-bold text-emerald-600 tabular-nums leading-tight">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
+          </div>
+          <div>
+            <span className="text-[9px] text-slate-400 uppercase tracking-wide block">Por Cobrar</span>
+            <span className="text-lg font-bold text-red-500 tabular-nums leading-tight">{loading ? '—' : `$${(outstanding||0).toLocaleString()}`}</span>
+          </div>
         </div>
-        <div className="px-3 py-1.5">
-          <span className="text-[8px] text-slate-500 uppercase tracking-wide block">Por Cobrar</span>
-          <span className="text-base font-bold text-red-500 tabular-nums leading-tight">{loading ? '—' : `$${(outstanding||0).toLocaleString()}`}</span>
+        {/* Chart */}
+        <div className="flex-1 min-h-0">
+          {loading
+            ? <div className="flex items-center justify-center h-full text-[11px] text-slate-400">Cargando…</div>
+            : <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data} margin={{ top: 4, right: 6, left: -14, bottom: 0 }} barSize={20}>
+                  <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 8, fill: '#cbd5e1' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
+                  <Tooltip content={<RevTooltip />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
+                  <Bar dataKey="revenue" radius={[4,4,0,0]}>
+                    {data.map((entry, idx) => (
+                      <Cell key={idx} fill={entry.revenue === maxVal ? '#10b981' : '#3b82f6'} fillOpacity={0.85} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+          }
         </div>
       </div>
-      {/* Chart */}
-      <div className="px-1 pt-1 pb-0" style={{ height: 'calc(100% - 48px)' }}>
-        {loading
-          ? <div className="flex items-center justify-center h-full text-[11px] text-slate-400">Cargando…</div>
-          : <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 4, right: 6, left: -14, bottom: 0 }} barSize={20}>
-                <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 8, fill: '#cbd5e1' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
-                <Tooltip content={<RevTooltip />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
-                <Bar dataKey="revenue" radius={[4,4,0,0]}>
-                  {data.map((entry, idx) => (
-                    <Cell key={idx} fill={entry.revenue === maxVal ? '#10b981' : '#3b82f6'} fillOpacity={0.85} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-        }
-      </div>
-    </Panel>
+    </Card>
   );
 }
 
-/* 1C · Job Pipeline */
+/* ══════════════════════════════════════════════
+   JOB PIPELINE
+   ══════════════════════════════════════════════ */
 const JP_STAGES = [
   { key: 'scheduled',   label: 'Scheduled',   icon: HardHat,      hex: '#3b82f6', bg: '#eff6ff' },
   { key: 'on_the_way',  label: 'On My Way',   icon: Navigation2,  hex: '#f59e0b', bg: '#fffbeb' },
@@ -329,127 +239,89 @@ function JobPipeline({ workOrders = [], loading }) {
     completed:   workOrders.filter(w => w.status === 'completed').length,
   };
   return (
-    <Panel title="Job Pipeline" headerBg="bg-amber-500" icon={Wrench} link="/work-orders" bodyClass="grid grid-cols-2 divide-x divide-y divide-slate-100">
+    <Card title="Job Pipeline" icon={Wrench} link="/work-orders" linkLabel="Ver →" className="h-full" bodyClass="grid grid-cols-2 divide-x divide-y divide-slate-100">
       {JP_STAGES.map(s => {
         const Icon = s.icon;
         return (
-          <Link key={s.key} to="/work-orders" className="flex items-center gap-2.5 px-3 py-3 hover:bg-slate-50/80 active:bg-slate-100 active:scale-[0.98] transition-all duration-150 group">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-200" style={{ background: s.bg, border: `1px solid ${s.hex}22` }}>
-              <Icon className="w-3.5 h-3.5 opacity-70" style={{ color: s.hex }} />
+          <Link key={s.key} to="/work-orders" className="flex items-center gap-2.5 px-3 py-3 hover:bg-slate-50 transition-colors group">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
+              <Icon className="w-3.5 h-3.5" style={{ color: s.hex }} />
             </div>
             <div>
-              <p className="text-2xl font-bold tabular-nums leading-none text-slate-900">{loading ? '·' : counts[s.key] || 0}</p>
-              <p className="text-[10px] text-slate-400 leading-tight mt-0.5 uppercase tracking-wide">{s.label}</p>
+              <p className="text-2xl font-bold tabular-nums leading-none text-slate-800">{loading ? '·' : counts[s.key] || 0}</p>
+              <p className="text-[9px] text-slate-400 uppercase tracking-wide mt-0.5">{s.label}</p>
             </div>
           </Link>
         );
       })}
-    </Panel>
+    </Card>
   );
 }
 
-/* Priority badge config */
+/* ══════════════════════════════════════════════
+   ALERTS PANEL
+   ══════════════════════════════════════════════ */
 const PRIORITY_CFG = {
-  urgent: { label: 'URGENT', cls: 'bg-red-100 text-red-700 border-red-200' },
-  high:   { label: 'HIGH',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  urgent: { label: 'URGENT', cls: 'bg-red-50 text-red-600 border-red-200' },
+  high:   { label: 'HIGH',   cls: 'bg-amber-50 text-amber-600 border-amber-200' },
   normal: { label: 'NORMAL', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
 };
 
-/* 1D · Alerts — priority-ordered, dismissable */
 function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }) {
   const [dismissed, setDismissed] = useState(new Set());
-
   const alerts = [];
   if (!loading) {
     const overdue = invoices.filter(i => i.status === 'overdue');
-    if (overdue.length) alerts.push({
-      id: 'overdue-inv', icon: FileX, hex: '#ef4444', bg: '#fef2f2',
-      title: `${overdue.length} factura${overdue.length > 1 ? 's' : ''} vencida${overdue.length > 1 ? 's' : ''}`,
-      btnLabel: 'Ver facturas', btnLink: '/invoices',
-      badge: overdue.length, priority: 'urgent', order: 10,
-    });
+    if (overdue.length) alerts.push({ id: 'overdue-inv', icon: FileX, hex: '#ef4444', title: `${overdue.length} factura${overdue.length > 1 ? 's' : ''} vencida${overdue.length > 1 ? 's' : ''}`, btnLabel: 'Ver facturas', btnLink: '/invoices', priority: 'urgent', order: 10 });
     const changes = estimates.filter(e => e.status === 'changes_requested');
-    if (changes.length) alerts.push({
-      id: 'changes-req', icon: AlertTriangle, hex: '#f97316', bg: '#fff7ed',
-      title: `${changes.length} cambio${changes.length>1?'s':''} solicitado${changes.length>1?'s':''}`,
-      btnLabel: 'Revisar', btnLink: `/estimate-editor?id=${changes[0].id}`,
-      badge: changes.length, priority: 'urgent', order: 9,
-    });
+    if (changes.length) alerts.push({ id: 'changes-req', icon: AlertTriangle, hex: '#f97316', title: `${changes.length} cambio${changes.length>1?'s':''} solicitado${changes.length>1?'s':''}`, btnLabel: 'Revisar', btnLink: `/estimate-editor?id=${changes[0].id}`, priority: 'urgent', order: 9 });
     const approved = estimates.filter(e => ['approved','signed'].includes(e.status));
-    if (approved.length) alerts.push({
-      id: 'approved-est', icon: CheckCircle2, hex: '#8b5cf6', bg: '#f5f3ff',
-      title: `${approved.length} aprobado${approved.length>1?'s':''} sin convertir`,
-      btnLabel: 'Convertir', btnLink: `/estimate-editor?id=${approved[0].id}`,
-      badge: approved.length, priority: 'high', order: 8,
-    });
+    if (approved.length) alerts.push({ id: 'approved-est', icon: CheckCircle2, hex: '#8b5cf6', title: `${approved.length} aprobado${approved.length>1?'s':''} sin convertir`, btnLabel: 'Convertir', btnLink: `/estimate-editor?id=${approved[0].id}`, priority: 'high', order: 8 });
     const sevenAgoMs = Date.now() - 7*24*60*60*1000;
     const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at && new Date(e.sent_at).getTime() < sevenAgoMs);
-    if (stale.length) alerts.push({
-      id: 'stale-est', icon: Clock, hex: '#f59e0b', bg: '#fffbeb',
-      title: `${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
-      btnLabel: 'Follow-up', btnLink: `/estimate-editor?id=${stale[0].id}`,
-      badge: stale.length, priority: 'high', order: 7,
-    });
+    if (stale.length) alerts.push({ id: 'stale-est', icon: Clock, hex: '#f59e0b', title: `${stale.length} estimado${stale.length>1?'s':''} sin respuesta`, btnLabel: 'Follow-up', btnLink: `/estimate-editor?id=${stale[0].id}`, priority: 'high', order: 7 });
     const unassigned = workOrders.filter(w => !['completed','invoiced','cancelled'].includes(w.status) && !w.assigned_worker_name);
-    if (unassigned.length) alerts.push({
-      id: 'unassigned-wo', icon: UserX, hex: '#64748b', bg: '#f8fafc',
-      title: `${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`,
-      btnLabel: 'Asignar', btnLink: `/work-orders/${unassigned[0].id}`,
-      badge: unassigned.length, priority: 'normal', order: 6,
-    });
+    if (unassigned.length) alerts.push({ id: 'unassigned-wo', icon: UserX, hex: '#64748b', title: `${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`, btnLabel: 'Asignar', btnLink: `/work-orders/${unassigned[0].id}`, priority: 'normal', order: 6 });
   }
-
-  const visible = alerts
-    .filter(a => !dismissed.has(a.id))
-    .sort((a,b) => b.order - a.order)
-    .slice(0, 4);
+  const visible = alerts.filter(a => !dismissed.has(a.id)).sort((a,b) => b.order - a.order).slice(0, 4);
 
   return (
-    <Panel title={`Alertas${visible.length > 0 ? ` (${visible.length})` : ''}`} headerBg="bg-red-500" icon={Bell}>
+    <Card title={`Alertas${visible.length > 0 ? ` (${visible.length})` : ''}`} icon={Bell} className="h-full">
       {loading
         ? <Empty text="Cargando alertas…" />
         : visible.length === 0
-          ? <div className="flex flex-col items-center justify-center h-full gap-2 select-none px-4 text-center">
-              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
-              <span className="text-[12px] font-semibold text-slate-600">All caught up!</span>
-              <span className="text-[10px] text-slate-400 leading-snug">No urgent actions right now</span>
+          ? <div className="flex flex-col items-center justify-center h-full gap-2 py-8 select-none">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <span className="text-[11px] font-semibold text-slate-500">All caught up!</span>
+              <span className="text-[10px] text-slate-400">No urgent actions right now</span>
             </div>
           : visible.map(a => {
               const Icon = a.icon;
               const pcfg = PRIORITY_CFG[a.priority];
               return (
-                <div key={a.id} className="flex items-center gap-2 px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors group/alert">
-                  <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: a.bg, border: `1px solid ${a.hex}25` }}>
-                    <Icon className="w-3 h-3" style={{ color: a.hex }} />
-                  </div>
+                <div key={a.id} className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors group/alert">
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: a.hex }} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <span className={`text-[8px] font-bold px-1 py-px rounded border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
-                    </div>
-                    <p className="text-[11px] font-semibold text-slate-700 leading-tight truncate">{a.title}</p>
+                    <span className={`text-[8px] font-bold px-1 py-px rounded border ${pcfg.cls} leading-none mr-1`}>{pcfg.label}</span>
+                    <p className="text-[11px] font-medium text-slate-700 leading-tight truncate mt-0.5">{a.title}</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <Link to={a.btnLink}
-                      className="text-[9px] font-bold px-2 py-1 rounded-md border transition-all duration-150 hover:brightness-95 active:scale-[0.96]"
-                      style={{ background: a.bg, color: a.hex, borderColor: `${a.hex}40` }}>
+                    <Link to={a.btnLink} className="text-[9px] font-semibold px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors whitespace-nowrap">
                       {a.btnLabel}
                     </Link>
-                    <button onClick={() => setDismissed(prev => new Set([...prev, a.id]))}
-                      className="opacity-0 group-hover/alert:opacity-100 transition-opacity text-slate-300 hover:text-slate-500 text-[10px] px-1 font-bold"
-                      title="Dismiss">✕</button>
+                    <button onClick={() => setDismissed(prev => new Set([...prev, a.id]))} className="opacity-0 group-hover/alert:opacity-100 transition-opacity text-slate-300 hover:text-slate-500 text-[10px] px-1 font-bold" title="Dismiss">✕</button>
                   </div>
                 </div>
               );
             })
       }
-    </Panel>
+    </Card>
   );
 }
 
-/* ════════════════════════════════════════════════════════════════
-   NEXT BEST ACTION BAR — grouped, priority-labeled, dismissable
-   Groups: Sales | Operations | Finance
-   ════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════
+   NEXT BEST ACTION
+   ══════════════════════════════════════════════ */
 const GROUP_CFG = {
   Sales:      { color: 'text-violet-600', dot: 'bg-violet-400' },
   Operations: { color: 'text-amber-600',  dot: 'bg-amber-400' },
@@ -458,95 +330,43 @@ const GROUP_CFG = {
 
 function buildActions({ estimates, invoices, workOrders }) {
   const actions = [];
-
-  // ── FINANCE ──
   const overdueInv = invoices.filter(i => i.status === 'overdue');
   if (overdueInv.length) {
     const amt = overdueInv.reduce((s,i) => s+(i.total||0)-(i.amount_paid||0), 0);
-    actions.push({
-      id: 'finance-overdue',
-      icon: DollarSign, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200',
-      label: `Cobrar $${amt.toLocaleString()} vencido`,
-      sub: `${overdueInv.length} factura${overdueInv.length>1?'s':''} — contacta hoy`,
-      link: '/invoices', priority: 'urgent', order: 10, group: 'Finance',
-    });
+    actions.push({ id: 'finance-overdue', icon: DollarSign, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100', label: `Cobrar $${amt.toLocaleString()} vencido`, sub: `${overdueInv.length} factura${overdueInv.length>1?'s':''} — contacta hoy`, link: '/invoices', priority: 'urgent', order: 10, group: 'Finance' });
   }
-
-  // ── SALES ──
   const changesReq = estimates.filter(e => e.status === 'changes_requested');
-  if (changesReq.length) actions.push({
-    id: 'sales-changes',
-    icon: Send, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200',
-    label: `Revisar ${changesReq.length} cambio${changesReq.length>1?'s':''} solicitado${changesReq.length>1?'s':''}`,
-    sub: 'El cliente espera respuesta',
-    link: `/estimate-editor?id=${changesReq[0].id}`, priority: 'urgent', order: 9, group: 'Sales',
-  });
-
+  if (changesReq.length) actions.push({ id: 'sales-changes', icon: Send, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', label: `Revisar ${changesReq.length} cambio${changesReq.length>1?'s':''} solicitado${changesReq.length>1?'s':''}`, sub: 'El cliente espera respuesta', link: `/estimate-editor?id=${changesReq[0].id}`, priority: 'urgent', order: 9, group: 'Sales' });
   const signed = estimates.filter(e => ['approved','signed'].includes(e.status));
-  if (signed.length) actions.push({
-    id: 'sales-convert',
-    icon: RefreshCw, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200',
-    label: `Convertir ${signed.length} estimado${signed.length>1?'s':''} aprobado${signed.length>1?'s':''}`,
-    sub: 'Los clientes esperan Work Orders',
-    link: `/estimate-editor?id=${signed[0].id}`, priority: 'high', order: 8, group: 'Sales',
-  });
-
+  if (signed.length) actions.push({ id: 'sales-convert', icon: RefreshCw, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-100', label: `Convertir ${signed.length} estimado${signed.length>1?'s':''} aprobado${signed.length>1?'s':''}`, sub: 'Los clientes esperan Work Orders', link: `/estimate-editor?id=${signed[0].id}`, priority: 'high', order: 8, group: 'Sales' });
   const sevenAgoMs = Date.now() - 7*24*60*60*1000;
   const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at && new Date(e.sent_at).getTime() < sevenAgoMs);
-  if (stale.length) actions.push({
-    id: 'sales-followup',
-    icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200',
-    label: `Follow-up: ${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
-    sub: '+7 días sin respuesta',
-    link: `/estimate-editor?id=${stale[0].id}`, priority: 'high', order: 7, group: 'Sales',
-  });
-
-  // ── OPERATIONS ──
+  if (stale.length) actions.push({ id: 'sales-followup', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', label: `Follow-up: ${stale.length} estimado${stale.length>1?'s':''} sin respuesta`, sub: '+7 días sin respuesta', link: `/estimate-editor?id=${stale[0].id}`, priority: 'high', order: 7, group: 'Sales' });
   const unassigned = workOrders.filter(w => !['completed','invoiced','cancelled'].includes(w.status) && !w.assigned_worker_name);
-  if (unassigned.length) actions.push({
-    id: 'ops-unassigned',
-    icon: UserX, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200',
-    label: `Asignar técnico: ${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`,
-    sub: 'Sin técnico = sin avance',
-    link: `/work-orders/${unassigned[0].id}`, priority: 'normal', order: 6, group: 'Operations',
-  });
-
+  if (unassigned.length) actions.push({ id: 'ops-unassigned', icon: UserX, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200', label: `Asignar técnico: ${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`, sub: 'Sin técnico = sin avance', link: `/work-orders/${unassigned[0].id}`, priority: 'normal', order: 6, group: 'Operations' });
   return actions.sort((a,b) => b.order - a.order);
 }
 
 function NextBestAction({ estimates = [], invoices = [], workOrders = [], loading }) {
   const [dismissed, setDismissed] = useState(new Set());
-
   const all = loading ? [] : buildActions({ estimates, invoices, workOrders });
   const filtered = all.filter(a => !dismissed.has(a.id));
   const actions = filtered.slice(0, 3);
   const totalPending = filtered.length;
 
-  // Group counts from FULL filtered list (not just visible 3)
   const allGrouped = {};
-  filtered.forEach(a => {
-    if (!allGrouped[a.group]) allGrouped[a.group] = [];
-    allGrouped[a.group].push(a);
-  });
-
-  // "Ver todas" smart link — group with most actions wins
+  filtered.forEach(a => { if (!allGrouped[a.group]) allGrouped[a.group] = []; allGrouped[a.group].push(a); });
   const GROUP_LINKS = { Finance: '/invoices', Operations: '/work-orders', Sales: '/estimates' };
   const dominantGroup = Object.entries(allGrouped).sort((a, b) => b[1].length - a[1].length)[0]?.[0];
   const verTodasLink = GROUP_LINKS[dominantGroup] ?? '/estimates';
-
-  // Group for display (only visible 3)
   const grouped = {};
-  actions.forEach(a => {
-    if (!grouped[a.group]) grouped[a.group] = [];
-    grouped[a.group].push(a);
-  });
-  const groupOrder = ['Finance', 'Sales', 'Operations'];
-  const sortedGroups = groupOrder.filter(g => grouped[g]);
+  actions.forEach(a => { if (!grouped[a.group]) grouped[a.group] = []; grouped[a.group].push(a); });
+  const sortedGroups = ['Finance', 'Sales', 'Operations'].filter(g => grouped[g]);
 
   if (loading) return null;
 
   if (actions.length === 0) return (
-    <div className="bg-white border border-slate-200/80 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] px-5 py-3 flex items-center gap-3">
+    <div className="bg-white border border-slate-200 rounded-xl px-5 py-3 flex items-center gap-3 shadow-sm">
       <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
       <span className="text-[12px] font-semibold text-slate-600">All caught up</span>
       <span className="text-[11px] text-slate-400">— no urgent actions right now</span>
@@ -554,31 +374,31 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
   );
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] px-4 py-2.5">
-      <div className="flex items-center gap-2 mb-2">
-        <Zap className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+    <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
+      <div className="flex items-center gap-2 mb-2.5">
+        <Zap className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Próximas acciones</span>
         <span className="ml-auto text-[9px] text-slate-400">{totalPending} pendiente{totalPending>1?'s':''}</span>
+        {totalPending > 3 && (
+          <Link to={verTodasLink} className="text-[9px] font-semibold text-blue-600 hover:underline">Ver todas →</Link>
+        )}
       </div>
-      <div className="flex flex-wrap gap-x-6 gap-y-1.5">
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
         {sortedGroups.map(grp => {
           const gcfg = GROUP_CFG[grp];
           return (
-            <div key={grp} className="flex flex-col gap-1 min-w-0">
+            <div key={grp} className="flex flex-col gap-1.5 min-w-0">
               <div className="flex items-center gap-1">
                 <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${gcfg.dot}`} />
                 <span className={`text-[8px] font-bold uppercase tracking-widest ${gcfg.color}`}>{grp}</span>
-                {allGrouped[grp]?.length > 1 && (
-                  <span className={`text-[8px] font-semibold opacity-60 ${gcfg.color}`}>· {allGrouped[grp].length}</span>
-                )}
+                {allGrouped[grp]?.length > 1 && <span className={`text-[8px] opacity-60 ${gcfg.color}`}>· {allGrouped[grp].length}</span>}
               </div>
               {grouped[grp].map(a => {
                 const Icon = a.icon;
                 const pcfg = PRIORITY_CFG[a.priority];
                 return (
-                  <div key={a.id} className="flex items-center gap-2 group/item">
-                    <Link to={a.link}
-                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border ${a.bg} ${a.border} hover:brightness-95 active:scale-[0.98] transition-all duration-150`}>
+                  <div key={a.id} className="flex items-center gap-1.5 group/item">
+                    <Link to={a.link} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border ${a.bg} ${a.border} hover:brightness-95 active:scale-[0.98] transition-all`}>
                       <Icon className={`w-3 h-3 flex-shrink-0 ${a.color}`} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -589,9 +409,7 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
                       </div>
                       <ChevronRight className="w-3 h-3 text-slate-300 group-hover/item:text-slate-500 transition-colors flex-shrink-0" />
                     </Link>
-                    <button onClick={() => setDismissed(prev => new Set([...prev, a.id]))}
-                      className="opacity-0 group-hover/item:opacity-100 transition-opacity text-slate-300 hover:text-slate-500 text-[10px] font-bold leading-none"
-                      title="Dismiss">✕</button>
+                    <button onClick={() => setDismissed(prev => new Set([...prev, a.id]))} className="opacity-0 group-hover/item:opacity-100 transition-opacity text-slate-300 hover:text-slate-500 text-[10px] font-bold leading-none" title="Dismiss">✕</button>
                   </div>
                 );
               })}
@@ -599,19 +417,13 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
           );
         })}
       </div>
-      {totalPending > 3 && (
-        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-[9px] text-slate-400">3 prioritarias de {totalPending} pendientes</span>
-          <Link to={verTodasLink} className="text-[9px] font-bold text-primary hover:underline">Ver todas →</Link>
-        </div>
-      )}
     </div>
   );
 }
 
-/* ════════════════════════════════════════════════════════════════
-   MAIN COMPONENT
-   ════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════
+   MAIN DASHBOARD
+   ══════════════════════════════════════════════ */
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [todayAppointments, setTodayAppointments] = useState([]);
@@ -661,30 +473,29 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
+  const CARD_H = 'h-[260px]';
 
-      {/* ── RELOJ ─────────────────────────────────────────────────────── */}
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+
+      {/* CLOCK */}
       <DigitalClock />
 
-      {/* ── HEADER ────────────────────────────────────────────────────── */}
+      {/* TOPBAR */}
       <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-2 shadow-sm">
         <div className="max-w-screen-2xl mx-auto flex items-center gap-3">
-          {/* Brand */}
           <div className="border-r border-slate-200 pr-3 flex-shrink-0">
             <h1 className="text-[13px] font-bold text-slate-800 leading-none">RC Art Contractors</h1>
             <p className="text-[9px] text-slate-400 mt-0.5">Control Center · {format(new Date(), 'EEE MMM d, yyyy')}</p>
           </div>
-          {/* KPI strip */}
           <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-none py-0.5">
-            <KpiChip label="Ingresos Mes"   value={`$${(kpis.monthRevenue||0).toLocaleString()}`} dot="#10b981" loading={loading} tooltip="Revenue cobrado este mes" />
-            <KpiChip label="Jobs Activos"   value={kpis.activeJobs ?? 0}                          dot="#3b82f6" loading={loading} tooltip="Work orders en progreso" />
-            <KpiChip label="Por Cobrar"     value={`$${(kpis.outstanding||0).toLocaleString()}`}  dot="#ef4444" loading={loading} tooltip="Facturas pendientes de cobro" />
-            <KpiChip label="Citas Hoy"      value={kpis.todayAppts ?? 0}                          dot="#f59e0b" loading={loading} tooltip="Appointments programados hoy" />
-            <KpiChip label="Estimados"      value={kpis.estimatesSent ?? 0}                       dot="#8b5cf6" loading={loading} tooltip="Estimados enviados sin respuesta" />
-            <KpiChip label="Aprobación"     value={`${kpis.approvalRate ?? 0}%`}                  dot="#06b6d4" loading={loading} tooltip="Tasa de aprobación de estimados" />
+            <KpiChip label="Ingresos Mes"  value={`$${(kpis.monthRevenue||0).toLocaleString()}`} dot="#10b981" loading={loading} tooltip="Revenue cobrado este mes" />
+            <KpiChip label="Jobs Activos"  value={kpis.activeJobs ?? 0}                          dot="#3b82f6" loading={loading} tooltip="Work orders en progreso" />
+            <KpiChip label="Por Cobrar"    value={`$${(kpis.outstanding||0).toLocaleString()}`}  dot="#ef4444" loading={loading} tooltip="Facturas pendientes" />
+            <KpiChip label="Citas Hoy"     value={kpis.todayAppts ?? 0}                          dot="#f59e0b" loading={loading} tooltip="Appointments hoy" />
+            <KpiChip label="Estimados"     value={kpis.estimatesSent ?? 0}                       dot="#8b5cf6" loading={loading} tooltip="Estimados enviados" />
+            <KpiChip label="Aprobación"    value={`${kpis.approvalRate ?? 0}%`}                  dot="#06b6d4" loading={loading} tooltip="Tasa de aprobación" />
           </div>
-          {/* Actions */}
           <div className="flex gap-1.5 flex-shrink-0">
             <Button asChild variant="outline" size="sm" className="h-7 px-2.5 text-[10px] text-slate-600 border-slate-200 hover:bg-slate-50">
               <Link to="/appointments"><Plus className="w-3 h-3 mr-0.5" />Cita</Link>
@@ -699,55 +510,30 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── MAIN GRID ─────────────────────────────────────────────────── */}
-      <div className="flex-1 max-w-screen-2xl mx-auto w-full px-3 py-3 flex flex-col gap-3">
+      {/* CONTENT */}
+      <div className="flex-1 max-w-screen-2xl mx-auto w-full px-4 py-4 flex flex-col gap-4">
 
-        {/* ▸ NEXT BEST ACTION */}
+        {/* ── NEXT BEST ACTION */}
         <NextBestAction estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
 
-        {/* ▸ ROW 1: Analytics panels */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${ROW_H} overflow-visible`}>
+        {/* ── FILA 1: Money Control (2 cols) + Revenue Chart (2 cols) */}
+        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 ${CARD_H} overflow-visible`}>
           <MoneyControl monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} invoices={allInvoices} loading={loading} />
           <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} />
+        </div>
+
+        {/* ── FILA 2: Job Pipeline + Alerts (split 50/50) */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${CARD_H} overflow-visible`}>
           <JobPipeline workOrders={allWorkOrders} loading={loading} />
           <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
         </div>
 
-        {/* ▸ ROW 2: List panels */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${ROW_H} overflow-visible`}>
+        {/* ── FILA 3: Work Orders + Estimates + Appointments */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 ${CARD_H} overflow-visible`}>
 
-          {/* Citas de Hoy */}
-          <Panel title="Citas de Hoy" headerBg="bg-blue-500" icon={Calendar} link="/appointments">
-            {loading ? <Empty text="Cargando…" sub="Un momento…" />
-              : todayAppointments.length === 0 ? <Empty text="Sin citas hoy" sub="No hay appointments programados" />
-              : todayAppointments.map(appt => (
-                <div key={appt.id} className="group">
-                  <Row>
-                    <div className="flex items-center justify-between gap-2">
-                      <Link to="/appointments" className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-slate-700 truncate leading-tight">{appt.customer_display_name || appt.client_name}</p>
-                        <p className="text-[10px] text-slate-400">{appt.start_time || 'Sin hora'} · {appt.service_type || 'Visita'}</p>
-                      </Link>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <StatusBadge status={appt.status} />
-                        {appt.customer_phone && (
-                          <a href={`tel:${appt.customer_phone}`}
-                            className="p-1 rounded bg-blue-50 hover:bg-blue-100 active:scale-95 transition-all"
-                            title={`Llamar: ${appt.customer_phone}`}>
-                            <span className="text-[9px] font-bold text-blue-600">☎</span>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </Row>
-                </div>
-              ))
-            }
-          </Panel>
-
-          {/* Work Orders Activos */}
-          <Panel title="Work Orders" headerBg="bg-purple-500" icon={ClipboardList} link="/work-orders">
-            {loading ? <Empty text="Cargando…" sub="Un momento…" />
+          {/* Work Orders */}
+          <Card title="Work Orders" icon={ClipboardList} link="/work-orders" className="h-full">
+            {loading ? <Empty text="Cargando…" />
               : activeWorkOrders.length === 0 ? <Empty text="Sin work orders activos" sub="No hay jobs en curso" />
               : activeWorkOrders.map(wo => {
                 const isUnassigned = !wo.assigned_worker_name;
@@ -758,18 +544,17 @@ export default function Dashboard() {
                       <div className="flex items-center justify-between gap-2">
                         <Link to={`/work-orders/${wo.id}`} className="min-w-0 flex-1">
                           <p className="text-xs font-semibold text-slate-700 truncate leading-tight">
-                            <span className="text-violet-600 font-bold">#{wo.work_order_number}</span> {wo.client_name}
+                            <span className="text-blue-600 font-bold">#{wo.work_order_number}</span> {wo.client_name}
                           </p>
                           <div className="flex items-center gap-1 mt-0.5">
-                            {isUnassigned && <span className="text-[8px] font-bold px-1 py-px rounded bg-slate-100 text-slate-500 uppercase tracking-wide">Sin asignar</span>}
-                            {isOverdue && <span className="text-[8px] font-bold px-1 py-px rounded bg-red-50 text-red-500 uppercase tracking-wide">Vencido</span>}
+                            {isUnassigned && <span className="text-[8px] font-semibold px-1 py-px rounded bg-amber-50 text-amber-600 border border-amber-200">Sin asignar</span>}
+                            {isOverdue && <span className="text-[8px] font-semibold px-1 py-px rounded bg-red-50 text-red-500 border border-red-200">Vencido</span>}
                             {!isUnassigned && !isOverdue && <span className="text-[10px] text-slate-400 truncate">{wo.title}</span>}
                           </div>
                         </Link>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <StatusBadge status={wo.status} />
-                          <Link to={`/work-orders/${wo.id}`}
-                            className="opacity-0 group-hover:opacity-100 text-[9px] font-bold px-1.5 py-px rounded bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 active:scale-95 transition-all whitespace-nowrap">
+                          <Link to={`/work-orders/${wo.id}`} className="opacity-0 group-hover:opacity-100 text-[9px] font-semibold px-1.5 py-px rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap">
                             Abrir →
                           </Link>
                         </div>
@@ -779,17 +564,16 @@ export default function Dashboard() {
                 );
               })
             }
-          </Panel>
+          </Card>
 
-          {/* Estimados Recientes */}
-          <Panel title="Estimados Recientes" headerBg="bg-orange-500" icon={FileText} link="/estimates">
-            {loading ? <Empty text="Cargando…" sub="Un momento…" />
+          {/* Estimados */}
+          <Card title="Estimados Recientes" icon={FileText} link="/estimates" className="h-full">
+            {loading ? <Empty text="Cargando…" />
               : recentEstimates.length === 0 ? <Empty text="Sin estimados recientes" sub="Crea tu primer estimado" />
               : recentEstimates.map(est => {
                 const needsFollowUp = ['sent','viewed'].includes(est.status) && est.sent_at && new Date(est.sent_at) < new Date(Date.now() - 5*24*60*60*1000);
                 const needsAction = est.status === 'changes_requested';
                 const isWon = ['approved','signed'].includes(est.status);
-                // Determine the CTA button
                 const ctaLabel = needsFollowUp ? 'Follow-up' : needsAction ? 'Revisar' : isWon ? 'Convertir' : 'Abrir';
                 const ctaColor = needsFollowUp ? 'bg-amber-50 text-amber-600 border-amber-200'
                   : needsAction ? 'bg-orange-50 text-orange-600 border-orange-200'
@@ -808,8 +592,7 @@ export default function Dashboard() {
                         </Link>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <StatusBadge status={est.status} />
-                          <Link to={`/estimate-editor?id=${est.id}`}
-                            className={`text-[9px] font-bold px-1.5 py-px rounded border hover:brightness-95 active:scale-95 transition-all whitespace-nowrap ${ctaColor} ${(needsFollowUp || needsAction || isWon) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          <Link to={`/estimate-editor?id=${est.id}`} className={`text-[9px] font-semibold px-1.5 py-px rounded border transition-all whitespace-nowrap ${ctaColor} ${(needsFollowUp || needsAction || isWon) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                             {ctaLabel} →
                           </Link>
                         </div>
@@ -819,14 +602,42 @@ export default function Dashboard() {
                 );
               })
             }
-          </Panel>
+          </Card>
 
-          {/* Notificaciones */}
-          <Panel title="Notificaciones" headerBg="bg-slate-700" icon={Bell}>
-            <NotificationsPanel />
-          </Panel>
+          {/* Citas de Hoy */}
+          <Card title="Citas de Hoy" icon={Calendar} link="/appointments" className="h-full">
+            {loading ? <Empty text="Cargando…" />
+              : todayAppointments.length === 0 ? <Empty text="Sin citas hoy" sub="No hay appointments programados" />
+              : todayAppointments.map(appt => (
+                <div key={appt.id} className="group">
+                  <Row>
+                    <div className="flex items-center justify-between gap-2">
+                      <Link to="/appointments" className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-slate-700 truncate leading-tight">{appt.customer_display_name || appt.client_name}</p>
+                        <p className="text-[10px] text-slate-400">{appt.start_time || 'Sin hora'} · {appt.service_type || 'Visita'}</p>
+                      </Link>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <StatusBadge status={appt.status} />
+                        {appt.customer_phone && (
+                          <a href={`tel:${appt.customer_phone}`} className="p-1 rounded bg-blue-50 hover:bg-blue-100 transition-all" title={`Llamar: ${appt.customer_phone}`}>
+                            <span className="text-[9px] font-bold text-blue-600">☎</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </Row>
+                </div>
+              ))
+            }
+          </Card>
 
         </div>
+
+        {/* ── FILA 4: Notificaciones full width */}
+        <Card title="Notificaciones" icon={Bell}>
+          <NotificationsPanel />
+        </Card>
+
       </div>
     </div>
   );
