@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from 'recharts';
 
 /* ══════════════════════════════════════════════
    SHARED MICRO-COMPONENTS — clean SaaS style
@@ -118,36 +118,39 @@ function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loadin
   const fmt = v => `$${v.toLocaleString()}`;
 
   return (
-    <Card title="Money Control" icon={DollarSign} link="/invoices" linkLabel="Ver facturas" className="h-full">
-      <div className="p-4 flex flex-col gap-4 h-full">
-        {/* 3 métricas en grid */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1">
+    <Card title="Money Control" icon={DollarSign} className="h-full">
+      <div className="p-4 flex flex-col gap-3 h-full">
+        {/* 2x2 métricas grid */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 flex-1">
+          <div className="flex flex-col gap-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Este mes</span>
-            <span className={`text-2xl font-bold tabular-nums text-emerald-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
-            <span className="text-[9px] text-slate-400">cobrado</span>
+            <span className={`text-3xl font-bold tabular-nums text-emerald-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Por cobrar</span>
-            <span className={`text-2xl font-bold tabular-nums text-blue-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
-            <span className="text-[9px] text-slate-400">pendiente</span>
+            <span className={`text-3xl font-bold tabular-nums text-blue-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-              Vencido {!loading && overdueCount > 0 && <span className="text-red-400 normal-case font-normal">· {overdueCount}</span>}
+              Vencido {!loading && overdueCount > 0 && <span className="text-red-400 normal-case">· {overdueCount}</span>}
             </span>
-            <span className={`text-2xl font-bold tabular-nums leading-none ${loading ? 'opacity-30 text-slate-300' : overdueAmt > 0 ? 'text-red-500' : 'text-slate-300'}`}>{loading ? '—' : fmt(overdueAmt)}</span>
-            <span className="text-[9px] text-slate-400">overdue</span>
+            <span className={`text-3xl font-bold tabular-nums leading-none ${loading ? 'opacity-30 text-slate-300' : overdueAmt > 0 ? 'text-red-500' : 'text-slate-300'}`}>{loading ? '—' : fmt(overdueAmt)}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Pe-M!</span>
+            <span className="text-3xl font-bold tabular-nums leading-none text-slate-300">$0</span>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-slate-100" />
-
-        {/* CTA */}
-        <Link to="/invoices" className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all text-white text-[11px] font-bold tracking-wide">
-          <DollarSign className="w-3.5 h-3.5" />
-          Cobrar ahora
+        {/* CTA con "Ver facturas →" a la derecha */}
+        <Link to="/invoices" className="flex items-center rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all text-white text-[11px] font-bold overflow-hidden">
+          <span className="flex items-center gap-1.5 flex-1 justify-center py-2.5">
+            <DollarSign className="w-3.5 h-3.5" />
+            Cobrar ahora
+          </span>
+          <span className="border-l border-emerald-500 px-3 py-2.5 text-[10px] text-emerald-200 hover:text-white whitespace-nowrap">
+            Ver facturas →
+          </span>
         </Link>
       </div>
     </Card>
@@ -182,38 +185,43 @@ const RevTooltip = ({ active, payload, label }) => {
     </div>
   );
 };
-function RevenueChart({ invoices = [], loading, monthRevenue = 0, outstanding = 0 }) {
+function RevenueChart({ invoices = [], loading, monthRevenue = 0 }) {
   const data = buildMonthlyData(invoices);
   const maxVal = Math.max(...data.map(d => d.revenue), 1);
   return (
-    <Card title="Ingresos — 6 Meses" icon={TrendingUp} className="h-full">
-      <div className="px-4 pt-2 pb-1 flex flex-col h-full gap-2">
-        {/* Mini stat */}
-        <div className="flex gap-4">
-          <div>
-            <span className="text-[9px] text-slate-400 uppercase tracking-wide block">Este Mes</span>
-            <span className="text-lg font-bold text-emerald-600 tabular-nums leading-tight">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
-          </div>
-          <div>
-            <span className="text-[9px] text-slate-400 uppercase tracking-wide block">Por Cobrar</span>
-            <span className="text-lg font-bold text-red-500 tabular-nums leading-tight">{loading ? '—' : `$${(outstanding||0).toLocaleString()}`}</span>
-          </div>
+    <Card title="Ingresos — 6 Meses" icon={TrendingUp} link="/invoices" linkLabel="Ver todas" className="h-full">
+      <div className="px-4 pt-3 pb-2 flex flex-col h-full gap-2">
+        {/* Este Mes stat */}
+        <div>
+          <span className="text-[9px] text-slate-400 uppercase tracking-wide block">Este Mes</span>
+          <span className="text-3xl font-bold text-emerald-600 tabular-nums leading-none">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
         </div>
-        {/* Chart */}
+        {/* Area Chart */}
         <div className="flex-1 min-h-0">
           {loading
             ? <div className="flex items-center justify-center h-full text-[11px] text-slate-400">Cargando…</div>
             : <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data} margin={{ top: 4, right: 6, left: -14, bottom: 0 }} barSize={20}>
+                <AreaChart data={data} margin={{ top: 8, right: 32, left: -14, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 8, fill: '#cbd5e1' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
-                  <Tooltip content={<RevTooltip />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
-                  <Bar dataKey="revenue" radius={[4,4,0,0]}>
-                    {data.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.revenue === maxVal ? '#10b981' : '#3b82f6'} fillOpacity={0.85} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <YAxis tick={{ fontSize: 8, fill: '#cbd5e1' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : `$${v}`} />
+                  <Tooltip content={<RevTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} />
+                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" dot={(props) => {
+                    const { cx, cy, value } = props;
+                    if (value !== maxVal) return <circle key={props.key} cx={cx} cy={cy} r={3} fill="#10b981" fillOpacity={0.5} stroke="white" strokeWidth={1} />;
+                    return (
+                      <g key={props.key}>
+                        <circle cx={cx} cy={cy} r={5} fill="#10b981" stroke="white" strokeWidth={2} />
+                        <text x={cx + 8} y={cy - 6} fontSize={9} fontWeight={700} fill="#10b981">${(value/1000).toFixed(1)}k</text>
+                      </g>
+                    );
+                  }} />
+                </AreaChart>
               </ResponsiveContainer>
           }
         </div>
@@ -513,52 +521,113 @@ export default function Dashboard() {
       {/* CONTENT */}
       <div className="flex-1 max-w-screen-2xl mx-auto w-full px-4 py-4 flex flex-col gap-4">
 
-        {/* ── NEXT BEST ACTION */}
-        <NextBestAction estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
-
-        {/* ── FILA 1: Money Control (2 cols) + Revenue Chart (2 cols) */}
+        {/* ── FILA 1: Money Control (izq) + Revenue Chart (der) */}
         <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 ${CARD_H} overflow-visible`}>
           <MoneyControl monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} invoices={allInvoices} loading={loading} />
-          <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} />
+          <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} />
         </div>
 
-        {/* ── FILA 2: Job Pipeline + Alerts (split 50/50) */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${CARD_H} overflow-visible`}>
+        {/* ── FILA 2: Próximas Acciones (ancho) + Job Pipeline + Alertas */}
+        <div className={`grid grid-cols-1 xl:grid-cols-3 gap-4 overflow-visible`} style={{ minHeight: '220px' }}>
+          {/* Próximas Acciones — ocupa 1 col xl, full card */}
+          <Card title="Próximas Acciones" icon={Zap} link={null} linkLabel="" className="h-full">
+            <div className="px-4 py-3 h-full flex flex-col">
+              {loading
+                ? <Empty text="Cargando…" />
+                : (() => {
+                    const all = buildActions({ estimates: allEstimates, invoices: allInvoices, workOrders: allWorkOrders });
+                    if (all.length === 0) return (
+                      <div className="flex items-center gap-2 py-4">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span className="text-[11px] text-slate-500">All caught up — no actions</span>
+                      </div>
+                    );
+                    return (
+                      <>
+                        <p className="text-[10px] text-slate-400 mb-2">
+                          <span className="font-bold text-slate-700">{Math.min(all.length, 3)} prioritarias</span> de {all.length} pendientes
+                        </p>
+                        <div className="flex flex-col gap-1.5 flex-1">
+                          {all.slice(0, 3).map(a => {
+                            const Icon = a.icon;
+                            const groupCfg = GROUP_CFG[a.group];
+                            return (
+                              <div key={a.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 last:border-0">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${groupCfg.dot}`} />
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-semibold text-slate-700 truncate">{a.group} · <span className="font-normal text-slate-500">{a.sub}</span></p>
+                                    <p className="text-[10px] text-slate-400 truncate">{a.label}</p>
+                                  </div>
+                                </div>
+                                <Link to={a.link} className="flex-shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors whitespace-nowrap">
+                                  {a.priority === 'urgent' ? 'Hacer follow-up' : a.group === 'Operations' ? 'Asignar' : 'Llamar'}
+                                </Link>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()
+              }
+            </div>
+          </Card>
+
+          {/* Job Pipeline */}
           <JobPipeline workOrders={allWorkOrders} loading={loading} />
+
+          {/* Alertas */}
           <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
         </div>
 
-        {/* ── FILA 3: Work Orders + Estimates + Appointments */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 ${CARD_H} overflow-visible`}>
+        {/* ── FILA 3: Próximas Acciones (mini) + Work Orders + Estimados + Citas */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 overflow-visible`} style={{ minHeight: '220px' }}>
+
+          {/* Mini Próximas Acciones */}
+          <Card title="Próximas Acciones" icon={Zap} link="/estimates" linkLabel="Ver todas" className="h-full">
+            {loading ? <Empty text="Cargando…" /> : (() => {
+              const all = buildActions({ estimates: allEstimates, invoices: allInvoices, workOrders: allWorkOrders });
+              if (all.length === 0) return <Empty text="Sin acciones" />;
+              return (
+                <div className="px-4 py-3 space-y-2">
+                  {all.slice(0, 3).map(a => {
+                    const groupCfg = GROUP_CFG[a.group];
+                    return (
+                      <Link key={a.id} to={a.link} className="flex items-start gap-1.5 group">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${groupCfg.dot}`} />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-slate-700 truncate">{a.group} · <span className="text-slate-400 font-normal">{a.sub}</span></p>
+                          <p className="text-[10px] text-slate-400 truncate">{a.label}</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </Card>
 
           {/* Work Orders */}
-          <Card title="Work Orders" icon={ClipboardList} link="/work-orders" className="h-full">
+          <Card title="Work Orders" icon={ClipboardList} link="/work-orders" linkLabel="Ver →" className="h-full">
             {loading ? <Empty text="Cargando…" />
               : activeWorkOrders.length === 0 ? <Empty text="Sin work orders activos" sub="No hay jobs en curso" />
-              : activeWorkOrders.map(wo => {
+              : activeWorkOrders.slice(0, 4).map(wo => {
                 const isUnassigned = !wo.assigned_worker_name;
                 const isOverdue = wo.scheduled_date && wo.scheduled_date < format(new Date(), 'yyyy-MM-dd');
                 return (
                   <div key={wo.id} className="group">
                     <Row>
-                      <div className="flex items-center justify-between gap-2">
-                        <Link to={`/work-orders/${wo.id}`} className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-slate-700 truncate leading-tight">
-                            <span className="text-blue-600 font-bold">#{wo.work_order_number}</span> {wo.client_name}
-                          </p>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            {isUnassigned && <span className="text-[8px] font-semibold px-1 py-px rounded bg-amber-50 text-amber-600 border border-amber-200">Sin asignar</span>}
-                            {isOverdue && <span className="text-[8px] font-semibold px-1 py-px rounded bg-red-50 text-red-500 border border-red-200">Vencido</span>}
-                            {!isUnassigned && !isOverdue && <span className="text-[10px] text-slate-400 truncate">{wo.title}</span>}
-                          </div>
-                        </Link>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <StatusBadge status={wo.status} />
-                          <Link to={`/work-orders/${wo.id}`} className="opacity-0 group-hover:opacity-100 text-[9px] font-semibold px-1.5 py-px rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap">
-                            Abrir →
-                          </Link>
+                      <Link to={`/work-orders/${wo.id}`} className="block">
+                        <p className="text-xs font-semibold text-slate-700 truncate leading-tight">
+                          <span className="text-blue-600 font-bold">#{wo.work_order_number}</span> {wo.client_name}
+                        </p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {isUnassigned && <span className="text-[8px] font-semibold px-1 py-px rounded bg-amber-50 text-amber-600 border border-amber-200">Sin asignar</span>}
+                          {isOverdue && <span className="text-[8px] font-semibold px-1 py-px rounded bg-red-50 text-red-500 border border-red-200">Vencido</span>}
+                          {!isUnassigned && !isOverdue && <span className="text-[10px] text-slate-400 truncate">{wo.title}</span>}
                         </div>
-                      </div>
+                      </Link>
                     </Row>
                   </div>
                 );
@@ -567,35 +636,28 @@ export default function Dashboard() {
           </Card>
 
           {/* Estimados */}
-          <Card title="Estimados Recientes" icon={FileText} link="/estimates" className="h-full">
+          <Card title="Estimados" icon={FileText} link="/estimates" linkLabel="Ver todas" className="h-full">
             {loading ? <Empty text="Cargando…" />
-              : recentEstimates.length === 0 ? <Empty text="Sin estimados recientes" sub="Crea tu primer estimado" />
-              : recentEstimates.map(est => {
+              : recentEstimates.length === 0 ? <Empty text="Sin citas hoy" sub="No hay appointments programados" />
+              : recentEstimates.slice(0, 4).map(est => {
                 const needsFollowUp = ['sent','viewed'].includes(est.status) && est.sent_at && new Date(est.sent_at) < new Date(Date.now() - 5*24*60*60*1000);
                 const needsAction = est.status === 'changes_requested';
                 const isWon = ['approved','signed'].includes(est.status);
                 const ctaLabel = needsFollowUp ? 'Follow-up' : needsAction ? 'Revisar' : isWon ? 'Convertir' : 'Abrir';
-                const ctaColor = needsFollowUp ? 'bg-amber-50 text-amber-600 border-amber-200'
-                  : needsAction ? 'bg-orange-50 text-orange-600 border-orange-200'
-                  : isWon ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                  : 'bg-slate-50 text-slate-500 border-slate-200';
+                const ctaColor = needsFollowUp ? 'bg-amber-50 text-amber-600 border-amber-200' : needsAction ? 'bg-orange-50 text-orange-600 border-orange-200' : isWon ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200';
                 return (
                   <div key={est.id} className="group">
                     <Row>
                       <div className="flex items-center justify-between gap-2">
-                        <Link to={`/estimate-editor?id=${est.id}`} className="min-w-0 flex-1 flex items-center gap-1.5">
-                          <span className="text-[9px] font-bold text-amber-500 flex-shrink-0">#{est.estimate_number}</span>
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-slate-700 truncate leading-tight">{est.client_name}</p>
-                            <p className="text-[10px] text-slate-400 tabular-nums">${(est.total||0).toLocaleString()}</p>
-                          </div>
+                        <Link to={`/estimate-editor?id=${est.id}`} className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-700 truncate leading-tight">
+                            <span className="text-[9px] font-bold text-amber-500">#{est.estimate_number}</span> {est.client_name}
+                          </p>
+                          <p className="text-[10px] text-slate-400">${(est.total||0).toLocaleString()}</p>
                         </Link>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <StatusBadge status={est.status} />
-                          <Link to={`/estimate-editor?id=${est.id}`} className={`text-[9px] font-semibold px-1.5 py-px rounded border transition-all whitespace-nowrap ${ctaColor} ${(needsFollowUp || needsAction || isWon) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                            {ctaLabel} →
-                          </Link>
-                        </div>
+                        <Link to={`/estimate-editor?id=${est.id}`} className={`text-[9px] font-semibold px-1.5 py-px rounded border flex-shrink-0 ${ctaColor} ${(needsFollowUp || needsAction || isWon) ? '' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                          {ctaLabel} →
+                        </Link>
                       </div>
                     </Row>
                   </div>
@@ -605,7 +667,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Citas de Hoy */}
-          <Card title="Citas de Hoy" icon={Calendar} link="/appointments" className="h-full">
+          <Card title="Citas de Hoy" icon={Calendar} link="/appointments" linkLabel="Ver →" className="h-full">
             {loading ? <Empty text="Cargando…" />
               : todayAppointments.length === 0 ? <Empty text="Sin citas hoy" sub="No hay appointments programados" />
               : todayAppointments.map(appt => (
