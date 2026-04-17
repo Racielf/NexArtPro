@@ -25,7 +25,7 @@ const ROW_H = 'h-[240px]';
 /* Panel shell */
 function Panel({ title, headerBg, icon: Icon, link, children, bodyClass = '' }) {
   return (
-    <div className="flex flex-col h-full bg-white border border-slate-200 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-200 overflow-hidden">
+    <div className="flex flex-col h-full bg-white border border-slate-200 rounded-xl shadow-[0_2px_6px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_18px_rgba(0,0,0,0.13)] transition-all duration-200 overflow-hidden">
       {/* Colored header */}
       <div className={`flex items-center justify-between px-4 py-2 flex-shrink-0 border-b border-black/10 ${headerBg}`}>
         <div className="flex items-center gap-2">
