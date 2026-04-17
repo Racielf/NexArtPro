@@ -14,29 +14,31 @@ import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 /* ════════════════════════════════════════════════════════════════
-   DESIGN TOKENS
+   DESIGN TOKENS  — light / professional
    ════════════════════════════════════════════════════════════════ */
-const PANEL_BG   = 'bg-[#0f1c2e]';
-const PANEL_BDR  = 'border border-[#1e3a5f]/70';
-const ROW_H      = 'h-[240px]'; // uniform height for all rows
+const ROW_H = 'h-[240px]';
 
 /* ════════════════════════════════════════════════════════════════
    SHARED MICRO-COMPONENTS
    ════════════════════════════════════════════════════════════════ */
 
-/* Panel shell — header + scrollable body */
-function Panel({ title, accent, icon: Icon, iconCls, link, children, bodyClass = '' }) {
+/* Panel shell */
+function Panel({ title, accentColor, icon: Icon, link, children, bodyClass = '' }) {
   return (
-    <div className={`flex flex-col h-full ${PANEL_BG} ${PANEL_BDR} rounded-lg overflow-hidden`}>
+    <div className="flex flex-col h-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
       {/* Header */}
-      <div className={`flex items-center justify-between px-3 py-[7px] flex-shrink-0 ${accent}`}>
-        <div className="flex items-center gap-1.5">
-          {Icon && <Icon className={`w-3 h-3 ${iconCls}`} />}
-          <span className="text-[10px] font-black text-white uppercase tracking-[0.12em]">{title}</span>
+      <div className="flex items-center justify-between px-3 py-2 flex-shrink-0 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          {Icon && (
+            <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0" style={{ background: accentColor + '18' }}>
+              <Icon className="w-3 h-3" style={{ color: accentColor }} />
+            </div>
+          )}
+          <span className="text-[11px] font-bold text-slate-700 tracking-wide">{title}</span>
         </div>
         {link && (
-          <Link to={link} className="text-[9px] text-white/40 hover:text-white font-bold flex items-center gap-0.5 transition-colors">
-            Ver <ArrowRight className="w-2 h-2" />
+          <Link to={link} className="text-[10px] text-slate-400 hover:text-slate-700 font-semibold flex items-center gap-0.5 transition-colors">
+            Ver <ArrowRight className="w-2.5 h-2.5" />
           </Link>
         )}
       </div>
@@ -51,7 +53,7 @@ function Panel({ title, accent, icon: Icon, iconCls, link, children, bodyClass =
 /* List row */
 function Row({ children }) {
   return (
-    <div className="px-3 py-[6px] border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+    <div className="px-3 py-[7px] border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
       {children}
     </div>
   );
@@ -59,24 +61,24 @@ function Row({ children }) {
 
 /* Empty state */
 function Empty({ text }) {
-  return <div className="flex items-center justify-center h-full text-[10px] text-slate-600">{text}</div>;
+  return <div className="flex items-center justify-center h-full text-[11px] text-slate-400">{text}</div>;
 }
 
 /* KPI chip in header */
 function KpiChip({ label, value, dot, loading }) {
   return (
-    <div className="flex items-center gap-1.5 px-2.5 py-[5px] bg-[#0f1c2e] border border-[#1e3a5f]/70 rounded-md flex-shrink-0">
+    <div className="flex items-center gap-1.5 px-2.5 py-[5px] bg-white border border-slate-200 rounded-lg flex-shrink-0 shadow-sm">
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
       <div className="leading-none">
-        <div className="text-[8px] text-slate-600 uppercase tracking-wider">{label}</div>
-        <div className="text-[13px] font-black text-white tabular-nums leading-tight">{loading ? '—' : value}</div>
+        <div className="text-[8px] text-slate-400 uppercase tracking-wider">{label}</div>
+        <div className="text-[13px] font-bold text-slate-800 tabular-nums leading-tight">{loading ? '—' : value}</div>
       </div>
     </div>
   );
 }
 
 /* ════════════════════════════════════════════════════════════════
-   DIGITAL CLOCK
+   DIGITAL CLOCK  — light version
    ════════════════════════════════════════════════════════════════ */
 function DigitalClock() {
   const [now, setNow] = useState(new Date());
@@ -92,30 +94,30 @@ function DigitalClock() {
   const ss = String(now.getSeconds()).padStart(2, '0');
   const dateStr = now.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   return (
-    <div className="w-full bg-sidebar flex items-center justify-center gap-4 py-2.5 border-b border-sidebar-border select-none">
+    <div className="w-full bg-white flex items-center justify-center gap-4 py-2 border-b border-slate-200 select-none">
       <div className="flex items-end gap-1 tabular-nums leading-none">
-        <span className="text-4xl font-black text-white" style={{ letterSpacing: '-1.5px' }}>
-          {hh}<span className="text-sidebar-primary animate-pulse">:</span>{mm}
+        <span className="text-3xl font-black text-slate-800" style={{ letterSpacing: '-1px' }}>
+          {hh}<span className="text-blue-500">:</span>{mm}
         </span>
         <div className="flex flex-col mb-0.5 ml-1 gap-0">
-          <span className="text-sm font-black text-sidebar-primary leading-none">{ampm}</span>
-          <span className="text-base font-bold text-slate-500 tabular-nums leading-none">{ss}</span>
+          <span className="text-sm font-bold text-blue-500 leading-none">{ampm}</span>
+          <span className="text-sm font-semibold text-slate-400 tabular-nums leading-none">{ss}</span>
         </div>
       </div>
-      <div className="w-px h-8 bg-slate-700" />
-      <p className="text-[10px] text-slate-500 capitalize">{dateStr}</p>
+      <div className="w-px h-6 bg-slate-200" />
+      <p className="text-[10px] text-slate-400 capitalize">{dateStr}</p>
     </div>
   );
 }
 
 /* ════════════════════════════════════════════════════════════════
-   ROW 1 PANELS — fixed height PANEL_H1
+   ROW 1 PANELS
    ════════════════════════════════════════════════════════════════ */
 
-/* 1A · Sales Funnel — with inline KPI mini-stats */
+/* 1A · Sales Funnel */
 function SalesFunnel({ counts = {}, kpis = {}, loading }) {
   const STAGES = [
-    { key: 'leads',     label: 'Leads',     bar: '#64748b', link: '/leads' },
+    { key: 'leads',     label: 'Leads',     bar: '#94a3b8', link: '/leads' },
     { key: 'estimates', label: 'Estimates', bar: '#3b82f6', link: '/estimates' },
     { key: 'approved',  label: 'Approved',  bar: '#8b5cf6', link: '/estimates' },
     { key: 'jobs',      label: 'Jobs',      bar: '#f59e0b', link: '/work-orders' },
@@ -123,34 +125,34 @@ function SalesFunnel({ counts = {}, kpis = {}, loading }) {
   ];
   const max = Math.max(1, ...STAGES.map(s => counts[s.key] || 0));
   return (
-    <Panel title="Sales Funnel" accent="bg-violet-800" icon={TrendingUp} iconCls="text-violet-300">
+    <Panel title="Sales Funnel" accentColor="#8b5cf6" icon={TrendingUp}>
       {/* 3 mini KPI stats */}
-      <div className="grid grid-cols-3 divide-x divide-white/5 border-b border-white/5">
+      <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
         {[
           { l: 'Ingresos', v: `$${((kpis.monthRevenue||0)/1000).toFixed(1)}k`, hex: '#10b981' },
           { l: 'Activos',  v: kpis.activeJobs ?? 0,                             hex: '#3b82f6' },
           { l: 'Aprob.',   v: `${kpis.approvalRate ?? 0}%`,                     hex: '#8b5cf6' },
         ].map(k => (
-          <div key={k.l} className="px-2 py-2 flex flex-col">
-            <span className="text-[8px] text-slate-600 uppercase tracking-widest leading-none">{k.l}</span>
-            <span className="text-[15px] font-black tabular-nums leading-tight mt-0.5" style={{ color: k.hex }}>
+          <div key={k.l} className="px-2.5 py-2 flex flex-col">
+            <span className="text-[8px] text-slate-400 uppercase tracking-widest leading-none">{k.l}</span>
+            <span className="text-[15px] font-bold tabular-nums leading-tight mt-0.5" style={{ color: k.hex }}>
               {loading ? '—' : k.v}
             </span>
           </div>
         ))}
       </div>
       {/* Funnel bars */}
-      <div className="px-3 py-2 space-y-1.5">
+      <div className="px-3 py-2.5 space-y-2">
         {STAGES.map(s => {
           const count = counts[s.key] || 0;
           const pct = max > 0 ? Math.max(3, Math.round((count / max) * 100)) : 3;
           return (
             <Link key={s.key} to={s.link} className="flex items-center gap-2 group">
-              <span className="text-[9px] font-bold text-slate-500 w-14 flex-shrink-0 group-hover:text-slate-300 transition-colors">{s.label}</span>
-              <div className="flex-1 h-3.5 bg-slate-800 rounded overflow-hidden">
-                <div className="h-full rounded transition-all duration-500" style={{ width: `${pct}%`, background: s.bar, opacity: 0.85 }} />
+              <span className="text-[9px] font-semibold text-slate-400 w-14 flex-shrink-0 group-hover:text-slate-600 transition-colors">{s.label}</span>
+              <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: s.bar, opacity: 0.8 }} />
               </div>
-              <span className="text-[10px] font-black tabular-nums w-5 text-right" style={{ color: s.bar }}>
+              <span className="text-[10px] font-bold tabular-nums w-5 text-right" style={{ color: s.bar }}>
                 {loading ? '—' : count}
               </span>
             </Link>
@@ -181,9 +183,9 @@ function buildMonthlyData(invoices) {
 const RevTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-slate-900 text-white text-[10px] rounded px-2 py-1.5 shadow-xl border border-slate-700">
-      <p className="font-semibold text-slate-300">{label}</p>
-      <p className="text-emerald-400 font-black">${payload[0].value.toLocaleString()}</p>
+    <div className="bg-white text-slate-800 text-[10px] rounded-lg px-2.5 py-1.5 shadow-lg border border-slate-200">
+      <p className="font-semibold text-slate-500">{label}</p>
+      <p className="text-emerald-600 font-bold">${payload[0].value.toLocaleString()}</p>
     </div>
   );
 };
@@ -191,30 +193,30 @@ function RevenueChart({ invoices = [], loading, monthRevenue = 0, outstanding = 
   const data = buildMonthlyData(invoices);
   const maxVal = Math.max(...data.map(d => d.revenue), 1);
   return (
-    <Panel title="Ingresos — 6 Meses" accent="bg-emerald-800" icon={DollarSign} iconCls="text-emerald-300">
+    <Panel title="Ingresos — 6 Meses" accentColor="#10b981" icon={DollarSign}>
       {/* Totals strip */}
-      <div className="grid grid-cols-2 divide-x divide-white/5 border-b border-white/5">
+      <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
         <div className="px-3 py-2">
-          <span className="text-[8px] text-slate-600 uppercase tracking-widest block">Este Mes</span>
-          <span className="text-[15px] font-black text-emerald-400 tabular-nums leading-tight">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
+          <span className="text-[8px] text-slate-400 uppercase tracking-widest block">Este Mes</span>
+          <span className="text-[15px] font-bold text-emerald-600 tabular-nums leading-tight">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
         </div>
         <div className="px-3 py-2">
-          <span className="text-[8px] text-slate-600 uppercase tracking-widest block">Por Cobrar</span>
-          <span className="text-[15px] font-black text-red-400 tabular-nums leading-tight">{loading ? '—' : `$${(outstanding||0).toLocaleString()}`}</span>
+          <span className="text-[8px] text-slate-400 uppercase tracking-widest block">Por Cobrar</span>
+          <span className="text-[15px] font-bold text-red-500 tabular-nums leading-tight">{loading ? '—' : `$${(outstanding||0).toLocaleString()}`}</span>
         </div>
       </div>
-      {/* Chart fills remaining space */}
+      {/* Chart */}
       <div className="px-1 pt-1 pb-0" style={{ height: 'calc(100% - 48px)' }}>
         {loading
-          ? <div className="flex items-center justify-center h-full text-[10px] text-slate-600">Cargando…</div>
+          ? <div className="flex items-center justify-center h-full text-[11px] text-slate-400">Cargando…</div>
           : <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 2, right: 4, left: -18, bottom: 0 }} barSize={20}>
-                <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#475569', fontWeight: 700 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 8, fill: '#334155' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
-                <Tooltip content={<RevTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                <Bar dataKey="revenue" radius={[3,3,0,0]}>
+              <BarChart data={data} margin={{ top: 4, right: 6, left: -14, bottom: 0 }} barSize={20}>
+                <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 8, fill: '#cbd5e1' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
+                <Tooltip content={<RevTooltip />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
+                <Bar dataKey="revenue" radius={[4,4,0,0]}>
                   {data.map((entry, idx) => (
-                    <Cell key={idx} fill={entry.revenue === maxVal ? '#10b981' : '#1d4ed8'} fillOpacity={0.85} />
+                    <Cell key={idx} fill={entry.revenue === maxVal ? '#10b981' : '#3b82f6'} fillOpacity={0.85} />
                   ))}
                 </Bar>
               </BarChart>
@@ -227,10 +229,10 @@ function RevenueChart({ invoices = [], loading, monthRevenue = 0, outstanding = 
 
 /* 1C · Job Pipeline */
 const JP_STAGES = [
-  { key: 'scheduled',   label: 'Scheduled',   icon: HardHat,      hex: '#3b82f6' },
-  { key: 'on_the_way',  label: 'On My Way',   icon: Navigation2,  hex: '#f59e0b' },
-  { key: 'in_progress', label: 'In Progress', icon: Wrench,       hex: '#8b5cf6' },
-  { key: 'completed',   label: 'Completed',   icon: CheckCircle2, hex: '#10b981' },
+  { key: 'scheduled',   label: 'Scheduled',   icon: HardHat,      hex: '#3b82f6', bg: '#eff6ff' },
+  { key: 'on_the_way',  label: 'On My Way',   icon: Navigation2,  hex: '#f59e0b', bg: '#fffbeb' },
+  { key: 'in_progress', label: 'In Progress', icon: Wrench,       hex: '#8b5cf6', bg: '#f5f3ff' },
+  { key: 'completed',   label: 'Completed',   icon: CheckCircle2, hex: '#10b981', bg: '#f0fdf4' },
 ];
 function JobPipeline({ workOrders = [], loading }) {
   const counts = {
@@ -240,17 +242,17 @@ function JobPipeline({ workOrders = [], loading }) {
     completed:   workOrders.filter(w => w.status === 'completed').length,
   };
   return (
-    <Panel title="Job Pipeline" accent="bg-amber-700" icon={Wrench} iconCls="text-amber-200" link="/work-orders" bodyClass="grid grid-cols-2 divide-x divide-y divide-white/5">
+    <Panel title="Job Pipeline" accentColor="#f59e0b" icon={Wrench} link="/work-orders" bodyClass="grid grid-cols-2 divide-x divide-y divide-slate-100">
       {JP_STAGES.map(s => {
         const Icon = s.icon;
         return (
-          <Link key={s.key} to="/work-orders" className="flex items-center gap-2 px-3 py-3 hover:bg-white/5 transition-colors">
-            <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: s.hex + '22', border: `1px solid ${s.hex}44` }}>
-              <Icon className="w-3.5 h-3.5" style={{ color: s.hex }} />
+          <Link key={s.key} to="/work-orders" className="flex items-center gap-2.5 px-3 py-3 hover:bg-slate-50 transition-colors">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg, border: `1px solid ${s.hex}30` }}>
+              <Icon className="w-4 h-4" style={{ color: s.hex }} />
             </div>
             <div>
-              <p className="text-xl font-black tabular-nums leading-none text-white">{loading ? '—' : counts[s.key] || 0}</p>
-              <p className="text-[9px] font-semibold text-slate-500 leading-tight mt-0.5">{s.label}</p>
+              <p className="text-xl font-bold tabular-nums leading-none text-slate-800">{loading ? '—' : counts[s.key] || 0}</p>
+              <p className="text-[9px] font-medium text-slate-400 leading-tight mt-0.5">{s.label}</p>
             </div>
           </Link>
         );
@@ -264,39 +266,39 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
   const alerts = [];
   if (!loading) {
     const overdue = invoices.filter(i => i.status === 'overdue');
-    if (overdue.length) alerts.push({ icon: FileX, hex: '#ef4444', title: `${overdue.length} factura${overdue.length > 1 ? 's' : ''} vencida${overdue.length > 1 ? 's' : ''}`, desc: `$${overdue.reduce((s,i) => s+(i.total||0)-(i.amount_paid||0),0).toLocaleString()} pendiente`, link: '/invoices', badge: overdue.length });
+    if (overdue.length) alerts.push({ icon: FileX, hex: '#ef4444', bg: '#fef2f2', title: `${overdue.length} factura${overdue.length > 1 ? 's' : ''} vencida${overdue.length > 1 ? 's' : ''}`, desc: `$${overdue.reduce((s,i) => s+(i.total||0)-(i.amount_paid||0),0).toLocaleString()} pendiente`, link: '/invoices', badge: overdue.length });
     const sevenAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
     const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at < sevenAgo);
-    if (stale.length) alerts.push({ icon: Clock, hex: '#f59e0b', title: `${stale.length} estimado${stale.length>1?'s':''} sin respuesta`, desc: 'Enviado hace +7 días', link: '/estimates', badge: stale.length });
+    if (stale.length) alerts.push({ icon: Clock, hex: '#f59e0b', bg: '#fffbeb', title: `${stale.length} estimado${stale.length>1?'s':''} sin respuesta`, desc: 'Enviado hace +7 días', link: '/estimates', badge: stale.length });
     const changes = estimates.filter(e => e.status === 'changes_requested');
-    if (changes.length) alerts.push({ icon: AlertTriangle, hex: '#f97316', title: `${changes.length} cambio${changes.length>1?'s':''} solicitado${changes.length>1?'s':''}`, desc: 'El cliente pidió revisiones', link: '/estimates', badge: changes.length });
+    if (changes.length) alerts.push({ icon: AlertTriangle, hex: '#f97316', bg: '#fff7ed', title: `${changes.length} cambio${changes.length>1?'s':''} solicitado${changes.length>1?'s':''}`, desc: 'El cliente pidió revisiones', link: '/estimates', badge: changes.length });
     const declined = estimates.filter(e => e.status === 'declined');
-    if (declined.length) alerts.push({ icon: TrendingDown, hex: '#64748b', title: `${declined.length} estimado${declined.length>1?'s':''} rechazado${declined.length>1?'s':''}`, desc: 'Revisar precio o alcance', link: '/estimates', badge: declined.length });
+    if (declined.length) alerts.push({ icon: TrendingDown, hex: '#64748b', bg: '#f8fafc', title: `${declined.length} estimado${declined.length>1?'s':''} rechazado${declined.length>1?'s':''}`, desc: 'Revisar precio o alcance', link: '/estimates', badge: declined.length });
     const approved = estimates.filter(e => ['approved','signed'].includes(e.status));
-    if (approved.length) alerts.push({ icon: Bell, hex: '#8b5cf6', title: `${approved.length} aprobado${approved.length>1?'s':''} sin convertir`, desc: 'Convertir a Work Order', link: '/estimates', badge: approved.length });
+    if (approved.length) alerts.push({ icon: Bell, hex: '#8b5cf6', bg: '#f5f3ff', title: `${approved.length} aprobado${approved.length>1?'s':''} sin convertir`, desc: 'Convertir a Work Order', link: '/estimates', badge: approved.length });
   }
   const visible = alerts.slice(0, 4);
   return (
-    <Panel title={`Alertas${alerts.length > 0 ? ` (${alerts.length})` : ''}`} accent="bg-red-900" icon={Bell} iconCls="text-red-300">
+    <Panel title={`Alertas${alerts.length > 0 ? ` (${alerts.length})` : ''}`} accentColor="#ef4444" icon={Bell}>
       {loading
         ? <Empty text="Cargando…" />
         : alerts.length === 0
-          ? <div className="flex flex-col items-center justify-center h-full gap-1">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span className="text-[10px] text-slate-600">Sin alertas activas</span>
+          ? <div className="flex flex-col items-center justify-center h-full gap-1.5">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              <span className="text-[11px] text-slate-400">Sin alertas activas</span>
             </div>
           : visible.map((a, i) => {
               const Icon = a.icon;
               return (
-                <Link key={i} to={a.link} className="flex items-start gap-2.5 px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors group">
-                  <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: a.hex + '22' }}>
+                <Link key={i} to={a.link} className="flex items-start gap-2.5 px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors group">
+                  <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: a.bg, border: `1px solid ${a.hex}25` }}>
                     <Icon className="w-3 h-3" style={{ color: a.hex }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold text-slate-300 leading-tight">{a.title}</p>
-                    <p className="text-[9px] text-slate-600 mt-0.5 leading-snug">{a.desc}</p>
+                    <p className="text-[10px] font-semibold text-slate-700 leading-tight">{a.title}</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 leading-snug">{a.desc}</p>
                   </div>
-                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: a.hex + '22', color: a.hex }}>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: a.bg, color: a.hex, border: `1px solid ${a.hex}30` }}>
                     {a.badge}
                   </span>
                 </Link>
@@ -360,18 +362,18 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070e1a] flex flex-col">
+    <div className="min-h-screen bg-slate-100 flex flex-col">
 
       {/* ── RELOJ ─────────────────────────────────────────────────────── */}
       <DigitalClock />
 
-      {/* ── HEADER BANDA ──────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-50 bg-[#0a1628] border-b border-[#1e3a5f]/80 px-4 py-1.5">
+      {/* ── HEADER ────────────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-2 shadow-sm">
         <div className="max-w-screen-2xl mx-auto flex items-center gap-3">
           {/* Brand */}
-          <div className="border-r border-slate-800 pr-3 flex-shrink-0">
-            <h1 className="text-[13px] font-black text-white leading-none">RC Art Contractors</h1>
-            <p className="text-[9px] text-slate-600 mt-0.5">Control Center · {format(new Date(), 'EEE MMM d, yyyy')}</p>
+          <div className="border-r border-slate-200 pr-3 flex-shrink-0">
+            <h1 className="text-[13px] font-bold text-slate-800 leading-none">RC Art Contractors</h1>
+            <p className="text-[9px] text-slate-400 mt-0.5">Control Center · {format(new Date(), 'EEE MMM d, yyyy')}</p>
           </div>
           {/* KPI strip */}
           <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-none py-0.5">
@@ -383,25 +385,25 @@ export default function Dashboard() {
             <KpiChip label="Aprobación"     value={`${kpis.approvalRate ?? 0}%`}                  dot="#06b6d4" loading={loading} />
           </div>
           {/* Actions */}
-          <div className="flex gap-1 flex-shrink-0">
-            <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-[9px] border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white">
-              <Link to="/appointments"><Plus className="w-2.5 h-2.5 mr-0.5" />Cita</Link>
+          <div className="flex gap-1.5 flex-shrink-0">
+            <Button asChild variant="outline" size="sm" className="h-7 px-2.5 text-[10px] text-slate-600 border-slate-200 hover:bg-slate-50">
+              <Link to="/appointments"><Plus className="w-3 h-3 mr-0.5" />Cita</Link>
             </Button>
-            <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-[9px] border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white">
-              <Link to="/work-orders"><Plus className="w-2.5 h-2.5 mr-0.5" />WO</Link>
+            <Button asChild variant="outline" size="sm" className="h-7 px-2.5 text-[10px] text-slate-600 border-slate-200 hover:bg-slate-50">
+              <Link to="/work-orders"><Plus className="w-3 h-3 mr-0.5" />WO</Link>
             </Button>
-            <Button asChild size="sm" className="h-6 px-2.5 text-[9px] bg-blue-700 hover:bg-blue-600 text-white border-0">
-              <Link to="/estimates"><Plus className="w-2.5 h-2.5 mr-0.5" />Estimate</Link>
+            <Button asChild size="sm" className="h-7 px-3 text-[10px] bg-blue-600 hover:bg-blue-700 text-white border-0">
+              <Link to="/estimates"><Plus className="w-3 h-3 mr-0.5" />Estimate</Link>
             </Button>
           </div>
         </div>
       </div>
 
       {/* ── MAIN GRID ─────────────────────────────────────────────────── */}
-      <div className="flex-1 max-w-screen-2xl mx-auto w-full px-3 py-2 flex flex-col gap-2">
+      <div className="flex-1 max-w-screen-2xl mx-auto w-full px-3 py-3 flex flex-col gap-3">
 
         {/* ▸ ROW 1: Analytics panels */}
-        <div className={`grid grid-cols-4 gap-2 ${ROW_H}`}>
+        <div className={`grid grid-cols-4 gap-3 ${ROW_H}`}>
           <SalesFunnel counts={funnelCounts} kpis={kpis} loading={loading} />
           <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} />
           <JobPipeline workOrders={allWorkOrders} loading={loading} />
@@ -409,10 +411,10 @@ export default function Dashboard() {
         </div>
 
         {/* ▸ ROW 2: List panels */}
-        <div className={`grid grid-cols-4 gap-2 ${ROW_H}`}>
+        <div className={`grid grid-cols-4 gap-3 ${ROW_H}`}>
 
           {/* Citas de Hoy */}
-          <Panel title="Citas de Hoy" accent="bg-blue-900" icon={Calendar} iconCls="text-blue-300" link="/appointments">
+          <Panel title="Citas de Hoy" accentColor="#3b82f6" icon={Calendar} link="/appointments">
             {loading ? <Empty text="Cargando…" />
               : todayAppointments.length === 0 ? <Empty text="Sin citas hoy" />
               : todayAppointments.map(appt => (
@@ -420,8 +422,8 @@ export default function Dashboard() {
                   <Row>
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-semibold text-slate-300 truncate leading-tight">{appt.customer_display_name || appt.client_name}</p>
-                        <p className="text-[9px] text-slate-600">{appt.start_time || '—'}</p>
+                        <p className="text-[10px] font-semibold text-slate-700 truncate leading-tight">{appt.customer_display_name || appt.client_name}</p>
+                        <p className="text-[9px] text-slate-400">{appt.start_time || '—'}</p>
                       </div>
                       <StatusBadge status={appt.status} />
                     </div>
@@ -432,7 +434,7 @@ export default function Dashboard() {
           </Panel>
 
           {/* Work Orders Activos */}
-          <Panel title="Work Orders" accent="bg-violet-900" icon={ClipboardList} iconCls="text-violet-300" link="/work-orders">
+          <Panel title="Work Orders" accentColor="#8b5cf6" icon={ClipboardList} link="/work-orders">
             {loading ? <Empty text="Cargando…" />
               : activeWorkOrders.length === 0 ? <Empty text="Sin work orders activos" />
               : activeWorkOrders.map(wo => (
@@ -440,10 +442,10 @@ export default function Dashboard() {
                   <Row>
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-semibold text-slate-300 truncate leading-tight">
-                          <span className="text-violet-400 font-black">#{wo.work_order_number}</span> {wo.client_name}
+                        <p className="text-[10px] font-semibold text-slate-700 truncate leading-tight">
+                          <span className="text-violet-600 font-bold">#{wo.work_order_number}</span> {wo.client_name}
                         </p>
-                        <p className="text-[9px] text-slate-600 truncate">{wo.title}</p>
+                        <p className="text-[9px] text-slate-400 truncate">{wo.title}</p>
                       </div>
                       <StatusBadge status={wo.status} />
                     </div>
@@ -454,7 +456,7 @@ export default function Dashboard() {
           </Panel>
 
           {/* Estimados Recientes */}
-          <Panel title="Estimados Recientes" accent="bg-amber-900" icon={FileText} iconCls="text-amber-300" link="/estimates">
+          <Panel title="Estimados Recientes" accentColor="#f59e0b" icon={FileText} link="/estimates">
             {loading ? <Empty text="Cargando…" />
               : recentEstimates.length === 0 ? <Empty text="Sin estimados" />
               : recentEstimates.map(est => (
@@ -462,10 +464,10 @@ export default function Dashboard() {
                   <Row>
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex items-center gap-1.5">
-                        <span className="text-[9px] font-black text-amber-500 flex-shrink-0">#{est.estimate_number}</span>
+                        <span className="text-[9px] font-bold text-amber-500 flex-shrink-0">#{est.estimate_number}</span>
                         <div className="min-w-0">
-                          <p className="text-[10px] font-semibold text-slate-300 truncate leading-tight">{est.client_name}</p>
-                          <p className="text-[9px] text-slate-600 tabular-nums">${(est.total||0).toLocaleString()}</p>
+                          <p className="text-[10px] font-semibold text-slate-700 truncate leading-tight">{est.client_name}</p>
+                          <p className="text-[9px] text-slate-400 tabular-nums">${(est.total||0).toLocaleString()}</p>
                         </div>
                       </div>
                       <StatusBadge status={est.status} />
@@ -477,7 +479,7 @@ export default function Dashboard() {
           </Panel>
 
           {/* Notificaciones */}
-          <Panel title="Notificaciones" accent="bg-slate-800" icon={Bell} iconCls="text-slate-400">
+          <Panel title="Notificaciones" accentColor="#64748b" icon={Bell}>
             <NotificationsPanel />
           </Panel>
 
