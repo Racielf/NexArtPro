@@ -111,7 +111,10 @@ function DigitalClock() {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
-  const hh = String(now.getHours()).padStart(2, '0');
+  const hours24 = now.getHours();
+  const ampm = hours24 >= 12 ? 'PM' : 'AM';
+  const hours12 = hours24 % 12 || 12;
+  const hh = String(hours12).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
   const ss = String(now.getSeconds()).padStart(2, '0');
   const dateStr = now.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -121,7 +124,10 @@ function DigitalClock() {
         <span className="text-6xl font-black text-white tracking-tight" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '-2px' }}>
           {hh}<span className="text-sidebar-primary animate-pulse">:</span>{mm}
         </span>
-        <span className="text-2xl font-bold text-slate-400 mb-1 tabular-nums">{ss}</span>
+        <div className="flex flex-col items-start mb-1 gap-0.5">
+          <span className="text-lg font-black text-sidebar-primary leading-none">{ampm}</span>
+          <span className="text-xl font-bold text-slate-400 tabular-nums leading-none">{ss}</span>
+        </div>
       </div>
       <p className="text-[12px] text-slate-400 mt-1 capitalize tracking-wide">{dateStr}</p>
     </div>
