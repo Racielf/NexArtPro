@@ -447,7 +447,19 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
   const actions = filtered.slice(0, 3);
   const totalPending = filtered.length;
 
-  // Group for display
+  // Group counts from FULL filtered list (not just visible 3)
+  const allGrouped = {};
+  filtered.forEach(a => {
+    if (!allGrouped[a.group]) allGrouped[a.group] = [];
+    allGrouped[a.group].push(a);
+  });
+
+  // "Ver todas" smart link — group with most actions wins
+  const GROUP_LINKS = { Finance: '/invoices', Operations: '/work-orders', Sales: '/estimates' };
+  const dominantGroup = Object.entries(allGrouped).sort((a, b) => b[1].length - a[1].length)[0]?.[0];
+  const verTodasLink = GROUP_LINKS[dominantGroup] ?? '/estimates';
+
+  // Group for display (only visible 3)
   const grouped = {};
   actions.forEach(a => {
     if (!grouped[a.group]) grouped[a.group] = [];
@@ -481,6 +493,9 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
               <div className="flex items-center gap-1">
                 <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${gcfg.dot}`} />
                 <span className={`text-[8px] font-bold uppercase tracking-widest ${gcfg.color}`}>{grp}</span>
+                {allGrouped[grp]?.length > 1 && (
+                  <span className={`text-[8px] font-semibold opacity-60 ${gcfg.color}`}>· {allGrouped[grp].length}</span>
+                )}
               </div>
               {grouped[grp].map(a => {
                 const Icon = a.icon;
@@ -511,8 +526,8 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
       </div>
       {totalPending > 3 && (
         <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-[9px] text-slate-400">Mostrando 3 de {totalPending} acciones</span>
-          <Link to="/estimates" className="text-[9px] font-bold text-primary hover:underline">Ver todas →</Link>
+          <span className="text-[9px] text-slate-400">3 prioritarias de {totalPending} pendientes</span>
+          <Link to={verTodasLink} className="text-[9px] font-bold text-primary hover:underline">Ver todas →</Link>
         </div>
       )}
     </div>
