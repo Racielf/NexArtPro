@@ -443,7 +443,9 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
   const [dismissed, setDismissed] = useState(new Set());
 
   const all = loading ? [] : buildActions({ estimates, invoices, workOrders });
-  const actions = all.filter(a => !dismissed.has(a.id)).slice(0, 5);
+  const filtered = all.filter(a => !dismissed.has(a.id));
+  const actions = filtered.slice(0, 3);
+  const totalPending = filtered.length;
 
   // Group for display
   const grouped = {};
@@ -469,7 +471,7 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
       <div className="flex items-center gap-2 mb-2">
         <Zap className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Próximas acciones</span>
-        <span className="ml-auto text-[9px] text-slate-400">{actions.length} pendiente{actions.length>1?'s':''}</span>
+        <span className="ml-auto text-[9px] text-slate-400">{totalPending} pendiente{totalPending>1?'s':''}</span>
       </div>
       <div className="flex flex-wrap gap-x-6 gap-y-1.5">
         {sortedGroups.map(grp => {
@@ -507,6 +509,12 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
           );
         })}
       </div>
+      {totalPending > 3 && (
+        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+          <span className="text-[9px] text-slate-400">Mostrando 3 de {totalPending} acciones</span>
+          <Link to="/estimates" className="text-[9px] font-bold text-primary hover:underline">Ver todas →</Link>
+        </div>
+      )}
     </div>
   );
 }
