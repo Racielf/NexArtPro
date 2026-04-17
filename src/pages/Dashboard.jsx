@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -105,6 +105,29 @@ function Panel({ title, icon: Icon, iconCls, accentCls, link, children, loading 
   );
 }
 
+function DigitalClock() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const dateStr = now.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  return (
+    <div className="w-full bg-sidebar flex flex-col items-center justify-center py-4 border-b border-sidebar-border select-none">
+      <div className="flex items-end gap-1 tabular-nums leading-none">
+        <span className="text-6xl font-black text-white tracking-tight" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '-2px' }}>
+          {hh}<span className="text-sidebar-primary animate-pulse">:</span>{mm}
+        </span>
+        <span className="text-2xl font-bold text-slate-400 mb-1 tabular-nums">{ss}</span>
+      </div>
+      <p className="text-[12px] text-slate-400 mt-1 capitalize tracking-wide">{dateStr}</p>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [todayAppointments, setTodayAppointments] = useState([]);
@@ -184,6 +207,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-100">
+
+      {/* ══ DIGITAL CLOCK ═══════════════════════════════════════════════ */}
+      <DigitalClock />
 
       {/* ══ HEADER ══════════════════════════════════════════════════════ */}
       <div className="sticky top-0 z-50 bg-slate-900 border-b border-slate-800 px-5 py-3">
