@@ -112,7 +112,7 @@ function DigitalClock() {
 /* ══════════════════════════════════════════════
    MONEY CONTROL — wide card, financial focus
    ══════════════════════════════════════════════ */
-function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loading }) {
+function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loading, activeJobsCount = 0 }) {
   const overdueAmt = invoices.filter(i => i.status === 'overdue').reduce((s, i) => s + Math.max((i.total || 0) - (i.amount_paid || 0), 0), 0);
   const overdueCount = invoices.filter(i => i.status === 'overdue').length;
   const fmt = v => `$${v.toLocaleString()}`;
@@ -144,7 +144,7 @@ function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loadin
           {/* Jobs Activos */}
           <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-slate-50 border border-slate-100">
             <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Jobs Activos</span>
-            <span className={`text-2xl font-bold tabular-nums leading-none text-slate-700 ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : allWorkOrders.filter(w => !['completed','invoiced','cancelled'].includes(w.status)).length}</span>
+            <span className={`text-2xl font-bold tabular-nums leading-none text-slate-700 ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : activeJobsCount}</span>
           </div>
         </div>
 
@@ -541,7 +541,7 @@ export default function Dashboard() {
         {/* ── FILA 1: Money Control (dominante col-span-2) + Revenue Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-visible" style={{ minHeight: '300px' }}>
           <div className="lg:col-span-2">
-            <MoneyControl monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} invoices={allInvoices} loading={loading} />
+            <MoneyControl monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} invoices={allInvoices} loading={loading} activeJobsCount={kpis.activeJobs||0} />
           </div>
           <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} />
         </div>
