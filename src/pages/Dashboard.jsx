@@ -119,36 +119,42 @@ function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loadin
 
   return (
     <Card title="Money Control" icon={DollarSign} className="h-full">
-      <div className="p-4 flex flex-col gap-3 h-full">
-        {/* 2x2 métricas grid */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 flex-1">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Este mes</span>
-            <span className={`text-3xl font-bold tabular-nums text-emerald-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
+      <div className="p-6 flex flex-col gap-4 h-full">
+        {/* 4 métricas — 2 grandes arriba, 2 pequeñas abajo */}
+        <div className="grid grid-cols-2 gap-6 flex-1">
+          {/* Este mes — hero metric */}
+          <div className="flex flex-col gap-1 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-600">Este mes</span>
+            <span className={`text-4xl font-black tabular-nums text-emerald-700 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
+            <span className="text-[10px] text-emerald-500 mt-0.5">ingresos cobrados</span>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Por cobrar</span>
-            <span className={`text-3xl font-bold tabular-nums text-blue-600 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
+          {/* Por cobrar */}
+          <div className="flex flex-col gap-1 p-4 rounded-xl bg-blue-50 border border-blue-100">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-blue-600">Por cobrar</span>
+            <span className={`text-4xl font-black tabular-nums text-blue-700 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
+            <span className="text-[10px] text-blue-400 mt-0.5">pendiente de cobro</span>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-              Vencido {!loading && overdueCount > 0 && <span className="text-red-400 normal-case">· {overdueCount}</span>}
+          {/* Vencido */}
+          <div className={`flex flex-col gap-0.5 p-3 rounded-lg border ${overdueAmt > 0 ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
+            <span className={`text-[9px] font-bold uppercase tracking-widest ${overdueAmt > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+              Vencido {!loading && overdueCount > 0 && <span className="normal-case font-normal">· {overdueCount}</span>}
             </span>
-            <span className={`text-3xl font-bold tabular-nums leading-none ${loading ? 'opacity-30 text-slate-300' : overdueAmt > 0 ? 'text-red-500' : 'text-slate-300'}`}>{loading ? '—' : fmt(overdueAmt)}</span>
+            <span className={`text-2xl font-bold tabular-nums leading-none ${loading ? 'opacity-30 text-slate-300' : overdueAmt > 0 ? 'text-red-600' : 'text-slate-300'}`}>{loading ? '—' : fmt(overdueAmt)}</span>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Pe-M!</span>
-            <span className="text-3xl font-bold tabular-nums leading-none text-slate-300">$0</span>
+          {/* Pe-M */}
+          <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-slate-50 border border-slate-100">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Pe-M!</span>
+            <span className="text-2xl font-bold tabular-nums leading-none text-slate-300">$0</span>
           </div>
         </div>
 
-        {/* CTA con "Ver facturas →" a la derecha */}
-        <Link to="/invoices" className="flex items-center rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all text-white text-[11px] font-bold overflow-hidden">
-          <span className="flex items-center gap-1.5 flex-1 justify-center py-2.5">
-            <DollarSign className="w-3.5 h-3.5" />
+        {/* CTA */}
+        <Link to="/invoices" className="flex items-center rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all text-white text-[12px] font-bold overflow-hidden">
+          <span className="flex items-center gap-1.5 flex-1 justify-center py-3">
+            <DollarSign className="w-4 h-4" />
             Cobrar ahora
           </span>
-          <span className="border-l border-emerald-500 px-3 py-2.5 text-[10px] text-emerald-200 hover:text-white whitespace-nowrap">
+          <span className="border-l border-emerald-500 px-4 py-3 text-[10px] text-emerald-200 hover:text-white whitespace-nowrap">
             Ver facturas →
           </span>
         </Link>
@@ -188,13 +194,24 @@ const RevTooltip = ({ active, payload, label }) => {
 function RevenueChart({ invoices = [], loading, monthRevenue = 0 }) {
   const data = buildMonthlyData(invoices);
   const maxVal = Math.max(...data.map(d => d.revenue), 1);
+  // Trend: compare current month vs previous month
+  const prevMonthRevenue = data.length >= 2 ? data[data.length - 2].revenue : 0;
+  const trendPct = prevMonthRevenue > 0 ? Math.round(((monthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100) : null;
+  const trendUp = trendPct !== null && trendPct >= 0;
   return (
     <Card title="Ingresos — 6 Meses" icon={TrendingUp} link="/invoices" linkLabel="Ver todas" className="h-full">
       <div className="px-4 pt-3 pb-2 flex flex-col h-full gap-2">
-        {/* Este Mes stat */}
-        <div>
-          <span className="text-[9px] text-slate-400 uppercase tracking-wide block">Este Mes</span>
-          <span className="text-3xl font-bold text-emerald-600 tabular-nums leading-none">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
+        {/* Este Mes stat + trend */}
+        <div className="flex items-end gap-2">
+          <div>
+            <span className="text-[9px] text-slate-400 uppercase tracking-wide block">Este Mes</span>
+            <span className="text-3xl font-bold text-emerald-600 tabular-nums leading-none">{loading ? '—' : `$${(monthRevenue||0).toLocaleString()}`}</span>
+          </div>
+          {!loading && trendPct !== null && (
+            <span className={`text-[11px] font-bold mb-0.5 px-1.5 py-0.5 rounded-md ${trendUp ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
+              {trendUp ? '▲' : '▼'} {Math.abs(trendPct)}%
+            </span>
+          )}
         </div>
         {/* Area Chart */}
         <div className="flex-1 min-h-0">
@@ -521,46 +538,61 @@ export default function Dashboard() {
       {/* CONTENT */}
       <div className="flex-1 max-w-screen-2xl mx-auto w-full px-4 py-4 flex flex-col gap-4">
 
-        {/* ── FILA 1: Money Control (izq) + Revenue Chart (der) */}
-        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 ${CARD_H} overflow-visible`}>
-          <MoneyControl monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} invoices={allInvoices} loading={loading} />
+        {/* ── FILA 1: Money Control (dominante col-span-2) + Revenue Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-visible" style={{ minHeight: '300px' }}>
+          <div className="lg:col-span-2">
+            <MoneyControl monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} invoices={allInvoices} loading={loading} />
+          </div>
           <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} />
         </div>
 
-        {/* ── FILA 2: Próximas Acciones (ancho) + Job Pipeline + Alertas */}
-        <div className={`grid grid-cols-1 xl:grid-cols-3 gap-4 overflow-visible`} style={{ minHeight: '220px' }}>
-          {/* Próximas Acciones — ocupa 1 col xl, full card */}
-          <Card title="Próximas Acciones" icon={Zap} link={null} linkLabel="" className="h-full">
-            <div className="px-4 py-3 h-full flex flex-col">
+        {/* ── FILA 2: Next Actions (col-span-2, dominante) + soporte derecha */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 overflow-visible" style={{ minHeight: '260px' }}>
+          {/* Próximas Acciones — col-span-2, foco de la fila */}
+          <Card title="Próximas Acciones" icon={Zap} link={null} linkLabel="" className="xl:col-span-2 h-full">
+            <div className="px-5 py-4 h-full flex flex-col">
               {loading
                 ? <Empty text="Cargando…" />
                 : (() => {
                     const all = buildActions({ estimates: allEstimates, invoices: allInvoices, workOrders: allWorkOrders });
                     if (all.length === 0) return (
-                      <div className="flex items-center gap-2 py-4">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span className="text-[11px] text-slate-500">All caught up — no actions</span>
+                      <div className="flex items-center gap-3 py-6 px-2">
+                        <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-600">Todo al día</p>
+                          <p className="text-[11px] text-slate-400">No hay acciones urgentes pendientes</p>
+                        </div>
                       </div>
                     );
                     return (
                       <>
-                        <p className="text-[10px] text-slate-400 mb-2">
-                          <span className="font-bold text-slate-700">{Math.min(all.length, 3)} prioritarias</span> de {all.length} pendientes
+                        <p className="text-[11px] text-slate-400 mb-3">
+                          <span className="font-bold text-slate-700">{Math.min(all.length, 4)} prioritarias</span> de {all.length} pendientes
                         </p>
-                        <div className="flex flex-col gap-1.5 flex-1">
-                          {all.slice(0, 3).map(a => {
+                        <div className="flex flex-col gap-2 flex-1">
+                          {all.slice(0, 4).map(a => {
                             const Icon = a.icon;
                             const groupCfg = GROUP_CFG[a.group];
+                            const pcfg = PRIORITY_CFG[a.priority];
                             return (
-                              <div key={a.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 last:border-0">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${groupCfg.dot}`} />
+                              <div key={a.id} className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all group/row">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-white border border-slate-200">
+                                    <Icon className={`w-3.5 h-3.5 ${a.color}`} />
+                                  </div>
                                   <div className="min-w-0">
-                                    <p className="text-[11px] font-semibold text-slate-700 truncate">{a.group} · <span className="font-normal text-slate-500">{a.sub}</span></p>
-                                    <p className="text-[10px] text-slate-400 truncate">{a.label}</p>
+                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${groupCfg.dot}`} />
+                                      <span className={`text-[9px] font-bold uppercase tracking-wider ${groupCfg.color}`}>{a.group}</span>
+                                      <span className={`text-[8px] font-bold px-1 py-px rounded border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
+                                    </div>
+                                    <p className="text-[12px] font-semibold text-slate-700 truncate leading-tight">{a.label}</p>
+                                    <p className="text-[10px] text-slate-400 truncate">{a.sub}</p>
                                   </div>
                                 </div>
-                                <Link to={a.link} className="flex-shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors whitespace-nowrap">
+                                <Link to={a.link} className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors whitespace-nowrap shadow-sm">
                                   {a.priority === 'urgent' ? 'Hacer follow-up' : a.group === 'Operations' ? 'Asignar' : 'Llamar'}
                                 </Link>
                               </div>
