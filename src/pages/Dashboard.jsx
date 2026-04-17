@@ -118,7 +118,82 @@ function DigitalClock() {
    ROW 1 PANELS
    ════════════════════════════════════════════════════════════════ */
 
-/* 1A · Sales Funnel */
+/* 1A · Money Control */
+function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loading }) {
+  const overdueAmt = invoices
+    .filter(i => i.status === 'overdue')
+    .reduce((s, i) => s + Math.max((i.total || 0) - (i.amount_paid || 0), 0), 0);
+  const overdueCount = invoices.filter(i => i.status === 'overdue').length;
+
+  const fmt = (v) => `$${v.toLocaleString()}`;
+
+  return (
+    <Panel title="Money Control" headerBg="bg-emerald-600" icon={DollarSign} link="/invoices">
+      <div className="flex flex-col h-full px-4 py-3 gap-3">
+
+        {/* 3 métricas */}
+        <div className="flex flex-col gap-2.5 flex-1">
+          {/* Cobrado este mes */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Este mes</p>
+              <p className={`text-xl font-bold tabular-nums leading-tight text-emerald-600 transition-all duration-300 ${loading ? 'opacity-30' : ''}`}>
+                {loading ? '—' : fmt(monthRevenue)}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-4 h-4 text-emerald-500" />
+            </div>
+          </div>
+
+          <div className="h-px bg-slate-100" />
+
+          {/* Por cobrar */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">Por cobrar</p>
+              <p className={`text-xl font-bold tabular-nums leading-tight text-blue-600 transition-all duration-300 ${loading ? 'opacity-30' : ''}`}>
+                {loading ? '—' : fmt(outstanding)}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+              <Clock className="w-4 h-4 text-blue-400" />
+            </div>
+          </div>
+
+          <div className="h-px bg-slate-100" />
+
+          {/* Vencido */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+                Vencido {!loading && overdueCount > 0 && <span className="text-red-400">· {overdueCount} fact.</span>}
+              </p>
+              <p className={`text-xl font-bold tabular-nums leading-tight transition-all duration-300 ${loading ? 'opacity-30 text-slate-400' : overdueAmt > 0 ? 'text-red-500' : 'text-slate-300'}`}>
+                {loading ? '—' : fmt(overdueAmt)}
+              </p>
+            </div>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${overdueAmt > 0 ? 'bg-red-50 border border-red-100' : 'bg-slate-50 border border-slate-100'}`}>
+              <FileX className={`w-4 h-4 ${overdueAmt > 0 ? 'text-red-400' : 'text-slate-300'}`} />
+            </div>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <Link
+          to="/invoices"
+          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all duration-150 text-white text-[11px] font-bold tracking-wide shadow-sm"
+        >
+          <DollarSign className="w-3.5 h-3.5" />
+          Cobrar ahora
+        </Link>
+
+      </div>
+    </Panel>
+  );
+}
+
+/* 1B · Sales Funnel */
 function SalesFunnel({ counts = {}, kpis = {}, loading }) {
   const STAGES = [
     { key: 'leads',     label: 'Leads',     bar: '#94a3b8', link: '/leads' },
@@ -175,7 +250,7 @@ function SalesFunnel({ counts = {}, kpis = {}, loading }) {
   );
 }
 
-/* 1B · Revenue 6m */
+/* 1C · Revenue 6m */
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildMonthlyData(invoices) {
   const map = {};
@@ -632,7 +707,7 @@ export default function Dashboard() {
 
         {/* ▸ ROW 1: Analytics panels */}
         <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 ${ROW_H} overflow-visible`}>
-          <SalesFunnel counts={funnelCounts} kpis={kpis} loading={loading} />
+          <MoneyControl monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} invoices={allInvoices} loading={loading} />
           <RevenueChart invoices={allInvoices} loading={loading} monthRevenue={kpis.monthRevenue||0} outstanding={kpis.outstanding||0} />
           <JobPipeline workOrders={allWorkOrders} loading={loading} />
           <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
