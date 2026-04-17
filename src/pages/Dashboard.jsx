@@ -19,15 +19,16 @@ import AlertsPanel from '@/components/dashboard/AlertsPanel';
 function KPICard({ label, value, sub, icon: Icon, color, bg, link, loading }) {
   return (
     <Link to={link}>
-      <div className="bg-white border border-border rounded-2xl p-4 hover:shadow-md hover:border-slate-200 transition-all cursor-pointer">
-        <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center mb-3`}>
-          <Icon className={`w-[15px] h-[15px] ${color}`} />
+      <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 hover:shadow-md transition-all cursor-pointer flex items-center gap-3">
+        <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center flex-shrink-0`}>
+          <Icon className={`w-4 h-4 ${color}`} />
         </div>
-        <div className="text-2xl font-bold text-foreground leading-none">
-          {loading ? <span className="text-muted-foreground/30 text-base">—</span> : value}
+        <div className="min-w-0">
+          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{label}</div>
+          <div className="text-xl font-bold text-slate-900 leading-none tabular-nums">
+            {loading ? <span className="text-slate-200">—</span> : value}
+          </div>
         </div>
-        <div className="text-[11px] font-semibold text-muted-foreground mt-1.5 leading-tight">{label}</div>
-        {sub && <div className="text-[10px] text-muted-foreground/50 mt-0.5 uppercase tracking-wide">{sub}</div>}
       </div>
     </Link>
   );
@@ -35,14 +36,14 @@ function KPICard({ label, value, sub, icon: Icon, color, bg, link, loading }) {
 
 function LoadingRows() {
   return (
-    <div className="divide-y divide-border/50">
+    <div className="divide-y divide-slate-100">
       {[1, 2, 3].map(i => (
-        <div key={i} className="px-5 py-3.5 animate-pulse flex items-center gap-3">
-          <div className="flex-1 space-y-1.5">
-            <div className="h-3 bg-muted rounded w-3/4" />
-            <div className="h-2.5 bg-muted rounded w-1/2" />
+        <div key={i} className="px-3 py-2 animate-pulse flex items-center gap-2">
+          <div className="flex-1 space-y-1">
+            <div className="h-2.5 bg-slate-100 rounded w-3/4" />
+            <div className="h-2 bg-slate-100 rounded w-1/2" />
           </div>
-          <div className="h-5 w-16 bg-muted rounded-full" />
+          <div className="h-4 w-14 bg-slate-100 rounded-full" />
         </div>
       ))}
     </div>
@@ -51,21 +52,21 @@ function LoadingRows() {
 
 function SectionList({ title, icon: Icon, iconColor, link, children, empty }) {
   return (
-    <div className="bg-white border border-border rounded-2xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-        <div className="flex items-center gap-2">
-          <Icon className={`w-4 h-4 ${iconColor}`} />
-          <span className="text-sm font-semibold text-foreground">{title}</span>
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 bg-slate-50/60">
+        <div className="flex items-center gap-1.5">
+          <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
+          <span className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">{title}</span>
         </div>
-        <Link to={link} className="text-xs text-primary flex items-center gap-0.5 hover:underline font-medium">
-          View all <ArrowRight className="w-3 h-3" />
+        <Link to={link} className="text-[10px] text-primary flex items-center gap-0.5 hover:underline font-semibold">
+          All <ArrowRight className="w-2.5 h-2.5" />
         </Link>
       </div>
-      <div className="divide-y divide-border/50 min-h-[80px]">
+      <div className="divide-y divide-slate-100">
         {children || (
-          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground/30">
-            <Icon className="w-7 h-7 mb-2" />
-            <p className="text-xs">{empty}</p>
+          <div className="flex flex-col items-center justify-center py-6 text-slate-300">
+            <Icon className="w-5 h-5 mb-1" />
+            <p className="text-[10px]">{empty}</p>
           </div>
         )}
       </div>
@@ -161,60 +162,75 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-100">
 
-      {/* ── DARK HEADER ── */}
-      <div className="bg-slate-900 px-6 py-5">
-        <div className="max-w-screen-xl mx-auto flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Dashboard</h1>
-            <p className="text-sm text-slate-400 mt-0.5">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+      {/* ── HEADER ── */}
+      <div className="bg-slate-900 border-b border-slate-800 px-5 py-3">
+        <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-base font-bold text-white tracking-tight leading-none">Dashboard</h1>
+              <p className="text-[11px] text-slate-500 mt-0.5">{format(new Date(), 'EEE, MMM d yyyy')}</p>
+            </div>
+            {/* Inline mini KPI strip in header */}
+            <div className="hidden lg:flex items-center gap-1 ml-4">
+              {[
+                { label: 'Revenue', val: `$${(kpis.monthRevenue || 0).toLocaleString()}`, cls: 'text-emerald-400' },
+                { label: 'Active Jobs', val: kpis.activeJobs ?? 0, cls: 'text-blue-400' },
+                { label: 'Outstanding', val: `$${(kpis.outstanding || 0).toLocaleString()}`, cls: 'text-red-400' },
+              ].map(m => (
+                <div key={m.label} className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-widest leading-none">{m.label}</div>
+                  <div className={`text-sm font-bold tabular-nums leading-tight ${m.cls}`}>{loading ? '—' : m.val}</div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button asChild variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white">
-              <Link to="/appointments"><Plus className="w-3.5 h-3.5 mr-1.5" />Appointment</Link>
+          <div className="flex gap-1.5">
+            <Button asChild variant="outline" size="sm" className="h-7 px-2.5 text-xs border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
+              <Link to="/appointments"><Plus className="w-3 h-3 mr-1" />Appt</Link>
             </Button>
-            <Button asChild variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white">
-              <Link to="/work-orders"><Plus className="w-3.5 h-3.5 mr-1.5" />Work Order</Link>
+            <Button asChild variant="outline" size="sm" className="h-7 px-2.5 text-xs border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
+              <Link to="/work-orders"><Plus className="w-3 h-3 mr-1" />Work Order</Link>
             </Button>
-            <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-white">
-              <Link to="/estimates"><Plus className="w-3.5 h-3.5 mr-1.5" />Estimate</Link>
+            <Button asChild size="sm" className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-white">
+              <Link to="/estimates"><Plus className="w-3 h-3 mr-1" />Estimate</Link>
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-screen-xl mx-auto px-6 py-5 space-y-5">
+      <div className="max-w-screen-2xl mx-auto px-4 py-3 space-y-3">
 
-        {/* ── KPI STRIP ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* ── KPI ROW ── */}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {kpiCards.map(card => (
             <KPICard key={card.label} {...card} loading={loading} />
           ))}
         </div>
 
-        {/* ── MAIN 2-COLUMN GRID ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-[1.8fr_1fr] gap-5 items-start">
+        {/* ── MAIN ANALYTIC GRID ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-3 items-start">
 
-          {/* ── LEFT COLUMN ── */}
-          <div className="space-y-5">
+          {/* ── LEFT MAIN ── */}
+          <div className="space-y-3">
 
-            {/* Funnel + Revenue side by side on large screens */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Row 1: Funnel + Revenue */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <SalesFunnelCard counts={funnelCounts} loading={loading} />
               <RevenueBreakdownCard invoices={allInvoices} loading={loading} />
             </div>
 
-            {/* Lists row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Row 2: 3 compact lists */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
               <SectionList title="Today's Appointments" icon={Calendar} iconColor="text-blue-500" link="/appointments" empty="No appointments today">
                 {loading ? <LoadingRows /> : todayAppointments.length === 0 ? null : (
                   todayAppointments.map(appt => (
                     <Link key={appt.id} to="/appointments">
-                      <div className="px-5 py-3.5 hover:bg-accent/50 transition-colors">
+                      <div className="px-3 py-2 hover:bg-slate-50 transition-colors">
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{appt.customer_display_name || appt.client_name}</p>
-                            <p className="text-xs text-muted-foreground">{appt.start_time || appt.scheduled_time || '—'}</p>
+                            <p className="text-xs font-semibold text-slate-800 truncate leading-tight">{appt.customer_display_name || appt.client_name}</p>
+                            <p className="text-[10px] text-slate-400">{appt.start_time || appt.scheduled_time || '—'}</p>
                           </div>
                           <StatusBadge status={appt.status} />
                         </div>
@@ -228,13 +244,13 @@ export default function Dashboard() {
                 {loading ? <LoadingRows /> : activeWorkOrders.length === 0 ? null : (
                   activeWorkOrders.map(wo => (
                     <Link key={wo.id} to={`/work-orders/${wo.id}`}>
-                      <div className="px-5 py-3.5 hover:bg-accent/50 transition-colors">
+                      <div className="px-3 py-2 hover:bg-slate-50 transition-colors">
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">
-                              <span className="text-purple-600 font-semibold">#{wo.work_order_number}</span> {wo.client_name}
+                            <p className="text-xs font-semibold text-slate-800 truncate leading-tight">
+                              <span className="text-purple-600">#{wo.work_order_number}</span> {wo.client_name}
                             </p>
-                            <p className="text-xs text-muted-foreground truncate">{wo.title}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{wo.title}</p>
                           </div>
                           <StatusBadge status={wo.status} />
                         </div>
@@ -248,13 +264,13 @@ export default function Dashboard() {
                 {loading ? <LoadingRows /> : recentEstimates.length === 0 ? null : (
                   recentEstimates.map(est => (
                     <Link key={est.id} to={`/estimate-editor?id=${est.id}`}>
-                      <div className="px-5 py-3.5 hover:bg-accent/50 transition-colors">
+                      <div className="px-3 py-2 hover:bg-slate-50 transition-colors">
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">
-                              <span className="text-amber-600 font-semibold">#{est.estimate_number}</span> {est.client_name}
+                            <p className="text-xs font-semibold text-slate-800 truncate leading-tight">
+                              <span className="text-amber-600">#{est.estimate_number}</span> {est.client_name}
                             </p>
-                            <p className="text-xs text-muted-foreground">${(est.total || 0).toLocaleString()}</p>
+                            <p className="text-[10px] text-slate-400 tabular-nums">${(est.total || 0).toLocaleString()}</p>
                           </div>
                           <StatusBadge status={est.status} />
                         </div>
@@ -267,16 +283,18 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ── RIGHT COLUMN ── */}
-          <div className="space-y-5">
+          {/* ── RIGHT SIDEBAR PANELS ── */}
+          <div className="space-y-3">
             <JobPipelineCard workOrders={allWorkOrders} loading={loading} />
             <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-                <span className="text-sm font-semibold text-slate-800">Notifications</span>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 bg-slate-50/60">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">Notifications</span>
+                </div>
               </div>
-              <div className="max-h-80 overflow-y-auto">
+              <div className="max-h-72 overflow-y-auto">
                 <NotificationsPanel />
               </div>
             </div>
