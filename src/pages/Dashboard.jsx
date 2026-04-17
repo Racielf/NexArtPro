@@ -273,102 +273,96 @@ function JobPipeline({ workOrders = [], loading }) {
   );
 }
 
-/* 1D · Alerts with quick-action buttons */
+/* Priority badge config */
+const PRIORITY_CFG = {
+  urgent: { label: 'URGENT', cls: 'bg-red-100 text-red-700 border-red-200' },
+  high:   { label: 'HIGH',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  normal: { label: 'NORMAL', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
+};
+
+/* 1D · Alerts — priority-ordered, dismissable */
 function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }) {
+  const [dismissed, setDismissed] = useState(new Set());
+
   const alerts = [];
   if (!loading) {
     const overdue = invoices.filter(i => i.status === 'overdue');
-    if (overdue.length) {
-      const first = overdue[0];
-      alerts.push({
-        icon: FileX, hex: '#ef4444', bg: '#fef2f2',
-        title: `${overdue.length} factura${overdue.length > 1 ? 's' : ''} vencida${overdue.length > 1 ? 's' : ''}`,
-        btnLabel: 'Ver facturas', btnLink: '/invoices', urgent: true,
-        link: first.client_email ? `mailto:${first.client_email}` : '/invoices',
-        badge: overdue.length,
-      });
-    }
+    if (overdue.length) alerts.push({
+      id: 'overdue-inv', icon: FileX, hex: '#ef4444', bg: '#fef2f2',
+      title: `${overdue.length} factura${overdue.length > 1 ? 's' : ''} vencida${overdue.length > 1 ? 's' : ''}`,
+      btnLabel: 'Ver facturas', btnLink: '/invoices',
+      badge: overdue.length, priority: 'urgent', order: 10,
+    });
+    const changes = estimates.filter(e => e.status === 'changes_requested');
+    if (changes.length) alerts.push({
+      id: 'changes-req', icon: AlertTriangle, hex: '#f97316', bg: '#fff7ed',
+      title: `${changes.length} cambio${changes.length>1?'s':''} solicitado${changes.length>1?'s':''}`,
+      btnLabel: 'Revisar', btnLink: `/estimate-editor?id=${changes[0].id}`,
+      badge: changes.length, priority: 'urgent', order: 9,
+    });
+    const approved = estimates.filter(e => ['approved','signed'].includes(e.status));
+    if (approved.length) alerts.push({
+      id: 'approved-est', icon: CheckCircle2, hex: '#8b5cf6', bg: '#f5f3ff',
+      title: `${approved.length} aprobado${approved.length>1?'s':''} sin convertir`,
+      btnLabel: 'Convertir', btnLink: `/estimate-editor?id=${approved[0].id}`,
+      badge: approved.length, priority: 'high', order: 8,
+    });
     const sevenAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
     const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at < sevenAgo);
-    if (stale.length) {
-      const first = stale[0];
-      alerts.push({
-        icon: Clock, hex: '#f59e0b', bg: '#fffbeb',
-        title: `${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
-        btnLabel: 'Follow-up', btnLink: `/estimate-editor?id=${first.id}`,
-        link: `/estimate-editor?id=${first.id}`,
-        badge: stale.length,
-      });
-    }
-    const changes = estimates.filter(e => e.status === 'changes_requested');
-    if (changes.length) {
-      const first = changes[0];
-      alerts.push({
-        icon: AlertTriangle, hex: '#f97316', bg: '#fff7ed',
-        title: `${changes.length} cambio${changes.length>1?'s':''} solicitado${changes.length>1?'s':''}`,
-        btnLabel: 'Revisar', btnLink: `/estimate-editor?id=${first.id}`,
-        link: `/estimate-editor?id=${first.id}`,
-        badge: changes.length, urgent: true,
-      });
-    }
-    const approved = estimates.filter(e => ['approved','signed'].includes(e.status));
-    if (approved.length) {
-      const first = approved[0];
-      alerts.push({
-        icon: CheckCircle2, hex: '#8b5cf6', bg: '#f5f3ff',
-        title: `${approved.length} aprobado${approved.length>1?'s':''} sin convertir`,
-        btnLabel: 'Convertir', btnLink: `/estimate-editor?id=${first.id}`,
-        link: `/estimate-editor?id=${first.id}`,
-        badge: approved.length,
-      });
-    }
+    if (stale.length) alerts.push({
+      id: 'stale-est', icon: Clock, hex: '#f59e0b', bg: '#fffbeb',
+      title: `${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
+      btnLabel: 'Follow-up', btnLink: `/estimate-editor?id=${stale[0].id}`,
+      badge: stale.length, priority: 'high', order: 7,
+    });
     const unassigned = workOrders.filter(w => !['completed','invoiced','cancelled'].includes(w.status) && !w.assigned_worker_name);
-    if (unassigned.length) {
-      const first = unassigned[0];
-      alerts.push({
-        icon: UserX, hex: '#64748b', bg: '#f8fafc',
-        title: `${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`,
-        btnLabel: 'Asignar', btnLink: `/work-orders/${first.id}`,
-        link: `/work-orders/${first.id}`,
-        badge: unassigned.length,
-      });
-    }
+    if (unassigned.length) alerts.push({
+      id: 'unassigned-wo', icon: UserX, hex: '#64748b', bg: '#f8fafc',
+      title: `${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`,
+      btnLabel: 'Asignar', btnLink: `/work-orders/${unassigned[0].id}`,
+      badge: unassigned.length, priority: 'normal', order: 6,
+    });
   }
-  const visible = alerts.slice(0, 4);
+
+  const visible = alerts
+    .filter(a => !dismissed.has(a.id))
+    .sort((a,b) => b.order - a.order)
+    .slice(0, 4);
+
   return (
-    <Panel title={`Alertas${alerts.length > 0 ? ` (${alerts.length})` : ''}`} headerBg="bg-red-500" icon={Bell}>
+    <Panel title={`Alertas${visible.length > 0 ? ` (${visible.length})` : ''}`} headerBg="bg-red-500" icon={Bell}>
       {loading
         ? <Empty text="Cargando alertas…" />
-        : alerts.length === 0
-          ? <div className="flex flex-col items-center justify-center h-full gap-1.5 select-none">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              <span className="text-[11px] font-medium text-slate-500">Todo en orden</span>
-              <span className="text-[10px] text-slate-300">No hay acciones pendientes</span>
+        : visible.length === 0
+          ? <div className="flex flex-col items-center justify-center h-full gap-2 select-none px-4 text-center">
+              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+              <span className="text-[12px] font-semibold text-slate-600">All caught up!</span>
+              <span className="text-[10px] text-slate-400 leading-snug">No urgent actions right now</span>
             </div>
-          : visible.map((a, i) => {
+          : visible.map(a => {
               const Icon = a.icon;
+              const pcfg = PRIORITY_CFG[a.priority];
               return (
-                <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors">
+                <div key={a.id} className="flex items-center gap-2 px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors group/alert">
                   <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: a.bg, border: `1px solid ${a.hex}25` }}>
                     <Icon className="w-3 h-3" style={{ color: a.hex }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <p className="text-[11px] font-semibold text-slate-700 leading-tight truncate">{a.title}</p>
-                      {a.urgent && <span className="text-[8px] font-bold px-1 py-px rounded bg-red-100 text-red-600 uppercase tracking-wide flex-shrink-0">!</span>}
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <span className={`text-[8px] font-bold px-1 py-px rounded border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
                     </div>
-                    <span className="text-[9px] font-bold px-1.5 py-px rounded-full" style={{ background: a.bg, color: a.hex }}>
-                      {a.badge} item{a.badge > 1 ? 's' : ''}
-                    </span>
+                    <p className="text-[11px] font-semibold text-slate-700 leading-tight truncate">{a.title}</p>
                   </div>
-                  <Link
-                    to={a.btnLink}
-                    onClick={e => e.stopPropagation()}
-                    className="flex-shrink-0 text-[9px] font-bold px-2 py-1 rounded-md border transition-all duration-150 hover:brightness-95 active:scale-[0.96]"
-                    style={{ background: a.bg, color: a.hex, borderColor: `${a.hex}40` }}
-                  >
-                    {a.btnLabel}
-                  </Link>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Link to={a.btnLink}
+                      className="text-[9px] font-bold px-2 py-1 rounded-md border transition-all duration-150 hover:brightness-95 active:scale-[0.96]"
+                      style={{ background: a.bg, color: a.hex, borderColor: `${a.hex}40` }}>
+                      {a.btnLabel}
+                    </Link>
+                    <button onClick={() => setDismissed(prev => new Set([...prev, a.id]))}
+                      className="opacity-0 group-hover/alert:opacity-100 transition-opacity text-slate-300 hover:text-slate-500 text-[10px] px-1 font-bold"
+                      title="Dismiss">✕</button>
+                  </div>
                 </div>
               );
             })
@@ -378,82 +372,138 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
 }
 
 /* ════════════════════════════════════════════════════════════════
-   NEXT BEST ACTION BAR
+   NEXT BEST ACTION BAR — grouped, priority-labeled, dismissable
+   Groups: Sales | Operations | Finance
    ════════════════════════════════════════════════════════════════ */
+const GROUP_CFG = {
+  Sales:      { color: 'text-violet-600', dot: 'bg-violet-400' },
+  Operations: { color: 'text-amber-600',  dot: 'bg-amber-400' },
+  Finance:    { color: 'text-red-600',    dot: 'bg-red-400' },
+};
+
 function buildActions({ estimates, invoices, workOrders }) {
   const actions = [];
 
-  const signed = estimates.filter(e => ['approved','signed'].includes(e.status));
-  if (signed.length) actions.push({
-    icon: RefreshCw, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200',
-    label: `Convertir ${signed.length} estimado${signed.length>1?'s':''} aprobado${signed.length>1?'s':''}`,
-    sub: 'Los clientes esperan Work Orders',
-    // Link to the first approved estimate for 1-click action
-    link: `/estimate-editor?id=${signed[0].id}`, priority: 10,
-  });
-
+  // ── FINANCE ──
   const overdueInv = invoices.filter(i => i.status === 'overdue');
   if (overdueInv.length) {
     const amt = overdueInv.reduce((s,i) => s+(i.total||0)-(i.amount_paid||0), 0);
     actions.push({
+      id: 'finance-overdue',
       icon: DollarSign, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200',
       label: `Cobrar $${amt.toLocaleString()} vencido`,
       sub: `${overdueInv.length} factura${overdueInv.length>1?'s':''} — contacta hoy`,
-      link: '/invoices', priority: 9,
+      link: '/invoices', priority: 'urgent', order: 10, group: 'Finance',
     });
   }
 
+  // ── SALES ──
   const changesReq = estimates.filter(e => e.status === 'changes_requested');
   if (changesReq.length) actions.push({
+    id: 'sales-changes',
     icon: Send, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200',
     label: `Revisar ${changesReq.length} cambio${changesReq.length>1?'s':''} solicitado${changesReq.length>1?'s':''}`,
     sub: 'El cliente espera respuesta',
-    link: `/estimate-editor?id=${changesReq[0].id}`, priority: 8,
+    link: `/estimate-editor?id=${changesReq[0].id}`, priority: 'urgent', order: 9, group: 'Sales',
+  });
+
+  const signed = estimates.filter(e => ['approved','signed'].includes(e.status));
+  if (signed.length) actions.push({
+    id: 'sales-convert',
+    icon: RefreshCw, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200',
+    label: `Convertir ${signed.length} estimado${signed.length>1?'s':''} aprobado${signed.length>1?'s':''}`,
+    sub: 'Los clientes esperan Work Orders',
+    link: `/estimate-editor?id=${signed[0].id}`, priority: 'high', order: 8, group: 'Sales',
   });
 
   const sevenAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
   const stale = estimates.filter(e => ['sent','viewed'].includes(e.status) && e.sent_at < sevenAgo);
   if (stale.length) actions.push({
+    id: 'sales-followup',
     icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200',
     label: `Follow-up: ${stale.length} estimado${stale.length>1?'s':''} sin respuesta`,
-    sub: '+7 días — un mensaje puede cerrar el trato',
-    link: `/estimate-editor?id=${stale[0].id}`, priority: 7,
+    sub: '+7 días sin respuesta',
+    link: `/estimate-editor?id=${stale[0].id}`, priority: 'high', order: 7, group: 'Sales',
   });
 
+  // ── OPERATIONS ──
   const unassigned = workOrders.filter(w => !['completed','invoiced','cancelled'].includes(w.status) && !w.assigned_worker_name);
   if (unassigned.length) actions.push({
+    id: 'ops-unassigned',
     icon: UserX, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200',
     label: `Asignar técnico: ${unassigned.length} job${unassigned.length>1?'s':''} sin asignar`,
     sub: 'Sin técnico = sin avance',
-    link: `/work-orders/${unassigned[0].id}`, priority: 6,
+    link: `/work-orders/${unassigned[0].id}`, priority: 'normal', order: 6, group: 'Operations',
   });
 
-  return actions.sort((a,b) => b.priority - a.priority).slice(0, 3);
+  return actions.sort((a,b) => b.order - a.order);
 }
 
 function NextBestAction({ estimates = [], invoices = [], workOrders = [], loading }) {
-  const actions = loading ? [] : buildActions({ estimates, invoices, workOrders });
-  if (loading || actions.length === 0) return null;
+  const [dismissed, setDismissed] = useState(new Set());
+
+  const all = loading ? [] : buildActions({ estimates, invoices, workOrders });
+  const actions = all.filter(a => !dismissed.has(a.id)).slice(0, 5);
+
+  // Group for display
+  const grouped = {};
+  actions.forEach(a => {
+    if (!grouped[a.group]) grouped[a.group] = [];
+    grouped[a.group].push(a);
+  });
+  const groupOrder = ['Finance', 'Sales', 'Operations'];
+  const sortedGroups = groupOrder.filter(g => grouped[g]);
+
+  if (loading) return null;
+
+  if (actions.length === 0) return (
+    <div className="bg-white border border-slate-200/80 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] px-5 py-3 flex items-center gap-3">
+      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+      <span className="text-[12px] font-semibold text-slate-600">All caught up</span>
+      <span className="text-[11px] text-slate-400">— no urgent actions right now</span>
+    </div>
+  );
+
   return (
-    <div className="bg-white border border-slate-200/80 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] px-4 py-2.5 flex items-center gap-3 flex-wrap">
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <Zap className="w-3.5 h-3.5 text-amber-500" />
+    <div className="bg-white border border-slate-200/80 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] px-4 py-2.5">
+      <div className="flex items-center gap-2 mb-2">
+        <Zap className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Próximas acciones</span>
+        <span className="ml-auto text-[9px] text-slate-400">{actions.length} pendiente{actions.length>1?'s':''}</span>
       </div>
-      <div className="w-px h-5 bg-slate-200 flex-shrink-0 hidden sm:block" />
-      <div className="flex flex-wrap gap-2 flex-1">
-        {actions.map((a, i) => {
-          const Icon = a.icon;
+      <div className="flex flex-wrap gap-x-6 gap-y-1.5">
+        {sortedGroups.map(grp => {
+          const gcfg = GROUP_CFG[grp];
           return (
-            <Link key={i} to={a.link}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${a.bg} ${a.border} hover:brightness-95 active:scale-[0.98] transition-all duration-150 group`}>
-              <Icon className={`w-3 h-3 flex-shrink-0 ${a.color}`} />
-              <div className="min-w-0">
-                <p className={`text-[11px] font-semibold leading-tight ${a.color}`}>{a.label}</p>
-                <p className="text-[9px] text-slate-400 leading-none mt-0.5 hidden sm:block">{a.sub}</p>
+            <div key={grp} className="flex flex-col gap-1 min-w-0">
+              <div className="flex items-center gap-1">
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${gcfg.dot}`} />
+                <span className={`text-[8px] font-bold uppercase tracking-widest ${gcfg.color}`}>{grp}</span>
               </div>
-              <ChevronRight className="w-3 h-3 text-slate-300 group-hover:text-slate-500 transition-colors flex-shrink-0" />
-            </Link>
+              {grouped[grp].map(a => {
+                const Icon = a.icon;
+                const pcfg = PRIORITY_CFG[a.priority];
+                return (
+                  <div key={a.id} className="flex items-center gap-2 group/item">
+                    <Link to={a.link}
+                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border ${a.bg} ${a.border} hover:brightness-95 active:scale-[0.98] transition-all duration-150`}>
+                      <Icon className={`w-3 h-3 flex-shrink-0 ${a.color}`} />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[7px] font-bold px-1 py-px rounded border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
+                          <p className={`text-[11px] font-semibold leading-tight ${a.color}`}>{a.label}</p>
+                        </div>
+                        <p className="text-[9px] text-slate-400 leading-none mt-0.5">{a.sub}</p>
+                      </div>
+                      <ChevronRight className="w-3 h-3 text-slate-300 group-hover/item:text-slate-500 transition-colors flex-shrink-0" />
+                    </Link>
+                    <button onClick={() => setDismissed(prev => new Set([...prev, a.id]))}
+                      className="opacity-0 group-hover/item:opacity-100 transition-opacity text-slate-300 hover:text-slate-500 text-[10px] font-bold leading-none"
+                      title="Dismiss">✕</button>
+                  </div>
+                );
+              })}
+            </div>
           );
         })}
       </div>
