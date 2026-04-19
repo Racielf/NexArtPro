@@ -28,6 +28,7 @@ import {
   signEstimate,
   declineEstimate,
   requestEstimateChanges,
+  recordFollowUp,
 } from '@/lib/estimateSalesLifecycle';
 
 export default function ClientEstimateView() {
@@ -99,7 +100,7 @@ export default function ClientEstimateView() {
   const handleDecline = async () => {
     setActing(true);
     try {
-      const updates = await declineEstimate(estimate.id);
+      const updates = await declineEstimate(estimate.id, { declinedReason: '' });
       setEstimate(e => ({ ...e, ...updates }));
       notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
       toast.success('Estimate declined. Thank you for letting us know.');

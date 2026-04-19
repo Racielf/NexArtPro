@@ -17,7 +17,7 @@ import AttachmentWarningModal from './internal/AttachmentWarningModal';
 import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { validateBeforeSend, executeSend, logPricingOverride, logSendFailure } from '@/lib/estimateSendOrchestrator';
-import { generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
+import { generatePublicShareToken, recordFollowUp } from '@/lib/estimateSalesLifecycle';
 import SendReviewSidePanel from './SendReviewSidePanel';
 import SendReviewBanners from './SendReviewBanners';
 import { Mail } from 'lucide-react';
@@ -181,6 +181,9 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         subject, 
         secure_link: result.secureLink,
       });
+
+      // Track follow-up contact
+      await recordFollowUp(estimate.id, estimate);
 
       setSentSuccess(true);
       toast.success('Estimate sent successfully!');

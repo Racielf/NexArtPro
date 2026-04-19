@@ -195,11 +195,12 @@ export async function signEstimate(estimateId, { signerName, signerEmail, signat
 /**
  * Decline estimate.
  */
-export async function declineEstimate(estimateId) {
+export async function declineEstimate(estimateId, { declinedReason } = {}) {
   const ts = now();
   const payload = {
     status: 'declined',
     declined_at: ts,
+    declined_reason: declinedReason || '',
     sales_stage: deriveSalesStage('declined'),
     last_client_event: 'declined',
     follow_up_status: 'completed',
@@ -227,6 +228,25 @@ export async function requestEstimateChanges(estimateId, { note, currentVersion 
     follow_up_stage: 'revision',
     next_follow_up_at: now(),
   };
+  await base44.entities.Estimate.update(estimateId, payload);
+  return payload;
+}
+
+// ─── Follow-up tracking ────────────────────────────────────────────────────
+
+/**
+ * Record a follow-up contact (send, resend, link copy, etc).
+ * Updates: last_contacted_at, follow_up_count
+ */
+export async function recordFollowUp(estimateId, currentEstimate) {
+  const ts = now();
+  const currentCount = currentEstimate?.follow_up_count || 0;
+  
+  const payload = {
+    last_contacted_at: ts,
+    follow_up_count: currentCount + 1,
+  };
+  
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
