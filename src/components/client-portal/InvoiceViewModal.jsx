@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import ClientPaymentSummary from '@/components/client-portal/ClientPaymentSummary';
 import PaymentInstructions from '@/components/client-portal/PaymentInstructions';
+import ClientResponseActions from '@/components/client-portal/ClientResponseActions';
 import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 
 /**
@@ -99,6 +100,16 @@ export default function InvoiceViewModal({ invoice, onClose }) {
 
           {/* Payment Instructions */}
           <PaymentInstructions invoice={invoice} />
+
+          {/* Client Response Actions */}
+          <ClientResponseActions
+            invoice={invoice}
+            onResponseSubmitted={(updates) => {
+              // Update local invoice state with response
+              // This allows display of response summary immediately
+              Object.assign(invoice, updates);
+            }}
+          />
 
           {/* Notes */}
           {invoice.notes && (

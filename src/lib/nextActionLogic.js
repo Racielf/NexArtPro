@@ -10,7 +10,7 @@
 
 import {
   Clock, Eye, ArrowRight, RefreshCw, AlertTriangle,
-  CheckCircle2, XCircle, Handshake
+  CheckCircle2, XCircle, Handshake, HelpCircle
 } from 'lucide-react';
 
 export const STALE_DAYS = 5;
@@ -76,7 +76,7 @@ export function getNextAction(doc) {
 
     /**
     * Get next action for an invoice (collections context).
-    * Works with invoice records that have: status, due_date, sent_at, paid_at, amount_paid, total
+    * Works with invoice records that have: status, due_date, sent_at, paid_at, amount_paid, total, client_response_status
     */
     export function getInvoiceNextAction(invoice) {
     if (!invoice) return null;
@@ -108,6 +108,21 @@ export function getNextAction(doc) {
      return { icon: CheckCircle2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', label: 'Paid', sub: 'No action needed.' };
     }
 
+    // client response: paying soon
+    if (invoice.client_response_status === 'will_pay_soon') {
+     return { icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Payment expected', sub: 'Client says paying soon.' };
+    }
+
+    // client response: has question
+    if (invoice.client_response_status === 'has_question') {
+     return { icon: HelpCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Awaiting clarification', sub: 'Client has a billing question.' };
+    }
+
+    // client response: needs time
+    if (invoice.client_response_status === 'needs_time') {
+     return { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Extension granted', sub: 'Client requested more time.' };
+    }
+
     // overdue
     if (isOverdue) {
      const daysOverdue = Math.floor((today - dueDate) / 86400000);
@@ -124,7 +139,7 @@ export function getNextAction(doc) {
      const daysUntilDue = Math.floor((dueDate - today) / 86400000);
      if (daysUntilDue <= 3 && daysUntilDue > 0) {
        return { icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', label: 'Due soon', sub: `Due in ${daysUntilDue}d` };
-     }
+      }
     }
 
     // sent, no payment, generic await

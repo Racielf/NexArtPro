@@ -119,6 +119,26 @@
     "payment_terms": {
       "type": "string"
     },
+    "client_response_status": {
+      "type": "string",
+      "enum": [
+        "will_pay_soon",
+        "has_question",
+        "needs_time",
+        "no_response"
+      ],
+      "default": "no_response",
+      "description": "Client payment intent from portal"
+    },
+    "client_response_note": {
+      "type": "string",
+      "description": "Optional note from client with their response"
+    },
+    "client_response_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when client provided response"
+    },
     "sent_at": {
       "type": "string"
     },

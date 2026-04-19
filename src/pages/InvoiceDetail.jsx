@@ -19,6 +19,7 @@ import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelp
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { getInvoiceNextAction } from '@/lib/nextActionLogic';
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
+import ClientResponseSummary from '@/components/invoices/ClientResponseSummary';
 import { AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 export default function InvoiceDetail() {
@@ -295,6 +296,7 @@ export default function InvoiceDetail() {
                   </div>
                 </div>
               )}
+              <ClientResponseSummary invoice={invoice} />
             </div>
           )}
 
