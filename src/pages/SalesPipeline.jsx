@@ -81,8 +81,7 @@ export default function SalesPipeline() {
       if (activeFilter === 'needs_follow_up') {
         const nfo = item.next_follow_up_at;
         const isOverdue = nfo && new Date(nfo) < new Date();
-        const cat = item._type === 'estimate' ? (typeof computeFollowUpSummary === 'function' ? null : null) : null;
-        // For both: overdue follow-up or no follow-up but stale sent
+          // For both: overdue follow-up or no follow-up but stale sent
         const daysSinceSent = item.sent_at ? Math.floor((Date.now() - new Date(item.sent_at).getTime()) / 86400000) : null;
         const stale = daysSinceSent !== null && daysSinceSent >= 5 && ['sent'].includes(item.status);
         if (!isOverdue && !stale) return;
@@ -110,8 +109,8 @@ export default function SalesPipeline() {
     return getStage(item) === activeFilter;
   });
 
-  // Follow-up summary from all estimates only (existing logic)
-  const followUpSummary = computeFollowUpSummary(estimates);
+  // Follow-up summary — include both estimates and proposals
+  const followUpSummary = computeFollowUpSummary(allItems);
 
   // Pipeline totals (estimates use .total, proposals use .total_amount)
   const totalValue = allItems.reduce((s, e) => s + (e.total || e.total_amount || 0), 0);
@@ -197,7 +196,7 @@ export default function SalesPipeline() {
 
           {/* Quick stats */}
           <div className="flex items-center gap-4 text-xs text-slate-500">
-            <span>Showing <strong className="text-slate-700">{filtered.length}</strong> of {estimates.length}</span>
+            <span>Showing <strong className="text-slate-700">{filtered.length}</strong> of {allItems.length}</span>
             <span className="text-slate-300">|</span>
             <span>Won: <strong className="text-green-600">${wonValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></span>
           </div>

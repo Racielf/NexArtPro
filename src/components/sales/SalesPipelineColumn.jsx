@@ -3,7 +3,7 @@ import SalesEstimateCard from './SalesEstimateCard';
 import ProposalPipelineCard from '@/components/proposals/ProposalPipelineCard';
 
 export default function SalesPipelineColumn({ stage, estimates }) {
-  const total = estimates.reduce((s, e) => s + (e.total || 0), 0);
+  const total = estimates.reduce((s, e) => s + (e.total || e.total_amount || 0), 0);
 
   return (
     <div className="flex flex-col min-w-[260px] max-w-[300px] flex-shrink-0">
@@ -39,7 +39,7 @@ export default function SalesPipelineColumn({ stage, estimates }) {
         style={{ borderColor: stage.border, backgroundColor: stage.bg + '40', minHeight: 120, maxHeight: 'calc(100vh - 280px)' }}
       >
         {estimates.length === 0 ? (
-          <p className="text-[10px] text-slate-400 text-center py-6">No estimates</p>
+          <p className="text-[10px] text-slate-400 text-center py-6">No items</p>
         ) : (
           estimates.map(item =>
             item._type === 'proposal'
