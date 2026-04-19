@@ -43,6 +43,7 @@ export default function Estimates() {
     const created = await base44.entities.Estimate.create({
       estimate_number: nextNum,
       status: 'draft',
+      document_type: 'ESTIMATE',
       client_name: '',
       line_items: [],
       tax_rate: 0,

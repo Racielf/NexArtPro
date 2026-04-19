@@ -112,6 +112,8 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     logDocument(estimate.id, estimate, 'sent_link', { secure_link: clientLink });
   };
 
+  // CRITICAL ENFORCE: Estimate send flow MUST ALWAYS identify as ESTIMATE, never PROPOSAL
+  // getDocTypeConfig with no param or 'ESTIMATE' returns Estimate config
   const docConfig = estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE');
 
   // --- Loss prevention / pricing validation handlers ---

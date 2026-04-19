@@ -88,28 +88,29 @@ export function mapGroupsToItems(groups = []) {
  * from a Proposal, without modifying the original.
  */
 export function createEstimateProxy(proposal) {
-  return {
-    id: proposal.id,
-    estimate_number: proposal.proposal_number,
-    title: toSafeString(proposal.title),
-    groups: mapItemsToGroups(proposal.items),
-    tax_rate: toSafeNumber(proposal.tax_rate, 0),
-    discount_type: toSafeString(proposal.discount_type, 'fixed'),
-    discount_value: toSafeNumber(proposal.discount_value, 0),
-    deposit_percent: 0,
-    expiration_date: toSafeString(proposal.expiration_date),
-    notes: toSafeString(proposal.notes),
-    internal_notes: toSafeString(proposal.internal_notes),
-    exclusions: '',
-    warranty_terms: '',
-    payment_terms: toSafeString(proposal.payment_terms),
-    legal_terms: toSafeString(proposal.legal_terms),
-    // Pass through cost/margin for pricing intelligence
-    total_cost: toSafeNumber(proposal.total_cost, 0),
-    gross_margin: toSafeNumber(proposal.gross_margin, 0),
-    gross_margin_pct: toSafeNumber(proposal.gross_margin_pct, 0),
-  };
-}
+   return {
+     id: proposal.id,
+     estimate_number: proposal.proposal_number,
+     title: toSafeString(proposal.title),
+     document_type: 'ESTIMATE',
+     groups: mapItemsToGroups(proposal.items),
+     tax_rate: toSafeNumber(proposal.tax_rate, 0),
+     discount_type: toSafeString(proposal.discount_type, 'fixed'),
+     discount_value: toSafeNumber(proposal.discount_value, 0),
+     deposit_percent: 0,
+     expiration_date: toSafeString(proposal.expiration_date),
+     notes: toSafeString(proposal.notes),
+     internal_notes: toSafeString(proposal.internal_notes),
+     exclusions: '',
+     warranty_terms: '',
+     payment_terms: toSafeString(proposal.payment_terms),
+     legal_terms: toSafeString(proposal.legal_terms),
+     // Pass through cost/margin for pricing intelligence
+     total_cost: toSafeNumber(proposal.total_cost, 0),
+     gross_margin: toSafeNumber(proposal.gross_margin, 0),
+     gross_margin_pct: toSafeNumber(proposal.gross_margin_pct, 0),
+   };
+ }
 
 /**
  * Converts EstimateGroups output → Proposal update payload

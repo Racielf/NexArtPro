@@ -23,6 +23,7 @@ export async function createEstimateFromContext({ client, appointment, navigate 
   const payload = {
     estimate_number: estimateNumber,
     status: 'draft',
+    document_type: 'ESTIMATE',
     client_id: client?.id || appointment?.customer_id || '',
     client_name: client?.full_name || appointment?.customer_display_name || '',
     client_email: client?.email || appointment?.customer_email || '',

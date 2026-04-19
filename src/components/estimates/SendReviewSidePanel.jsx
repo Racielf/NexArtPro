@@ -55,26 +55,28 @@ const VISIBILITY_LABELS = {
 };
 
 export default function SendReviewSidePanel({
-   currentTemplate,
-   onTemplateChange,
-   recipientEmail,
-   onRecipientEmailChange,
-   subject,
-   onSubjectChange,
-   message,
-   onMessageChange,
-   visibility,
-   onVisibilityChange,
-   attachments = [],
-   estimateNumber,
-   estimate,
-   includedAttachmentIds = [],
-   onIncludedAttachmentsChange,
-   onAttachmentsChange,
- }) {
-   const setVis = (key, val) => onVisibilityChange({ ...visibility, [key]: val });
-   const docLabel = estimate ? resolveDocLabel(estimate) : 'Estimate';
-   const docNumber = estimate ? resolveDocNumber(estimate) : estimateNumber;
+    currentTemplate,
+    onTemplateChange,
+    recipientEmail,
+    onRecipientEmailChange,
+    subject,
+    onSubjectChange,
+    message,
+    onMessageChange,
+    visibility,
+    onVisibilityChange,
+    attachments = [],
+    estimateNumber,
+    estimate,
+    includedAttachmentIds = [],
+    onIncludedAttachmentsChange,
+    onAttachmentsChange,
+  }) {
+    const setVis = (key, val) => onVisibilityChange({ ...visibility, [key]: val });
+    // CRITICAL ENFORCE: Estimate send flow MUST ALWAYS use 'Estimate' label
+    // Never allow Proposal naming to leak into Estimate Review & Send
+    const docLabel = 'Estimate';
+    const docNumber = estimate ? resolveDocNumber(estimate) : estimateNumber;
    
    const removeAttachment = (attId) => {
      if (onAttachmentsChange) {
