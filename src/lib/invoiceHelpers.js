@@ -2,19 +2,55 @@
  * Invoice helpers — compute balance, status, and payment summaries
  */
 
-export function calculateInvoiceBalance(invoice) {
-  const total = invoice?.total || 0;
-  const amountPaid = invoice?.amount_paid || 0;
+/**
+ * Compute amount_paid from payments array (single source of truth)
+ */
+export function computeAmountPaid(payments = []) {
+  return payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+}
+
+/**
+ * Compute balance_due from total and amount_paid
+ */
+export function computeBalanceDue(total = 0, amountPaid = 0) {
   return Math.max(0, total - amountPaid);
 }
 
-export function derivePaymentStatus(invoice) {
-  const balanceDue = calculateInvoiceBalance(invoice);
-  const amountPaid = invoice?.amount_paid || 0;
-
+/**
+ * Derive payment_status from balance_due and amount_paid
+ */
+export function derivePaymentStatus(total = 0, amountPaid = 0) {
+  const balanceDue = computeBalanceDue(total, amountPaid);
+  
   if (balanceDue <= 0) return 'paid';
   if (amountPaid > 0 && balanceDue > 0) return 'partial';
   return 'unpaid';
+}
+
+/**
+ * Compute ALL derived fields from payments array
+ * Single source of truth: payments[]
+ */
+export function computeInvoiceDerivedFields(invoice) {
+  const payments = invoice?.payments || [];
+  const total = invoice?.total || 0;
+  
+  const amount_paid = computeAmountPaid(payments);
+  const balance_due = computeBalanceDue(total, amount_paid);
+  const payment_status = derivePaymentStatus(total, amount_paid);
+  
+  return {
+    amount_paid,
+    balance_due,
+    payment_status,
+  };
+}
+
+/**
+ * Legacy helper — kept for compat but now uses computeInvoiceDerivedFields
+ */
+export function calculateInvoiceBalance(invoice) {
+  return computeInvoiceDerivedFields(invoice).balance_due;
 }
 
 export function getPaymentStatusLabel(status) {

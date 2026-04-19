@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, DollarSign, Clock } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 
 export default function CashflowSummary() {
   const [invoices, setInvoices] = useState([]);
@@ -18,8 +19,12 @@ export default function CashflowSummary() {
 
   if (loading) return <div className="text-slate-400 text-sm">Loading...</div>;
 
+  // Compute derived fields for each invoice from payments[]
   const totalInvoiced = invoices.reduce((s, i) => s + (i.total || 0), 0);
-  const totalCollected = invoices.reduce((s, i) => s + (i.amount_paid || 0), 0);
+  const totalCollected = invoices.reduce((s, i) => {
+    const { amount_paid } = computeInvoiceDerivedFields(i);
+    return s + amount_paid;
+  }, 0);
   const totalOutstanding = totalInvoiced - totalCollected;
 
   return (

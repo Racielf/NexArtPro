@@ -54,11 +54,10 @@
       "enum": [
         "draft",
         "sent",
-        "paid",
-        "overdue",
         "cancelled"
       ],
-      "default": "draft"
+      "default": "draft",
+      "description": "Workflow status only (draft/sent/cancelled). Payment status is derived from payment_status field."
     },
     "due_date": {
       "type": "string",
@@ -106,29 +105,9 @@
     "total": {
       "type": "number"
     },
-    "amount_paid": {
-      "type": "number",
-      "default": 0,
-      "description": "Sum of all payments received"
-    },
-    "balance_due": {
-      "type": "number",
-      "default": 0,
-      "description": "total - amount_paid (computed/derived)"
-    },
-    "payment_status": {
-      "type": "string",
-      "enum": [
-        "unpaid",
-        "partial",
-        "paid"
-      ],
-      "default": "unpaid",
-      "description": "Derived from balance_due: unpaid if 0 paid, partial if 0 < paid < total, paid if paid >= total"
-    },
     "payments": {
       "type": "array",
-      "description": "Array of payment records",
+      "description": "SINGLE SOURCE OF TRUTH for payments. Array of payment records. All other payment fields are derived from this.",
       "items": {
         "type": "object",
         "properties": {
@@ -164,6 +143,26 @@
           }
         }
       }
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0,
+      "description": "DERIVED: sum(payments[].amount). Updated automatically when payments[] changes. Never manually written."
+    },
+    "balance_due": {
+      "type": "number",
+      "default": 0,
+      "description": "DERIVED: total - amount_paid. Updated automatically when payments[] changes."
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "unpaid",
+        "partial",
+        "paid"
+      ],
+      "default": "unpaid",
+      "description": "DERIVED from balance_due: unpaid if 0 paid, partial if 0 < paid < total, paid if paid >= total. Updated automatically."
     },
     "notes": {
       "type": "string"

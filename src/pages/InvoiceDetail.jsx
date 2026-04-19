@@ -15,6 +15,7 @@ import PaymentReceiptPreviewModal from '@/components/payments/PaymentReceiptPrev
 import { buildReceipt } from '@/components/payments/paymentReceiptUtils';
 import PaymentInputModal from '@/components/invoices/PaymentInputModal';
 import PaymentHistory from '@/components/invoices/PaymentHistory';
+import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 
 export default function InvoiceDetail() {
   const navigate = useNavigate();
@@ -69,8 +70,34 @@ export default function InvoiceDetail() {
   const handleMarkPaid = async () => {
     setSaving(true);
     const now = new Date().toISOString();
-    await base44.entities.Invoice.update(invoiceId, { status: 'paid', paid_at: now, amount_paid: invoice.total });
-    setInvoice(i => ({ ...i, status: 'paid', paid_at: now, amount_paid: invoice.total }));
+    // Mark as paid by creating a full payment record
+    const fullPayment = {
+      id: `pay-${Date.now()}`,
+      amount: invoice.total,
+      method: 'manual',
+      payment_date: now,
+      note: 'Marked as paid',
+      recorded_by: 'Admin',
+      recorded_at: now,
+    };
+    const updatedPayments = [...(invoice?.payments || []), fullPayment];
+    const derived = computeInvoiceDerivedFields({ ...invoice, payments: updatedPayments });
+    
+    await base44.entities.Invoice.update(invoiceId, {
+      payments: updatedPayments,
+      amount_paid: derived.amount_paid,
+      balance_due: derived.balance_due,
+      payment_status: derived.payment_status,
+      paid_at: now,
+    });
+    setInvoice(i => ({
+      ...i,
+      payments: updatedPayments,
+      amount_paid: derived.amount_paid,
+      balance_due: derived.balance_due,
+      payment_status: derived.payment_status,
+      paid_at: now,
+    }));
     setSaving(false);
     toast.success('Invoice marked as paid!');
   };
@@ -124,10 +151,11 @@ export default function InvoiceDetail() {
     </div>
   );
 
+  const derived = invoice ? computeInvoiceDerivedFields(invoice) : { amount_paid: 0, balance_due: 0, payment_status: 'unpaid' };
   const receipt = invoice ? buildReceipt(invoice, {
     payment_method: invoice.payment_method || 'cash',
     previous_balance: invoice.total,
-    amount_paid: invoice.amount_paid || invoice.total || 0,
+    amount_paid: derived.amount_paid,
   }) : null;
 
   if (!invoice) return (
@@ -172,7 +200,7 @@ export default function InvoiceDetail() {
           <Button size="sm" variant="outline" onClick={handlePrint}>
             <Printer className="w-3.5 h-3.5 mr-1" />Print
           </Button>
-          {(invoice.status === 'paid' || (invoice.amount_paid > 0)) && (
+          {(derived.payment_status !== 'unpaid') && (
             <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 gap-1.5" onClick={() => setReceiptModal(true)}>
               <FileCheck className="w-3.5 h-3.5" />View Receipt
             </Button>
@@ -182,7 +210,7 @@ export default function InvoiceDetail() {
               <Send className="w-3.5 h-3.5 mr-1" />Send
             </Button>
           )}
-          {invoice.status === 'sent' && (
+          {invoice.status === 'sent' && derived.payment_status !== 'paid' && (
             <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleMarkPaid} disabled={saving}>
               <CheckCircle className="w-3.5 h-3.5 mr-1" />Mark Paid
             </Button>
@@ -252,23 +280,23 @@ export default function InvoiceDetail() {
              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Total</p>
              <p className="text-2xl font-bold text-slate-900">${(invoice.total || 0).toFixed(2)}</p>
            </div>
-           {invoice.amount_paid > 0 && (
+           {derived.amount_paid > 0 && (
              <div>
                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Amount Paid</p>
-               <p className="text-lg font-semibold text-green-600">${(invoice.amount_paid || 0).toFixed(2)}</p>
+               <p className="text-lg font-semibold text-green-600">${derived.amount_paid.toFixed(2)}</p>
              </div>
            )}
-           {invoice.amount_paid > 0 && invoice.amount_paid < invoice.total && (
+           {derived.payment_status === 'partial' && (
              <div>
                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Balance Due</p>
-               <p className="text-lg font-semibold text-amber-600">${(invoice.total - invoice.amount_paid).toFixed(2)}</p>
+               <p className="text-lg font-semibold text-amber-600">${derived.balance_due.toFixed(2)}</p>
                <span className="inline-block mt-2 px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">Partial</span>
              </div>
            )}
-           {invoice.status === 'paid' && (
+           {derived.payment_status === 'paid' && (
              <p className="text-xs text-green-600 font-bold">✓ PAID IN FULL</p>
            )}
-           {invoice.status !== 'paid' && (
+           {derived.payment_status !== 'paid' && (
              <button onClick={() => setPaymentModalOpen(true)}
                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-lg text-sm transition-colors mt-2">
                + Add Payment
@@ -277,7 +305,7 @@ export default function InvoiceDetail() {
           </div>
 
           {/* Payments History */}
-          {(invoice.payments?.length > 0 || invoice.amount_paid > 0) && (
+          {(invoice.payments?.length > 0) && (
             <div className="px-4 py-4 border-b border-slate-100">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Payment History</p>
               <PaymentHistory invoice={invoice} onPaymentRemoved={(updates) => setInvoice(i => ({ ...i, ...updates }))} />

@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 
 const methodIcons = {
   cash: '💵',
@@ -20,18 +21,17 @@ export default function PaymentHistory({ invoice, onPaymentRemoved }) {
 
     try {
       const updatedPayments = payments.filter(p => p.id !== paymentId);
-      const removedPayment = payments.find(p => p.id === paymentId);
-      const updatedAmountPaid = (invoice?.amount_paid || 0) - (removedPayment?.amount || 0);
-      const updatedBalanceDue = (invoice?.total || 0) - updatedAmountPaid;
-      const paymentStatus = updatedBalanceDue > 0 ? (updatedAmountPaid > 0 ? 'partial' : 'unpaid') : 'paid';
+      
+      // Compute ALL derived fields from updated payments array
+      const temp = { ...invoice, payments: updatedPayments };
+      const derived = computeInvoiceDerivedFields(temp);
 
       const updates = {
         payments: updatedPayments,
-        amount_paid: Math.max(0, updatedAmountPaid),
-        balance_due: Math.max(0, updatedBalanceDue),
-        payment_status: paymentStatus,
-        status: paymentStatus === 'paid' ? 'paid' : 'sent',
-        paid_at: paymentStatus === 'paid' ? invoice?.paid_at : null,
+        amount_paid: derived.amount_paid,
+        balance_due: derived.balance_due,
+        payment_status: derived.payment_status,
+        paid_at: derived.payment_status === 'paid' ? invoice?.paid_at : null,
       };
 
       await window.base44.entities.Invoice.update(invoice.id, updates);

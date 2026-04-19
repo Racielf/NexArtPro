@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 
 export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdded }) {
   const [amount, setAmount] = useState('');
@@ -12,7 +13,9 @@ export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdd
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const maxPayment = (invoice?.balance_due || invoice?.total) - (invoice?.amount_paid || 0);
+  // Derive current state from payments[] (single source of truth)
+  const { amount_paid, balance_due } = computeInvoiceDerivedFields(invoice);
+  const maxPayment = balance_due;
   const isValid = parseFloat(amount) > 0 && parseFloat(amount) <= maxPayment;
 
   const handleSubmit = async () => {
@@ -34,18 +37,20 @@ export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdd
         recorded_at: new Date().toISOString(),
       };
 
+      // ONLY update payments array — let derived helpers compute everything else
       const updatedPayments = [...(invoice?.payments || []), newPayment];
-      const updatedAmountPaid = (invoice?.amount_paid || 0) + parseFloat(amount);
-      const updatedBalanceDue = (invoice?.total || 0) - updatedAmountPaid;
-      const paymentStatus = updatedBalanceDue <= 0 ? 'paid' : updatedAmountPaid > 0 ? 'partial' : 'unpaid';
+      
+      // Compute ALL derived fields from the updated payments array
+      const temp = { ...invoice, payments: updatedPayments };
+      const derived = computeInvoiceDerivedFields(temp);
 
+      // Update invoice with ONLY the derived fields (+ payments array)
       const updates = {
         payments: updatedPayments,
-        amount_paid: updatedAmountPaid,
-        balance_due: Math.max(0, updatedBalanceDue),
-        payment_status: paymentStatus,
-        status: paymentStatus === 'paid' ? 'paid' : invoice?.status || 'sent',
-        paid_at: paymentStatus === 'paid' ? new Date().toISOString() : invoice?.paid_at || null,
+        amount_paid: derived.amount_paid,
+        balance_due: derived.balance_due,
+        payment_status: derived.payment_status,
+        paid_at: derived.payment_status === 'paid' ? new Date().toISOString() : invoice?.paid_at || null,
       };
 
       await window.base44.entities.Invoice.update(invoice.id, updates);
