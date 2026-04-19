@@ -193,16 +193,16 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       }
 
       // Send email with secure public token link
-      const emailRes = await base44.functions.invoke('sendEstimateEmail', {
-        to: recipientEmail,
-        subject,
-        message,
-        client_link: finalLink,
-        client_name: estimate?.client_name || '',
-        estimate_number: estimate?.estimate_number || '',
-        total: estimate?.total || 0,
-        from_name: appConfig.appName || 'RC Art Construction',
-      });
+       const emailRes = await base44.functions.invoke('sendEstimateEmail', {
+         to: recipientEmail,
+         subject,
+         message,
+         client_link: finalLink,
+         client_name: estimate?.client_name || '',
+         estimate_number: estimate?.estimate_number || '',
+         total: estimate?.total || 0,
+         from_name: appConfig.company.name || 'R.C Art Construction LLC',
+       });
       if (emailRes.data?.error) throw new Error(emailRes.data.error);
 
       await markEstimateSent(estimate.id, { documentConfig, estimate });

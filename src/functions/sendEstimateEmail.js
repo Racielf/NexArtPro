@@ -48,8 +48,8 @@ export default async (req) => {
        }));
 
     // Send via Resend
-    const result = await resend.emails.send({
-      from: `${from_name} <noreply@rc-art-construction.com>`,
+     const result = await resend.emails.send({
+       from: `${from_name || 'R.C Art Construction LLC'} <noreply@rc-art-construction.com>`,
       to,
       subject,
       html: `
