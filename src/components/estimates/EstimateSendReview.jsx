@@ -17,6 +17,7 @@ import AttachmentWarningModal from './internal/AttachmentWarningModal';
 import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { validateBeforeSend, executeSend, logPricingOverride, logSendFailure } from '@/lib/estimateSendOrchestrator';
+import { generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
 import SendReviewSidePanel from './SendReviewSidePanel';
 import SendReviewBanners from './SendReviewBanners';
 import { Mail } from 'lucide-react';

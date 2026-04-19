@@ -1,6 +1,9 @@
 import { Resend } from 'npm:resend@3.2.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// deno-lint-ignore no-undef
+const Deno = globalThis.Deno;
+
 export default async (req) => {
   try {
     // deno-lint-ignore no-undef
