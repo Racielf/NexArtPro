@@ -230,10 +230,15 @@ export default function PremiumTemplate({ vm }) {
             {ct.showContingencyToClient && ct.contingencyAmount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', fontSize: 12, color: '#92400e', borderBottom: `1px solid ${ACCENT}30` }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  Contingency Allowance
-                  {ct.contingencyType === 'percent' && <span style={{ fontSize: 9, color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 3, padding: '1px 4px' }}>{ct.contingencyValue}%</span>}
+                  <span>
+                    Contingency Reserve
+                    {ct.contingencyType === 'percent' && <span style={{ marginLeft: 4, fontSize: 9, color: ACCENT, border: `1px solid ${ACCENT}`, borderRadius: 3, padding: '1px 4px' }}>{ct.contingencyValue}%</span>}
+                  </span>
                 </span>
-                <span style={{ fontWeight: 'bold' }}>${ct.contingencyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 'bold' }}>${ct.contingencyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                  <div style={{ fontSize: 9, color: MUTED, fontStyle: 'italic' }}>not included in total</div>
+                </div>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 0', marginTop: 6, borderTop: `2px solid ${DARK}` }}>

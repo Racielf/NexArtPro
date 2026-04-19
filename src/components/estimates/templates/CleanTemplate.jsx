@@ -220,10 +220,15 @@ export default function CleanTemplate({ vm }) {
             {ct.showContingencyToClient && ct.contingencyAmount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#92400e', borderBottom: '1px solid #fef3c7', background: '#fffbeb', margin: '2px -8px', padding: '6px 8px', borderRadius: 4 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Contingency Allowance
-                  {ct.contingencyType === 'percent' && <span style={{ fontSize: 10, color: '#b45309', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 3, padding: '1px 5px' }}>{ct.contingencyValue}%</span>}
+                  <span>
+                    Contingency Reserve
+                    {ct.contingencyType === 'percent' && <span style={{ marginLeft: 5, fontSize: 10, color: '#b45309', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 3, padding: '1px 5px' }}>{ct.contingencyValue}%</span>}
+                  </span>
                 </span>
-                <span style={{ fontWeight: 700 }}>${ct.contingencyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 700 }}>${ct.contingencyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                  <div style={{ fontSize: 9, color: '#b45309', fontStyle: 'italic' }}>not included in total</div>
+                </div>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 0', marginTop: 6, borderTop: `3px solid ${DARK}` }}>
