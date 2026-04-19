@@ -1,9 +1,10 @@
 import { Resend } from 'npm:resend@3.2.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+const apiKey = Deno.env.get('RESEND_API_KEY');
+const resend = new Resend(apiKey);
 
-export default Deno.serve(async (req) => {
+export default async (req: Request): Promise<Response> => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -38,13 +39,13 @@ export default Deno.serve(async (req) => {
     const messageText = message || `Please review the attached estimate and click the link below to approve or decline.\n\nSecure link: ${client_link}`;
 
     // Build attachments array: only include base64 content, ignore URLs
-    // (URLs should be embedded in the email body instead)
-    const emailAttachments = attachments
-      .filter(a => a.content && a.filename) // Only real base64 attachments
-      .map(a => ({
-        filename: a.filename,
-        content: Buffer.from(a.content, 'base64'),
-      }));
+     // (URLs should be embedded in the email body instead)
+     const emailAttachments = attachments
+       .filter(a => a.content && a.filename) // Only real base64 attachments
+       .map(a => ({
+         filename: a.filename,
+         content: a.content, // Pass base64 string directly to Resend
+       }));
 
     // Send via Resend
     const result = await resend.emails.send({
@@ -95,16 +96,16 @@ export default Deno.serve(async (req) => {
     }
 
     console.log(`[sendEstimateEmail] Successfully sent estimate #${estimate_number} to ${to}`);
-    return Response.json({
-      success: true,
-      message_id: result.data?.id,
-      estimate_number,
-    });
-  } catch (error) {
-    console.error('[sendEstimateEmail] Server error:', error.message);
-    return Response.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
-  }
-});
+     return Response.json({
+       success: true,
+       message_id: result.data?.id,
+       estimate_number,
+     });
+    } catch (error) {
+     console.error('[sendEstimateEmail] Server error:', error.message);
+     return Response.json(
+       { error: error.message || 'Internal server error' },
+       { status: 500 }
+     );
+    }
+    };
