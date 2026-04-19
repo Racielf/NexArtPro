@@ -130,7 +130,7 @@ export function generateSmartSuggestions(proposal, proposalDetails = {}, histori
     suggestions.push({
       type: 'scope',
       priority: 'medium',
-      message: 'Define what's included and excluded to prevent misalignment',
+      message: "Define what's included and excluded to prevent misalignment",
       context: 'Clear boundaries improve client confidence and reduce disputes.',
     });
   }
