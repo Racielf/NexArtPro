@@ -26,7 +26,8 @@ const LIGHT_BG = '#f8fafc';
 const sectionLabel = { fontSize: 11, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, paddingBottom: 6, borderBottom: `2px solid ${BORDER}` };
 
 export default function CleanTemplate({ vm }) {
-  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray } = vm;
+  const { meta, company, client, project, visibility: opts, groups, totals, text, contingency, columns: lineCols, termsArray } = vm;
+  const ct = contingency || {};
   const { isWorkOrder, isEstimate, showPrices } = opts;
 
   return (
@@ -215,6 +216,16 @@ export default function CleanTemplate({ vm }) {
                 <span>${totals.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             )}
+            {/* Contingency — only if client-visible and amount > 0 */}
+            {ct.showContingencyToClient && ct.contingencyAmount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#92400e', borderBottom: '1px solid #fef3c7', background: '#fffbeb', margin: '2px -8px', padding: '6px 8px', borderRadius: 4 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Contingency Allowance
+                  {ct.contingencyType === 'percent' && <span style={{ fontSize: 10, color: '#b45309', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 3, padding: '1px 5px' }}>{ct.contingencyValue}%</span>}
+                </span>
+                <span style={{ fontWeight: 700 }}>${ct.contingencyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 0', marginTop: 6, borderTop: `3px solid ${DARK}` }}>
               <span style={{ fontWeight: 800, color: DARK, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Project Investment</span>
               <span style={{ fontWeight: 900, color: DARK, fontSize: 22 }}>${totals.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -229,6 +240,14 @@ export default function CleanTemplate({ vm }) {
           <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Deposit Required to Start</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#1e40af' }}>${totals.depositAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span style={{ fontSize: 12, fontWeight: 400, color: '#3b82f6' }}>({totals.depositPercent}%)</span></div>
           <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>Remaining: ${totals.remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })} — due upon completion.</div>
+        </div>
+      )}
+
+      {/* ─── UNCERTAINTY NOTE ───────────────────────────────── */}
+      {text.uncertaintyNote && (
+        <div style={{ margin: `0 ${P}px 20px`, padding: '12px 16px', background: '#fefce8', border: '1px solid #fde68a', borderRadius: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Project Uncertainty Notice</div>
+          <p style={{ color: '#78350f', fontSize: 12, lineHeight: 1.65, whiteSpace: 'pre-wrap', margin: 0 }}>{text.uncertaintyNote}</p>
         </div>
       )}
 

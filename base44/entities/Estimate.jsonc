@@ -399,6 +399,35 @@
       "type": "string",
       "description": "Newline-separated list of what is included in this estimate \u2014 each line renders as one bullet in the document"
     },
+    "contingency_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "percent",
+        "fixed"
+      ],
+      "default": "none",
+      "description": "Type of contingency: none | percent of grand total | fixed dollar amount"
+    },
+    "contingency_value": {
+      "type": "number",
+      "default": 0,
+      "description": "Raw user-entered contingency value (percentage or dollar amount depending on contingency_type)"
+    },
+    "contingency_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Computed contingency dollar amount (stored for persistence)"
+    },
+    "show_contingency_to_client": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, contingency line is shown to client in document templates"
+    },
+    "uncertainty_note": {
+      "type": "string",
+      "description": "Optional client-visible note about project uncertainties or scope assumptions"
+    },
     "sent_at": {
       "type": "string"
     },

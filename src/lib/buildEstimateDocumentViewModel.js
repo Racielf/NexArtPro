@@ -265,6 +265,34 @@ export function buildEstimateDocumentViewModel({
     assumptions: safeStr(estimate.assumptions),
     changeRequestPolicy: safeStr(estimate.change_request_policy),
     includedScopeBullets,
+    uncertaintyNote: safeStr(estimate.uncertainty_note),
+  };
+
+  // ─── Contingency ─────────────────────────────────────────────────────────
+  // Compute contingency_amount based on grand total (post-discount, post-tax).
+  // Basis: totals.total — the final client-facing amount already computed.
+  // This avoids circular recalculation with the estimate engine.
+  const contingencyType = safeStr(estimate.contingency_type, 'none');
+  const contingencyValue = safeNum(estimate.contingency_value, 0);
+  const storedContingencyAmount = safeNum(estimate.contingency_amount, 0);
+
+  // Re-derive amount from current total to ensure freshness; fall back to stored.
+  let contingencyAmount = 0;
+  if (contingencyType === 'percent' && contingencyValue > 0) {
+    contingencyAmount = parseFloat((safeNum(estimate.total) * contingencyValue / 100).toFixed(2));
+  } else if (contingencyType === 'fixed' && contingencyValue > 0) {
+    contingencyAmount = contingencyValue;
+  } else {
+    contingencyAmount = storedContingencyAmount;
+  }
+
+  const showContingencyToClient = estimate.show_contingency_to_client === true;
+
+  const contingency = {
+    contingencyType,
+    contingencyValue,
+    contingencyAmount,
+    showContingencyToClient,
   };
 
   // ─── Materials ────────────────────────────────────────────────────────────
@@ -307,6 +335,7 @@ export function buildEstimateDocumentViewModel({
     materialsSubtotal,
     totals,
     text,
+    contingency,
     columns,
     termsArray,
     clientAttachments,

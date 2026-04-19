@@ -30,7 +30,8 @@ const sectionLabel = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase'
 const cardSectionLabel = { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8', marginBottom: 8 };
 
 export default function ModernCardTemplate({ vm }) {
-  const { meta, company, client, project, visibility: opts, groups, totals, text, columns: lineCols, termsArray } = vm;
+  const { meta, company, client, project, visibility: opts, groups, totals, text, contingency, columns: lineCols, termsArray } = vm;
+  const ct = contingency || {};
   const { isWorkOrder, isEstimate, showPrices } = opts;
 
   return (
@@ -222,6 +223,16 @@ export default function ModernCardTemplate({ vm }) {
                 <span>${totals.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             )}
+            {/* Contingency — only if client-visible and amount > 0 */}
+            {ct.showContingencyToClient && ct.contingencyAmount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#92400e', borderBottom: '1px solid #fef3c7', background: '#fffbeb', margin: '2px -4px', padding: '6px 4px', borderRadius: 4 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  Contingency Allowance
+                  {ct.contingencyType === 'percent' && <span style={{ fontSize: 10, color: '#b45309', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 3, padding: '1px 5px' }}>{ct.contingencyValue}%</span>}
+                </span>
+                <span style={{ fontWeight: 700 }}>${ct.contingencyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 0', marginTop: 6, borderTop: `3px solid ${DARK}` }}>
               <span style={{ fontWeight: 800, color: DARK, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Project Investment</span>
               <span style={{ fontWeight: 900, color: DARK, fontSize: 22 }}>${totals.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -242,6 +253,14 @@ export default function ModernCardTemplate({ vm }) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ─── UNCERTAINTY NOTE CARD ──────────────────────────── */}
+      {text.uncertaintyNote && (
+        <div style={{ ...card(), padding: '18px 24px', marginBottom: 20, borderLeft: `4px solid #f59e0b`, background: '#fffbeb' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Project Uncertainty Notice</div>
+          <p style={{ color: '#78350f', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', margin: 0 }}>{text.uncertaintyNote}</p>
         </div>
       )}
 

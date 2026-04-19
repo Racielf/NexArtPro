@@ -546,6 +546,10 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [assumptions, setAssumptions] = useState(estimate?.assumptions || '');
   const [changeRequestPolicy, setChangeRequestPolicy] = useState(estimate?.change_request_policy || '');
   const [includedScopeBullets, setIncludedScopeBullets] = useState(estimate?.included_scope_bullets || '');
+  const [contingencyType, setContingencyType] = useState(estimate?.contingency_type || 'none');
+  const [contingencyValue, setContingencyValue] = useState(estimate?.contingency_value || 0);
+  const [showContingencyToClient, setShowContingencyToClient] = useState(estimate?.show_contingency_to_client || false);
+  const [uncertaintyNote, setUncertaintyNote] = useState(estimate?.uncertainty_note || '');
   const [materials, setMaterials] = useState(() => normalizeMaterials(estimate?.materials || []));
   const [otherCosts, setOtherCosts] = useState(estimate?.other_costs || []);
   const showCost = true; // Materials cost always tracked internally
@@ -601,6 +605,10 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     setAssumptions(estimate.assumptions || '');
     setChangeRequestPolicy(estimate.change_request_policy || '');
     setIncludedScopeBullets(estimate.included_scope_bullets || '');
+    setContingencyType(estimate.contingency_type || 'none');
+    setContingencyValue(estimate.contingency_value || 0);
+    setShowContingencyToClient(estimate.show_contingency_to_client || false);
+    setUncertaintyNote(estimate.uncertainty_note || '');
     setMaterials(normalizeMaterials(estimate.materials || []));
     setOtherCosts(estimate.other_costs || []);
   }, [estimate?.id]);
@@ -636,6 +644,17 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         assumptions,
         change_request_policy: changeRequestPolicy,
         included_scope_bullets: includedScopeBullets,
+        contingency_type: contingencyType,
+        contingency_value: contingencyValue,
+        contingency_amount: (() => {
+          if (contingencyType === 'percent' && contingencyValue > 0)
+            return parseFloat((result.total * contingencyValue / 100).toFixed(2));
+          if (contingencyType === 'fixed' && contingencyValue > 0)
+            return contingencyValue;
+          return 0;
+        })(),
+        show_contingency_to_client: showContingencyToClient,
+        uncertainty_note: uncertaintyNote,
         subtotal: result.subtotal,
         discount_amount: result.discountAmount,
         tax_amount: result.taxAmount,
@@ -647,7 +666,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, includedScopeBullets, materials, otherCosts]);
+  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, includedScopeBullets, contingencyType, contingencyValue, showContingencyToClient, uncertaintyNote, materials, otherCosts]);
 
   const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
@@ -905,6 +924,83 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
             <NotesSection label="Assumptions & Conditions" placeholder="Agreed project assumptions — site access, permits, materials provided by client…" value={assumptions} onChange={setAssumptions} />
             <NotesSection label="Change Request Policy" placeholder="How changes after approval are handled — process, pricing, written approval required…" value={changeRequestPolicy} onChange={setChangeRequestPolicy} />
             <NotesSection label="What's Included" placeholder="Each line = one bullet in the document — e.g. Labor and installation&#10;Cleanup and haul-away&#10;All materials listed above" value={includedScopeBullets} onChange={setIncludedScopeBullets} />
+          </div>
+
+          {/* ── CONTINGENCY & UNCERTAINTY ── */}
+          <div className="mt-5 pt-5 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Contingency & Uncertainty</label>
+              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-slate-50 border-slate-200 text-slate-400 leading-none">Optional</span>
+            </div>
+            <div className="grid grid-cols-2 gap-5">
+              {/* Left: contingency controls */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Type</label>
+                    <select
+                      value={contingencyType}
+                      onChange={e => setContingencyType(e.target.value)}
+                      className="h-8 text-xs border border-slate-200 rounded-lg px-2 bg-white text-slate-700 font-medium focus:border-blue-400 focus:outline-none"
+                    >
+                      <option value="none">None</option>
+                      <option value="percent">Percent (%)</option>
+                      <option value="fixed">Fixed ($)</option>
+                    </select>
+                  </div>
+                  {contingencyType !== 'none' && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                        {contingencyType === 'percent' ? 'Percentage' : 'Amount ($)'}
+                      </label>
+                      <div className="relative flex items-center">
+                        {contingencyType === 'fixed' && <span className="absolute left-2 text-xs text-slate-400 pointer-events-none">$</span>}
+                        <Input
+                          type="number"
+                          min={0}
+                          step={contingencyType === 'percent' ? '0.1' : '0.01'}
+                          value={contingencyValue}
+                          onChange={e => setContingencyValue(parseFloat(e.target.value) || 0)}
+                          className={`h-8 w-28 text-sm border-slate-200 text-right ${contingencyType === 'fixed' ? 'pl-5' : ''}`}
+                        />
+                        {contingencyType === 'percent' && <span className="ml-1.5 text-xs text-slate-400">%</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {contingencyType !== 'none' && contingencyValue > 0 && (() => {
+                  const amt = contingencyType === 'percent'
+                    ? parseFloat(((total || 0) * contingencyValue / 100).toFixed(2))
+                    : contingencyValue;
+                  return (
+                    <div className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                      Contingency amount: <span className="font-bold text-slate-700">${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  );
+                })()}
+                <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={showContingencyToClient}
+                    onChange={e => setShowContingencyToClient(e.target.checked)}
+                    className="rounded accent-primary"
+                    disabled={contingencyType === 'none'}
+                  />
+                  Show contingency line to client
+                </label>
+              </div>
+              {/* Right: uncertainty note */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Uncertainty Note</label>
+                <Textarea
+                  value={uncertaintyNote}
+                  onChange={e => setUncertaintyNote(e.target.value)}
+                  placeholder="Optional client-visible note about project uncertainties or scope assumptions…"
+                  rows={4}
+                  className="text-sm resize-none border-slate-200 bg-slate-50/40 placeholder:text-slate-300 focus-visible:ring-primary/20"
+                />
+              </div>
+            </div>
           </div>
 
           <button onClick={() => setShowTerms(v => !v)}
