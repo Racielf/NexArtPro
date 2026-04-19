@@ -29,6 +29,8 @@ import ConcreteMetrics from '@/components/estimates/internal/ConcreteMetrics';
 import MaterialsSection from '@/components/estimates/MaterialsSection';
 import OtherCostsSection from '@/components/estimates/OtherCostsSection';
 import { persistNewServiceToCatalog } from '@/lib/persistNewService';
+import { calculateRiskScore } from '@/lib/estimateRiskScoring';
+import RiskScorePanel from '@/components/estimates/internal/RiskScorePanel';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -718,6 +720,23 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     if (c > 0 && p > 0 && p < c) lossItems.push(item);
   }));
 
+  // Calculate risk score (internal only)
+  const riskData = !isPreview ? calculateRiskScore(
+    {
+      scopeSummary,
+      assumptions,
+      includedScopeBullets,
+      contingencyType,
+      contingencyValue,
+      total,
+      discountValue,
+      discountType,
+      materials,
+    },
+    groups,
+    { grossMarginPct }
+  ) : null;
+
   return (
     <div className="w-full space-y-0 max-w-5xl mx-auto">
 
@@ -1066,6 +1085,13 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── RISK SCORE PANEL ── */}
+      {!isPreview && riskData && (
+        <div className="mt-5">
+          <RiskScorePanel riskData={riskData} />
         </div>
       )}
 
