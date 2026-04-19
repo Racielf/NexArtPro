@@ -54,10 +54,27 @@ function defaultFollowUpDate() {
 // ─── Lifecycle functions ───────────────────────────────────────────────────
 
 /**
+ * Generate public share token for estimate.
+ * Token = estimateId_sha256(estimateId + clientEmail)
+ * Immutable and cryptographically linked to the estimate.
+ */
+export async function generatePublicShareToken(estimate) {
+  const estimateId = estimate.id;
+  const clientEmail = estimate.client_email || '';
+  
+  const data = new TextEncoder().encode(estimateId + clientEmail);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return `${estimateId}_${signature}`;
+}
+
+/**
  * Mark estimate as sent.
  * Called from EstimateSendReview after email is dispatched.
  */
-export async function markEstimateSent(estimateId, { documentConfig } = {}) {
+export async function markEstimateSent(estimateId, { documentConfig, estimate } = {}) {
   const ts = now();
   const payload = {
     status: 'sent',

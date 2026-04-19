@@ -14,7 +14,7 @@ import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import LossPreventionModal from './internal/LossPreventionModal';
 import AttachmentWarningModal from './internal/AttachmentWarningModal';
-import { markEstimateSent } from '@/lib/estimateSalesLifecycle';
+import { markEstimateSent, generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
 import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
 import SendReviewSidePanel from './SendReviewSidePanel';
@@ -73,7 +73,18 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
 
   if (!open) return null;
 
-  const clientLink = `${window.location.origin}/client-estimate?id=${estimate?.id}`;
+  // Generate public share token (async state would complicate this, so compute in effect)
+  const [publicToken, setPublicToken] = React.useState(null);
+
+  React.useEffect(() => {
+    if (estimate?.id && estimate?.client_email && !publicToken) {
+      generatePublicShareToken(estimate).then(setPublicToken);
+    }
+  }, [estimate?.id, estimate?.client_email, publicToken]);
+
+  const clientLink = publicToken 
+    ? `${window.location.origin}/client-estimate?token=${publicToken}`
+    : `${window.location.origin}/client-estimate?token=generating`;
 
   const currentOptions = {
     showPrices: visibility.prices !== false,
@@ -176,12 +187,19 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     try {
       const documentConfig = { template: currentTemplate, options: currentOptions };
 
-      // Send email with secure client link (PDF available via download from estimate review page)
+      // Wait for token generation if still pending
+      let finalLink = clientLink;
+      if (!publicToken || publicToken === 'generating') {
+        const token = await generatePublicShareToken(estimate);
+        finalLink = `${window.location.origin}/client-estimate?token=${token}`;
+      }
+
+      // Send email with secure public token link
       const emailRes = await base44.functions.invoke('sendEstimateEmail', {
         to: recipientEmail,
         subject,
         message,
-        client_link: clientLink,
+        client_link: finalLink,
         client_name: estimate?.client_name || '',
         estimate_number: estimate?.estimate_number || '',
         total: estimate?.total || 0,
@@ -189,9 +207,9 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       });
       if (emailRes.data?.error) throw new Error(emailRes.data.error);
 
-      await markEstimateSent(estimate.id, { documentConfig });
+      await markEstimateSent(estimate.id, { documentConfig, estimate });
 
-      await logDocument(estimate.id, estimate, 'sent_email', { recipient_email: recipientEmail, subject, secure_link: clientLink });
+      await logDocument(estimate.id, estimate, 'sent_email', { recipient_email: recipientEmail, subject, secure_link: finalLink });
       const currentUser = await base44.auth.me().catch(() => null);
       if (currentUser) {
         await logSend({

@@ -32,7 +32,7 @@ import {
 
 export default function ClientEstimateView() {
   const urlParams = new URLSearchParams(window.location.search);
-  const estimateId = urlParams.get('id');
+  const token = urlParams.get('token');
 
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,16 +42,16 @@ export default function ClientEstimateView() {
 
   useEffect(() => {
     const load = async () => {
-      if (!estimateId) { setLoading(false); return; }
+      if (!token) { setLoading(false); return; }
       try {
-        const list = await base44.entities.Estimate.filter({ id: estimateId });
-        if (list.length) {
-          const est = list[0];
+        const res = await base44.functions.invoke('resolveEstimatePublicToken', { token });
+        if (res.data?.estimate) {
+          const est = res.data.estimate;
           setEstimate(est);
           // Mark as viewed — lifecycle handles view_count, timestamps, stage
           if (est.status === 'sent' || est.status === 'viewed') {
             try {
-              const updates = await markEstimateViewed(estimateId, est);
+              const updates = await markEstimateViewed(est.id, est);
               setEstimate(e => ({ ...e, ...updates }));
             } catch (viewErr) {
               console.warn('[ClientEstimateView] markEstimateViewed failed:', viewErr?.message);
@@ -79,12 +79,12 @@ export default function ClientEstimateView() {
       }
     };
     load();
-  }, [estimateId]);
+  }, [token]);
 
   const handleApprove = async () => {
     setActing(true);
     try {
-      const updates = await approveEstimate(estimateId, { approvedBy: estimate.client_name, estimate });
+      const updates = await approveEstimate(estimate.id, { approvedBy: estimate.client_name, estimate });
       setEstimate(e => ({ ...e, ...updates }));
       notifyEstimateApproved(estimate).catch(err => console.warn('[notify] approved failed:', err?.message));
       toast.success('Estimate approved! We will be in touch soon.');
@@ -99,7 +99,7 @@ export default function ClientEstimateView() {
   const handleDecline = async () => {
     setActing(true);
     try {
-      const updates = await declineEstimate(estimateId);
+      const updates = await declineEstimate(estimate.id);
       setEstimate(e => ({ ...e, ...updates }));
       notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
       toast.success('Estimate declined. Thank you for letting us know.');
@@ -115,7 +115,7 @@ export default function ClientEstimateView() {
     setShowSignPad(false);
     setActing(true);
     try {
-      const updates = await signEstimate(estimateId, { signerName, signerEmail, signatureBase64: base64, estimate });
+      const updates = await signEstimate(estimate.id, { signerName, signerEmail, signatureBase64: base64, estimate });
       setEstimate(e => ({ ...e, ...updates }));
       notifyEstimateSigned(estimate, { signerName, signerEmail }).catch(err => console.warn('[notify] signed failed:', err?.message));
       toast.success('Estimate signed successfully!');
@@ -143,7 +143,7 @@ export default function ClientEstimateView() {
         snapshot: estimate,
         total_at_archive: estimate.total || 0,
       });
-      const updates = await requestEstimateChanges(estimateId, { note, currentVersion: estimate.version });
+      const updates = await requestEstimateChanges(estimate.id, { note, currentVersion: estimate.version });
       setEstimate(e => ({ ...e, ...updates }));
       notifyEstimateChangesRequested(estimate, note).catch(err => console.warn('[notify] changes failed:', err?.message));
       toast.success('Change request sent! We\'ll review and send a revised estimate.');
@@ -213,7 +213,11 @@ export default function ClientEstimateView() {
 
   const footer = (
     <div className="print:hidden space-y-4">
-      <ClientAttachmentsSection attachments={estimate.attachments} />
+      <ClientAttachmentsSection 
+        attachments={estimate.attachments} 
+        estimateId={estimate.id}
+        token={token}
+      />
       {canAct && (
         <div className="px-8 py-7 bg-slate-50 border border-slate-200 rounded-xl">
           <p className="text-sm text-slate-500 mb-5 text-center">Please review this estimate and choose an action below.</p>
