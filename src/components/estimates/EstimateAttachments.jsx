@@ -154,32 +154,32 @@ export default function EstimateAttachments({ attachments = [], onUpdate, readOn
              </p>
            </div>
 
-            {/* Intent toggle — iOS-style switch */}
+            {/* Intent toggle — compact switch */}
             {!readOnly ? (
               <button
                 type="button"
                 onClick={() => toggleIntent(att.id)}
-                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
                   att.intent === 'send_to_client' ? 'bg-blue-500' : 'bg-slate-300'
                 }`}
                 title={`Click to switch: ${att.intent === 'internal_only' ? 'Send to Client' : 'Internal Only'}`}
               >
                 <span
-                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
-                    att.intent === 'send_to_client' ? 'translate-x-6' : 'translate-x-0.5'
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-md transition-transform ${
+                    att.intent === 'send_to_client' ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
               </button>
             ) : (
               <button
                 disabled
-                className={`relative w-12 h-6 rounded-full flex-shrink-0 ${
+                className={`relative w-9 h-5 rounded-full flex-shrink-0 ${
                   att.intent === 'send_to_client' ? 'bg-blue-500' : 'bg-slate-300'
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md ${
-                    att.intent === 'send_to_client' ? 'translate-x-6' : 'translate-x-0.5'
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-md ${
+                    att.intent === 'send_to_client' ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
               </button>
