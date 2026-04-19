@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
+import ClientPaymentSummary from '@/components/client-portal/ClientPaymentSummary';
+import PaymentInstructions from '@/components/client-portal/PaymentInstructions';
 import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 
 /**
@@ -49,26 +51,8 @@ export default function InvoiceViewModal({ invoice, onClose }) {
 
         {/* Content */}
         <div className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
-          {/* Invoice Summary */}
-          <div className="space-y-2">
-            <p className="text-xs text-slate-500 uppercase font-semibold tracking-wide">Summary</p>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-2xl font-bold text-slate-900">${(invoice.total || 0).toFixed(2)}</p>
-                <p className="text-xs text-slate-500 mt-1">Total</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">${derived.amount_paid.toFixed(2)}</p>
-                <p className="text-xs text-slate-500 mt-1">Paid</p>
-              </div>
-              <div>
-                <p className={`text-2xl font-bold ${derived.balance_due > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                  ${derived.balance_due.toFixed(2)}
-                </p>
-                <p className="text-xs text-slate-500 mt-1">Due</p>
-              </div>
-            </div>
-          </div>
+          {/* Client Payment Summary (prominent, clear) */}
+          <ClientPaymentSummary invoice={invoice} />
 
           {/* Line Items */}
           {items.length > 0 && (
@@ -112,6 +96,9 @@ export default function InvoiceViewModal({ invoice, onClose }) {
           ) : workOrder ? (
             <ExecutionSummaryBlock workOrder={workOrder} compact={false} />
           ) : null}
+
+          {/* Payment Instructions */}
+          <PaymentInstructions invoice={invoice} />
 
           {/* Notes */}
           {invoice.notes && (
