@@ -35,6 +35,13 @@ const PROPOSAL = {
   terms:              { en: 'Terms & Conditions', es: 'Términos y Condiciones' },
   acceptance:         { en: 'Acceptance', es: 'Aceptación' },
   callToAction:       { en: 'Ready to Get Started?', es: '¿Listo para Comenzar?' },
+  investmentOptions:  { en: 'Investment Options', es: 'Opciones de Inversión' },
+  investmentOptionsIntro: {
+    en: 'Choose the option that best fits your needs and budget. All options include our commitment to quality and professional workmanship.',
+    es: 'Elija la opción que mejor se adapte a sus necesidades y presupuesto. Todas las opciones incluyen nuestro compromiso con la calidad y la mano de obra profesional.',
+  },
+  included:           { en: "What's Included", es: 'Incluye' },
+  notIncluded:        { en: "What's Not Included", es: 'No Incluye' },
 
   // Sub-labels
   estimatedStart:       { en: 'Estimated Start', es: 'Inicio Estimado' },

@@ -224,6 +224,100 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
         )}
 
         {/* ══════════════════════════════════════
+            SECTION 7a — INVESTMENT OPTIONS (price anchoring)
+            Conditional: only renders when pricingOptions[] has items
+        ══════════════════════════════════════ */}
+        {opts.showPrices && estimate.pricing_options?.length > 0 && (
+          <PDFSectionBlock title={T('investmentOptions')} titleEs={esTitle('investmentOptions')} accent={ACCENT}>
+            <p style={{ ...S.body, marginBottom: SPACE.lg, color: COLORS.text.muted }}>{T('investmentOptionsIntro')}</p>
+            <div style={{ display: 'flex', gap: SPACE.lg, flexWrap: 'wrap' }}>
+              {estimate.pricing_options.map((opt, idx) => {
+                const isHighlighted = !!opt.badge;
+                const includedLines = opt.itemsIncluded ? opt.itemsIncluded.split('\n').filter(Boolean) : [];
+                const excludedLines = opt.itemsExcluded ? opt.itemsExcluded.split('\n').filter(Boolean) : [];
+                return (
+                  <div key={opt.id || idx} style={{
+                    flex: '1 1 200px',
+                    minWidth: 180,
+                    border: `2px solid ${isHighlighted ? ACCENT : COLORS.border.medium}`,
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                    background: COLORS.white,
+                    position: 'relative',
+                  }}>
+                    {/* Badge */}
+                    {opt.badge && (
+                      <div style={{
+                        background: ACCENT,
+                        color: COLORS.white,
+                        fontSize: FONT.size.xs,
+                        fontWeight: FONT.weight.bold,
+                        textAlign: 'center',
+                        padding: `${SPACE.xs}px ${SPACE.md}px`,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                      }}>
+                        {opt.badge}
+                      </div>
+                    )}
+                    <div style={{ padding: `${SPACE.lg}px ${SPACE.xl}px` }}>
+                      {/* Title */}
+                      <div style={{ fontWeight: FONT.weight.extrabold, fontSize: FONT.size.xl, color: COLORS.text.primary, marginBottom: SPACE.xs }}>
+                        {opt.title || `Option ${idx + 1}`}
+                      </div>
+                      {/* Price */}
+                      {opt.price != null && opt.price !== '' && (
+                        <div style={{ fontSize: FONT.size['3xl'], fontWeight: FONT.weight.black, color: ACCENT, lineHeight: 1.1, marginBottom: SPACE.sm }}>
+                          ${parseFloat(opt.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </div>
+                      )}
+                      {/* Description */}
+                      {opt.description && (
+                        <p style={{ ...S.bodySmall, marginBottom: SPACE.md, color: COLORS.text.muted }}>
+                          {opt.description}
+                        </p>
+                      )}
+                      {/* Divider */}
+                      {(includedLines.length > 0 || excludedLines.length > 0) && (
+                        <div style={{ borderTop: `1px solid ${COLORS.border.light}`, margin: `${SPACE.sm}px 0 ${SPACE.md}px` }} />
+                      )}
+                      {/* Included */}
+                      {includedLines.length > 0 && (
+                        <div style={{ marginBottom: SPACE.sm }}>
+                          <div style={{ fontSize: FONT.size.xs, fontWeight: FONT.weight.bold, color: COLORS.text.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: SPACE.xs }}>
+                            {T('included')}
+                          </div>
+                          {includedLines.map((line, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: SPACE.xs, marginBottom: 3 }}>
+                              <span style={{ color: '#10b981', fontWeight: FONT.weight.bold, fontSize: FONT.size.sm, lineHeight: 1.4, flexShrink: 0 }}>✓</span>
+                              <span style={{ fontSize: FONT.size.sm, color: COLORS.text.secondary, lineHeight: 1.5 }}>{line}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Excluded */}
+                      {excludedLines.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: FONT.size.xs, fontWeight: FONT.weight.bold, color: COLORS.text.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: SPACE.xs }}>
+                            {T('notIncluded')}
+                          </div>
+                          {excludedLines.map((line, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: SPACE.xs, marginBottom: 3 }}>
+                              <span style={{ color: '#94a3b8', fontSize: FONT.size.sm, lineHeight: 1.4, flexShrink: 0 }}>✗</span>
+                              <span style={{ fontSize: FONT.size.sm, color: COLORS.text.faint, lineHeight: 1.5 }}>{line}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </PDFSectionBlock>
+        )}
+
+        {/* ══════════════════════════════════════
             SECTION 7 — PRICING SUMMARY
         ══════════════════════════════════════ */}
         {opts.showPrices && (

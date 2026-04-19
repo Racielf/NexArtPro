@@ -118,6 +118,9 @@ export function mapProposalToEstimate(proposal, proposalDetails, language) {
     project_start_date: details.timeline || '',
     project_end_date: '',
 
+    // Pricing options (price anchoring — optional, empty array = single-price mode)
+    pricing_options: details.pricingOptions || [],
+
     // Status
     status: proposal.status || 'draft',
 

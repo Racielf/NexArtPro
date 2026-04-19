@@ -14,6 +14,7 @@ import CommTimeline from '@/components/shared/CommTimeline';
 import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
+import ProposalPricingOptions from '@/components/proposals/ProposalPricingOptions';
 
 const STATUS_BADGE = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -44,7 +45,8 @@ export default function ProposalEditor() {
     scopeOfWork: '',
     inclusions: '',
     exclusions: '',
-    timeline: ''
+    timeline: '',
+    pricingOptions: [],
   });
   const [showSend, setShowSend] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -60,7 +62,7 @@ export default function ProposalEditor() {
   // Legacy fallback: if proposal_details is absent, try to parse from old JSON-in-notes format
   useEffect(() => {
     if (!proposal) return;
-    const empty = { scopeOfWork: '', inclusions: '', exclusions: '', timeline: '' };
+    const empty = { scopeOfWork: '', inclusions: '', exclusions: '', timeline: '', pricingOptions: [] };
 
     if (proposal.proposal_details && Object.values(proposal.proposal_details).some(v => v)) {
       setProposalDetails({ ...empty, ...proposal.proposal_details });
@@ -366,6 +368,14 @@ export default function ProposalEditor() {
                   className="w-full h-20 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                 />
               </div>
+
+              {/* Investment Options — price anchoring (optional) */}
+              {!isPreview && (
+                <ProposalPricingOptions
+                  pricingOptions={proposalDetails.pricingOptions || []}
+                  onChange={opts => setProposalDetails(p => ({ ...p, pricingOptions: opts }))}
+                />
+              )}
 
               {/* Persisted pricing audit trail — internal only */}
               {!isPreview && proposal?.id && (
