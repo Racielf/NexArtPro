@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { AlertTriangle, TrendingUp, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, ShieldAlert } from 'lucide-react';
 
 export default function RiskScorePanel({ riskData }) {
   if (!riskData) return null;
