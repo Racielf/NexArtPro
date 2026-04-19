@@ -10,8 +10,9 @@
 
 import {
   Clock, Eye, ArrowRight, RefreshCw, AlertTriangle,
-  CheckCircle2, XCircle, Handshake, HelpCircle
+  CheckCircle2, XCircle, Handshake, HelpCircle, Zap
 } from 'lucide-react';
+import { getInvoiceFollowUpTiming } from './invoiceFollowUpTiming';
 
 export const STALE_DAYS = 5;
 
@@ -77,9 +78,13 @@ export function getNextAction(doc) {
     /**
     * Get next action for an invoice (collections context).
     * Works with invoice records that have: status, due_date, sent_at, paid_at, amount_paid, total, client_response_status
+    * Now includes follow-up timing intelligence.
     */
     export function getInvoiceNextAction(invoice) {
     if (!invoice) return null;
+
+    // Get follow-up timing for this invoice
+    const followUpTiming = getInvoiceFollowUpTiming(invoice);
 
     const status = invoice.status;
     const dueDate = invoice.due_date ? new Date(invoice.due_date) : null;
@@ -154,3 +159,8 @@ export function getNextAction(doc) {
 
     return null;
     }
+
+    /**
+    * Export follow-up timing helper for external use.
+    */
+    export { getInvoiceFollowUpTiming } from './invoiceFollowUpTiming';

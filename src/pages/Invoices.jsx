@@ -8,12 +8,12 @@ import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
-import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CashflowSummary from '@/components/invoices/CashflowSummary';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
-import { getInvoiceNextAction } from '@/lib/nextActionLogic';
+import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
 
 export default function Invoices() {
   const navigate = useNavigate();
@@ -217,27 +217,40 @@ export default function Invoices() {
                const evidence = evidenceCache[inv.id];
                const isOverdue = isInvoiceOverdue(inv);
                const nextAction = getInvoiceNextAction(inv);
+               const followUpTiming = getInvoiceFollowUpTiming(inv);
                return (
                <Card key={inv.id} className={`${isOverdue ? 'border-red-200 bg-red-50/30' : 'bg-white'} hover:shadow-sm hover:border-border/70 transition-all border-border cursor-pointer`} onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
                  <CardContent className="p-4">
-                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                     <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
-                       <input
-                         type="checkbox"
-                         checked={selectedIds.has(inv.id)}
-                         onChange={() => toggleSelect(inv.id)}
-                         className="w-4 h-4 cursor-pointer"
-                       />
-                     </label>
-                     <div className="flex-1">
-                       <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-primary">INV#{inv.invoice_number}</span>
-                          <h3 className="font-semibold text-foreground">{inv.client_name}</h3>
-                          {inv.amount_paid > 0 && inv.amount_paid < inv.total ? (
-                            <StatusBadge status="partial" />
-                          ) : (
-                            <StatusBadge status={inv.status} />
-                          )}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(inv.id)}
+                          onChange={() => toggleSelect(inv.id)}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                      </label>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                           <span className="font-bold text-primary">INV#{inv.invoice_number}</span>
+                           <h3 className="font-semibold text-foreground">{inv.client_name}</h3>
+                           {inv.amount_paid > 0 && inv.amount_paid < inv.total ? (
+                             <StatusBadge status="partial" />
+                           ) : (
+                             <StatusBadge status={inv.status} />
+                           )}
+                           {followUpTiming && (
+                             <div className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
+                               followUpTiming.urgency === 'high' ? 'bg-red-100 text-red-700' :
+                               followUpTiming.urgency === 'medium' ? 'bg-amber-100 text-amber-700' :
+                               'bg-blue-100 text-blue-700'
+                             }`}>
+                               {followUpTiming.urgency === 'high' && <AlertTriangle className="w-3 h-3" />}
+                               {followUpTiming.urgency === 'medium' && <Clock className="w-3 h-3" />}
+                               {followUpTiming.urgency === 'low' && <Clock className="w-3 h-3 opacity-60" />}
+                               {followUpTiming.label}
+                             </div>
+                           )}
                           {isOverdue && (
                             <div className="px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 bg-red-100 text-red-700">
                               <AlertTriangle className="w-3 h-3" /> Overdue

@@ -17,7 +17,7 @@ import PaymentInputModal from '@/components/invoices/PaymentInputModal';
 import PaymentHistory from '@/components/invoices/PaymentHistory';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
-import { getInvoiceNextAction } from '@/lib/nextActionLogic';
+import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import ClientResponseSummary from '@/components/invoices/ClientResponseSummary';
 import { AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -283,7 +283,7 @@ export default function InvoiceDetail() {
                     <div>
                       <p className={`font-semibold ${action.color}`}>{action.label}</p>
                       <p className={`text-[11px] mt-0.5 ${action.color}`}>{action.sub}</p>
-                    </div>
+                   </div>
                   </div>
                 );
               })()}
@@ -296,6 +296,35 @@ export default function InvoiceDetail() {
                   </div>
                 </div>
               )}
+              {(() => {
+                const timing = getInvoiceFollowUpTiming(invoice);
+                if (!timing) return null;
+                return (
+                  <div className={`p-2.5 rounded-lg text-xs flex items-start gap-2 border ${
+                    timing.urgency === 'high' ? 'bg-red-50 border-red-200' :
+                    timing.urgency === 'medium' ? 'bg-amber-50 border-amber-200' :
+                    'bg-blue-50 border-blue-200'
+                  }`}>
+                    <Clock className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
+                      timing.urgency === 'high' ? 'text-red-600' :
+                      timing.urgency === 'medium' ? 'text-amber-600' :
+                      'text-blue-600'
+                    }`} />
+                    <div>
+                      <p className={`font-semibold ${
+                        timing.urgency === 'high' ? 'text-red-700' :
+                        timing.urgency === 'medium' ? 'text-amber-700' :
+                        'text-blue-700'
+                      }`}>Follow-up Recommendation</p>
+                      <p className={`text-[11px] mt-0.5 ${
+                        timing.urgency === 'high' ? 'text-red-600' :
+                        timing.urgency === 'medium' ? 'text-amber-600' :
+                        'text-blue-600'
+                      }`}>{timing.label}</p>
+                    </div>
+                  </div>
+                );
+              })()}
               <ClientResponseSummary invoice={invoice} />
             </div>
           )}
