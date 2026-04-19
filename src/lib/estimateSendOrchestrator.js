@@ -18,6 +18,7 @@ import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pric
 import { validateDocTypeFields, getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import { logSend, logBelowCostOverride } from '@/lib/estimateAuditLog';
+import { generateEstimatePdfBase64 } from '@/lib/estimatePrint';
 
 /**
  * Validar estado pre-envío (pricing, fields, attachments).
@@ -97,17 +98,38 @@ export async function executeSend({
     throw new Error(emailRes.data.error);
   }
 
-  // 4. Persist send state (status + document_config)
+  // 4. Get current user for snapshot
+  let currentUser = null;
   try {
-    await markEstimateSent(estimate.id, { documentConfig, estimate });
+    currentUser = await base44.auth.me().catch(() => null);
+  } catch (err) {
+    console.warn('[executeSend] auth fetch failed:', err?.message);
+  }
+
+  // 5. Generate and store PDF (async, non-blocking)
+  let pdfUrl = null;
+  const pdfPromise = (async () => {
+    try {
+      const { filename, base64 } = await generateEstimatePdfBase64(estimate, currentOptions, currentTemplate);
+      // Store PDF as private file
+      const pdfFile = new Blob([Buffer.from(base64, 'base64')], { type: 'application/pdf' });
+      const uploadRes = await base44.integrations.Core.UploadFile({ file: pdfFile });
+      pdfUrl = uploadRes?.file_url;
+    } catch (err) {
+      console.warn('[executeSend] PDF generation failed:', err?.message);
+    }
+  })();
+
+  // 6. Persist send state (status + document_config + snapshot)
+  try {
+    await markEstimateSent(estimate.id, { documentConfig, estimate, currentUser });
   } catch (err) {
     console.warn('[executeSend] markEstimateSent failed:', err?.message);
     // Don't throw — email was already sent
   }
 
-  // 5. Log audit events
+  // 7. Log audit events
   try {
-    const currentUser = await base44.auth.me().catch(() => null);
     if (currentUser) {
       await logSend({
         estimate_id: estimate.id,
@@ -120,7 +142,7 @@ export async function executeSend({
     console.warn('[executeSend] logging failed:', err?.message);
   }
 
-  // 6. Log comm event
+  // 8. Log comm event
   try {
     await logComm({
       event_type: 'estimate_sent',
@@ -136,10 +158,14 @@ export async function executeSend({
     console.warn('[executeSend] comm log failed:', err?.message);
   }
 
+  // Await PDF generation (non-blocking but complete before return)
+  await pdfPromise.catch(() => {});
+
   return {
     success: true,
     messageId: emailRes.data?.id,
     secureLink: finalLink,
+    pdfUrl,
   };
 }
 

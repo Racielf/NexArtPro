@@ -58,52 +58,68 @@ export default async (req) => {
       );
     }
 
+    // Try to load sent snapshot if exists (for immutable sent version)
+    let snapshotData = null;
+    try {
+      const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter(
+        { estimate_id: estimateId },
+        '-created_date',
+        1
+      );
+      if (snapshots && snapshots.length > 0) {
+        snapshotData = snapshots[0];
+      }
+    } catch (err) {
+      // Snapshot entity may not exist yet, use live estimate
+    }
+
+    // Use snapshot if available, else fallback to live estimate
+    const sourceData = snapshotData?.estimate_data || estimate;
+    const attachments = snapshotData?.client_attachments || 
+      (estimate.attachments || []).filter(a => a.intent === 'send_to_client');
+
     // Token valid — return estimate record (client-safe)
     return new Response(
       JSON.stringify({
         estimate: {
           id: estimate.id,
           estimate_number: estimate.estimate_number,
-          document_type: estimate.document_type,
-          document_language: estimate.document_language,
-          client_id: estimate.client_id,
-          client_name: estimate.client_name,
-          client_email: estimate.client_email,
-          title: estimate.title,
+          document_type: sourceData.document_type || estimate.document_type,
+          document_language: sourceData.document_language || estimate.document_language,
+          client_id: sourceData.client_id || estimate.client_id,
+          client_name: sourceData.client_name || estimate.client_name,
+          client_email: sourceData.client_email || estimate.client_email,
+          title: sourceData.title || estimate.title,
           status: estimate.status,
-          groups: estimate.groups,
-          materials: estimate.materials,
-          subtotal: estimate.subtotal,
-          discount_type: estimate.discount_type,
-          discount_value: estimate.discount_value,
-          discount_amount: estimate.discount_amount,
-          tax_rate: estimate.tax_rate,
-          tax_amount: estimate.tax_amount,
-          total: estimate.total,
-          notes: estimate.notes,
-          exclusions: estimate.exclusions,
-          payment_terms: estimate.payment_terms,
-          warranty_terms: estimate.warranty_terms,
-          attachments: (estimate.attachments || [])
-            .filter(a => a.intent === 'send_to_client')
-            .map(a => ({
-              id: a.id,
-              file_name: a.file_name,
-              file_url: a.file_url,
-              intent: a.intent,
-              uploaded_at: a.uploaded_at,
-            })),
+          groups: sourceData.groups || estimate.groups,
+          materials: sourceData.materials || estimate.materials,
+          subtotal: sourceData.subtotal || estimate.subtotal,
+          discount_type: sourceData.discount_type || estimate.discount_type,
+          discount_value: sourceData.discount_value || estimate.discount_value,
+          discount_amount: sourceData.discount_amount || estimate.discount_amount,
+          tax_rate: sourceData.tax_rate || estimate.tax_rate,
+          tax_amount: sourceData.tax_amount || estimate.tax_amount,
+          total: sourceData.total || estimate.total,
+          notes: sourceData.notes || estimate.notes,
+          exclusions: sourceData.exclusions || estimate.exclusions,
+          payment_terms: sourceData.payment_terms || estimate.payment_terms,
+          warranty_terms: sourceData.warranty_terms || estimate.warranty_terms,
+          attachments: (attachments || []).map(a => ({
+            id: a.id,
+            file_name: a.file_name || a.name,
+            file_url: a.file_url,
+            intent: a.intent,
+            uploaded_at: a.uploaded_at,
+          })),
           view_count: estimate.view_count,
           last_viewed_at: estimate.last_viewed_at,
           approved_at: estimate.approved_at,
-          signed_at: estimate.signed_at,
-          signer_name: estimate.signer_name,
-          declined_at: estimate.declined_at,
-          changes_requested_at: estimate.changes_requested_at,
           version: estimate.version,
-          document_config: estimate.document_config,
-          scope_summary: estimate.scope_summary,
-          assumptions: estimate.assumptions,
+          document_config: snapshotData?.document_config || estimate.document_config,
+          scope_summary: sourceData.scope_summary || estimate.scope_summary,
+          assumptions: sourceData.assumptions || estimate.assumptions,
+          pdf_file_url: snapshotData?.pdf_file_url,
+          snapshot_id: snapshotData?.id,
         },
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }

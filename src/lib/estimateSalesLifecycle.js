@@ -27,9 +27,9 @@ export async function generatePublicShareToken(estimate) {
 }
 
 /**
- * Mark estimate as sent.
+ * Mark estimate as sent + create immutable snapshot.
  */
-export async function markEstimateSent(estimateId, { documentConfig, estimate } = {}) {
+export async function markEstimateSent(estimateId, { documentConfig, estimate, currentUser } = {}) {
   const ts = now();
   const currentCount = estimate?.follow_up_count || 0;
   
@@ -40,6 +40,31 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate } 
     follow_up_count: currentCount + 1,
     document_config: documentConfig || estimate?.document_config,
   };
+  
+  // Create immutable snapshot
+  try {
+    await base44.entities.EstimateSnapshot.create({
+      estimate_id: estimateId,
+      estimate_number: estimate?.estimate_number,
+      version: estimate?.version || 1,
+      sent_at: ts,
+      sent_by: currentUser?.email || '',
+      client_name: estimate?.client_name,
+      client_email: estimate?.client_email,
+      client_id: estimate?.client_id,
+      document_type: estimate?.document_type,
+      document_language: estimate?.document_language,
+      title: estimate?.title,
+      estimate_data: estimate,
+      document_config: documentConfig || estimate?.document_config,
+      total: estimate?.total,
+      client_attachments: (estimate?.attachments || [])
+        .filter(a => a.intent === 'send_to_client')
+        .map(a => ({ id: a.id, file_name: a.file_name, file_url: a.file_url })),
+    });
+  } catch (err) {
+    console.warn('[markEstimateSent] snapshot creation failed:', err?.message);
+  }
   
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;

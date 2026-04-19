@@ -12,6 +12,7 @@ import FinalDocumentRenderer from '@/components/documents/FinalDocumentRenderer'
 import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
 import { downloadEstimate } from '@/lib/estimatePrint';
 import ClientAttachmentsSection from '@/components/estimates/ClientAttachmentsSection';
+import { generateSignedPdfUrl, generateSignedAttachmentUrls } from '@/lib/estimateDocumentAccess';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import {
@@ -33,6 +34,7 @@ export default function ClientEstimateView() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
+  const [signedAttachments, setSignedAttachments] = useState([]);
 
   useEffect(() => {
     const load = async () => {
@@ -52,19 +54,25 @@ export default function ClientEstimateView() {
             }
             // Log internal comm event (only on first view transition)
             if (est.status === 'sent') {
-              logComm({
-                event_type: 'estimate_viewed',
-                channel: 'system',
-                client_id: est.client_id || '',
-                client_name: est.client_name,
-                client_email: est.client_email || '',
-                estimate_id: est.id,
-                subject: `Estimate #${est.estimate_number} Viewed by Client`,
-                status: 'delivered',
-              }).catch(() => {});
-              notifyEstimateViewed(est).catch(err => console.warn('[notify] viewed failed:', err?.message));
+                logComm({
+                  event_type: 'estimate_viewed',
+                  channel: 'system',
+                  client_id: est.client_id || '',
+                  client_name: est.client_name,
+                  client_email: est.client_email || '',
+                  estimate_id: est.id,
+                  subject: `Estimate #${est.estimate_number} Viewed by Client`,
+                  status: 'delivered',
+                }).catch(() => {});
+                notifyEstimateViewed(est).catch(err => console.warn('[notify] viewed failed:', err?.message));
+              }
             }
-          }
+            // Generate signed URLs for attachments
+            if (est.attachments && est.attachments.length > 0) {
+              generateSignedAttachmentUrls(est.attachments)
+                .then(setSignedAttachments)
+                .catch(() => setSignedAttachments(est.attachments));
+            }
         }
       } catch (err) {
         console.warn('[ClientEstimateView] load failed:', err?.message);
@@ -162,9 +170,10 @@ export default function ClientEstimateView() {
   const footer = (
     <div className="print:hidden space-y-4">
       <ClientAttachmentsSection 
-        attachments={estimate.attachments} 
+        attachments={signedAttachments.length > 0 ? signedAttachments : estimate.attachments} 
         estimateId={estimate.id}
         token={token}
+        useSignedUrl={true}
       />
       {canAct && (
         <div className="px-8 py-7 bg-slate-50 border border-slate-200 rounded-xl">
