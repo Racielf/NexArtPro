@@ -21,6 +21,7 @@ import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextAction
 import { markInvoiceContacted, getLastContactedDisplay } from '@/lib/invoiceActionHelpers';
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import ClientResponseSummary from '@/components/invoices/ClientResponseSummary';
+import QuickContactActions from '@/components/invoices/QuickContactActions';
 import { AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 export default function InvoiceDetail() {
@@ -442,6 +443,9 @@ export default function InvoiceDetail() {
               <PaymentHistory invoice={invoice} onPaymentRemoved={(updates) => setInvoice(i => ({ ...i, ...updates }))} />
             </div>
           )}
+
+          {/* Quick Contact Actions */}
+          <QuickContactActions invoice={invoice} isOverdue={isInvoiceOverdue(invoice)} />
           </div>
           </div>
           </div>
