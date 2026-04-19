@@ -21,6 +21,17 @@ function resolveRendererElement(estimate, overrideOptions, overrideTemplate) {
   });
 }
 
+function resolveDocLabel(estimate) {
+  const type = estimate?.document_type;
+  if (type === 'BID') return 'Bid';
+  if (type === 'PROPOSAL') return 'Proposal';
+  return 'Estimate';
+}
+
+function resolveDocNumber(estimate) {
+  return estimate?.estimate_number || estimate?.proposal_number || 'document';
+}
+
 function createIframeDoc(estimate, rootId) {
   const iframe = document.createElement('iframe');
   iframe.style.cssText = rootId === 'print-root'
@@ -29,14 +40,14 @@ function createIframeDoc(estimate, rootId) {
   document.body.appendChild(iframe);
 
   const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-  const docLabel = estimate?.document_type === 'BID' ? 'Bid' : 'Estimate';
+  const docLabel = resolveDocLabel(estimate);
 
   iframeDoc.open();
   iframeDoc.write(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>${docLabel} #${estimate?.estimate_number || ''}</title>
+  <title>${docLabel} #${resolveDocNumber(estimate)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -118,8 +129,7 @@ export async function downloadEstimate(estimate, options, template) {
         heightLeft -= pageHeight;
       }
 
-      const docLabel = estimate?.document_type === 'BID' ? 'Bid' : 'Estimate';
-      const filename = `${docLabel}-${estimate?.estimate_number || 'document'}.pdf`;
+      const filename = `${resolveDocLabel(estimate)}-${resolveDocNumber(estimate)}.pdf`;
       pdf.save(filename);
     } finally {
       root.unmount();
