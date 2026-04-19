@@ -92,7 +92,7 @@ export function createEstimateProxy(proposal) {
      id: proposal.id,
      estimate_number: proposal.proposal_number,
      title: toSafeString(proposal.title),
-     document_type: 'ESTIMATE',
+     document_type: 'PROPOSAL',
      groups: mapItemsToGroups(proposal.items),
      tax_rate: toSafeNumber(proposal.tax_rate, 0),
      discount_type: toSafeString(proposal.discount_type, 'fixed'),

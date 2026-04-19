@@ -24,9 +24,7 @@ function resolveRendererElement(estimate, overrideOptions, overrideTemplate) {
 export function resolveDocLabel(estimate) {
     const type = estimate?.document_type;
     if (type === 'BID') return 'Bid';
-    // CRITICAL: Estimate flow MUST NEVER return 'Proposal'
-    // Even if document_type is somehow set to PROPOSAL, force Estimate
-    if (type === 'PROPOSAL') return 'Estimate';
+    if (type === 'PROPOSAL') return 'Proposal';
     return 'Estimate';
   }
 
