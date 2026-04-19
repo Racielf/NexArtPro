@@ -115,9 +115,29 @@ export default function ClientEstimateView() {
 
   const handlePrint = () => window.print();
 
-  const handleDownload = async () => {
-    await downloadEstimate(estimate);
-  };
+   const handleDownload = async () => {
+     // If snapshot PDF exists, use signed URL for download
+     if (estimate.pdf_file_url) {
+       try {
+         const signedUrl = await generateSignedPdfUrl(estimate.pdf_file_url);
+         if (signedUrl) {
+           const link = document.createElement('a');
+           link.href = signedUrl;
+           link.download = estimate.pdf_file_name || `estimate-${estimate.estimate_number}.pdf`;
+           document.body.appendChild(link);
+           link.click();
+           document.body.removeChild(link);
+           toast.success('PDF downloaded');
+           return;
+         }
+       } catch (err) {
+         console.warn('[handleDownload] signed URL generation failed:', err?.message);
+         // Fallback to regenerate
+       }
+     }
+     // Fallback: regenerate PDF for legacy estimates
+     await downloadEstimate(estimate);
+   };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">

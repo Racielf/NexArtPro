@@ -107,31 +107,33 @@ export async function executeSend({
   }
 
   // 5. Generate and store PDF (async, non-blocking)
-  let pdfUrl = null;
-  const pdfPromise = (async () => {
-    try {
-      const { filename, base64 } = await generateEstimatePdfBase64(estimate, currentOptions, currentTemplate);
-      // Store PDF as private file (convert base64 to Blob using browser APIs)
-      const binaryString = atob(base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const pdfFile = new Blob([bytes], { type: 'application/pdf' });
-      const uploadRes = await base44.integrations.Core.UploadFile({ file: pdfFile });
-      pdfUrl = uploadRes?.file_url;
-    } catch (err) {
-      console.warn('[executeSend] PDF generation failed:', err?.message);
-    }
-  })();
+   let pdfUrl = null;
+   let pdfFilename = null;
+   const pdfPromise = (async () => {
+     try {
+       const { filename, base64 } = await generateEstimatePdfBase64(estimate, currentOptions, currentTemplate);
+       pdfFilename = filename;
+       // Store PDF as private file (convert base64 to Blob using browser APIs)
+       const binaryString = atob(base64);
+       const bytes = new Uint8Array(binaryString.length);
+       for (let i = 0; i < binaryString.length; i++) {
+         bytes[i] = binaryString.charCodeAt(i);
+       }
+       const pdfFile = new Blob([bytes], { type: 'application/pdf' });
+       const uploadRes = await base44.integrations.Core.UploadFile({ file: pdfFile });
+       pdfUrl = uploadRes?.file_url;
+     } catch (err) {
+       console.warn('[executeSend] PDF generation failed:', err?.message);
+     }
+   })();
 
-  // 6. Persist send state (status + document_config + snapshot)
-  try {
-    await markEstimateSent(estimate.id, { documentConfig, estimate, currentUser });
-  } catch (err) {
-    console.warn('[executeSend] markEstimateSent failed:', err?.message);
-    // Don't throw — email was already sent
-  }
+   // 6. Persist send state (status + document_config + snapshot)
+   try {
+     await markEstimateSent(estimate.id, { documentConfig, estimate, currentUser });
+   } catch (err) {
+     console.warn('[executeSend] markEstimateSent failed:', err?.message);
+     // Don't throw — email was already sent
+   }
 
   // 7. Log audit events
   try {
@@ -165,6 +167,26 @@ export async function executeSend({
 
   // Await PDF generation (non-blocking but complete before return)
   await pdfPromise.catch(() => {});
+
+  // Link PDF to snapshot if generated successfully
+  if (pdfUrl) {
+    try {
+      const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter(
+        { estimate_id: estimate.id },
+        '-created_date',
+        1
+      );
+      if (snapshots && snapshots.length > 0) {
+        const snapshot = snapshots[0];
+        await base44.asServiceRole.entities.EstimateSnapshot.update(snapshot.id, {
+          pdf_file_url: pdfUrl,
+          pdf_file_name: pdfFilename || `estimate-${estimate.estimate_number}.pdf`,
+        });
+      }
+    } catch (err) {
+      console.warn('[executeSend] snapshot PDF linkage failed:', err?.message);
+    }
+  }
 
   return {
     success: true,
