@@ -17,8 +17,10 @@ import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
  * - lang: string — Idioma del documento
  *
  * Arquitectura:
- *   BID → BidDocumentRenderer (layout técnico estructurado)
- *   ESTIMATE/PROPOSAL/default → EstimateTemplateRenderer (template-based con VM)
+ *   BID      → BidDocumentRenderer (layout técnico estructurado)
+ *   PROPOSAL → EstimateTemplateRenderer con documentType="proposal" (explícito)
+ *   ESTIMATE → EstimateTemplateRenderer con documentType="estimate" (explícito)
+ *   default  → EstimateTemplateRenderer con documentType="estimate"
  */
 export default function FinalDocumentRenderer({ estimate, options = {}, template, lang }) {
   if (!estimate) return null;
@@ -31,8 +33,9 @@ export default function FinalDocumentRenderer({ estimate, options = {}, template
   };
 
   const resolvedLang = lang || estimate?.document_language || 'en';
+  const docType = estimate.document_type;
 
-  if (estimate.document_type === 'BID') {
+  if (docType === 'BID') {
     return (
       <BidDocumentRenderer
         estimate={estimate}
@@ -44,12 +47,15 @@ export default function FinalDocumentRenderer({ estimate, options = {}, template
 
   const resolvedTemplate = template || estimate?.document_config?.template || 'clean';
 
+  // PROPOSAL and ESTIMATE are explicitly identified — Proposal is intentional, not a fallback.
+  const documentType = docType === 'PROPOSAL' ? 'proposal' : 'estimate';
+
   return (
     <EstimateTemplateRenderer
       estimate={estimate}
       template={resolvedTemplate}
       options={mergedOpts}
-      documentType="estimate"
+      documentType={documentType}
     />
   );
 }
