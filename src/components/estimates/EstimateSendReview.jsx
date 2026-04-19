@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { printEstimate, downloadEstimate, generateEstimatePdfBase64 } from '@/lib/estimatePrint';
+import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import { logSend, logBelowCostOverride } from '@/lib/estimateAuditLog';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
@@ -175,48 +175,8 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     setSentError(null);
     try {
       const documentConfig = { template: currentTemplate, options: currentOptions };
-      const clientAttachments = Array.isArray(estimate?.attachments)
-        ? estimate.attachments.filter(a => a.intent === 'send_to_client' && includedAttachmentIds.includes(a.id))
-        : [];
 
-      // Generate Estimate PDF as base64 for email attachment
-      const { filename: estimatePdfFilename, base64: estimatePdfBase64 } = await generateEstimatePdfBase64(
-        estimate,
-        currentOptions,
-        currentTemplate
-      );
-
-      // Smart delivery: calculate total payload size to decide attachment strategy
-      const MAX_PAYLOAD_SIZE = 25 * 1024 * 1024; // 25MB limit for most email providers
-      const estimatePdfSize = (estimatePdfBase64.length * 3) / 4; // base64 to bytes approximation
-      const extraAttachmentsSize = clientAttachments.reduce((sum, a) => sum + (a.file_size || 0), 0);
-      const totalSize = estimatePdfSize + extraAttachmentsSize;
-      
-      // Build attachment objects: Estimate PDF + client attachments (with smart fallback)
-      const emailAttachments = [
-        {
-          filename: estimatePdfFilename,
-          content: estimatePdfBase64,
-          contentType: 'application/pdf',
-        },
-      ];
-      
-      // Add client attachments: inline if under limit, else as URL references
-      if (totalSize < MAX_PAYLOAD_SIZE) {
-        // All fits: send as actual attachments
-        emailAttachments.push(...clientAttachments.map(a => ({
-          filename: a.file_name,
-          url: a.file_url,
-        })));
-      } else {
-        // Over limit: send only URLs (fallback to download links)
-        emailAttachments.push(...clientAttachments.map(a => ({
-          filename: a.file_name,
-          url: a.file_url,
-          fallback_link: true, // Signal backend to treat as link, not inline attachment
-        })));
-      }
-
+      // Send email with secure client link (PDF available via download from estimate review page)
       const emailRes = await base44.functions.invoke('sendEstimateEmail', {
         to: recipientEmail,
         subject,
@@ -226,8 +186,6 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         estimate_number: estimate?.estimate_number || '',
         total: estimate?.total || 0,
         from_name: appConfig.appName || 'RC Art Construction',
-        estimate_pdf_filename: estimatePdfFilename,
-        attachments: emailAttachments,
       });
       if (emailRes.data?.error) throw new Error(emailRes.data.error);
 
