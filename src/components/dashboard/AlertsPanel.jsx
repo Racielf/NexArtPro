@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Clock, FileX, TrendingDown, Bell } from 'lucide-react';
+import { AlertTriangle, Clock, FileX, TrendingDown, Bell, Eye } from 'lucide-react';
+import { computeProposalReminders } from '@/lib/proposalReminders';
 
 function AlertRow({ icon: Icon, iconCls, bgCls, borderCls, title, desc, link, badge }) {
   return (
@@ -23,7 +24,7 @@ function AlertRow({ icon: Icon, iconCls, bgCls, borderCls, title, desc, link, ba
   );
 }
 
-export default function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }) {
+export default function AlertsPanel({ estimates = [], invoices = [], workOrders = [], proposals = [], loading }) {
   if (loading) return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
       <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
@@ -89,6 +90,36 @@ export default function AlertsPanel({ estimates = [], invoices = [], workOrders 
       title: `${approvedNotConverted.length} approved estimate${approvedNotConverted.length > 1 ? 's' : ''} pending conversion`,
       desc: 'Convert to Work Order to begin scheduling',
       link: '/estimates', badge: `${approvedNotConverted.length}`,
+    });
+  }
+
+  // Proposal reminders
+  const propReminders = computeProposalReminders(proposals);
+  if (propReminders.overdue_follow_up.length > 0) {
+    const n = propReminders.overdue_follow_up.length;
+    alerts.push({
+      icon: AlertTriangle, iconCls: 'text-red-600', bgCls: 'bg-red-50', borderCls: 'border-red-300',
+      title: `${n} proposal follow-up${n > 1 ? 's' : ''} overdue`,
+      desc: 'Scheduled follow-up dates have passed — act now',
+      link: '/sales-pipeline', badge: `${n}`,
+    });
+  }
+  if (propReminders.stale_viewed_no_response.length > 0) {
+    const n = propReminders.stale_viewed_no_response.length;
+    alerts.push({
+      icon: Eye, iconCls: 'text-violet-600', bgCls: 'bg-violet-50', borderCls: 'border-violet-300',
+      title: `${n} proposal${n > 1 ? 's' : ''} viewed — no response`,
+      desc: 'Client opened but hasn\'t replied in 5+ days',
+      link: '/proposals', badge: `${n}`,
+    });
+  }
+  if (propReminders.stale_sent_not_viewed.length > 0) {
+    const n = propReminders.stale_sent_not_viewed.length;
+    alerts.push({
+      icon: Clock, iconCls: 'text-orange-600', bgCls: 'bg-orange-50', borderCls: 'border-orange-300',
+      title: `${n} proposal${n > 1 ? 's' : ''} sent — not opened`,
+      desc: 'Sent 5+ days ago with no client view — follow up',
+      link: '/proposals', badge: `${n}`,
     });
   }
 

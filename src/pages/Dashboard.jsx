@@ -469,6 +469,7 @@ export default function Dashboard() {
   const [allInvoices, setAllInvoices] = useState([]);
   const [kpis, setKpis] = useState({});
   const [funnelCounts, setFunnelCounts] = useState({});
+  const [allProposals, setAllProposals] = useState([]);
 
   useEffect(() => { loadDashboard(); }, []);
 
@@ -477,12 +478,15 @@ export default function Dashboard() {
     const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
     let appts, estimates, workOrders, invoices;
     try {
-      [appts, estimates, workOrders, invoices] = await Promise.all([
+      let proposals;
+      [appts, estimates, workOrders, invoices, proposals] = await Promise.all([
         base44.entities.Appointment.list('-created_date', 200),
         base44.entities.Estimate.list('-created_date', 100),
         base44.entities.WorkOrder.list('-created_date', 100),
         base44.entities.Invoice.list('-created_date', 100),
+        base44.entities.Proposal.list('-created_date', 100),
       ]);
+      setAllProposals(proposals || []);
     } catch (err) {
       const isBase44Auth = sessionStorage.getItem('base44_authenticated') === 'true';
       if (!isBase44Auth && sessionStorage.getItem('local_auth') === 'true') { setLoading(false); return; }
@@ -620,7 +624,7 @@ export default function Dashboard() {
           <JobPipeline workOrders={allWorkOrders} loading={loading} />
 
           {/* Alertas */}
-          <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} loading={loading} />
+          <AlertsPanel estimates={allEstimates} invoices={allInvoices} workOrders={allWorkOrders} proposals={allProposals} loading={loading} />
         </div>
 
         {/* ── FILA 3: Work Orders + Estimados + Citas + Notificaciones */}

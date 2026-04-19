@@ -7,6 +7,8 @@ import SalesPipelineColumn from '@/components/sales/SalesPipelineColumn';
 import SalesEstimateCard from '@/components/sales/SalesEstimateCard';
 import SalesFollowUpBar from '@/components/sales/SalesFollowUpBar';
 import ProposalPipelineCard from '@/components/proposals/ProposalPipelineCard';
+import ProposalReminderBar from '@/components/proposals/ProposalReminderBar';
+import { computeProposalReminders } from '@/lib/proposalReminders';
 import {
   PIPELINE_STAGES,
   PIPELINE_FILTERS,
@@ -112,6 +114,9 @@ export default function SalesPipeline() {
   // Follow-up summary — include both estimates and proposals
   const followUpSummary = computeFollowUpSummary(allItems);
 
+  // Proposal-specific reminders
+  const proposalReminders = computeProposalReminders(proposals);
+
   // Pipeline totals (estimates use .total, proposals use .total_amount)
   const totalValue = allItems.reduce((s, e) => s + (e.total || e.total_amount || 0), 0);
   const wonValue = allItems
@@ -191,8 +196,14 @@ export default function SalesPipeline() {
             </div>
           </div>
 
-          {/* Follow-up bar */}
+          {/* Follow-up bar (estimates) */}
           <SalesFollowUpBar summary={followUpSummary} onFilterFollowUp={handleFilterFollowUp} />
+
+          {/* Proposal reminder bar */}
+          <ProposalReminderBar
+            reminders={proposalReminders}
+            onFilter={() => setActiveFilter('needs_follow_up')}
+          />
 
           {/* Quick stats */}
           <div className="flex items-center gap-4 text-xs text-slate-500">

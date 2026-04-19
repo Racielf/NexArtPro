@@ -11,6 +11,8 @@ import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomer
 import { ScrollText, Plus, Search, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
+import { computeProposalReminders } from '@/lib/proposalReminders';
+import ProposalReminderBar from '@/components/proposals/ProposalReminderBar';
 
 export default function Proposals() {
   const navigate = useNavigate();
@@ -148,6 +150,8 @@ export default function Proposals() {
     p.title?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const reminders = computeProposalReminders(proposals);
+
   const filteredEstimates = estimates.filter(e =>
     e.client_name?.toLowerCase().includes(estimateSearch.toLowerCase()) ||
     String(e.estimate_number).includes(estimateSearch) ||
@@ -247,6 +251,9 @@ export default function Proposals() {
             <ChevronDown className="w-3.5 h-3.5" /> From Estimate
           </Button>
         </div>
+
+        {/* Reminder Bar */}
+        <ProposalReminderBar reminders={reminders} linkTo="/sales-pipeline" />
 
         {/* Action Bar */}
         {selectedIds.size > 0 && (
