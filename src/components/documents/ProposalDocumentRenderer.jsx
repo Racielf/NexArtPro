@@ -20,6 +20,34 @@ import PDFFooter from './pdf/PDFFooter';
  *
  * Uses shared PDF layout components for visual consistency.
  * CRITICAL: Never exposes book_price, unit_cost, margin.
+ *
+ * ═══ PRESENTATION MODES ═══
+ * presentation_mode controls what pricing/scope is shown to client:
+ *
+ *   detailed (default):
+ *     ✓ Show "Your Investment" block in header
+ *     ✓ Show full line-item breakdown
+ *     ✓ Show investment summary section
+ *     ✓ Show pricing options if configured
+ *
+ *   grouped:
+ *     ✓ Show "Your Investment" block in header
+ *     ✓ Show group totals only (commercial buckets from categories)
+ *     ✓ Show investment summary section
+ *     ✓ Show pricing options if configured
+ *
+ *   lump_sum:
+ *     ✓ Show "Your Investment" block in header
+ *     ✗ Hide scope/breakdown details
+ *     ✓ Show total only in investment summary
+ *     ✓ Show pricing options if configured
+ *
+ *   options_only:
+ *     ✗ Hide "Your Investment" block in header
+ *     ✗ Hide scope/breakdown/group details entirely
+ *     ✗ Hide investment summary section
+ *     ✓ Show pricing options only (required)
+ *     Narrative sections (cover, inclusions, exclusions, timeline, terms, CTA) remain visible.
  */
 
 const ACCENT = COLORS.proposal.accent;
@@ -106,7 +134,7 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
                 {estimate.title && (
                   <div style={{ fontWeight: FONT.weight.bold, fontSize: FONT.size.lg, color: COLORS.text.primary, marginBottom: SPACE.sm }}>{estimate.title}</div>
                 )}
-                {opts.showPrices && (
+                {opts.showPrices && presentationMode !== 'options_only' && (
                   <div style={{ background: COLORS.bg.subtle, padding: `${SPACE.lg}px`, borderRadius: 8, marginTop: estimate.title ? SPACE.sm : 0 }}>
                     <div style={{ fontSize: FONT.size.xs, fontWeight: FONT.weight.bold, color: COLORS.text.muted, textTransform: 'uppercase', marginBottom: 6 }}>{T('yourInvestment')}</div>
                     <div style={{ fontSize: FONT.size['4xl'], fontWeight: FONT.weight.extrabold, color: ACCENT, lineHeight: 1 }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
@@ -145,35 +173,36 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
         {/* ══════════════════════════════════════
             SECTION 3 — SCOPE OF WORK (services)
             Source: estimate.groups / line items
-            Adapted by presentation_mode: detailed, grouped, lump_sum, options_only
-        ══════════════════════════════════════ */}
-        {opts.showBreakdown && mainGroups.length > 0 && ['detailed', 'grouped'].includes(presentationMode) && (
-          <PDFSectionBlock title={T('scopeOfWork')} titleEs={esTitle('scopeOfWork')} accent={ACCENT}>
-            <p style={{ ...S.body, marginBottom: SPACE.md }}>{T('servicesIntro')}</p>
-            {presentationMode === 'detailed' ? (
-              <PDFLineItemsTable groups={mainGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} variant="proposal" />
-            ) : (
-              /* grouped: show group totals only, no line items */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
-                {mainGroups.map((group, idx) => {
-                  const subtotal = group.items?.reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0) || 0;
-                  return (
-                    <div key={group.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACE.md}px 0`, borderBottom: `1px solid ${COLORS.border.light}` }}>
-                      <span style={{ fontSize: FONT.size.base, fontWeight: FONT.weight.semibold, color: COLORS.text.primary }}>
-                        {group.name || `Group ${idx + 1}`}
-                      </span>
-                      {opts.showPrices && (
-                        <span style={{ fontSize: FONT.size.base, fontWeight: FONT.weight.bold, color: ACCENT }}>
-                          ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </PDFSectionBlock>
-        )}
+            Adapted by presentation_mode: detailed, grouped, lump_sum
+            (options_only hides this entirely — pricing options only)
+         ══════════════════════════════════════ */}
+         {opts.showBreakdown && mainGroups.length > 0 && ['detailed', 'grouped'].includes(presentationMode) && (
+           <PDFSectionBlock title={T('scopeOfWork')} titleEs={esTitle('scopeOfWork')} accent={ACCENT}>
+             <p style={{ ...S.body, marginBottom: SPACE.md }}>{T('servicesIntro')}</p>
+             {presentationMode === 'detailed' ? (
+               <PDFLineItemsTable groups={mainGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} variant="proposal" />
+             ) : (
+               /* grouped: show group totals only, no line items */
+               <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+                 {mainGroups.map((group, idx) => {
+                   const subtotal = group.items?.reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0) || 0;
+                   return (
+                     <div key={group.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACE.md}px 0`, borderBottom: `1px solid ${COLORS.border.light}` }}>
+                       <span style={{ fontSize: FONT.size.base, fontWeight: FONT.weight.semibold, color: COLORS.text.primary }}>
+                         {group.name || `Group ${idx + 1}`}
+                       </span>
+                       {opts.showPrices && (
+                         <span style={{ fontSize: FONT.size.base, fontWeight: FONT.weight.bold, color: ACCENT }}>
+                           ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                         </span>
+                       )}
+                     </div>
+                   );
+                 })}
+               </div>
+             )}
+           </PDFSectionBlock>
+         )}
 
         {/* ══════════════════════════════════════
             SECTION 4 — WHAT'S INCLUDED

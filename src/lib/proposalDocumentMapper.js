@@ -54,15 +54,21 @@ export function mapProposalToEstimate(proposal, proposalDetails, language) {
   // Resolve language: explicit param > proposal field > 'en'
   const resolvedLang = language || proposal?.document_language || 'en';
 
-  // Map flat items[] → groups[] (client-safe: structural fields preserved, no cost data)
-  const groups = [{
-    id: 'proposal-items',
-    name: null, // single unnamed group — renderers handle gracefully
-    items: (proposal.items || []).map(item => ({
+  // Map flat items[] → groups[] by category for meaningful commercial grouping
+  const groupedByCategory = {};
+  const categoryOrder = [];
+
+  (proposal.items || []).forEach(item => {
+    const category = (item.category || 'General').trim();
+    if (!groupedByCategory[category]) {
+      groupedByCategory[category] = [];
+      categoryOrder.push(category);
+    }
+    groupedByCategory[category].push({
       id: item.id,
       service_id: (typeof item.service_id === 'string' && item.service_id.length > 0) ? item.service_id : null,
       service_name: item.service_name || item.name || '(unnamed)',
-      category: item.category || 'Misc',
+      category: category,
       description: item.description || '',
       quantity: parseFloat(item.quantity) || 1,
       unit: item.unit || 'ea',
@@ -70,8 +76,15 @@ export function mapProposalToEstimate(proposal, proposalDetails, language) {
       line_total: parseFloat(item.line_total) || parseFloat(item.total_price) || 0,
       taxable: item.taxable !== false,
       // Explicitly NO: unit_cost, book_price, margin (client-facing doc)
-    })),
-  }];
+    });
+  });
+
+  // Build groups array: one group per category, in order
+  const groups = categoryOrder.map((category, idx) => ({
+    id: `category-${category.toLowerCase().replace(/\s+/g, '-')}`,
+    name: category !== 'General' ? category : null, // unnamed group renders as generic
+    items: groupedByCategory[category],
+  }));
 
   return {
     // Identity
