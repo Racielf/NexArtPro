@@ -15,6 +15,7 @@ import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomer
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 import ProposalPricingOptions from '@/components/proposals/ProposalPricingOptions';
+import ProposalPresetPicker from '@/components/proposals/ProposalPresetPicker';
 
 const STATUS_BADGE = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -325,6 +326,15 @@ export default function ProposalEditor() {
             
             {/* PROPOSAL DETAILS SECTIONS */}
             <div className="mt-8 space-y-6 max-w-2xl">
+
+              {/* Preset picker — accelerates authoring, fully editable after */}
+              {!isPreview && (
+                <ProposalPresetPicker
+                  proposalDetails={proposalDetails}
+                  onApply={preset => setProposalDetails(p => ({ ...p, ...preset, pricingOptions: p.pricingOptions }))}
+                />
+              )}
+
               {/* Scope of Work */}
               <div className="bg-white rounded-lg border border-slate-200 p-6">
                 <label className="block text-sm font-bold text-slate-900 mb-2">Scope of Work</label>
