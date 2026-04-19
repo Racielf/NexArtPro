@@ -6,6 +6,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import SalesPipelineColumn from '@/components/sales/SalesPipelineColumn';
 import SalesEstimateCard from '@/components/sales/SalesEstimateCard';
 import SalesFollowUpBar from '@/components/sales/SalesFollowUpBar';
+import ProposalPipelineCard from '@/components/proposals/ProposalPipelineCard';
 import {
   PIPELINE_STAGES,
   PIPELINE_FILTERS,
@@ -15,46 +16,108 @@ import {
   deriveSalesStage,
 } from '@/lib/salesPipeline';
 
+// Map proposal status → pipeline stage
+const PROPOSAL_STATUS_TO_STAGE = {
+  draft:                   'lead',
+  review_needed:           'lead',
+  sent:                    'presented',
+  approved:                'won',
+  accepted:                'won',
+  rejected:                'lost',
+  converted_to_invoice:    'converted',
+  converted_to_work_order: 'converted',
+  pending_adjustment:      'negotiation',
+};
+
+function deriveProposalStage(proposal) {
+  return PROPOSAL_STATUS_TO_STAGE[proposal.status] || 'lead';
+}
+
 export default function SalesPipeline() {
   const [estimates, setEstimates] = useState([]);
+  const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [viewMode, setViewMode] = useState('board'); // board | list
 
   useEffect(() => {
-    loadEstimates();
+    loadAll();
   }, []);
 
-  const loadEstimates = async () => {
+  const loadAll = async () => {
     setLoading(true);
-    const data = await base44.entities.Estimate.list('-created_date', 200);
-    setEstimates(data);
+    const [estData, propData] = await Promise.all([
+      base44.entities.Estimate.list('-created_date', 200),
+      base44.entities.Proposal.list('-created_date', 200),
+    ]);
+    setEstimates(estData);
+    setProposals(propData);
     setLoading(false);
   };
 
-  // Search filter
-  const searchFiltered = estimates.filter(e =>
+  // Tag each item so downstream can render the right card
+  const taggedEstimates = estimates.map(e => ({ ...e, _type: 'estimate' }));
+  const taggedProposals = proposals.map(p => ({ ...p, _type: 'proposal' }));
+  const allItems = [...taggedEstimates, ...taggedProposals];
+
+  // Search filter (proposals use proposal_number, estimates use estimate_number)
+  const searchFiltered = allItems.filter(e =>
     !search ||
     e.client_name?.toLowerCase().includes(search.toLowerCase()) ||
-    String(e.estimate_number).includes(search) ||
+    String(e.estimate_number || e.proposal_number || '').includes(search) ||
     e.title?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Pipeline filter
-  const filtered = applyPipelineFilter(searchFiltered, activeFilter);
+  // For proposals, override stage derivation
+  const getStage = (item) => item._type === 'proposal' ? deriveProposalStage(item) : deriveSalesStage(item);
 
-  // Group for board view
-  const grouped = groupByStage(filtered);
+  // Custom grouping that handles both types
+  const grouped = (() => {
+    const groups = {};
+    PIPELINE_STAGES.forEach(s => { groups[s.key] = []; });
+    searchFiltered.forEach(item => {
+      // Apply activeFilter
+      if (activeFilter === 'needs_follow_up') {
+        const nfo = item.next_follow_up_at;
+        const isOverdue = nfo && new Date(nfo) < new Date();
+        const cat = item._type === 'estimate' ? (typeof computeFollowUpSummary === 'function' ? null : null) : null;
+        // For both: overdue follow-up or no follow-up but stale sent
+        const daysSinceSent = item.sent_at ? Math.floor((Date.now() - new Date(item.sent_at).getTime()) / 86400000) : null;
+        const stale = daysSinceSent !== null && daysSinceSent >= 5 && ['sent'].includes(item.status);
+        if (!isOverdue && !stale) return;
+      } else if (activeFilter !== 'all') {
+        const stage = getStage(item);
+        if (stage !== activeFilter) return;
+      }
+      const stage = getStage(item);
+      if (groups[stage]) groups[stage].push(item);
+      else groups.lead.push(item);
+    });
+    return groups;
+  })();
 
-  // Follow-up summary (computed from ALL estimates, not filtered)
+  // Flat filtered list for list view
+  const filtered = searchFiltered.filter(item => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'needs_follow_up') {
+      const nfo = item.next_follow_up_at;
+      const isOverdue = nfo && new Date(nfo) < new Date();
+      const daysSinceSent = item.sent_at ? Math.floor((Date.now() - new Date(item.sent_at).getTime()) / 86400000) : null;
+      const stale = daysSinceSent !== null && daysSinceSent >= 5 && item.status === 'sent';
+      return isOverdue || stale;
+    }
+    return getStage(item) === activeFilter;
+  });
+
+  // Follow-up summary from all estimates only (existing logic)
   const followUpSummary = computeFollowUpSummary(estimates);
 
-  // Pipeline totals for header
-  const totalValue = estimates.reduce((s, e) => s + (e.total || 0), 0);
-  const wonValue = estimates
-    .filter(e => deriveSalesStage(e) === 'won' || deriveSalesStage(e) === 'converted')
-    .reduce((s, e) => s + (e.total || 0), 0);
+  // Pipeline totals (estimates use .total, proposals use .total_amount)
+  const totalValue = allItems.reduce((s, e) => s + (e.total || e.total_amount || 0), 0);
+  const wonValue = allItems
+    .filter(e => getStage(e) === 'won' || getStage(e) === 'converted')
+    .reduce((s, e) => s + (e.total || e.total_amount || 0), 0);
 
   const handleFilterFollowUp = (category) => {
     setActiveFilter('needs_follow_up');
@@ -75,7 +138,7 @@ export default function SalesPipeline() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Sales Pipeline"
-        subtitle={`${estimates.length} estimates · $${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} pipeline`}
+        subtitle={`${estimates.length} estimates · ${proposals.length} proposals · $${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} pipeline`}
       />
 
       <div className="px-6 pt-4 space-y-4 flex-1 flex flex-col min-h-0">
@@ -142,32 +205,34 @@ export default function SalesPipeline() {
 
         {/* Board view */}
         {viewMode === 'board' ? (
-          <div className="flex-1 overflow-x-auto min-h-0 pb-4">
-            <div className="flex gap-3 h-full">
-              {PIPELINE_STAGES.map(stage => (
-                <SalesPipelineColumn
-                  key={stage.key}
-                  stage={stage}
-                  estimates={grouped[stage.key] || []}
-                />
-              ))}
-            </div>
+        <div className="flex-1 overflow-x-auto min-h-0 pb-4">
+          <div className="flex gap-3 h-full">
+            {PIPELINE_STAGES.map(stage => (
+              <SalesPipelineColumn
+                key={stage.key}
+                stage={stage}
+                estimates={grouped[stage.key] || []}
+              />
+            ))}
           </div>
+        </div>
         ) : (
-          /* List view */
-          <div className="flex-1 overflow-y-auto min-h-0 pb-4">
-            {filtered.length === 0 ? (
-              <div className="text-center py-16 text-slate-400">
-                <p className="font-medium">No estimates match this filter</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filtered.map(est => (
-                  <SalesEstimateCard key={est.id} estimate={est} />
-                ))}
-              </div>
-            )}
-          </div>
+        /* List view */
+        <div className="flex-1 overflow-y-auto min-h-0 pb-4">
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-slate-400">
+              <p className="font-medium">No items match this filter</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filtered.map(item =>
+                item._type === 'proposal'
+                  ? <ProposalPipelineCard key={item.id} proposal={item} />
+                  : <SalesEstimateCard key={item.id} estimate={item} />
+              )}
+            </div>
+          )}
+        </div>
         )}
       </div>
     </div>

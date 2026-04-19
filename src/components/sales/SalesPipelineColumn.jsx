@@ -1,5 +1,6 @@
 import React from 'react';
 import SalesEstimateCard from './SalesEstimateCard';
+import ProposalPipelineCard from '@/components/proposals/ProposalPipelineCard';
 
 export default function SalesPipelineColumn({ stage, estimates }) {
   const total = estimates.reduce((s, e) => s + (e.total || 0), 0);
@@ -40,9 +41,11 @@ export default function SalesPipelineColumn({ stage, estimates }) {
         {estimates.length === 0 ? (
           <p className="text-[10px] text-slate-400 text-center py-6">No estimates</p>
         ) : (
-          estimates.map(est => (
-            <SalesEstimateCard key={est.id} estimate={est} />
-          ))
+          estimates.map(item =>
+            item._type === 'proposal'
+              ? <ProposalPipelineCard key={item.id} proposal={item} />
+              : <SalesEstimateCard key={item.id} estimate={item} />
+          )
         )}
       </div>
     </div>
