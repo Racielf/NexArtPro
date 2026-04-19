@@ -67,7 +67,11 @@ export default function PublicProposalView() {
 
       {/* Document rendered via unified pipeline */}
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <DocumentTypeRenderer estimate={estimateData} />
+        <DocumentTypeRenderer
+          estimate={estimateData}
+          options={estimateData.document_config?.options}
+          lang={estimateData.document_language}
+        />
       </div>
 
       {/* Accept block */}
