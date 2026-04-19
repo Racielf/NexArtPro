@@ -139,6 +139,11 @@
       "format": "date-time",
       "description": "Timestamp when client provided response"
     },
+    "last_contacted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of last follow-up action (sent, call, email, etc)"
+    },
     "sent_at": {
       "type": "string"
     },

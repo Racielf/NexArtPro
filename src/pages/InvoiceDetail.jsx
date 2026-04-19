@@ -18,6 +18,7 @@ import PaymentHistory from '@/components/invoices/PaymentHistory';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
+import { markInvoiceContacted, getLastContactedDisplay } from '@/lib/invoiceActionHelpers';
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import ClientResponseSummary from '@/components/invoices/ClientResponseSummary';
 import { AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -85,13 +86,13 @@ export default function InvoiceDetail() {
     
     setSaving(true);
     const now = new Date().toISOString();
-    await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now });
+    await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now, last_contacted_at: now });
     await base44.integrations.Core.SendEmail({
       to: invoice.client_email,
       subject: `Invoice #${invoice.invoice_number} - Payment Due`,
       body: `Hi ${invoice.client_name},\n\nPlease find your invoice #${invoice.invoice_number}.\n\nTotal Due: $${(invoice.total || 0).toFixed(2)}${dueDate ? `\nDue Date: ${dueDate}` : ''}\n\nThank you for your business!`,
     });
-    setInvoice(i => ({ ...i, status: 'sent', sent_at: now }));
+    setInvoice(i => ({ ...i, status: 'sent', sent_at: now, last_contacted_at: now }));
     setSaving(false);
     toast.success('Invoice sent to client!');
   };
@@ -378,10 +379,29 @@ export default function InvoiceDetail() {
                 <Clock className="w-3 h-3" />Sent {format(new Date(invoice.sent_at), 'MMM d, yyyy')}
               </p>
             )}
+            {invoice.last_contacted_at && (
+              <p className="text-xs text-slate-500 flex items-center gap-1">
+                <Clock className="w-3 h-3" />Last contacted {getLastContactedDisplay(invoice.last_contacted_at)}
+              </p>
+            )}
             {invoice.paid_at && (
               <p className="text-xs text-green-600 font-semibold flex items-center gap-1">
                 <CheckCircle className="w-3 h-3" />Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
               </p>
+            )}
+            {invoice.status === 'sent' && derived.payment_status !== 'paid' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full text-xs gap-1.5 mt-2"
+                onClick={async () => {
+                  await markInvoiceContacted(invoiceId, base44);
+                  setInvoice(i => ({ ...i, last_contacted_at: new Date().toISOString() }));
+                  toast.success('Marked as contacted');
+                }}
+              >
+                ✓ Mark as Contacted
+              </Button>
             )}
           </div>
 

@@ -14,12 +14,14 @@ import CashflowSummary from '@/components/invoices/CashflowSummary';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
+import { filterInvoicesByAction, sortInvoicesByUrgency } from '@/lib/invoiceActionFilter';
 
 export default function Invoices() {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState('all'); // 'all' | 'today' | 'overdue' | 'high'
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [evidenceCache, setEvidenceCache] = useState({});
 
@@ -137,10 +139,13 @@ export default function Invoices() {
     w.print();
   };
 
-  const filtered = invoices.filter(i =>
+  const searchFiltered = invoices.filter(i =>
     i.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     String(i.invoice_number).includes(search)
   );
+  const actionFiltered = filterInvoicesByAction(searchFiltered, actionFilter);
+  const sorted = sortInvoicesByUrgency(actionFiltered);
+  const filtered = sorted;
 
   const toggleSelect = (id) => {
     const newSet = new Set(selectedIds);
@@ -176,7 +181,25 @@ export default function Invoices() {
         {/* Cashflow Summary */}
         <CashflowSummary />
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 border border-border rounded-lg p-1">
+            {['all', 'today', 'overdue', 'high'].map(filter => (
+              <button
+                key={filter}
+                onClick={() => setActionFilter(filter)}
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  actionFilter === filter
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {filter === 'all' && 'All'}
+                {filter === 'today' && 'Today'}
+                {filter === 'overdue' && 'Overdue'}
+                {filter === 'high' && 'Urgent'}
+              </button>
+            ))}
+          </div>
           {filtered.length > 0 && (
             <label className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
               <input
