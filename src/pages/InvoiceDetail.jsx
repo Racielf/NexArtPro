@@ -16,6 +16,8 @@ import { buildReceipt } from '@/components/payments/paymentReceiptUtils';
 import PaymentInputModal from '@/components/invoices/PaymentInputModal';
 import PaymentHistory from '@/components/invoices/PaymentHistory';
 import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
+import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
+import { AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 export default function InvoiceDetail() {
   const navigate = useNavigate();
@@ -29,6 +31,8 @@ export default function InvoiceDetail() {
   const [dueDate, setDueDate] = useState('');
   const [receiptModal, setReceiptModal] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [workOrder, setWorkOrder] = useState(null);
+  const [evidenceEval, setEvidenceEval] = useState(null);
 
   useEffect(() => { loadInvoice(); }, []);
 
@@ -40,6 +44,20 @@ export default function InvoiceDetail() {
       setInvoice(inv);
       setNotes(inv.notes || '');
       setDueDate(inv.due_date || '');
+      
+      // Load WorkOrder if linked
+      if (inv.work_order_id) {
+        try {
+          const woList = await base44.entities.WorkOrder.filter({ id: inv.work_order_id });
+          if (woList.length) {
+            const wo = woList[0];
+            setWorkOrder(wo);
+            setEvidenceEval(evaluateWorkOrderEvidence(wo));
+          }
+        } catch (err) {
+          console.warn('[loadInvoice] WorkOrder load failed:', err?.message);
+        }
+      }
     }
     setLoading(false);
   };
@@ -54,6 +72,14 @@ export default function InvoiceDetail() {
 
   const handleSend = async () => {
     if (!invoice.client_email) { toast.error('Client email required'); return; }
+    
+    // Soft warning if evidence incomplete
+    if (workOrder && evidenceEval && !evidenceEval.isComplete) {
+      if (!confirm(`⚠ This invoice is based on a work order with incomplete execution documentation. Send anyway?`)) {
+        return;
+      }
+    }
+    
     setSaving(true);
     const now = new Date().toISOString();
     await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now });
@@ -235,8 +261,8 @@ export default function InvoiceDetail() {
             {invoice.client_email && <p className="text-xs text-slate-500 mt-1">✉ {invoice.client_email}</p>}
           </div>
 
-          {/* Links */}
-          {(invoice.estimate_id || invoice.work_order_id) && (
+          {/* Links + Evidence */}
+          {(invoice.estimate_id || invoice.work_order_id || evidenceEval) && (
             <div className="px-4 py-4 border-b border-slate-100 space-y-1.5">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Linked Records</p>
               {invoice.estimate_id && (
@@ -250,6 +276,23 @@ export default function InvoiceDetail() {
                   className="text-xs text-primary hover:underline block">
                   → View Work Order
                 </button>
+              )}
+              {evidenceEval && (
+                <div className={`mt-3 p-2 rounded-lg text-xs flex items-start gap-2 ${
+                  evidenceEval.isComplete ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'
+                }`}>
+                  {evidenceEval.isComplete ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span className="text-green-700 font-medium">Execution Evidence Complete</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <span className="text-amber-700 font-medium">Incomplete Evidence</span>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           )}
