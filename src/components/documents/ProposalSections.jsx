@@ -161,6 +161,71 @@ export function PaymentTermsBullets({ paymentTerms, depositPercent, depositAmoun
   );
 }
 
+// ─── Scope Summary ─────────────────────────────────────────────────────────
+export function ScopeSummarySection({ scopeSummary, font, dark, muted, sectionLabelStyle }) {
+  if (!scopeSummary) return null;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={sectionLabelStyle}>Scope Summary</div>
+      <p style={{ fontFamily: font, fontSize: 12, color: dark || '#334155', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>
+        {scopeSummary}
+      </p>
+    </div>
+  );
+}
+
+// ─── Assumptions ───────────────────────────────────────────────────────────
+export function AssumptionsSection({ assumptions, font, muted, sectionLabelStyle }) {
+  if (!assumptions) return null;
+
+  const items = assumptions
+    .split(/[\n•]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={sectionLabelStyle}>Assumptions & Conditions</div>
+      {items.length > 1 ? (
+        <ul style={{
+          margin: 0, paddingLeft: 20, listStyleType: 'disc',
+          fontFamily: font, fontSize: 12, color: muted || '#64748b',
+          lineHeight: 1.85,
+        }}>
+          {items.map((item, i) => (
+            <li key={i} style={{ marginBottom: 2 }}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p style={{ fontFamily: font, fontSize: 12, color: muted || '#64748b', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>
+          {assumptions}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Change Request Policy ─────────────────────────────────────────────────
+export function ChangeRequestSection({ changeRequestPolicy, font, muted, sectionLabelStyle, accentColor }) {
+  if (!changeRequestPolicy) return null;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={sectionLabelStyle}>Change Request Policy</div>
+      <div style={{
+        padding: '14px 18px', borderRadius: 6,
+        background: accentColor ? `${accentColor}08` : '#f8fafc',
+        border: `1px solid ${accentColor ? `${accentColor}20` : '#e2e8f0'}`,
+      }}>
+        <p style={{ fontFamily: font, fontSize: 12, color: muted || '#475569', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>
+          {changeRequestPolicy}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Client Acceptance ─────────────────────────────────────────────────────
 export function AcceptanceSection({ companyName, clientName, font, dark, muted, border, sectionLabelStyle, accentColor }) {
   return (

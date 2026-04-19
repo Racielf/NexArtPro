@@ -5,6 +5,7 @@ import PaymentMethodsSection from '../../documents/PaymentMethodsSection';
 import {
   ExclusionsSection, WarrantySection,
   TimelineSection, PaymentTermsBullets, AcceptanceSection,
+  ScopeSummarySection, AssumptionsSection, ChangeRequestSection,
 } from '../../documents/ProposalSections';
 import DocumentAttachmentsSection from '../../documents/DocumentAttachmentsSection';
 
@@ -251,6 +252,14 @@ export default function ModernCardTemplate({ vm }) {
         </div>
       )}
 
+      {/* ─── SCOPE SUMMARY + ASSUMPTIONS CARD ───────────────── */}
+      {(text.scopeSummary || text.assumptions) && (
+        <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
+          {text.scopeSummary && <ScopeSummarySection scopeSummary={text.scopeSummary} font={FONT} dark={DARK} muted={MUTED} sectionLabelStyle={sectionLabel} />}
+          {text.assumptions && <AssumptionsSection assumptions={text.assumptions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />}
+        </div>
+      )}
+
       {/* ─── EXCLUSIONS + WARRANTY + TIMELINE CARD ──────────── */}
       {(text.exclusions || text.warrantyTerms || project.startDate || project.endDate) && (
         <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
@@ -275,6 +284,12 @@ export default function ModernCardTemplate({ vm }) {
             font={FONT} muted="#475569"
             sectionLabelStyle={sectionLabel}
           />
+          {/* Change Request Policy */}
+          {text.changeRequestPolicy && (
+            <div style={{ marginTop: 4 }}>
+              <ChangeRequestSection changeRequestPolicy={text.changeRequestPolicy} font={FONT} muted="#475569" sectionLabelStyle={sectionLabel} accentColor={ACCENT} />
+            </div>
+          )}
           {/* Legal terms */}
           {text.legalTerms && (
             <div style={{ marginTop: 4 }}>

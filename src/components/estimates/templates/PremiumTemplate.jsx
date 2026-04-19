@@ -5,6 +5,7 @@ import PaymentMethodsSection from '../../documents/PaymentMethodsSection';
 import {
   ExclusionsSection, WarrantySection,
   TimelineSection, PaymentTermsBullets, AcceptanceSection,
+  ScopeSummarySection, AssumptionsSection, ChangeRequestSection,
 } from '../../documents/ProposalSections';
 import DocumentAttachmentsSection from '../../documents/DocumentAttachmentsSection';
 
@@ -250,6 +251,20 @@ export default function PremiumTemplate({ vm }) {
         </div>
       )}
 
+      {/* ─── SCOPE SUMMARY ──────────────────────────────────── */}
+      {text.scopeSummary && (
+        <div style={{ padding: `0 ${P}px` }}>
+          <ScopeSummarySection scopeSummary={text.scopeSummary} font={FONT} dark={DARK} muted={MUTED} sectionLabelStyle={sectionLabel} />
+        </div>
+      )}
+
+      {/* ─── ASSUMPTIONS ────────────────────────────────────── */}
+      {text.assumptions && (
+        <div style={{ padding: `0 ${P}px` }}>
+          <AssumptionsSection assumptions={text.assumptions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />
+        </div>
+      )}
+
       {/* ─── EXCLUSIONS ─────────────────────────────────────── */}
       {text.exclusions && (
         <div style={{ padding: `0 ${P}px` }}>
@@ -299,6 +314,13 @@ export default function PremiumTemplate({ vm }) {
             textStyle={{ color: '#555', fontSize: 12, lineHeight: 1.8 }}
             containerStyle={{}}
           />
+        </div>
+      )}
+
+      {/* ─── CHANGE REQUEST POLICY ──────────────────────────── */}
+      {opts.showTerms && text.changeRequestPolicy && (
+        <div style={{ padding: `0 ${P}px` }}>
+          <ChangeRequestSection changeRequestPolicy={text.changeRequestPolicy} font={FONT} muted="#555" sectionLabelStyle={sectionLabel} accentColor={ACCENT} />
         </div>
       )}
 

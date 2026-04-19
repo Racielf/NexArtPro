@@ -255,6 +255,9 @@ export function buildEstimateDocumentViewModel({
     paymentTerms: safeStr(estimate.payment_terms),
     warrantyTerms: safeStr(estimate.warranty_terms),
     legalTerms: safeStr(estimate.legal_terms),
+    scopeSummary: safeStr(estimate.scope_summary),
+    assumptions: safeStr(estimate.assumptions),
+    changeRequestPolicy: safeStr(estimate.change_request_policy),
   };
 
   // ─── Materials ────────────────────────────────────────────────────────────
