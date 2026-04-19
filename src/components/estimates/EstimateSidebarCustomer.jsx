@@ -132,6 +132,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
         </div>
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={() => { setShowSearch(v => !v); setEditing(false); }}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             title="Search existing clients"
@@ -139,6 +140,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
             <Search className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={() => { setShowCustomerModal(true); setEditing(false); setShowSearch(false); }}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             title="Edit contact"
@@ -163,7 +165,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
               <p className="text-xs text-slate-400 py-3 text-center">No clients found</p>
             )}
             {filteredClients.map(c => (
-              <button key={c.id} onClick={() => handleSelectClient(c)}
+              <button key={c.id} type="button" onClick={() => handleSelectClient(c)}
                 className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all text-xs">
                 <span className="font-semibold text-slate-800 block">{c.full_name}</span>
                 {c.phone && <span className="text-slate-400 text-[11px]">{c.phone}</span>}
@@ -197,12 +199,12 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
               className="h-8 text-xs border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
           </div>
           <div className="flex gap-2 pt-1">
-            <button onClick={handleSave} disabled={!form.client_name.trim()}
+            <button type="button" onClick={handleSave} disabled={!form.client_name.trim()}
               className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-slate-900 text-white hover:bg-black disabled:opacity-40 transition-colors">
               <Check className="w-3 h-3" /> Save Customer
             </button>
             {estimate?.client_name && (
-              <button onClick={() => setEditing(false)}
+              <button type="button" onClick={() => setEditing(false)}
                 className="w-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 transition-colors text-xs">
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -349,16 +351,17 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
                   {mapExpanded && (
                     <div className="flex rounded-md overflow-hidden border border-slate-200 bg-white">
                       {['map', 'hybrid'].map(t => (
-                        <button key={t} onClick={() => setMapTab(t)}
-                          className={`px-2 py-1 text-[10px] font-semibold capitalize transition-colors ${
-                            mapTab === t ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'
-                          }`}>
-                          {t === 'map' ? 'Map' : 'Sat'}
-                        </button>
-                      ))}
+                            <button key={t} type="button" onClick={() => setMapTab(t)}
+                              className={`px-2 py-1 text-[10px] font-semibold capitalize transition-colors ${
+                                mapTab === t ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'
+                              }`}>
+                              {t === 'map' ? 'Map' : 'Sat'}
+                            </button>
+                          ))}
                     </div>
                   )}
                   <button
+                    type="button"
                     onClick={() => setMapExpanded(!mapExpanded)}
                     className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 hover:text-slate-700 transition-colors"
                   >
@@ -427,7 +430,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
           </div>
           <p className="text-sm font-semibold text-slate-600 mb-1">No customer linked</p>
           <p className="text-xs text-slate-400 mb-3">Link a customer to this estimate</p>
-          <button onClick={() => setEditing(true)}
+          <button type="button" onClick={() => setEditing(true)}
             className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">
             + Add customer
           </button>
