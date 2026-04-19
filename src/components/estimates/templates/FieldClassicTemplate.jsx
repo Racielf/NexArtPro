@@ -164,7 +164,7 @@ export default function FieldClassicTemplate({ vm }) {
               <tr style={{ background: LIGHT_BG }}>
                 <th style={{ textAlign: 'left', padding: '7px 10px', fontSize: 9, fontWeight: 600, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${BORDER}` }}>Material</th>
                 <th style={{ textAlign: 'right', padding: '7px 10px', fontSize: 9, fontWeight: 600, color: MUTED, width: 50, textTransform: 'uppercase', borderBottom: `1px solid ${BORDER}` }}>Qty</th>
-                <th style={{ textAlign: 'right', padding: '7px 10px', fontSize: 9, fontWeight: 600, color: MUTED, width: 50, textTransform: 'uppercase', borderBottom: `1px solid ${BORDER}` }}>Unit</th>}
+                <th style={{ textAlign: 'right', padding: '7px 10px', fontSize: 9, fontWeight: 600, color: MUTED, width: 50, textTransform: 'uppercase', borderBottom: `1px solid ${BORDER}` }}>Unit</th>
                 {showPrices && <th style={{ textAlign: 'right', padding: '7px 10px', fontSize: 9, fontWeight: 600, color: MUTED, width: 90, textTransform: 'uppercase', borderBottom: `1px solid ${BORDER}` }}>Price</th>}
                 {showPrices && <th style={{ textAlign: 'right', padding: '7px 10px', fontSize: 9, fontWeight: 600, color: MUTED, width: 100, textTransform: 'uppercase', borderBottom: `1px solid ${BORDER}` }}>Amount</th>}
               </tr>
