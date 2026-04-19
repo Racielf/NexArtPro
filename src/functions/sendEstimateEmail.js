@@ -4,7 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 const apiKey = Deno.env.get('RESEND_API_KEY');
 const resend = new Resend(apiKey);
 
-export default async (req: Request): Promise<Response> => {
+export default async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
