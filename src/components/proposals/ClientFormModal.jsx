@@ -54,16 +54,30 @@ export default function ClientFormModal({ open, onOpenChange, client = null, onS
       zip: form.zip || '',
       notes: form.notes || '',
     };
-    let saved;
-    if (client?.id) {
-      saved = await base44.entities.Client.update(client.id, data);
-      toast.success('Customer updated');
-    } else {
-      saved = await base44.entities.Client.create(data);
-      toast.success('Customer created');
+    try {
+      let saved;
+      if (client?.id) {
+        saved = await base44.entities.Client.update(client.id, data);
+        toast.success('Customer updated');
+      } else {
+        saved = await base44.entities.Client.create(data);
+        toast.success('Customer created');
+      }
+      onOpenChange(false);
+      onSaved?.({ ...data, id: saved?.id || client?.id });
+    } catch (err) {
+      if (err?.message?.includes('not found')) {
+        toast.error('Customer not found. Creating as new instead...');
+        const saved = await base44.entities.Client.create(data);
+        onOpenChange(false);
+        onSaved?.({ ...data, id: saved?.id });
+      } else {
+        toast.error(err?.message || 'Failed to save customer');
+        throw err;
+      }
+    } finally {
+      setSaving(false);
     }
-    onOpenChange(false);
-    onSaved?.({ ...data, id: saved?.id || client?.id });
   };
 
   return (
