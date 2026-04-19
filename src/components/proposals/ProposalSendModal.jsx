@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Send, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import ProposalMarginReview from '@/components/proposals/ProposalMarginReview';
 
 export default function ProposalSendModal({ proposal, onClose, onSent }) {
   const [copied, setCopied] = useState(false);
@@ -15,7 +16,7 @@ export default function ProposalSendModal({ proposal, onClose, onSent }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4">
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <h2 className="text-base font-bold text-slate-900">Send Proposal to Client</h2>
@@ -45,6 +46,9 @@ export default function ProposalSendModal({ proposal, onClose, onSent }) {
               Share this link with your client. They can view the proposal, see the pricing and terms, and accept or reject it.
             </p>
           </div>
+
+          {/* Margin Review — decision layer, does NOT block sending */}
+          <ProposalMarginReview proposal={proposal} />
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-700 leading-relaxed">
             Clicking "Confirm & Send" will update the proposal status to <strong>Sent</strong>. Line items will be locked for editing. The client can accept or reject from their view.
