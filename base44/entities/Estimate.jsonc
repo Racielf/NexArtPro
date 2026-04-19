@@ -383,6 +383,18 @@
     "legal_terms": {
       "type": "string"
     },
+    "scope_summary": {
+      "type": "string",
+      "description": "Client-visible summary of the overall scope of work"
+    },
+    "assumptions": {
+      "type": "string",
+      "description": "Project assumptions and conditions agreed upon by both parties"
+    },
+    "change_request_policy": {
+      "type": "string",
+      "description": "Policy for handling changes after estimate is approved"
+    },
     "sent_at": {
       "type": "string"
     },

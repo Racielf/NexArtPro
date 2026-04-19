@@ -542,6 +542,9 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [warrantyTerms, setWarrantyTerms] = useState(estimate?.warranty_terms || '');
   const [paymentTerms, setPaymentTerms] = useState(estimate?.payment_terms || '');
   const [legalTerms, setLegalTerms] = useState(estimate?.legal_terms || '');
+  const [scopeSummary, setScopeSummary] = useState(estimate?.scope_summary || '');
+  const [assumptions, setAssumptions] = useState(estimate?.assumptions || '');
+  const [changeRequestPolicy, setChangeRequestPolicy] = useState(estimate?.change_request_policy || '');
   const [materials, setMaterials] = useState(() => normalizeMaterials(estimate?.materials || []));
   const [otherCosts, setOtherCosts] = useState(estimate?.other_costs || []);
   const showCost = true; // Materials cost always tracked internally
@@ -593,6 +596,9 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     setWarrantyTerms(estimate.warranty_terms || '');
     setPaymentTerms(estimate.payment_terms || '');
     setLegalTerms(estimate.legal_terms || '');
+    setScopeSummary(estimate.scope_summary || '');
+    setAssumptions(estimate.assumptions || '');
+    setChangeRequestPolicy(estimate.change_request_policy || '');
     setMaterials(normalizeMaterials(estimate.materials || []));
     setOtherCosts(estimate.other_costs || []);
   }, [estimate?.id]);
@@ -624,6 +630,9 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         warranty_terms: warrantyTerms,
         payment_terms: paymentTerms,
         legal_terms: legalTerms,
+        scope_summary: scopeSummary,
+        assumptions,
+        change_request_policy: changeRequestPolicy,
         subtotal: result.subtotal,
         discount_amount: result.discountAmount,
         tax_amount: result.taxAmount,
@@ -635,7 +644,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, materials, otherCosts]);
+  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, materials, otherCosts]);
 
   const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
@@ -886,6 +895,12 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
             <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent badge="Internal only" />
             <NotesSection label="Exclusions" placeholder="What is NOT included in this estimate…" value={exclusions} onChange={setExclusions} />
             <NotesSection label="Payment Terms" placeholder="e.g. 50% deposit, balance on completion…" value={paymentTerms} onChange={setPaymentTerms} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-5 mt-5 pt-5 border-t border-slate-100">
+            <NotesSection label="Scope Summary" placeholder="High-level description of the full scope of work visible to the client…" value={scopeSummary} onChange={setScopeSummary} />
+            <NotesSection label="Assumptions & Conditions" placeholder="Agreed project assumptions — site access, permits, materials provided by client…" value={assumptions} onChange={setAssumptions} />
+            <NotesSection label="Change Request Policy" placeholder="How changes after approval are handled — process, pricing, written approval required…" value={changeRequestPolicy} onChange={setChangeRequestPolicy} />
           </div>
 
           <button onClick={() => setShowTerms(v => !v)}
