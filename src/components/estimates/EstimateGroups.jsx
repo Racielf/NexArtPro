@@ -231,32 +231,48 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         </div>
 
         {/* Qty */}
-        <Input
-          type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
-          className="h-8 text-sm text-center border-slate-200 font-semibold px-1 w-full tabular-nums rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" min={0}
-        />
+        {isPreview ? (
+          <div className="h-8 text-sm text-center font-semibold tabular-nums flex items-center justify-center text-slate-700">{item.quantity}</div>
+        ) : (
+          <Input
+            type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
+            className="h-8 text-sm text-center border-slate-200 font-semibold px-1 w-full tabular-nums rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" min={0}
+          />
+        )}
 
         {/* UOM */}
-        <select value={item.unit} onChange={e => update('unit', e.target.value)}
-          className="h-8 text-[11px] border border-slate-200 rounded-lg px-1.5 bg-white text-slate-500 w-full font-medium focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 focus:outline-none">
-          {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-        </select>
+        {isPreview ? (
+          <div className="h-8 text-[11px] flex items-center justify-center text-slate-500 font-medium">{item.unit}</div>
+        ) : (
+          <select value={item.unit} onChange={e => update('unit', e.target.value)}
+            className="h-8 text-[11px] border border-slate-200 rounded-lg px-1.5 bg-white text-slate-500 w-full font-medium focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 focus:outline-none">
+            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        )}
 
-        {/* Unit Price — clean editable field, drives all totals */}
+        {/* Unit Price — editable in edit mode, read-only in preview */}
         <div className="min-w-0 overflow-hidden">
           <div className="relative flex items-center">
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
-            <Input
-              type="number" step="0.01" value={item.unit_price}
-              onChange={e => update('unit_price', e.target.value)}
-              onBlur={() => handlePriceBlur('unit_price')}
-              className={`h-8 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-lg border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 ${
-                isLoss ? 'border-red-300 bg-red-50/40 text-red-600' :
-                isZeroProfit ? 'border-amber-300 bg-amber-50/40 text-amber-600' :
-                'text-slate-800'
-              }`}
-              min={0}
-            />
+            {isPreview ? (
+              <div className={`h-8 px-2 text-sm text-right font-semibold tabular-nums flex items-center justify-end w-full ${
+                isLoss ? 'text-red-600' : isZeroProfit ? 'text-amber-600' : 'text-slate-800'
+              }`}>${price.toFixed(2)}</div>
+            ) : (
+              <>
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+                <Input
+                  type="number" step="0.01" value={item.unit_price}
+                  onChange={e => update('unit_price', e.target.value)}
+                  onBlur={() => handlePriceBlur('unit_price')}
+                  className={`h-8 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-lg border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 ${
+                    isLoss ? 'border-red-300 bg-red-50/40 text-red-600' :
+                    isZeroProfit ? 'border-amber-300 bg-amber-50/40 text-amber-600' :
+                    'text-slate-800'
+                  }`}
+                  min={0}
+                />
+              </>
+            )}
             {/* ⚡ Auto-price button — internal only */}
             {!isPreview && autoSuggest > 0 && (
               <button
@@ -333,26 +349,37 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           )}
         </div>
 
-        {/* Remove — only visible on row hover */}
-        <button onClick={() => onRemove(item.id)}
-          className="flex justify-center p-1 rounded text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover/row:opacity-100">
-          <X className="w-3 h-3" />
-        </button>
+        {/* Remove — hidden in preview */}
+        {!isPreview ? (
+          <button onClick={() => onRemove(item.id)}
+            className="flex justify-center p-1 rounded text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover/row:opacity-100">
+            <X className="w-3 h-3" />
+          </button>
+        ) : <div />}
       </div>
 
-      {/* Expanded detail row — editable description + taxable */}
+      {/* Expanded detail row — read-only in preview, editable otherwise */}
       {expanded && (
         <div className="px-10 pb-4 pt-0.5 space-y-2">
           <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest leading-none">Description</p>
-          <Input value={item.description} onChange={e => update('description', e.target.value)}
-            placeholder="Service description / scope details…"
-            className="h-8 text-sm border-slate-100 bg-slate-50/60 text-slate-400 rounded-lg focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 placeholder:text-slate-300 focus:bg-white transition" />
+          {isPreview ? (
+            <p className="text-sm text-slate-400 px-1 py-1 leading-relaxed">{item.description || '—'}</p>
+          ) : (
+            <Input value={item.description} onChange={e => update('description', e.target.value)}
+              placeholder="Service description / scope details…"
+              className="h-8 text-sm border-slate-100 bg-slate-50/60 text-slate-400 rounded-lg focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 placeholder:text-slate-300 focus:bg-white transition" />
+          )}
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer select-none hover:text-slate-600 transition-colors">
-              <input type="checkbox" checked={item.taxable !== false}
-                onChange={e => update('taxable', e.target.checked)} className="rounded accent-primary" />
-              Taxable
-            </label>
+            <span className="text-[11px] text-slate-400">
+              {item.taxable !== false ? 'Taxable' : 'Not taxable'}
+            </span>
+            {!isPreview && (
+              <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer select-none hover:text-slate-600 transition-colors">
+                <input type="checkbox" checked={item.taxable !== false}
+                  onChange={e => update('taxable', e.target.checked)} className="rounded accent-primary" />
+                Toggle taxable
+              </label>
+            )}
             <button onClick={() => setExpanded(false)}
               className="text-[11px] text-slate-400 hover:text-slate-600 transition-colors">↑ collapse</button>
           </div>
@@ -423,7 +450,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
         <div className="flex items-center gap-4 ml-auto">
           <span className="text-[11px] text-white/60">{group.items?.length || 0} item{(group.items?.length || 0) !== 1 ? 's' : ''}</span>
           <span className="text-sm font-bold text-white tabular-nums">${groupSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          {!isOnly && (
+          {!isOnly && !isPreview && (
             <button onClick={() => onRemove(group.id)}
               className="p-1 rounded hover:bg-red-500/30 text-white/50 hover:text-white transition-colors ml-1">
               <Trash2 className="w-3.5 h-3.5" />
@@ -464,18 +491,20 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             </span>
           </div>
 
-          <div className="px-6 py-2.5 flex items-center gap-4 border-t border-slate-100 bg-white/80">
-            <button onClick={addItem}
-              className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
-              <Plus className="w-4 h-4" />Add line item
-            </button>
-            <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
-              <BookOpen className="w-4 h-4" />Price book
-            </button>
-            <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
-              <LayoutTemplate className="w-4 h-4" />Templates
-            </button>
-          </div>
+          {!isPreview && (
+            <div className="px-6 py-2.5 flex items-center gap-4 border-t border-slate-100 bg-white/80">
+              <button onClick={addItem}
+                className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
+                <Plus className="w-4 h-4" />Add line item
+              </button>
+              <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
+                <BookOpen className="w-4 h-4" />Price book
+              </button>
+              <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
+                <LayoutTemplate className="w-4 h-4" />Templates
+              </button>
+            </div>
+          )}
         </>
       )}
       </div>{/* end overflow-x-auto */}
@@ -717,15 +746,19 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         <div className="flex items-center gap-3 shrink-0">
           {/* Current time — auto-updates every minute */}
           <LiveClock />
-          {/* Expires — editable date picker, reflected in document */}
+          {/* Expires — read-only in preview */}
           <div className="flex flex-col items-end gap-0.5">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Expires</span>
-            <Input
-              type="date"
-              value={expirationDate}
-              onChange={e => setExpirationDate(e.target.value)}
-              className="h-7 text-xs w-36 shrink-0 border-slate-200 bg-white"
-            />
+            {isPreview ? (
+              <span className="text-xs text-slate-600 font-medium h-7 flex items-center">{expirationDate || '—'}</span>
+            ) : (
+              <Input
+                type="date"
+                value={expirationDate}
+                onChange={e => setExpirationDate(e.target.value)}
+                className="h-7 text-xs w-36 shrink-0 border-slate-200 bg-white"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -753,11 +786,13 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         ))}
       </div>
 
-      {/* Add group button */}
-      <button onClick={addGroup}
-        className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-primary border border-dashed border-slate-200 hover:border-primary/30 rounded-xl w-full py-2.5 justify-center transition-colors mb-5 bg-white/60 hover:bg-white">
-        <Plus className="w-3.5 h-3.5" />Add work group
-      </button>
+      {/* Add group button — hidden in preview */}
+      {!isPreview && (
+        <button onClick={addGroup}
+          className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-primary border border-dashed border-slate-200 hover:border-primary/30 rounded-xl w-full py-2.5 justify-center transition-colors mb-5 bg-white/60 hover:bg-white">
+          <Plus className="w-3.5 h-3.5" />Add work group
+        </button>
+      )}
 
       {/* ── MATERIALS SECTION ── */}
       <div className="mb-5">
@@ -848,21 +883,27 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
 
             <div className="flex items-center justify-between gap-3 py-1.5 border-b border-slate-100">
               <span className="text-slate-500">Discount</span>
-              <div className="flex items-center gap-1.5">
-                {readOnlyDiscountType ? (
-                  <div className="h-7 px-2 flex items-center text-xs text-slate-500 font-medium bg-slate-50 rounded border border-slate-200">
-                    {discountType === 'percent' ? '%' : '$'}
-                  </div>
-                ) : (
-                  <select value={discountType} onChange={e => setDiscountType(e.target.value)}
-                    className="h-7 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600">
-                    <option value="percent">%</option>
-                    <option value="fixed">$</option>
-                  </select>
-                )}
-                <Input type="number" value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
-                  className="h-7 w-20 text-right text-sm border-slate-200" min={0} />
-              </div>
+              {isPreview ? (
+                <span className="text-sm font-semibold text-slate-700 tabular-nums">
+                  {discountValue > 0 ? `${discountType === 'percent' ? discountValue + '%' : '$' + discountValue}` : '—'}
+                </span>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  {readOnlyDiscountType ? (
+                    <div className="h-7 px-2 flex items-center text-xs text-slate-500 font-medium bg-slate-50 rounded border border-slate-200">
+                      {discountType === 'percent' ? '%' : '$'}
+                    </div>
+                  ) : (
+                    <select value={discountType} onChange={e => setDiscountType(e.target.value)}
+                      className="h-7 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600">
+                      <option value="percent">%</option>
+                      <option value="fixed">$</option>
+                    </select>
+                  )}
+                  <Input type="number" value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+                    className="h-7 w-20 text-right text-sm border-slate-200" min={0} />
+                </div>
+              )}
             </div>
             {discountAmount > 0 && (
               <div className="flex justify-between text-xs text-slate-400">
@@ -873,8 +914,12 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
 
             <div className="flex items-center justify-between gap-3 py-1.5 border-b border-slate-100">
               <span className="text-slate-500">Tax (%)</span>
-              <Input type="number" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
-                className="h-7 w-20 text-right text-sm border-slate-200" min={0} max={100} />
+              {isPreview ? (
+                <span className="text-sm font-semibold text-slate-700 tabular-nums">{taxRate > 0 ? `${taxRate}%` : '—'}</span>
+              ) : (
+                <Input type="number" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
+                  className="h-7 w-20 text-right text-sm border-slate-200" min={0} max={100} />
+              )}
             </div>
             {taxAmount > 0 && (
               <div className="flex justify-between text-xs text-slate-400">
@@ -891,8 +936,12 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
 
             <div className="flex items-center justify-between gap-3 pt-2">
               <span className="text-slate-500 text-xs">Deposit (%)</span>
-              <Input type="number" value={depositPercent} onChange={e => setDepositPercent(parseFloat(e.target.value) || 0)}
-                className="h-7 w-20 text-right text-sm border-slate-200" min={0} max={100} />
+              {isPreview ? (
+                <span className="text-sm font-semibold text-slate-700 tabular-nums">{depositPercent > 0 ? `${depositPercent}%` : '—'}</span>
+              ) : (
+                <Input type="number" value={depositPercent} onChange={e => setDepositPercent(parseFloat(e.target.value) || 0)}
+                  className="h-7 w-20 text-right text-sm border-slate-200" min={0} max={100} />
+              )}
             </div>
             {depositAmount > 0 && (
               <div className="flex justify-between text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-1">
@@ -904,119 +953,121 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         </div>
       </div>
 
-      {/* ── NOTES & TERMS ── */}
-      <div className="bg-white rounded-xl border border-slate-100 overflow-hidden mb-5" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
-        {/* Card header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-slate-50/60">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Notes & Terms</p>
-        </div>
-
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-2 gap-5">
-            <NotesSection label="Customer Notes" placeholder="Visible to client — scope overview, access instructions…" value={notes} onChange={setNotes} />
-            <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent badge="Internal only" />
-            <NotesSection label="Exclusions" placeholder="What is NOT included in this estimate…" value={exclusions} onChange={setExclusions} />
-            <NotesSection label="Payment Terms" placeholder="e.g. 50% deposit, balance on completion…" value={paymentTerms} onChange={setPaymentTerms} />
+      {/* ── NOTES & TERMS ── hidden entirely in preview (all data is in rendered doc) */}
+      {!isPreview && (
+        <div className="bg-white rounded-xl border border-slate-100 overflow-hidden mb-5" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
+          {/* Card header */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-slate-50/60">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Notes & Terms</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-5 mt-5 pt-5 border-t border-slate-100">
-            <NotesSection label="Scope Summary" placeholder="High-level description of the full scope of work visible to the client…" value={scopeSummary} onChange={setScopeSummary} />
-            <NotesSection label="Assumptions & Conditions" placeholder="Agreed project assumptions — site access, permits, materials provided by client…" value={assumptions} onChange={setAssumptions} />
-            <NotesSection label="Change Request Policy" placeholder="How changes after approval are handled — process, pricing, written approval required…" value={changeRequestPolicy} onChange={setChangeRequestPolicy} />
-            <NotesSection label="What's Included" placeholder="Each line = one bullet in the document — e.g. Labor and installation&#10;Cleanup and haul-away&#10;All materials listed above" value={includedScopeBullets} onChange={setIncludedScopeBullets} />
-          </div>
-
-          {/* ── CONTINGENCY & UNCERTAINTY ── */}
-          <div className="mt-5 pt-5 border-t border-slate-100">
-            <div className="flex items-center gap-2 mb-3">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Contingency & Uncertainty</label>
-              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-slate-50 border-slate-200 text-slate-400 leading-none">Optional</span>
-            </div>
+          <div className="px-6 py-5">
             <div className="grid grid-cols-2 gap-5">
-              {/* Left: contingency controls */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Type</label>
-                    <select
-                      value={contingencyType}
-                      onChange={e => setContingencyType(e.target.value)}
-                      className="h-8 text-xs border border-slate-200 rounded-lg px-2 bg-white text-slate-700 font-medium focus:border-blue-400 focus:outline-none"
-                    >
-                      <option value="none">None</option>
-                      <option value="percent">Percent (%)</option>
-                      <option value="fixed">Fixed ($)</option>
-                    </select>
-                  </div>
-                  {contingencyType !== 'none' && (
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
-                        {contingencyType === 'percent' ? 'Percentage' : 'Amount ($)'}
-                      </label>
-                      <div className="relative flex items-center">
-                        {contingencyType === 'fixed' && <span className="absolute left-2 text-xs text-slate-400 pointer-events-none">$</span>}
-                        <Input
-                          type="number"
-                          min={0}
-                          step={contingencyType === 'percent' ? '0.1' : '0.01'}
-                          value={contingencyValue}
-                          onChange={e => setContingencyValue(parseFloat(e.target.value) || 0)}
-                          className={`h-8 w-28 text-sm border-slate-200 text-right ${contingencyType === 'fixed' ? 'pl-5' : ''}`}
-                        />
-                        {contingencyType === 'percent' && <span className="ml-1.5 text-xs text-slate-400">%</span>}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {contingencyType !== 'none' && contingencyValue > 0 && (() => {
-                  const amt = contingencyType === 'percent'
-                    ? parseFloat(((total || 0) * contingencyValue / 100).toFixed(2))
-                    : contingencyValue;
-                  return (
-                    <div className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-                      Contingency amount: <span className="font-bold text-slate-700">${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  );
-                })()}
-                <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={showContingencyToClient}
-                    onChange={e => setShowContingencyToClient(e.target.checked)}
-                    className="rounded accent-primary"
-                    disabled={contingencyType === 'none'}
-                  />
-                  Show contingency line to client
-                </label>
-              </div>
-              {/* Right: uncertainty note */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Uncertainty Note</label>
-                <Textarea
-                  value={uncertaintyNote}
-                  onChange={e => setUncertaintyNote(e.target.value)}
-                  placeholder="Optional client-visible note about project uncertainties or scope assumptions…"
-                  rows={4}
-                  className="text-sm resize-none border-slate-200 bg-slate-50/40 placeholder:text-slate-300 focus-visible:ring-primary/20"
-                />
-              </div>
+              <NotesSection label="Customer Notes" placeholder="Visible to client — scope overview, access instructions…" value={notes} onChange={setNotes} />
+              <NotesSection label="Internal Notes" placeholder="Team only — not visible to customer…" value={internalNotes} onChange={setInternalNotes} accent badge="Internal only" />
+              <NotesSection label="Exclusions" placeholder="What is NOT included in this estimate…" value={exclusions} onChange={setExclusions} />
+              <NotesSection label="Payment Terms" placeholder="e.g. 50% deposit, balance on completion…" value={paymentTerms} onChange={setPaymentTerms} />
             </div>
-          </div>
 
-          <button onClick={() => setShowTerms(v => !v)}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-slate-700 mt-5 transition-colors border border-slate-200 hover:border-slate-300 rounded-lg px-3 py-1.5 bg-white">
-            {showTerms ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            {showTerms ? 'Hide' : 'Show'} warranty & legal terms
-          </button>
-
-          {showTerms && (
             <div className="grid grid-cols-2 gap-5 mt-5 pt-5 border-t border-slate-100">
-              <NotesSection label="Warranty Terms" placeholder="e.g. 1-year labor warranty…" value={warrantyTerms} onChange={setWarrantyTerms} />
-              <NotesSection label="Legal Terms" placeholder="Terms and conditions…" value={legalTerms} onChange={setLegalTerms} />
+              <NotesSection label="Scope Summary" placeholder="High-level description of the full scope of work visible to the client…" value={scopeSummary} onChange={setScopeSummary} />
+              <NotesSection label="Assumptions & Conditions" placeholder="Agreed project assumptions — site access, permits, materials provided by client…" value={assumptions} onChange={setAssumptions} />
+              <NotesSection label="Change Request Policy" placeholder="How changes after approval are handled — process, pricing, written approval required…" value={changeRequestPolicy} onChange={setChangeRequestPolicy} />
+              <NotesSection label="What's Included" placeholder="Each line = one bullet in the document — e.g. Labor and installation&#10;Cleanup and haul-away&#10;All materials listed above" value={includedScopeBullets} onChange={setIncludedScopeBullets} />
             </div>
-          )}
+
+            {/* ── CONTINGENCY & UNCERTAINTY ── */}
+            <div className="mt-5 pt-5 border-t border-slate-100">
+              <div className="flex items-center gap-2 mb-3">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Contingency & Uncertainty</label>
+                <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-slate-50 border-slate-200 text-slate-400 leading-none">Optional</span>
+              </div>
+              <div className="grid grid-cols-2 gap-5">
+                {/* Left: contingency controls */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Type</label>
+                      <select
+                        value={contingencyType}
+                        onChange={e => setContingencyType(e.target.value)}
+                        className="h-8 text-xs border border-slate-200 rounded-lg px-2 bg-white text-slate-700 font-medium focus:border-blue-400 focus:outline-none"
+                      >
+                        <option value="none">None</option>
+                        <option value="percent">Percent (%)</option>
+                        <option value="fixed">Fixed ($)</option>
+                      </select>
+                    </div>
+                    {contingencyType !== 'none' && (
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                          {contingencyType === 'percent' ? 'Percentage' : 'Amount ($)'}
+                        </label>
+                        <div className="relative flex items-center">
+                          {contingencyType === 'fixed' && <span className="absolute left-2 text-xs text-slate-400 pointer-events-none">$</span>}
+                          <Input
+                            type="number"
+                            min={0}
+                            step={contingencyType === 'percent' ? '0.1' : '0.01'}
+                            value={contingencyValue}
+                            onChange={e => setContingencyValue(parseFloat(e.target.value) || 0)}
+                            className={`h-8 w-28 text-sm border-slate-200 text-right ${contingencyType === 'fixed' ? 'pl-5' : ''}`}
+                          />
+                          {contingencyType === 'percent' && <span className="ml-1.5 text-xs text-slate-400">%</span>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {contingencyType !== 'none' && contingencyValue > 0 && (() => {
+                    const amt = contingencyType === 'percent'
+                      ? parseFloat(((total || 0) * contingencyValue / 100).toFixed(2))
+                      : contingencyValue;
+                    return (
+                      <div className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                        Contingency amount: <span className="font-bold text-slate-700">${amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    );
+                  })()}
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={showContingencyToClient}
+                      onChange={e => setShowContingencyToClient(e.target.checked)}
+                      className="rounded accent-primary"
+                      disabled={contingencyType === 'none'}
+                    />
+                    Show contingency line to client
+                  </label>
+                </div>
+                {/* Right: uncertainty note */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Uncertainty Note</label>
+                  <Textarea
+                    value={uncertaintyNote}
+                    onChange={e => setUncertaintyNote(e.target.value)}
+                    placeholder="Optional client-visible note about project uncertainties or scope assumptions…"
+                    rows={4}
+                    className="text-sm resize-none border-slate-200 bg-slate-50/40 placeholder:text-slate-300 focus-visible:ring-primary/20"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button onClick={() => setShowTerms(v => !v)}
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-slate-700 mt-5 transition-colors border border-slate-200 hover:border-slate-300 rounded-lg px-3 py-1.5 bg-white">
+              {showTerms ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              {showTerms ? 'Hide' : 'Show'} warranty & legal terms
+            </button>
+
+            {showTerms && (
+              <div className="grid grid-cols-2 gap-5 mt-5 pt-5 border-t border-slate-100">
+                <NotesSection label="Warranty Terms" placeholder="e.g. 1-year labor warranty…" value={warrantyTerms} onChange={setWarrantyTerms} />
+                <NotesSection label="Legal Terms" placeholder="Terms and conditions…" value={legalTerms} onChange={setLegalTerms} />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── INTERNAL AUDIT TRAIL ── */}
       {!isPreview && (
