@@ -3,7 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 export default async (req) => {
   try {
-    // deno-lint-ignore no-undef
+    // deno-lint-ignore no-undef -- Deno is global in Deno Deploy runtime
     const apiKey = Deno.env.get('RESEND_API_KEY');
     const resend = new Resend(apiKey);
     const base44 = createClientFromRequest(req);
