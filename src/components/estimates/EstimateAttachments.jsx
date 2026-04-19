@@ -133,40 +133,56 @@ export default function EstimateAttachments({ attachments = [], onUpdate, readOn
         const Icon = cfg.icon;
         return (
           <div key={att.id} className="flex items-center gap-2 group">
-            {/* File icon */}
-            <div className="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center flex-shrink-0">
-              <FileText className="w-3.5 h-3.5 text-slate-400" />
-            </div>
+           {/* File icon */}
+           <div className="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center flex-shrink-0">
+             <FileText className="w-3.5 h-3.5 text-slate-400" />
+           </div>
 
-            {/* File info */}
-            <div className="flex-1 min-w-0">
-              <a
-                href={att.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-medium text-slate-700 hover:text-primary truncate block"
-                title={att.file_name}
-              >
-                {att.file_name || 'file'}
-              </a>
-            </div>
+           {/* File info */}
+           <div className="flex-1 min-w-0">
+             <a
+               href={att.file_url}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="text-xs font-medium text-slate-700 hover:text-primary truncate block"
+               title={att.file_name}
+             >
+               {att.file_name || 'file'}
+             </a>
+             <p className="text-[10px] text-slate-400">
+               {att.intent === 'send_to_client' ? 'Will be sent to client' : 'Kept internal only'}
+             </p>
+           </div>
 
-            {/* Intent toggle */}
+            {/* Intent toggle — iOS-style switch */}
             {!readOnly ? (
               <button
                 type="button"
                 onClick={() => toggleIntent(att.id)}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold transition-colors ${cfg.cls}`}
-                title={`Click to switch: ${att.intent === 'internal_only' ? 'Mark as Send to Client' : 'Mark as Internal Only'}`}
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  att.intent === 'send_to_client' ? 'bg-blue-500' : 'bg-slate-300'
+                }`}
+                title={`Click to switch: ${att.intent === 'internal_only' ? 'Send to Client' : 'Internal Only'}`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                {cfg.shortLabel}
+                <span
+                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                    att.intent === 'send_to_client' ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
               </button>
             ) : (
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${cfg.cls}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                {cfg.shortLabel}
-              </span>
+              <button
+                disabled
+                className={`relative w-12 h-6 rounded-full flex-shrink-0 ${
+                  att.intent === 'send_to_client' ? 'bg-blue-500' : 'bg-slate-300'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md ${
+                    att.intent === 'send_to_client' ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
             )}
 
             {/* Delete */}
