@@ -11,7 +11,7 @@
  *   readOnly     — boolean, disables upload/edit
  */
 import { useState } from 'react';
-import { Upload, Trash2, Lock, Send, FileText, Loader2 } from 'lucide-react';
+import { Upload, Trash2, Lock, Send, FileText, Loader2, Check, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
@@ -129,67 +129,63 @@ export default function EstimateAttachments({ attachments = [], onUpdate, readOn
       )}
 
       {items.map((att) => {
-        const cfg = INTENT_CONFIG[att.intent] || INTENT_CONFIG.internal_only;
-        const Icon = cfg.icon;
+        const isIncluded = att.intent === 'send_to_client';
         return (
-          <div key={att.id} className="flex items-center gap-2 group">
+          <div key={att.id} className="flex items-center gap-2.5 py-2">
            {/* File icon */}
-           <div className="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center flex-shrink-0">
-             <FileText className="w-3.5 h-3.5 text-slate-400" />
+           <div className="w-6 h-6 bg-slate-50 border border-slate-200 rounded flex items-center justify-center flex-shrink-0">
+             <FileText className="w-3 h-3 text-slate-400" />
            </div>
 
-           {/* File info */}
-           <div className="flex-1 min-w-0">
-             <a
-               href={att.file_url}
-               target="_blank"
-               rel="noopener noreferrer"
-               className="text-xs font-medium text-slate-700 hover:text-primary truncate block"
-               title={att.file_name}
-             >
-               {att.file_name || 'file'}
-             </a>
-             <p className="text-[10px] text-slate-400">
-               {att.intent === 'send_to_client' ? 'Will be sent to client' : 'Kept internal only'}
-             </p>
-           </div>
+           {/* File name */}
+           <a
+             href={att.file_url}
+             target="_blank"
+             rel="noopener noreferrer"
+             className="text-xs font-medium text-slate-700 hover:text-primary truncate flex-1 min-w-0"
+             title={att.file_name}
+           >
+             {att.file_name || 'file'}
+           </a>
 
-            {/* Intent toggle — compact switch */}
+            {/* Status badge — click to toggle */}
             {!readOnly ? (
               <button
                 type="button"
                 onClick={() => toggleIntent(att.id)}
-                className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
-                  att.intent === 'send_to_client' ? 'bg-blue-500' : 'bg-slate-300'
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap flex-shrink-0 transition-colors ${
+                  isIncluded
+                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
-                title={`Click to switch: ${att.intent === 'internal_only' ? 'Send to Client' : 'Internal Only'}`}
+                title={`Click to ${isIncluded ? 'exclude' : 'include'} from send`}
               >
-                <span
-                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-md transition-transform ${
-                    att.intent === 'send_to_client' ? 'translate-x-4' : 'translate-x-0.5'
-                  }`}
-                />
+                {isIncluded ? (
+                  <><Check className="w-3 h-3" />Included</>
+                ) : (
+                  <><X className="w-3 h-3" />Excluded</>
+                )}
               </button>
             ) : (
-              <button
-                disabled
-                className={`relative w-9 h-5 rounded-full flex-shrink-0 ${
-                  att.intent === 'send_to_client' ? 'bg-blue-500' : 'bg-slate-300'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-md ${
-                    att.intent === 'send_to_client' ? 'translate-x-4' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap flex-shrink-0 ${
+                isIncluded
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-slate-100 text-slate-600'
+              }`}>
+                {isIncluded ? (
+                  <><Check className="w-3 h-3" />Included</>
+                ) : (
+                  <><X className="w-3 h-3" />Excluded</>
+                )}
+              </span>
             )}
 
-            {/* Delete */}
+            {/* Delete button */}
             {!readOnly && (
               <button
                 onClick={() => removeAttachment(att.id)}
-                className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                title="Remove attachment"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
