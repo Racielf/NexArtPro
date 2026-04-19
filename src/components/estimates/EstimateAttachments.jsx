@@ -189,9 +189,9 @@ export default function EstimateAttachments({ attachments = [], onUpdate, readOn
             {!readOnly && (
               <button
                 onClick={() => removeAttachment(att.id)}
-                className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
