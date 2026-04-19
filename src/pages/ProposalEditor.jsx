@@ -18,6 +18,9 @@ import ProposalPricingOptions from '@/components/proposals/ProposalPricingOption
 import ProposalPresetPicker from '@/components/proposals/ProposalPresetPicker';
 import ProposalPresentationModeSelector from '@/components/proposals/ProposalPresentationModeSelector';
 import ContentLibraryPopover from '@/components/proposals/ContentLibraryPopover';
+import SmartSuggestionsPanel from '@/components/proposals/SmartSuggestionsPanel';
+import { generateSmartSuggestions } from '@/lib/smartSuggestions';
+import { useQuery } from '@tanstack/react-query';
 
 const STATUS_BADGE = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -56,9 +59,30 @@ export default function ProposalEditor() {
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
   const pdfElementRef = useRef(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
+
+  // Load closed proposals for pattern analysis
+  const { data: closedProposals = [] } = useQuery({
+    queryKey: ['closed-proposals'],
+    queryFn: async () => {
+      const list = await base44.entities.Proposal.filter({ close_outcome: { $exists: true } });
+      return list;
+    },
+    staleTime: 1000 * 60 * 5, // 5 min cache
+  });
+
+  // Generate suggestions whenever proposal or details change
+  useEffect(() => {
+    if (proposal && hasClient) {
+      const sugg = generateSmartSuggestions(proposal, proposalDetails, closedProposals);
+      setSuggestions(sugg);
+    } else {
+      setSuggestions([]);
+    }
+  }, [proposal?.id, proposal?.status, proposalDetails, closedProposals.length]);
 
   useEffect(() => { load(); }, []);
 
@@ -301,6 +325,11 @@ export default function ProposalEditor() {
           {!hasClient && (
             <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-center gap-2 text-sm text-amber-700">
               <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow.
+            </div>
+          )}
+          {hasClient && suggestions.length > 0 && !isPreview && (
+            <div className="mb-4">
+              <SmartSuggestionsPanel suggestions={suggestions} />
             </div>
           )}
           <div ref={pdfElementRef}>
