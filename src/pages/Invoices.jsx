@@ -8,9 +8,10 @@ import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
-import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2 } from 'lucide-react';
+import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CashflowSummary from '@/components/invoices/CashflowSummary';
+import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 
 export default function Invoices() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [evidenceCache, setEvidenceCache] = useState({});
 
   useEffect(() => { loadData(); }, []);
 
@@ -25,6 +27,22 @@ export default function Invoices() {
     setLoading(true);
     const data = await base44.entities.Invoice.list('-created_date');
     setInvoices(data);
+    
+    // Pre-load evidence evaluations for invoices with work orders
+    const cache = {};
+    await Promise.all(data.map(async (inv) => {
+      if (inv.work_order_id) {
+        try {
+          const woList = await base44.entities.WorkOrder.filter({ id: inv.work_order_id });
+          if (woList.length) {
+            cache[inv.id] = evaluateWorkOrderEvidence(woList[0]);
+          }
+        } catch (err) {
+          console.warn(`[loadData] WorkOrder eval failed for invoice ${inv.id}:`, err?.message);
+        }
+      }
+    }));
+    setEvidenceCache(cache);
     setLoading(false);
   };
 
@@ -174,7 +192,9 @@ export default function Invoices() {
                 </Button>
               </div>
             )}
-            {filtered.map(inv => (
+            {filtered.map(inv => {
+              const evidence = evidenceCache[inv.id];
+              return (
               <Card key={inv.id} className="bg-white hover:shadow-sm hover:border-border/70 transition-all border-border cursor-pointer" onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -195,6 +215,17 @@ export default function Invoices() {
                          ) : (
                            <StatusBadge status={inv.status} />
                          )}
+                         {evidence && (
+                           <div className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${
+                             evidence.isComplete ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                           }`}>
+                             {evidence.isComplete ? (
+                               <><CheckCircle2 className="w-3 h-3" /> Evidence</>
+                             ) : (
+                               <><AlertTriangle className="w-3 h-3" /> Incomplete</>
+                             )}
+                           </div>
+                         )}
                        </div>
                        <div className="flex items-center gap-4 mt-2 flex-wrap text-sm">
                          {inv.client_address && (
@@ -212,13 +243,14 @@ export default function Invoices() {
                          {inv.due_date && <span className="text-xs text-muted-foreground">Due: {inv.due_date}</span>}
                        </div>
                       </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </PageShell>
-    </div>
-  );
-}
+                      </div>
+                      </CardContent>
+                      </Card>
+                      );
+                      })}
+                      </div>
+                      )}
+                      </PageShell>
+                      </div>
+                      );
+                      }
