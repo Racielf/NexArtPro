@@ -47,7 +47,7 @@ export default function DocumentViewerShell({
         ) : title}
         <div className="flex items-center gap-2">
           {actions}
-          {!isFullscreen && onClose && (
+          {onClose && (
             <button
               onClick={onClose}
               className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors flex-shrink-0"
@@ -81,8 +81,7 @@ export default function DocumentViewerShell({
         </div>
       )}
 
-      {/* Close Button — handled inline in toolbar for non-fullscreen */}
-      {isFullscreen && onClose && <GlobalDocumentCloseButton onClick={onClose} />}
+      {/* Close button is now always inline in the toolbar */}
     </div>
   );
 }
