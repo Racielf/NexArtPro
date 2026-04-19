@@ -70,6 +70,72 @@ export function getNextAction(doc) {
       return { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Deal lost', sub: 'Reopen as draft to revise.' };
 
     default:
-      return null;
-  }
-}
+       return null;
+    }
+    }
+
+    /**
+    * Get next action for an invoice (collections context).
+    * Works with invoice records that have: status, due_date, sent_at, paid_at, amount_paid, total
+    */
+    export function getInvoiceNextAction(invoice) {
+    if (!invoice) return null;
+
+    const status = invoice.status;
+    const dueDate = invoice.due_date ? new Date(invoice.due_date) : null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const amountPaid = invoice.amount_paid || 0;
+    const total = invoice.total || 0;
+    const balanceDue = Math.max(0, total - amountPaid);
+    const isOverdue = dueDate && dueDate < today && balanceDue > 0;
+
+    const daysSinceSent = invoice.sent_at ? daysSince(invoice.sent_at) : null;
+
+    // draft
+    if (status === 'draft') {
+     return { icon: ArrowRight, color: 'text-slate-500', bg: 'bg-slate-50 border-slate-200', label: 'Ready to send', sub: 'Send to client when ready.' };
+    }
+
+    // sent but not sent_at yet (edge case)
+    if (status === 'sent' && !invoice.sent_at) {
+     return { icon: ArrowRight, color: 'text-slate-500', bg: 'bg-slate-50 border-slate-200', label: 'Pending send', sub: 'Mark as sent.' };
+    }
+
+    // paid
+    if (status === 'paid' || balanceDue <= 0) {
+     return { icon: CheckCircle2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', label: 'Paid', sub: 'No action needed.' };
+    }
+
+    // overdue
+    if (isOverdue) {
+     const daysOverdue = Math.floor((today - dueDate) / 86400000);
+     return { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Urgent collection', sub: `Overdue ${daysOverdue}d — Balance: $${balanceDue.toFixed(2)}` };
+    }
+
+    // sent, not overdue, partial payment
+    if (amountPaid > 0 && balanceDue > 0) {
+     return { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Follow up on balance', sub: `Partial: $${amountPaid.toFixed(2)} / $${total.toFixed(2)}` };
+    }
+
+    // sent, no payment, approaching due date
+    if (dueDate && daysSinceSent !== null) {
+     const daysUntilDue = Math.floor((dueDate - today) / 86400000);
+     if (daysUntilDue <= 3 && daysUntilDue > 0) {
+       return { icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', label: 'Due soon', sub: `Due in ${daysUntilDue}d` };
+     }
+    }
+
+    // sent, no payment, generic await
+    if (status === 'sent' && balanceDue > 0) {
+     return { icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Await payment', sub: `Sent ${daysSinceSent === 0 ? 'today' : `${daysSinceSent}d ago`} — Balance: $${balanceDue.toFixed(2)}` };
+    }
+
+    // cancelled / other terminal
+    if (status === 'cancelled') {
+     return { icon: XCircle, color: 'text-slate-500', bg: 'bg-slate-50 border-slate-200', label: 'Cancelled', sub: 'No action.' };
+    }
+
+    return null;
+    }

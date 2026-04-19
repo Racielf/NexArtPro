@@ -63,12 +63,27 @@ export function getPaymentStatusLabel(status) {
 }
 
 export function summarizePayments(payments = []) {
-  return {
-    count: payments.length,
-    total: payments.reduce((s, p) => s + (p.amount || 0), 0),
-    byMethod: payments.reduce((acc, p) => {
-      acc[p.method] = (acc[p.method] || 0) + (p.amount || 0);
-      return acc;
-    }, {}),
-  };
-}
+   return {
+     count: payments.length,
+     total: payments.reduce((s, p) => s + (p.amount || 0), 0),
+     byMethod: payments.reduce((acc, p) => {
+       acc[p.method] = (acc[p.method] || 0) + (p.amount || 0);
+       return acc;
+     }, {}),
+   };
+ }
+
+/**
+ * Determine if invoice is overdue.
+ * Rule: due_date passed AND balance_due > 0 AND status !== paid
+ */
+export function isInvoiceOverdue(invoice) {
+   if (!invoice?.due_date) return false;
+
+   const due = new Date(invoice.due_date);
+   const today = new Date();
+   today.setHours(0, 0, 0, 0);
+
+   const derived = computeInvoiceDerivedFields(invoice);
+   return due < today && derived.balance_due > 0 && derived.payment_status !== 'paid';
+ }

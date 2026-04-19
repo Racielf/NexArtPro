@@ -15,8 +15,9 @@ import PaymentReceiptPreviewModal from '@/components/payments/PaymentReceiptPrev
 import { buildReceipt } from '@/components/payments/paymentReceiptUtils';
 import PaymentInputModal from '@/components/invoices/PaymentInputModal';
 import PaymentHistory from '@/components/invoices/PaymentHistory';
-import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
+import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
+import { getInvoiceNextAction } from '@/lib/nextActionLogic';
 import { AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 export default function InvoiceDetail() {
@@ -260,6 +261,34 @@ export default function InvoiceDetail() {
             {invoice.client_phone && <p className="text-xs text-slate-500 mt-1">📞 {invoice.client_phone}</p>}
             {invoice.client_email && <p className="text-xs text-slate-500 mt-1">✉ {invoice.client_email}</p>}
           </div>
+
+          {/* Collections Context */}
+          {invoice && (
+            <div className="px-4 py-4 border-b border-slate-100 space-y-2">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Collections</p>
+              {getInvoiceNextAction(invoice) && (() => {
+                const action = getInvoiceNextAction(invoice);
+                return (
+                  <div className={`p-2.5 rounded-lg text-xs flex items-start gap-2 border ${action.bg}`}>
+                    <action.icon className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${action.color}`} />
+                    <div>
+                      <p className={`font-semibold ${action.color}`}>{action.label}</p>
+                      <p className={`text-[11px] mt-0.5 ${action.color}`}>{action.sub}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+              {isInvoiceOverdue(invoice) && (
+                <div className="p-2.5 rounded-lg text-xs flex items-start gap-2 bg-red-50 border border-red-200">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-red-700">Overdue Payment</p>
+                    <p className="text-[11px] text-red-600 mt-0.5">This invoice is past due. Contact customer for payment.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Links + Evidence */}
           {(invoice.estimate_id || invoice.work_order_id || evidenceEval) && (

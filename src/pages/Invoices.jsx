@@ -12,7 +12,8 @@ import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, Chevro
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CashflowSummary from '@/components/invoices/CashflowSummary';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
-import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
+import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
+import { getInvoiceNextAction } from '@/lib/nextActionLogic';
 
 export default function Invoices() {
   const navigate = useNavigate();
@@ -213,61 +214,74 @@ export default function Invoices() {
               </div>
             )}
             {filtered.map(inv => {
-              const evidence = evidenceCache[inv.id];
-              return (
-              <Card key={inv.id} className="bg-white hover:shadow-sm hover:border-border/70 transition-all border-border cursor-pointer" onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
-                <CardContent className="p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(inv.id)}
-                        onChange={() => toggleSelect(inv.id)}
-                        className="w-4 h-4 cursor-pointer"
-                      />
-                    </label>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                         <span className="font-bold text-primary">INV#{inv.invoice_number}</span>
-                         <h3 className="font-semibold text-foreground">{inv.client_name}</h3>
-                         {inv.amount_paid > 0 && inv.amount_paid < inv.total ? (
-                           <StatusBadge status="partial" />
-                         ) : (
-                           <StatusBadge status={inv.status} />
-                         )}
-                         {evidence && (
-                           <div className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${
-                             evidence.isComplete ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                           }`}>
-                             {evidence.isComplete ? (
-                               <><CheckCircle2 className="w-3 h-3" /> Evidence</>
-                             ) : (
-                               <><AlertTriangle className="w-3 h-3" /> Incomplete</>
-                             )}
-                           </div>
-                         )}
+               const evidence = evidenceCache[inv.id];
+               const isOverdue = isInvoiceOverdue(inv);
+               const nextAction = getInvoiceNextAction(inv);
+               return (
+               <Card key={inv.id} className={`${isOverdue ? 'border-red-200 bg-red-50/30' : 'bg-white'} hover:shadow-sm hover:border-border/70 transition-all border-border cursor-pointer`} onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
+                 <CardContent className="p-4">
+                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                     <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                       <input
+                         type="checkbox"
+                         checked={selectedIds.has(inv.id)}
+                         onChange={() => toggleSelect(inv.id)}
+                         className="w-4 h-4 cursor-pointer"
+                       />
+                     </label>
+                     <div className="flex-1">
+                       <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-primary">INV#{inv.invoice_number}</span>
+                          <h3 className="font-semibold text-foreground">{inv.client_name}</h3>
+                          {inv.amount_paid > 0 && inv.amount_paid < inv.total ? (
+                            <StatusBadge status="partial" />
+                          ) : (
+                            <StatusBadge status={inv.status} />
+                          )}
+                          {isOverdue && (
+                            <div className="px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 bg-red-100 text-red-700">
+                              <AlertTriangle className="w-3 h-3" /> Overdue
+                            </div>
+                          )}
+                          {evidence && (
+                            <div className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${
+                              evidence.isComplete ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {evidence.isComplete ? (
+                                <><CheckCircle2 className="w-3 h-3" /> Evidence</>
+                              ) : (
+                                <><AlertTriangle className="w-3 h-3" /> Incomplete</>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 mt-2 flex-wrap text-sm">
+                          {inv.client_address && (
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <MapPin className="w-3 h-3" />{inv.client_address}
+                            </span>
+                          )}
+                          <span className="font-semibold text-foreground">${(inv.total || 0).toFixed(2)}</span>
+                          {inv.amount_paid > 0 && (
+                            <span className="text-xs text-green-600 font-medium">Paid: ${(inv.amount_paid || 0).toFixed(2)}</span>
+                          )}
+                          {inv.amount_paid > 0 && inv.amount_paid < inv.total && (
+                            <span className="text-xs text-amber-600 font-medium">Due: ${(inv.total - inv.amount_paid).toFixed(2)}</span>
+                          )}
+                          {inv.due_date && <span className={`text-xs ${isOverdue ? 'text-red-600 font-semibold' : 'text-muted-foreground'}`}>Due: {inv.due_date}</span>}
+                        </div>
+                        {nextAction && (
+                          <div className={`mt-2 px-2 py-1 rounded text-xs flex items-center gap-1 ${nextAction.bg}`}>
+                            <nextAction.icon className={`w-3.5 h-3.5 ${nextAction.color}`} />
+                            <span className={nextAction.color}>{nextAction.label}</span>
+                          </div>
+                        )}
                        </div>
-                       <div className="flex items-center gap-4 mt-2 flex-wrap text-sm">
-                         {inv.client_address && (
-                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                             <MapPin className="w-3 h-3" />{inv.client_address}
-                           </span>
-                         )}
-                         <span className="font-semibold text-foreground">${(inv.total || 0).toFixed(2)}</span>
-                         {inv.amount_paid > 0 && (
-                           <span className="text-xs text-green-600 font-medium">Paid: ${(inv.amount_paid || 0).toFixed(2)}</span>
-                         )}
-                         {inv.amount_paid > 0 && inv.amount_paid < inv.total && (
-                           <span className="text-xs text-amber-600 font-medium">Due: ${(inv.total - inv.amount_paid).toFixed(2)}</span>
-                         )}
-                         {inv.due_date && <span className="text-xs text-muted-foreground">Due: {inv.due_date}</span>}
                        </div>
-                      </div>
-                      </div>
-                      </CardContent>
-                      </Card>
-                      );
-                      })}
+                       </CardContent>
+                       </Card>
+                       );
+                       })}
                       </div>
                       )}
                       </PageShell>
