@@ -56,21 +56,31 @@ export default function ProposalEditor() {
 
   useEffect(() => { load(); }, []);
 
-  // Load proposalDetails from proposal.notes (safe JSON parse)
+  // Load proposalDetails from proposal.proposal_details (dedicated field)
+  // Legacy fallback: if proposal_details is absent, try to parse from old JSON-in-notes format
   useEffect(() => {
-    if (!proposal?.notes) { setProposalDetails({ scopeOfWork: '', inclusions: '', exclusions: '', timeline: '' }); return; }
-    try {
-      const parsed = typeof proposal.notes === 'string' ? JSON.parse(proposal.notes) : proposal.notes;
-      if (parsed?.proposalDetails) {
-        setProposalDetails(parsed.proposalDetails);
-      } else {
-        // Legacy: notes is plain text, not JSON
-        setProposalDetails({ scopeOfWork: '', inclusions: '', exclusions: '', timeline: '' });
-      }
-    } catch (e) {
-      // Parse error: notes is not JSON (legacy format)
-      setProposalDetails({ scopeOfWork: '', inclusions: '', exclusions: '', timeline: '' });
+    if (!proposal) return;
+    const empty = { scopeOfWork: '', inclusions: '', exclusions: '', timeline: '' };
+
+    if (proposal.proposal_details && Object.values(proposal.proposal_details).some(v => v)) {
+      setProposalDetails({ ...empty, ...proposal.proposal_details });
+      return;
     }
+
+    // Legacy migration: attempt to read from old JSON-embedded notes (one-time upgrade path)
+    if (proposal.notes) {
+      try {
+        const parsed = JSON.parse(proposal.notes);
+        if (parsed?.proposalDetails) {
+          setProposalDetails({ ...empty, ...parsed.proposalDetails });
+          return;
+        }
+      } catch {
+        // notes is plain text — nothing to migrate
+      }
+    }
+
+    setProposalDetails(empty);
   }, [proposal?.id]);
 
   const load = async () => {
@@ -88,12 +98,23 @@ export default function ProposalEditor() {
     // EstimateGroups returns estimate format — adapter handles field filtering
     // unit_cost is now persisted for shared pricing intelligence
     const proposalChanges = extractProposalChanges(estimateData);
-    
-    // Merge proposalDetails into notes as JSON
-    const existingNotes = proposal?.notes || '';
-    const notesData = { proposalDetails, legacyNotes: existingNotes };
-    proposalChanges.notes = JSON.stringify(notesData);
-    
+
+    // Store proposalDetails in its own dedicated field — never in notes
+    proposalChanges.proposal_details = { ...proposalDetails };
+
+    // Preserve notes as plain text: if notes currently contains legacy JSON, clear it
+    if (proposal?.notes) {
+      try {
+        const parsed = JSON.parse(proposal.notes);
+        if (parsed?.proposalDetails) {
+          // Migrate: wipe the JSON blob from notes
+          proposalChanges.notes = '';
+        }
+      } catch {
+        // notes is already plain text — leave it untouched
+      }
+    }
+
     const sanitized = { ...proposal, ...proposalChanges };
     
     try {

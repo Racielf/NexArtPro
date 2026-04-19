@@ -12,19 +12,28 @@
  */
 
 /**
- * Safely parse proposalDetails from proposal.notes JSON
+ * Resolve proposalDetails with priority:
+ *   1. overrideDetails (from editor state — always wins)
+ *   2. proposal.proposal_details (dedicated structured field — primary storage)
+ *   3. Legacy: JSON-in-notes fallback (one-time migration read path only)
  */
 function parseProposalDetails(proposal, overrideDetails) {
   if (overrideDetails && Object.values(overrideDetails).some(v => v)) {
     return overrideDetails;
   }
-  if (!proposal?.notes) return {};
-  try {
-    const parsed = typeof proposal.notes === 'string' ? JSON.parse(proposal.notes) : proposal.notes;
-    return parsed?.proposalDetails || {};
-  } catch {
-    return {};
+  if (proposal?.proposal_details && Object.values(proposal.proposal_details).some(v => v)) {
+    return proposal.proposal_details;
   }
+  // Legacy fallback: attempt to read from old JSON-in-notes (read only, never write)
+  if (proposal?.notes) {
+    try {
+      const parsed = typeof proposal.notes === 'string' ? JSON.parse(proposal.notes) : proposal.notes;
+      if (parsed?.proposalDetails) return parsed.proposalDetails;
+    } catch {
+      // notes is plain text — not a JSON blob
+    }
+  }
+  return {};
 }
 
 /**

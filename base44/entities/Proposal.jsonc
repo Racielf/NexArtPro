@@ -108,7 +108,26 @@
       "type": "string"
     },
     "notes": {
-      "type": "string"
+      "type": "string",
+      "description": "Plain-text client-visible notes. NEVER store JSON here."
+    },
+    "proposal_details": {
+      "type": "object",
+      "description": "Structured proposal content: scope, inclusions, exclusions, timeline. Replaces legacy JSON-in-notes pattern.",
+      "properties": {
+        "scopeOfWork": {
+          "type": "string"
+        },
+        "inclusions": {
+          "type": "string"
+        },
+        "exclusions": {
+          "type": "string"
+        },
+        "timeline": {
+          "type": "string"
+        }
+      }
     },
     "internal_notes": {
       "type": "string"
