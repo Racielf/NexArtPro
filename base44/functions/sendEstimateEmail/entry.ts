@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
     }
 
     const payload = await req.json();
-    const { to, subject, from_name, client_name, estimate_number, total, client_link, message: userMessage, attachments, estimate_pdf_filename } = payload;
+    const { to, subject, from_name, client_name, estimate_number, total, client_link, message: userMessage, attachments } = payload;
 
     if (!to || !subject || !client_link) {
       return Response.json({ error: 'Missing required fields: to, subject, client_link' }, { status: 400 });
@@ -140,7 +140,20 @@ Deno.serve(async (req) => {
     const greeting = `Hi ${firstName},`;
     const msg = userMessage || 'Please review your estimate and click the button below to view, approve, or decline.';
 
-    const templateData = { greeting, message: msg, clientLink: client_link, estimateNumber: estimate_number, clientName: client_name, total, attachments: attachments || [], estimatePdfFilename: estimate_pdf_filename };
+    // Extract estimate PDF filename for display in email body
+    const estimatePdfFilename = attachments?.[0]?.filename || 'estimate.pdf';
+    const clientAttachmentsList = attachments?.slice(1) || [];
+
+    const templateData = {
+      greeting,
+      message: msg,
+      clientLink: client_link,
+      estimateNumber: estimate_number,
+      clientName: client_name,
+      total,
+      attachments: clientAttachmentsList.map(a => ({ file_name: a.filename || a.url })),
+      estimatePdfFilename,
+    };
 
     const html = buildHtml(templateData);
     const text = buildPlainText(templateData);
@@ -148,20 +161,47 @@ Deno.serve(async (req) => {
     const senderName = from_name || 'RC Art Construction';
     const fromAddress = `${senderName} <estimates@rcartconstruction.com>`;
 
+    // Build Resend attachments array: base64 PDFs + URLs
+    const resendAttachments = [];
+    if (attachments && attachments.length > 0) {
+      for (const att of attachments) {
+        if (att.content && att.contentType === 'application/pdf') {
+          // Estimate PDF: base64 content
+          resendAttachments.push({
+            filename: att.filename,
+            content: att.content,
+          });
+        } else if (att.url) {
+          // Client attachment: URL reference
+          resendAttachments.push({
+            filename: att.filename,
+            path: att.url,
+          });
+        }
+      }
+    }
+
+    const emailBody = {
+      from: fromAddress,
+      to: [to],
+      reply_to: 'rcartconstruction@gmail.com',
+      subject,
+      html,
+      text,
+    };
+
+    // Only add attachments if there are any
+    if (resendAttachments.length > 0) {
+      emailBody.attachments = resendAttachments;
+    }
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: [to],
-        reply_to: 'rcartconstruction@gmail.com',
-        subject,
-        html,
-        text,
-      }),
+      body: JSON.stringify(emailBody),
     });
 
     const result = await response.json();

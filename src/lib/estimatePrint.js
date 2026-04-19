@@ -137,3 +137,60 @@ export async function downloadEstimate(estimate, options, template) {
     }
   }, 600);
 }
+
+/**
+ * Generates a PDF file as base64 for email attachment.
+ * @param {Object} estimate
+ * @param {Object} [options] — Visibility overrides
+ * @param {string} [template] — Template override
+ * @returns {Promise<{filename: string, base64: string}>}
+ */
+export async function generateEstimatePdfBase64(estimate, options, template) {
+  return new Promise((resolve, reject) => {
+    const { iframe, container } = createIframeDoc(estimate, 'pdf-email-root');
+    const root = createRoot(container);
+
+    root.render(resolveRendererElement(estimate, options, template));
+
+    setTimeout(async () => {
+      try {
+        const canvas = await html2canvas(container, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        const filename = `${resolveDocLabel(estimate)}-${resolveDocNumber(estimate)}.pdf`;
+        const base64 = pdf.output('dataurlstring').split(',')[1];
+
+        resolve({ filename, base64 });
+      } catch (error) {
+        reject(error);
+      } finally {
+        root.unmount();
+        document.body.removeChild(iframe);
+      }
+    }, 600);
+  });
+}

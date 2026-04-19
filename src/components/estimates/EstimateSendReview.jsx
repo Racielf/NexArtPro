@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
+import { printEstimate, downloadEstimate, generateEstimatePdfBase64 } from '@/lib/estimatePrint';
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import { logSend, logBelowCostOverride } from '@/lib/estimateAuditLog';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
@@ -179,11 +179,25 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         ? estimate.attachments.filter(a => a.intent === 'send_to_client' && includedAttachmentIds.includes(a.id))
         : [];
 
-      // Import filename resolution from estimatePrint
-      const { resolveDocLabel, resolveDocNumber } = await import('@/lib/estimatePrint');
-      const docLabel = resolveDocLabel(estimate);
-      const docNumber = resolveDocNumber(estimate);
-      const estimatePdfFilename = `${docLabel}-${docNumber}.pdf`;
+      // Generate Estimate PDF as base64 for email attachment
+      const { filename: estimatePdfFilename, base64: estimatePdfBase64 } = await generateEstimatePdfBase64(
+        estimate,
+        currentOptions,
+        currentTemplate
+      );
+
+      // Build attachment objects: Estimate PDF + client attachments
+      const emailAttachments = [
+        {
+          filename: estimatePdfFilename,
+          content: estimatePdfBase64,
+          contentType: 'application/pdf',
+        },
+        ...clientAttachments.map(a => ({
+          filename: a.file_name,
+          url: a.file_url,
+        })),
+      ];
 
       const emailRes = await base44.functions.invoke('sendEstimateEmail', {
         to: recipientEmail,
@@ -195,7 +209,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         total: estimate?.total || 0,
         from_name: appConfig.appName || 'RC Art Construction',
         estimate_pdf_filename: estimatePdfFilename,
-        attachments: clientAttachments.map(a => ({ file_name: a.file_name, file_url: a.file_url })),
+        attachments: emailAttachments,
       });
       if (emailRes.data?.error) throw new Error(emailRes.data.error);
 
