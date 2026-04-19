@@ -46,7 +46,7 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
     await base44.entities.EstimateSnapshot.create({
       estimate_id: estimateId,
       estimate_number: estimate?.estimate_number,
-      version: estimate?.version || 1,
+      version: estimate?.version_number || 1,
       sent_at: ts,
       sent_by: currentUser?.email || '',
       client_name: estimate?.client_name,

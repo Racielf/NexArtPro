@@ -24,6 +24,15 @@
       "default": "en",
       "description": "Document language: en (English), es (Spanish), bilingual (both)"
     },
+    "version_number": {
+      "type": "number",
+      "default": 1,
+      "description": "Version tracking for estimate iterations"
+    },
+    "parent_estimate_id": {
+      "type": "string",
+      "description": "ID of previous estimate version when creating new version"
+    },
     "job_number": {
       "type": "string",
       "description": "Job or project number reference (required for BID type)"
@@ -402,10 +411,6 @@
     },
     "sent_at": {
       "type": "string"
-    },
-    "version": {
-      "type": "number",
-      "default": 1
     },
     "scheduled_date": {
       "type": "string",

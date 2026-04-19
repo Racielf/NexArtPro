@@ -23,6 +23,7 @@ import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHis
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
+import { isEstimateLocked, createNewVersionFromEstimate } from '@/lib/estimateVersioning';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -74,6 +75,28 @@ export default function EstimateEditor() {
   };
 
   const handleSave = async (updatedEstimate) => {
+    // Check edit lock BEFORE saving
+    if (isEstimateLocked(estimate)) {
+      // Create new version instead
+      setSaving(true);
+      try {
+        const newEst = await createNewVersionFromEstimate(estimate, base44);
+        if (newEst) {
+          setSaving(false);
+          toast.success(`Sent estimate locked. Created Version ${newEst.version_number}`);
+          navigate(`/estimate-editor?id=${newEst.id}`);
+        } else {
+          setSaving(false);
+          toast.error('Could not create new version');
+        }
+      } catch (err) {
+        setSaving(false);
+        console.error('[handleSave] version creation failed:', err);
+        toast.error('Failed to create new version');
+      }
+      return;
+    }
+
     setSaving(true);
     setSaveError(false);
     setDirty(false);
@@ -199,6 +222,7 @@ export default function EstimateEditor() {
   );
 
   const hasClient = !!estimate.client_name;
+  const isLocked = isEstimateLocked(estimate);
 
   const STATUS_BADGE = {
     draft:             { label: 'Draft',        cls: 'bg-slate-100 text-slate-600' },
@@ -225,16 +249,26 @@ export default function EstimateEditor() {
       <div className="bg-white border-b border-slate-200 flex-shrink-0" style={{ boxShadow: '0 1px 3px 0 rgba(0,0,0,0.06)' }}>
         <div className="flex items-center px-5 h-14 gap-4">
 
-          {/* Left: client name + status */}
-          <div className="flex items-center gap-6 min-w-0 flex-1">
-            <div className="flex items-center gap-2.5 min-w-0">
-              {hasClient && (
-                <span className="text-base font-bold text-slate-900 truncate">{estimate.client_name}</span>
-              )}
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide flex-shrink-0 ${statusBadge.cls}`}>
-                {statusBadge.label}
-              </span>
-            </div>
+          {/* Left: client name + status + version */}
+           <div className="flex items-center gap-6 min-w-0 flex-1">
+             <div className="flex items-center gap-2.5 min-w-0">
+               {hasClient && (
+                 <span className="text-base font-bold text-slate-900 truncate">{estimate.client_name}</span>
+               )}
+               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide flex-shrink-0 ${statusBadge.cls}`}>
+                 {statusBadge.label}
+               </span>
+               {estimate.version_number && estimate.version_number > 1 && (
+                 <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
+                   V{estimate.version_number}
+                 </span>
+               )}
+               {isLocked && (
+                 <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                   🔒 Locked
+                 </span>
+               )}
+             </div>
             <div className="hidden md:block">
               <EstimateTemplateSelector
                 currentTemplate={estimate.document_config?.template || 'clean'}
@@ -349,8 +383,21 @@ export default function EstimateEditor() {
         {/* RIGHT CANVAS — Document workspace */}
         <div className="flex-1 overflow-auto bg-white rounded-xl border border-slate-100 px-8 py-6" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
 
-          {/* No-client tip banner */}
-          {!hasClient && (
+         {/* Locked estimate banner */}
+         {isLocked && (
+           <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
+             <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+               <span className="text-amber-600 font-bold">🔒</span>
+             </div>
+             <div>
+               <p className="text-sm font-semibold text-amber-900">This estimate is locked</p>
+               <p className="text-xs text-amber-700 mt-0.5">Changes will create a new version. Version {estimate.version_number || 1}</p>
+             </div>
+           </div>
+         )}
+
+         {/* No-client tip banner */}
+         {!hasClient && (
             <div className="mb-5 bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
               <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                 <ClipboardList className="w-4 h-4 text-blue-500" />
