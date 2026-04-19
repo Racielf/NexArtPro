@@ -1,21 +1,29 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, total, attachments, estimatePdfFilename }) {
+function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, total, attachments, estimatePdfFilename, fallbackLinks = [] }) {
    const fmtTotal = total != null ? `$${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : null;
 
-   // Build attachments list: estimate PDF + client attachments
-   const allAttachments = [];
+   // Build inline attachments list: estimate PDF + client attachments
+   const inlineAttachments = [];
    if (estimatePdfFilename) {
-     allAttachments.push({ file_name: estimatePdfFilename, is_estimate_pdf: true });
+     inlineAttachments.push({ file_name: estimatePdfFilename, is_estimate_pdf: true });
    }
    if (attachments && attachments.length > 0) {
-     allAttachments.push(...attachments);
+     inlineAttachments.push(...attachments);
    }
 
-   const attachmentsHtml = allAttachments.length > 0
+   const inlineHtml = inlineAttachments.length > 0
      ? `<tr><td style="padding:24px 32px 0">
          <p style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px">Attached Documents</p>
-         ${allAttachments.map(a => `<p style="margin:0 0 6px;font-size:14px"><span style="color:#666;font-size:14px">📎 ${a.file_name || 'Document'}</span>${a.is_estimate_pdf ? ' <span style="color:#999;font-size:12px">(auto-generated)</span>' : ''}</p>`).join('')}
+         ${inlineAttachments.map(a => `<p style="margin:0 0 6px;font-size:14px"><span style="color:#666;font-size:14px">📎 ${a.file_name || 'Document'}</span>${a.is_estimate_pdf ? ' <span style="color:#999;font-size:12px">(auto-generated)</span>' : ''}</p>`).join('')}
+        </td></tr>`
+     : '';
+   
+   // Build fallback links section (for large attachments that couldn't fit)
+   const fallbackHtml = fallbackLinks && fallbackLinks.length > 0
+     ? `<tr><td style="padding:24px 32px 0">
+         <p style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px">Download Additional Files</p>
+         ${fallbackLinks.map(l => `<p style="margin:0 0 6px;font-size:14px"><a href="${l.url}" style="color:#2563eb;text-decoration:none;font-weight:600">📥 ${l.file_name || 'Download'}</a></p>`).join('')}
         </td></tr>`
      : '';
 
@@ -63,8 +71,11 @@ function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, 
     <p style="margin:4px 0 0;font-size:12px;word-break:break-all"><a href="${clientLink}" style="color:#2563eb;text-decoration:none">${clientLink}</a></p>
   </td></tr>
 
-  <!-- Attachments -->
-  ${attachmentsHtml}
+  <!-- Inline Attachments -->
+  ${inlineHtml}
+
+  <!-- Fallback Download Links (for large attachments) -->
+  ${fallbackHtml}
 
   <!-- Reply note -->
   <tr><td style="padding:24px 32px 0">
@@ -87,7 +98,7 @@ function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, 
 </html>`;
 }
 
-function buildPlainText({ greeting, message, clientLink, estimateNumber, clientName, total, attachments, estimatePdfFilename }) {
+function buildPlainText({ greeting, message, clientLink, estimateNumber, clientName, total, attachments, estimatePdfFilename, fallbackLinks = [] }) {
    const fmtTotal = total != null ? `$${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '';
    let text = `${greeting}\n\n${message}\n\n`;
    if (estimateNumber) text += `Estimate #: ${estimateNumber}\n`;
@@ -95,22 +106,31 @@ function buildPlainText({ greeting, message, clientLink, estimateNumber, clientN
    if (fmtTotal) text += `Total: ${fmtTotal}\n`;
    text += `\nView & approve your estimate here:\n${clientLink}\n`;
 
-   // Build attachments list: estimate PDF + client attachments
-   const allAttachments = [];
+   // Build inline attachments list: estimate PDF + client attachments
+   const inlineAttachments = [];
    if (estimatePdfFilename) {
-     allAttachments.push({ file_name: estimatePdfFilename, is_estimate_pdf: true });
+     inlineAttachments.push({ file_name: estimatePdfFilename, is_estimate_pdf: true });
    }
    if (attachments && attachments.length > 0) {
-     allAttachments.push(...attachments);
+     inlineAttachments.push(...attachments);
    }
 
-   if (allAttachments.length > 0) {
+   if (inlineAttachments.length > 0) {
      text += '\n📎 Attached documents:\n';
-     allAttachments.forEach(a => {
+     inlineAttachments.forEach(a => {
        text += `• ${a.file_name || 'Document'}${a.is_estimate_pdf ? ' (auto-generated)' : ''}\n`;
        if (a.file_url) text += `  ${a.file_url}\n`;
      });
    }
+   
+   // Add fallback links section
+   if (fallbackLinks && fallbackLinks.length > 0) {
+     text += '\n📥 Download additional files:\n';
+     fallbackLinks.forEach(l => {
+       text += `• ${l.file_name || 'Download'}: ${l.url}\n`;
+     });
+   }
+   
    text += `\nHave questions? Reply to this email or contact us at rcartconstruction@gmail.com\n`;
    text += `\n© ${new Date().getFullYear()} RC Art Construction`;
    return text;
@@ -141,45 +161,51 @@ Deno.serve(async (req) => {
     const msg = userMessage || 'Please review your estimate and click the button below to view, approve, or decline.';
 
     // Extract estimate PDF filename for display in email body
-    const estimatePdfFilename = attachments?.[0]?.filename || 'estimate.pdf';
-    const clientAttachmentsList = attachments?.slice(1) || [];
+     const estimatePdfFilename = attachments?.[0]?.filename || 'estimate.pdf';
+     const clientAttachmentsList = attachments?.slice(1) || [];
 
-    const templateData = {
-      greeting,
-      message: msg,
-      clientLink: client_link,
-      estimateNumber: estimate_number,
-      clientName: client_name,
-      total,
-      attachments: clientAttachmentsList.map(a => ({ file_name: a.filename || a.url })),
-      estimatePdfFilename,
-    };
+     // Separate inline attachments from fallback links
+     const inlineAttachments = clientAttachmentsList.filter(a => !a.fallback_link);
+     const fallbackLinks = clientAttachmentsList.filter(a => a.fallback_link);
 
-    const html = buildHtml(templateData);
-    const text = buildPlainText(templateData);
+     const templateData = {
+       greeting,
+       message: msg,
+       clientLink: client_link,
+       estimateNumber: estimate_number,
+       clientName: client_name,
+       total,
+       attachments: inlineAttachments.map(a => ({ file_name: a.filename || a.url })),
+       estimatePdfFilename,
+       fallbackLinks: fallbackLinks.map(l => ({ file_name: l.filename, url: l.url })),
+     };
 
-    const senderName = from_name || 'RC Art Construction';
-    const fromAddress = `${senderName} <estimates@rcartconstruction.com>`;
+     const html = buildHtml(templateData);
+     const text = buildPlainText(templateData);
 
-    // Build Resend attachments array: base64 PDFs + URLs
-    const resendAttachments = [];
-    if (attachments && attachments.length > 0) {
-      for (const att of attachments) {
-        if (att.content && att.contentType === 'application/pdf') {
-          // Estimate PDF: base64 content
-          resendAttachments.push({
-            filename: att.filename,
-            content: att.content,
-          });
-        } else if (att.url) {
-          // Client attachment: URL reference
-          resendAttachments.push({
-            filename: att.filename,
-            path: att.url,
-          });
-        }
-      }
-    }
+     const senderName = from_name || 'RC Art Construction';
+     const fromAddress = `${senderName} <estimates@rcartconstruction.com>`;
+
+     // Build Resend attachments array: base64 PDFs + inline attachments only
+     const resendAttachments = [];
+     if (attachments && attachments.length > 0) {
+       for (const att of attachments) {
+         if (att.content && att.contentType === 'application/pdf') {
+           // Estimate PDF: base64 content
+           resendAttachments.push({
+             filename: att.filename,
+             content: att.content,
+           });
+         } else if (att.url && !att.fallback_link) {
+           // Client attachment: inline URL reference (only if not flagged as fallback)
+           resendAttachments.push({
+             filename: att.filename,
+             path: att.url,
+           });
+         }
+         // fallback_link attachments: skip — they'll be in email body as links
+       }
+     }
 
     const emailBody = {
       from: fromAddress,

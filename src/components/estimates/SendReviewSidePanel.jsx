@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Send, Paperclip, ChevronDown, ChevronUp, Lock, FileText, X, Check } from 'lucide-react';
+import { Eye, EyeOff, Send, Paperclip, ChevronDown, ChevronUp, Lock, FileText, X, Check, Trash2 } from 'lucide-react';
 import { getTemplateOptions } from '@/lib/estimateTemplates';
 import { resolveDocLabel, resolveDocNumber } from '@/lib/estimatePrint';
 
@@ -70,10 +70,18 @@ export default function SendReviewSidePanel({
    estimate,
    includedAttachmentIds = [],
    onIncludedAttachmentsChange,
+   onAttachmentsChange,
  }) {
    const setVis = (key, val) => onVisibilityChange({ ...visibility, [key]: val });
    const docLabel = estimate ? resolveDocLabel(estimate) : 'Estimate';
    const docNumber = estimate ? resolveDocNumber(estimate) : estimateNumber;
+   
+   const removeAttachment = (attId) => {
+     if (onAttachmentsChange) {
+       const updated = (Array.isArray(attachments) ? attachments : []).filter(a => a.id !== attId);
+       onAttachmentsChange(updated);
+     }
+   };
 
   return (
     <div className="w-[300px] flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
@@ -177,32 +185,40 @@ export default function SendReviewSidePanel({
                 <div className="space-y-1.5 mb-2">
                   <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Send with email</p>
                   {clientAtts.map(att => {
-                    const isIncluded = includedAttachmentIds.includes(att.id);
-                    return (
-                      <div key={att.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors">
-                        <button
-                          type="button"
-                          onClick={() => toggleAttachment(att.id)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                            isIncluded ? 'bg-blue-500 border-blue-500' : 'border-slate-200 hover:border-blue-400'
-                          }`}
-                        >
-                          {isIncluded && <Check className="w-3 h-3 text-white" />}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-xs font-medium truncate ${isIncluded ? 'text-slate-700' : 'text-slate-500'}`}>{att.file_name || 'file'}</p>
-                        </div>
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold" style={{
-                          background: isIncluded ? '#dbeafe' : '#f1f5f9',
-                          color: isIncluded ? '#1e40af' : '#64748b',
-                          border: isIncluded ? '1px solid #93c5fd' : '1px solid #cbd5e1'
-                        }}>
-                          {isIncluded ? <Check className="w-2 h-2" /> : <X className="w-2 h-2" />}
-                          {isIncluded ? 'Included' : 'Excluded'}
-                        </span>
-                      </div>
-                    );
-                  })}
+                     const isIncluded = includedAttachmentIds.includes(att.id);
+                     return (
+                       <div key={att.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors group">
+                         <button
+                           type="button"
+                           onClick={() => toggleAttachment(att.id)}
+                           className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                             isIncluded ? 'bg-blue-500 border-blue-500' : 'border-slate-200 hover:border-blue-400'
+                           }`}
+                         >
+                           {isIncluded && <Check className="w-3 h-3 text-white" />}
+                         </button>
+                         <div className="flex-1 min-w-0">
+                           <p className={`text-xs font-medium truncate ${isIncluded ? 'text-slate-700' : 'text-slate-500'}`}>{att.file_name || 'file'}</p>
+                         </div>
+                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold" style={{
+                           background: isIncluded ? '#dbeafe' : '#f1f5f9',
+                           color: isIncluded ? '#1e40af' : '#64748b',
+                           border: isIncluded ? '1px solid #93c5fd' : '1px solid #cbd5e1'
+                         }}>
+                           {isIncluded ? <Check className="w-2 h-2" /> : <X className="w-2 h-2" />}
+                           {isIncluded ? 'Included' : 'Excluded'}
+                         </span>
+                         <button
+                           type="button"
+                           onClick={() => removeAttachment(att.id)}
+                           className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                           title="Remove from estimate"
+                         >
+                           <Trash2 className="w-3 h-3" />
+                         </button>
+                       </div>
+                     );
+                   })}
                 </div>
               )}
               {internalAtts.length > 0 && (
