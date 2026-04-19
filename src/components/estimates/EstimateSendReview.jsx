@@ -66,7 +66,10 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
    const [lossModalOpen, setLossModalOpen] = useState(false);
    const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [], materialsWithoutCost: [] });
    const [attachWarningOpen, setAttachWarningOpen] = useState(false);
-   const [attachWarningReasons, setAttachWarningReasons] = useState([]);
+    const [attachWarningReasons, setAttachWarningReasons] = useState([]);
+    const [includedAttachmentIds, setIncludedAttachmentIds] = useState(
+      (estimate?.attachments || []).filter(a => a.intent === 'send_to_client').map(a => a.id) || []
+    );
 
   if (!open) return null;
 
@@ -173,8 +176,14 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     try {
       const documentConfig = { template: currentTemplate, options: currentOptions };
       const clientAttachments = Array.isArray(estimate?.attachments)
-        ? estimate.attachments.filter(a => a.intent === 'send_to_client')
+        ? estimate.attachments.filter(a => a.intent === 'send_to_client' && includedAttachmentIds.includes(a.id))
         : [];
+
+      // Import filename resolution from estimatePrint
+      const { resolveDocLabel, resolveDocNumber } = await import('@/lib/estimatePrint');
+      const docLabel = resolveDocLabel(estimate);
+      const docNumber = resolveDocNumber(estimate);
+      const estimatePdfFilename = `${docLabel}-${docNumber}.pdf`;
 
       const emailRes = await base44.functions.invoke('sendEstimateEmail', {
         to: recipientEmail,
@@ -185,6 +194,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         estimate_number: estimate?.estimate_number || '',
         total: estimate?.total || 0,
         from_name: appConfig.appName || 'RC Art Construction',
+        estimate_pdf_filename: estimatePdfFilename,
         attachments: clientAttachments.map(a => ({ file_name: a.file_name, file_url: a.file_url })),
       });
       if (emailRes.data?.error) throw new Error(emailRes.data.error);
@@ -290,6 +300,9 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
       onVisibilityChange={setVisibility}
       attachments={estimate?.attachments}
       estimateNumber={estimate?.estimate_number}
+      estimate={estimate}
+      includedAttachmentIds={includedAttachmentIds}
+      onIncludedAttachmentsChange={setIncludedAttachmentIds}
     />
   );
 

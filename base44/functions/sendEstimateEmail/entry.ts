@@ -1,14 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, total, attachments }) {
-  const fmtTotal = total != null ? `$${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : null;
+function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, total, attachments, estimatePdfFilename }) {
+   const fmtTotal = total != null ? `$${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : null;
 
-  const attachmentsHtml = attachments && attachments.length > 0
-    ? `<tr><td style="padding:24px 32px 0">
-        <p style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px">Attached Documents</p>
-        ${attachments.map(a => `<p style="margin:0 0 6px;font-size:14px"><a href="${a.file_url}" style="color:#2563eb;text-decoration:none">📎 ${a.file_name || 'Document'}</a></p>`).join('')}
-       </td></tr>`
-    : '';
+   // Build attachments list: estimate PDF + client attachments
+   const allAttachments = [];
+   if (estimatePdfFilename) {
+     allAttachments.push({ file_name: estimatePdfFilename, is_estimate_pdf: true });
+   }
+   if (attachments && attachments.length > 0) {
+     allAttachments.push(...attachments);
+   }
+
+   const attachmentsHtml = allAttachments.length > 0
+     ? `<tr><td style="padding:24px 32px 0">
+         <p style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px">Attached Documents</p>
+         ${allAttachments.map(a => `<p style="margin:0 0 6px;font-size:14px"><span style="color:#666;font-size:14px">📎 ${a.file_name || 'Document'}</span>${a.is_estimate_pdf ? ' <span style="color:#999;font-size:12px">(auto-generated)</span>' : ''}</p>`).join('')}
+        </td></tr>`
+     : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -78,21 +87,34 @@ function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, 
 </html>`;
 }
 
-function buildPlainText({ greeting, message, clientLink, estimateNumber, clientName, total, attachments }) {
-  const fmtTotal = total != null ? `$${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '';
-  let text = `${greeting}\n\n${message}\n\n`;
-  if (estimateNumber) text += `Estimate #: ${estimateNumber}\n`;
-  if (clientName) text += `Client: ${clientName}\n`;
-  if (fmtTotal) text += `Total: ${fmtTotal}\n`;
-  text += `\nView & approve your estimate here:\n${clientLink}\n`;
-  if (attachments && attachments.length > 0) {
-    text += '\n📎 Attached documents:\n';
-    attachments.forEach(a => { text += `• ${a.file_name || 'Document'}: ${a.file_url}\n`; });
-  }
-  text += `\nHave questions? Reply to this email or contact us at rcartconstruction@gmail.com\n`;
-  text += `\n© ${new Date().getFullYear()} RC Art Construction`;
-  return text;
-}
+function buildPlainText({ greeting, message, clientLink, estimateNumber, clientName, total, attachments, estimatePdfFilename }) {
+   const fmtTotal = total != null ? `$${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '';
+   let text = `${greeting}\n\n${message}\n\n`;
+   if (estimateNumber) text += `Estimate #: ${estimateNumber}\n`;
+   if (clientName) text += `Client: ${clientName}\n`;
+   if (fmtTotal) text += `Total: ${fmtTotal}\n`;
+   text += `\nView & approve your estimate here:\n${clientLink}\n`;
+
+   // Build attachments list: estimate PDF + client attachments
+   const allAttachments = [];
+   if (estimatePdfFilename) {
+     allAttachments.push({ file_name: estimatePdfFilename, is_estimate_pdf: true });
+   }
+   if (attachments && attachments.length > 0) {
+     allAttachments.push(...attachments);
+   }
+
+   if (allAttachments.length > 0) {
+     text += '\n📎 Attached documents:\n';
+     allAttachments.forEach(a => {
+       text += `• ${a.file_name || 'Document'}${a.is_estimate_pdf ? ' (auto-generated)' : ''}\n`;
+       if (a.file_url) text += `  ${a.file_url}\n`;
+     });
+   }
+   text += `\nHave questions? Reply to this email or contact us at rcartconstruction@gmail.com\n`;
+   text += `\n© ${new Date().getFullYear()} RC Art Construction`;
+   return text;
+ }
 
 Deno.serve(async (req) => {
   try {
@@ -103,7 +125,7 @@ Deno.serve(async (req) => {
     }
 
     const payload = await req.json();
-    const { to, subject, from_name, client_name, estimate_number, total, client_link, message: userMessage, attachments } = payload;
+    const { to, subject, from_name, client_name, estimate_number, total, client_link, message: userMessage, attachments, estimate_pdf_filename } = payload;
 
     if (!to || !subject || !client_link) {
       return Response.json({ error: 'Missing required fields: to, subject, client_link' }, { status: 400 });
@@ -118,7 +140,7 @@ Deno.serve(async (req) => {
     const greeting = `Hi ${firstName},`;
     const msg = userMessage || 'Please review your estimate and click the button below to view, approve, or decline.';
 
-    const templateData = { greeting, message: msg, clientLink: client_link, estimateNumber: estimate_number, clientName: client_name, total, attachments: attachments || [] };
+    const templateData = { greeting, message: msg, clientLink: client_link, estimateNumber: estimate_number, clientName: client_name, total, attachments: attachments || [], estimatePdfFilename: estimate_pdf_filename };
 
     const html = buildHtml(templateData);
     const text = buildPlainText(templateData);

@@ -21,16 +21,16 @@ function resolveRendererElement(estimate, overrideOptions, overrideTemplate) {
   });
 }
 
-function resolveDocLabel(estimate) {
-  const type = estimate?.document_type;
-  if (type === 'BID') return 'Bid';
-  if (type === 'PROPOSAL') return 'Proposal';
-  return 'Estimate';
-}
+export function resolveDocLabel(estimate) {
+   const type = estimate?.document_type;
+   if (type === 'BID') return 'Bid';
+   if (type === 'PROPOSAL') return 'Proposal';
+   return 'Estimate';
+ }
 
-function resolveDocNumber(estimate) {
-  return estimate?.estimate_number || estimate?.proposal_number || 'document';
-}
+ export function resolveDocNumber(estimate) {
+   return estimate?.estimate_number || estimate?.proposal_number || 'document';
+ }
 
 function createIframeDoc(estimate, rootId) {
   const iframe = document.createElement('iframe');

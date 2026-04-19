@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Send, Paperclip, ChevronDown, ChevronUp, Lock, FileText } from 'lucide-react';
+import { Eye, EyeOff, Send, Paperclip, ChevronDown, ChevronUp, Lock, FileText, X, Check } from 'lucide-react';
 import { getTemplateOptions } from '@/lib/estimateTemplates';
+import { resolveDocLabel, resolveDocNumber } from '@/lib/estimatePrint';
 
 function SectionAccordion({ title, icon, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -54,20 +55,25 @@ const VISIBILITY_LABELS = {
 };
 
 export default function SendReviewSidePanel({
-  currentTemplate,
-  onTemplateChange,
-  recipientEmail,
-  onRecipientEmailChange,
-  subject,
-  onSubjectChange,
-  message,
-  onMessageChange,
-  visibility,
-  onVisibilityChange,
-  attachments = [],
-  estimateNumber,
-}) {
-  const setVis = (key, val) => onVisibilityChange({ ...visibility, [key]: val });
+   currentTemplate,
+   onTemplateChange,
+   recipientEmail,
+   onRecipientEmailChange,
+   subject,
+   onSubjectChange,
+   message,
+   onMessageChange,
+   visibility,
+   onVisibilityChange,
+   attachments = [],
+   estimateNumber,
+   estimate,
+   includedAttachmentIds = [],
+   onIncludedAttachmentsChange,
+ }) {
+   const setVis = (key, val) => onVisibilityChange({ ...visibility, [key]: val });
+   const docLabel = estimate ? resolveDocLabel(estimate) : 'Estimate';
+   const docNumber = estimate ? resolveDocNumber(estimate) : estimateNumber;
 
   return (
     <div className="w-[300px] flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
@@ -137,45 +143,66 @@ export default function SendReviewSidePanel({
       </SectionAccordion>
 
       {/* ATTACHMENTS */}
-      <SectionAccordion title="Attachments" icon={<Paperclip className="w-3.5 h-3.5" />} defaultOpen={true}>
-        {/* Auto-generated PDF */}
-        <div className="flex items-center gap-2 py-1 mb-2">
-          <div className="w-7 h-7 bg-red-50 border border-red-200 rounded flex items-center justify-center flex-shrink-0">
-            <span className="text-[9px] font-bold text-red-500">PDF</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-slate-700">estimate-{estimateNumber}.pdf</p>
-            <p className="text-[10px] text-slate-400">Auto-generated · via secure link</p>
-          </div>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[9px] font-semibold text-blue-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />Client
-          </span>
-        </div>
+       <SectionAccordion title="Attachments" icon={<Paperclip className="w-3.5 h-3.5" />} defaultOpen={true}>
+         {/* Auto-generated PDF */}
+         <div className="flex items-center gap-2 py-1 mb-2">
+           <div className="w-7 h-7 bg-red-50 border border-red-200 rounded flex items-center justify-center flex-shrink-0">
+             <span className="text-[9px] font-bold text-red-500">PDF</span>
+           </div>
+           <div className="flex-1 min-w-0">
+             <p className="text-xs font-medium text-slate-700">{docLabel}-{docNumber}.pdf</p>
+             <p className="text-[10px] text-slate-400">Auto-generated · attached to email</p>
+           </div>
+           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[9px] font-semibold text-blue-700">
+             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />Client
+           </span>
+         </div>
 
         {/* Client-sendable attachments */}
         {(() => {
           const allAtts = Array.isArray(attachments) ? attachments : [];
           const clientAtts = allAtts.filter(a => a.intent === 'send_to_client');
           const internalAtts = allAtts.filter(a => a.intent !== 'send_to_client');
+          const toggleAttachment = (attId) => {
+            const isIncluded = includedAttachmentIds.includes(attId);
+            if (isIncluded) {
+              onIncludedAttachmentsChange(includedAttachmentIds.filter(id => id !== attId));
+            } else {
+              onIncludedAttachmentsChange([...includedAttachmentIds, attId]);
+            }
+          };
           return (
             <>
               {clientAtts.length > 0 && (
                 <div className="space-y-1.5 mb-2">
-                  <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Included with email ({clientAtts.length})</p>
-                  {clientAtts.map(att => (
-                    <div key={att.id} className="flex items-center gap-2 py-1">
-                      <div className="w-7 h-7 bg-blue-50 border border-blue-200 rounded flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-3.5 h-3.5 text-blue-400" />
+                  <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Send with email</p>
+                  {clientAtts.map(att => {
+                    const isIncluded = includedAttachmentIds.includes(att.id);
+                    return (
+                      <div key={att.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors">
+                        <button
+                          type="button"
+                          onClick={() => toggleAttachment(att.id)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                            isIncluded ? 'bg-blue-500 border-blue-500' : 'border-slate-200 hover:border-blue-400'
+                          }`}
+                        >
+                          {isIncluded && <Check className="w-3 h-3 text-white" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-medium truncate ${isIncluded ? 'text-slate-700' : 'text-slate-500'}`}>{att.file_name || 'file'}</p>
+                        </div>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold" style={{
+                          background: isIncluded ? '#dbeafe' : '#f1f5f9',
+                          color: isIncluded ? '#1e40af' : '#64748b',
+                          border: isIncluded ? '1px solid #93c5fd' : '1px solid #cbd5e1'
+                        }}>
+                          {isIncluded ? <Check className="w-2 h-2" /> : <X className="w-2 h-2" />}
+                          {isIncluded ? 'Included' : 'Excluded'}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-slate-700 truncate">{att.file_name || 'file'}</p>
-                        <p className="text-[10px] text-slate-400">Download link in email</p>
-                      </div>
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[9px] font-semibold text-blue-700">
-                        <Send className="w-2.5 h-2.5" />Client
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               {internalAtts.length > 0 && (
