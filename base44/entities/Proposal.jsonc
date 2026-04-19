@@ -113,7 +113,7 @@
     },
     "proposal_details": {
       "type": "object",
-      "description": "Structured proposal content: scope, inclusions, exclusions, timeline.",
+      "description": "Structured proposal content: scope, inclusions, exclusions, timeline, pricingOptions.",
       "properties": {
         "scopeOfWork": {
           "type": "string"
@@ -126,6 +126,12 @@
         },
         "timeline": {
           "type": "string"
+        },
+        "pricingOptions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
         }
       }
     },
@@ -224,6 +230,45 @@
       "type": "number",
       "default": 0,
       "description": "Total number of follow-ups performed"
+    },
+    "closed_at": {
+      "type": "string",
+      "description": "Timestamp when deal was formally closed (won or lost)"
+    },
+    "close_outcome": {
+      "type": "string",
+      "enum": [
+        "won",
+        "lost",
+        "no_response",
+        "withdrawn"
+      ],
+      "description": "Structured deal outcome \u2014 won | lost | no_response | withdrawn"
+    },
+    "lost_reason": {
+      "type": "string",
+      "enum": [
+        "price_too_high",
+        "chose_competitor",
+        "project_cancelled",
+        "no_budget",
+        "no_response",
+        "scope_mismatch",
+        "other"
+      ],
+      "description": "Structured lost reason for pipeline analytics"
+    },
+    "close_note": {
+      "type": "string",
+      "description": "Free-text closing note \u2014 internal only"
+    },
+    "selected_pricing_option_id": {
+      "type": "string",
+      "description": "ID of the pricing option the client selected (if pricingOptions were used)"
+    },
+    "selected_pricing_option_title": {
+      "type": "string",
+      "description": "Title of the selected pricing option at close time (snapshot)"
     },
     "company_id": {
       "type": "string",

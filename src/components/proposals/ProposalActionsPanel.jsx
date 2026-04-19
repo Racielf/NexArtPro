@@ -4,8 +4,9 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import {
   Send, CheckCircle, XCircle, RotateCcw, Eye, Printer, Download,
-  FileText, ClipboardList, ChevronRight, AlertCircle, FileEdit
+  FileText, ClipboardList, ChevronRight, AlertCircle, FileEdit, Flag
 } from 'lucide-react';
+import CloseDealModal from '@/components/proposals/CloseDealModal';
 import ProposalNextAction from '@/components/proposals/ProposalNextAction';
 import ProposalFollowUpWidget from '@/components/proposals/ProposalFollowUpWidget';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
@@ -213,6 +214,8 @@ export default function ProposalActionsPanel({ proposal: proposalProp, onStatusC
   useEffect(() => { setProposal(proposalProp); }, [proposalProp]);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [showAdjustment, setShowAdjustment] = useState(false);
+  const [showCloseDeal, setShowCloseDeal] = useState(false);
+  const [closeDealInitialOutcome, setCloseDealInitialOutcome] = useState(null);
   const [lossModalOpen, setLossModalOpen] = useState(false);
   const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [] });
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
@@ -241,8 +244,25 @@ export default function ProposalActionsPanel({ proposal: proposalProp, onStatusC
 
   const handleConverted = (newStatus, extra) => onStatusChange(newStatus, extra);
 
+  const pricingOptions = proposal?.proposal_details?.pricingOptions || [];
+
+  const handleCloseDeal = async (closingData) => {
+    setLoading(true);
+    await base44.entities.Proposal.update(proposalId, closingData);
+    onStatusChange(closingData.status, closingData);
+    setLoading(false);
+    toast.success(closingData.close_outcome === 'won' ? '🏆 Deal marked as Won!' : 'Deal outcome recorded');
+  };
+
   return (
     <>
+    <CloseDealModal
+      open={showCloseDeal}
+      onClose={() => setShowCloseDeal(false)}
+      onConfirm={handleCloseDeal}
+      pricingOptions={pricingOptions}
+      initialOutcome={closeDealInitialOutcome}
+    />
     <LossPreventionModal
       open={lossModalOpen}
       onClose={() => setLossModalOpen(false)}
@@ -374,12 +394,19 @@ export default function ProposalActionsPanel({ proposal: proposalProp, onStatusC
             <ActionBtn icon={XCircle} label="Mark Rejected" disabled={loading}
               onClick={() => transition('rejected', { rejected_at: new Date().toISOString() })}
               cls="text-red-600 border-red-200 hover:bg-red-50" />
+            <ActionBtn icon={Flag} label="Close Deal…" disabled={loading}
+              onClick={() => { setCloseDealInitialOutcome('won'); setShowCloseDeal(true); }}
+              cls="text-violet-700 border-violet-200 hover:bg-violet-50" />
           </>
         )}
 
         {/* Approved → convert */}
         {(status === 'approved' || status === 'accepted') && (
           <>
+            <SectionLabel label="Close Deal" />
+            <ActionBtn icon={Flag} label="Close Deal…" disabled={loading}
+              onClick={() => { setCloseDealInitialOutcome('won'); setShowCloseDeal(true); }}
+              cls="text-violet-700 border-violet-200 hover:bg-violet-50" />
             <SectionLabel label="Convert" />
             {proposal?.invoice_id ? (
               <button onClick={() => navigate(`/invoice-detail?id=${proposal.invoice_id}`)}
@@ -423,6 +450,11 @@ export default function ProposalActionsPanel({ proposal: proposalProp, onStatusC
         {status === 'rejected' && (
           <>
             <SectionLabel label="Actions" />
+            {!proposal?.close_outcome && (
+              <ActionBtn icon={Flag} label="Record Loss Reason…" disabled={loading}
+                onClick={() => { setCloseDealInitialOutcome('lost'); setShowCloseDeal(true); }}
+                cls="text-red-600 border-red-200 hover:bg-red-50" />
+            )}
             <ActionBtn icon={RotateCcw} label="Reopen as Draft" disabled={loading}
               onClick={() => transition('draft')}
               cls="text-slate-700 border-slate-200 hover:bg-slate-50" />
@@ -478,6 +510,26 @@ export default function ProposalActionsPanel({ proposal: proposalProp, onStatusC
           )}
           {proposal?.rejected_at && (
             <p className="text-[10px] text-red-500">Rejected: {new Date(proposal.rejected_at).toLocaleDateString()}</p>
+          )}
+          {/* Closing metadata */}
+          {proposal?.close_outcome && (
+            <div className="mt-2 pt-2 border-t border-slate-100 space-y-0.5">
+              <p className={`text-[10px] font-bold uppercase tracking-wide ${proposal.close_outcome === 'won' ? 'text-emerald-600' : 'text-red-500'}`}>
+                {proposal.close_outcome === 'won' ? '🏆 Won' : proposal.close_outcome === 'lost' ? '❌ Lost' : proposal.close_outcome === 'no_response' ? '⏸ No Response' : '↩ Withdrawn'}
+              </p>
+              {proposal?.closed_at && (
+                <p className="text-[10px] text-slate-400">Closed: {new Date(proposal.closed_at).toLocaleDateString()}</p>
+              )}
+              {proposal?.lost_reason && (
+                <p className="text-[10px] text-slate-400 capitalize">{proposal.lost_reason.replace(/_/g, ' ')}</p>
+              )}
+              {proposal?.selected_pricing_option_title && (
+                <p className="text-[10px] text-violet-600">Option: {proposal.selected_pricing_option_title}</p>
+              )}
+              {proposal?.close_note && (
+                <p className="text-[10px] text-slate-400 italic truncate" title={proposal.close_note}>{proposal.close_note}</p>
+              )}
+            </div>
           )}
         </div>
       </div>
