@@ -17,18 +17,14 @@ export default function ProposalPresetPicker({ proposalDetails, onApply }) {
   const [open, setOpen] = useState(false);
   const [pendingPreset, setPendingPreset] = useState(null);
 
+  const pd = proposalDetails || {};
   const hasContent =
-    proposalDetails.scopeOfWork ||
-    proposalDetails.inclusions ||
-    proposalDetails.exclusions ||
-    proposalDetails.timeline;
+    (pd.scopeOfWork || '').trim() ||
+    (pd.inclusions || '').trim() ||
+    (pd.exclusions || '').trim() ||
+    (pd.timeline || '').trim();
 
   const handleSelect = (preset) => {
-    if (preset.id === 'custom') {
-      onApply(preset.details);
-      setOpen(false);
-      return;
-    }
     if (hasContent) {
       setPendingPreset(preset);
     } else {
