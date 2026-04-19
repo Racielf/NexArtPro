@@ -124,6 +124,7 @@ export function buildEstimateDocumentViewModel({
 
   const isWorkOrder = documentType === 'workorder';
   const isInvoice = documentType === 'invoice';
+  const isProposal = documentType === 'proposal';
   const isEstimate = documentType === 'estimate';
 
   const docTypeLabel = isWorkOrder ? 'WORK ORDER' : isInvoice ? 'INVOICE' : 'ESTIMATE';
@@ -197,6 +198,7 @@ export function buildEstimateDocumentViewModel({
 
   const visibility = {
     isEstimate,
+    isProposal,
     isInvoice,
     isWorkOrder,
     showPrices,

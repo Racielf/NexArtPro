@@ -8,15 +8,15 @@ import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
-import { logComm, logCommFailed } from '@/lib/commTracking';
-import { logSend, logBelowCostOverride } from '@/lib/estimateAuditLog';
+
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import LossPreventionModal from './internal/LossPreventionModal';
 import AttachmentWarningModal from './internal/AttachmentWarningModal';
-import { markEstimateSent, generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
+
 import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
 import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
+import { validateBeforeSend, executeSend, logPricingOverride, logSendFailure } from '@/lib/estimateSendOrchestrator';
 import SendReviewSidePanel from './SendReviewSidePanel';
 import SendReviewBanners from './SendReviewBanners';
 import { Mail } from 'lucide-react';
@@ -127,27 +127,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
 
   const handleProceedAfterPricingWarning = async () => {
     setLossModalOpen(false);
-    const lossItems = Array.isArray(lossValidation?.lossItems) ? lossValidation.lossItems : [];
-    if (lossItems.length > 0) {
-      const totalLoss = lossItems.reduce(
-        (sum, item) => sum + ((Number(item.loss_per_unit) || 0) * (Number(item.quantity) || 0)),
-        0
-      );
-      const currentUser = await base44.auth.me().catch(() => null);
-      if (currentUser) {
-        await logBelowCostOverride({
-          estimate_id: estimate.id,
-          estimate_number: estimate.estimate_number,
-          user: currentUser,
-          totalLoss,
-          lossItemsCount: lossItems.length,
-          metadata: {
-            client_email: recipientEmail,
-            client_name: estimate?.client_name || '',
-          },
-        }).catch(err => console.warn('[audit] below-cost override log failed:', err?.message));
-      }
-    }
+    await logPricingOverride(estimate, lossValidation, recipientEmail);
     setConfirmOpen(true);
   };
 
@@ -161,83 +141,50 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
     setConfirmOpen(true);
   };
 
-  const handleConfirmSend = () => {
-    if (!recipientEmail) { toast.error('Recipient email is required'); return; }
-    const dtv = validateDocTypeFields(estimate);
-    if (!dtv.valid) {
-      dtv.errors.forEach(e => toast.error(e));
+  const handleConfirmSend = async () => {
+    const validation = await validateBeforeSend(estimate, recipientEmail);
+    if (!validation.valid) {
+      (validation.errors || []).forEach(e => toast.error(e));
       return;
     }
-    const ac = checkAttachmentCompleteness(estimate);
-    if (ac.needsWarning) {
-      setAttachWarningReasons(ac.reasons);
+    if (validation.attachmentWarning?.needsWarning) {
+      setAttachWarningReasons(validation.attachmentWarning.reasons);
       setAttachWarningOpen(true);
       return;
     }
-    proceedToPricingValidation();
+    if (validation.pricingWarning?.requiresConfirmation) {
+      setLossValidation(validation.pricingWarning);
+      setLossModalOpen(true);
+      return;
+    }
+    setConfirmOpen(true);
   };
 
   const handleSend = async () => {
     setConfirmOpen(false);
-    if (!recipientEmail) { toast.error('Recipient email is required'); return; }
     setSending(true);
     setSentError(null);
     try {
-      const documentConfig = { template: currentTemplate, options: currentOptions };
-
-      // Wait for token generation if still pending
-      let finalLink = clientLink;
-      if (!publicToken || publicToken === 'generating') {
-        const token = await generatePublicShareToken(estimate);
-        finalLink = `${window.location.origin}/client-estimate?token=${token}`;
-      }
-
-      // Send email with secure public token link
-       const emailRes = await base44.functions.invoke('sendEstimateEmail', {
-         to: recipientEmail,
-         subject,
-         message,
-         client_link: finalLink,
-         client_name: estimate?.client_name || '',
-         estimate_number: estimate?.estimate_number || '',
-         total: estimate?.total || 0,
-         from_name: appConfig.company.name || 'R.C Art Construction LLC',
-       });
-      if (emailRes.data?.error) throw new Error(emailRes.data.error);
-
-      await markEstimateSent(estimate.id, { documentConfig, estimate });
-
-      await logDocument(estimate.id, estimate, 'sent_email', { recipient_email: recipientEmail, subject, secure_link: finalLink });
-      const currentUser = await base44.auth.me().catch(() => null);
-      if (currentUser) {
-        await logSend({
-          estimate_id: estimate.id,
-          estimate_number: estimate.estimate_number,
-          user: currentUser,
-          client_email: recipientEmail,
-        }).catch(err => console.warn('[audit] send log failed:', err?.message));
-      }
-      await logComm({
-        event_type: 'estimate_sent',
-        client_id: estimate.client_id || '',
-        client_name: estimate.client_name,
-        client_email: recipientEmail,
-        estimate_id: estimate.id,
-        appointment_id: estimate.appointment_id || '',
+      const result = await executeSend({
+        estimate,
+        recipientEmail,
         subject,
-        preview: `Total: $${(estimate.total || 0).toFixed(2)}`,
+        message,
+        currentTemplate,
+        currentOptions,
+        appConfig,
+      });
+
+      await logDocument(estimate.id, estimate, 'sent_email', { 
+        recipient_email: recipientEmail, 
+        subject, 
+        secure_link: result.secureLink,
       });
 
       setSentSuccess(true);
       toast.success('Estimate sent successfully!');
     } catch (error) {
-      await logCommFailed({
-        event_type: 'estimate_sent',
-        client_name: estimate.client_name,
-        client_email: recipientEmail,
-        estimate_id: estimate.id,
-        subject,
-      }).catch(() => {});
+      await logSendFailure(estimate, recipientEmail, subject, error);
       const errMsg = error?.message || 'Failed to send email';
       setSentError(errMsg);
       toast.error(errMsg);

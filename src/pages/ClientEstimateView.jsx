@@ -266,19 +266,19 @@ export default function ClientEstimateView() {
     <>
       <div className="h-screen bg-slate-100 print:bg-white print:h-auto">
         <DocumentViewerShell
-          title={`${docLabel} #${estimate.estimate_number}`}
-          actions={[
-            <Button key="print" size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs print:hidden">
-              <Printer className="w-3.5 h-3.5" />Print
-            </Button>,
-            <Button key="download" size="sm" variant="outline" onClick={handleDownload} className="gap-1.5 text-xs print:hidden">
-              <Download className="w-3.5 h-3.5" />Download PDF
-            </Button>,
-          ]}
-          banners={banners}
-          documentContent={<FinalDocumentRenderer estimate={estimate} />}
-          footer={footer}
-        />
+            title={`${docLabel} #${estimate.estimate_number}`}
+            actions={[
+              <Button key="print" size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs print:hidden">
+                <Printer className="w-3.5 h-3.5" />Print
+              </Button>,
+              <Button key="download" size="sm" variant="outline" onClick={handleDownload} className="gap-1.5 text-xs print:hidden">
+                <Download className="w-3.5 h-3.5" />Download PDF
+              </Button>,
+            ]}
+            banners={banners}
+            documentContent={<FinalDocumentRenderer estimate={estimate} options={estimate?.document_config?.options} template={estimate?.document_config?.template} />}
+            footer={footer}
+          />
       </div>
 
       {showSignPad && (
