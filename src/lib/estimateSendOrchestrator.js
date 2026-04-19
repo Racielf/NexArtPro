@@ -19,6 +19,7 @@ import { validateDocTypeFields, getDocTypeConfig } from '@/lib/documentTypeConfi
 import { logComm, logCommFailed } from '@/lib/commTracking';
 import { logSend, logBelowCostOverride } from '@/lib/estimateAuditLog';
 import { generateEstimatePdfBase64 } from '@/lib/estimatePrint';
+import { recordSuccessfulTransmission, recordFailedTransmission } from '@/lib/estimateTransmission';
 
 /**
  * Validar estado pre-envío (pricing, fields, attachments).
@@ -128,8 +129,18 @@ export async function executeSend({
    })();
 
    // 6. Persist send state (status + document_config + snapshot)
+   let snapshotId = null;
    try {
      await markEstimateSent(estimate.id, { documentConfig, estimate, currentUser });
+     // Fetch snapshot ID created by markEstimateSent
+     const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter(
+       { estimate_id: estimate.id },
+       '-created_date',
+       1
+     );
+     if (snapshots && snapshots.length > 0) {
+       snapshotId = snapshots[0].id;
+     }
    } catch (err) {
      console.warn('[executeSend] markEstimateSent failed:', err?.message);
      // Don't throw — email was already sent
@@ -166,34 +177,42 @@ export async function executeSend({
   }
 
   // Await PDF generation (non-blocking but complete before return)
-  await pdfPromise.catch(() => {});
+   await pdfPromise.catch(() => {});
 
-  // Link PDF to snapshot if generated successfully
-  if (pdfUrl) {
-    try {
-      const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter(
-        { estimate_id: estimate.id },
-        '-created_date',
-        1
-      );
-      if (snapshots && snapshots.length > 0) {
-        const snapshot = snapshots[0];
-        await base44.asServiceRole.entities.EstimateSnapshot.update(snapshot.id, {
-          pdf_file_url: pdfUrl,
-          pdf_file_name: pdfFilename || `estimate-${estimate.estimate_number}.pdf`,
-        });
-      }
-    } catch (err) {
-      console.warn('[executeSend] snapshot PDF linkage failed:', err?.message);
-    }
-  }
+   // Link PDF to snapshot if generated successfully
+   if (pdfUrl && snapshotId) {
+     try {
+       await base44.asServiceRole.entities.EstimateSnapshot.update(snapshotId, {
+         pdf_file_url: pdfUrl,
+         pdf_file_name: pdfFilename || `estimate-${estimate.estimate_number}.pdf`,
+       });
+     } catch (err) {
+       console.warn('[executeSend] snapshot PDF linkage failed:', err?.message);
+     }
+   }
 
-  return {
-    success: true,
-    messageId: emailRes.data?.id,
-    secureLink: finalLink,
-    pdfUrl,
-  };
+   // Record transmission on successful send
+   try {
+     await recordSuccessfulTransmission({
+       estimateId: estimate.id,
+       snapshotId,
+       recipientEmail,
+       messageId: emailRes.data?.id,
+       subject,
+       clientName: estimate.client_name,
+       estimateNumber: estimate.estimate_number,
+       documentType: estimate.document_type,
+     });
+   } catch (err) {
+     console.warn('[executeSend] transmission recording failed:', err?.message);
+   }
+
+   return {
+     success: true,
+     messageId: emailRes.data?.id,
+     secureLink: finalLink,
+     pdfUrl,
+   };
 }
 
 /**
@@ -242,5 +261,20 @@ export async function logSendFailure(estimate, recipientEmail, subject, error) {
     }).catch(() => {});
   } catch (err) {
     console.warn('[logSendFailure] failed:', err?.message);
+  }
+
+  // Record failed transmission
+  try {
+    await recordFailedTransmission({
+      estimateId: estimate.id,
+      recipientEmail,
+      errorMessage: error?.message || String(error),
+      subject,
+      clientName: estimate.client_name,
+      estimateNumber: estimate.estimate_number,
+      documentType: estimate.document_type,
+    });
+  } catch (err) {
+    console.warn('[logSendFailure] transmission recording failed:', err?.message);
   }
 }
