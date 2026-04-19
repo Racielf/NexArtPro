@@ -71,7 +71,18 @@ export function checkAttachmentCompleteness(estimate) {
 /**
  * validateMaterialsCostCompleteness(estimate)
  *
- * Detects materials with quantity > 0 but missing or zero internal cost.
+ * Detects reusable catalog materials with quantity > 0 but missing internal cost.
+ * Only applies to `estimate.materials` — NOT to `otherCosts` (job-specific internal costs).
+ *
+ * Discrimination rules to avoid false warnings:
+ *   1. Material must have a name (unnamed/empty rows are skipped)
+ *   2. Material must have a quantity > 0
+ *   3. Material must have a unit_price > 0 (it is priced to a client, so a cost is expected)
+ *   4. unit_cost must be 0 / missing (no internal cost recorded)
+ *
+ * Materials with unit_price = 0 are likely placeholder rows, not real catalog materials.
+ * otherCosts are never passed here and never validated here.
+ *
  * Returns array of problematic materials with useful display data.
  */
 export function validateMaterialsCostCompleteness(estimate) {
@@ -81,12 +92,16 @@ export function validateMaterialsCostCompleteness(estimate) {
   materials.forEach(m => {
     const qty = parseFloat(m.quantity) || 0;
     const unitCost = parseFloat(m.unit_cost) || 0;
-    if (qty > 0 && unitCost <= 0) {
+    const unitPrice = parseFloat(m.unit_price) || 0;
+    const hasName = typeof m.name === 'string' && m.name.trim().length > 0;
+
+    // Only warn if: real named material, with quantity, priced to client, but no internal cost
+    if (qty > 0 && unitPrice > 0 && unitCost <= 0 && hasName) {
       result.push({
-        name: m.name || 'Unnamed material',
+        name: m.name,
         quantity: qty,
         unit: m.unit || 'ea',
-        unit_price: parseFloat(m.unit_price) || 0,
+        unit_price: unitPrice,
         unit_cost: unitCost,
       });
     }
