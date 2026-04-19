@@ -57,6 +57,10 @@ export default function EstimateEditor() {
     const list = await base44.entities.Estimate.filter({ id: estimateId });
     if (list.length) {
       const est = list[0];
+      // CRITICAL: Ensure document_type is always 'ESTIMATE' for Estimates (fix data contamination)
+      if (!est.document_type || est.document_type === 'PROPOSAL') {
+        est.document_type = 'ESTIMATE';
+      }
       setEstimate(est);
       setJobNumber(est.job_number || '');
       setPlanReference(est.plan_reference || '');
@@ -83,6 +87,11 @@ export default function EstimateEditor() {
     }
     if (sanitized.materials && Array.isArray(sanitized.materials)) {
       sanitized.materials = normalizeMaterials(sanitized.materials).map(sanitizeMaterialForPersistence);
+    }
+    
+    // CRITICAL: Enforce document_type='ESTIMATE' to prevent data contamination
+    if (sanitized.document_type !== 'ESTIMATE') {
+      sanitized.document_type = 'ESTIMATE';
     }
     
     try {
