@@ -11,6 +11,26 @@
     "estimate_id": {
       "type": "string"
     },
+    "source_proposal_id": {
+      "type": "string",
+      "description": "ID of the Proposal this invoice was converted from"
+    },
+    "source_proposal_number": {
+      "type": "number",
+      "description": "Proposal number at conversion time (snapshot)"
+    },
+    "source_close_outcome": {
+      "type": "string",
+      "description": "Deal close outcome from source Proposal (won / lost / no_response / withdrawn)"
+    },
+    "source_selected_pricing_option_id": {
+      "type": "string",
+      "description": "ID of the pricing option the client selected on the source Proposal"
+    },
+    "source_selected_pricing_option_title": {
+      "type": "string",
+      "description": "Title of the winning pricing option at conversion time (snapshot)"
+    },
     "client_id": {
       "type": "string"
     },
@@ -91,6 +111,9 @@
       "default": 0
     },
     "notes": {
+      "type": "string"
+    },
+    "internal_notes": {
       "type": "string"
     },
     "payment_terms": {

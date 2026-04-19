@@ -61,6 +61,14 @@ function ConvertToInvoiceBtn({ proposal, onConverted }) {
     setLoading(true);
     const list = await base44.entities.Invoice.list('-created_date', 20);
     const nextNum = list.length ? Math.max(...list.map(i => i.invoice_number || 0)) + 1 : 1001;
+
+    // Build closing context note: include selected option and close note if available
+    const closingContext = [
+      proposal.selected_pricing_option_title ? `Winning option: ${proposal.selected_pricing_option_title}` : null,
+      proposal.close_note ? `Sales note: ${proposal.close_note}` : null,
+    ].filter(Boolean).join('\n');
+    const internalNotes = closingContext || undefined;
+
     const inv = await base44.entities.Invoice.create({
       invoice_number: nextNum,
       client_id: proposal.client_id,
@@ -79,7 +87,14 @@ function ConvertToInvoiceBtn({ proposal, onConverted }) {
       total: proposal.total_amount,
       payment_terms: proposal.payment_terms,
       notes: proposal.notes,
+      internal_notes: internalNotes,
       status: 'draft',
+      // Conversion traceability
+      source_proposal_id: proposal.id,
+      source_proposal_number: proposal.proposal_number || null,
+      source_close_outcome: proposal.close_outcome || null,
+      source_selected_pricing_option_id: proposal.selected_pricing_option_id || null,
+      source_selected_pricing_option_title: proposal.selected_pricing_option_title || null,
     });
     await base44.entities.Proposal.update(proposal.id, {
       invoice_id: inv.id,
@@ -122,6 +137,15 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
       .filter(it => it.service_name)
       .map(it => `• ${it.service_name}${it.quantity ? ` (${it.quantity}${it.unit ? ' ' + it.unit : ''})` : ''}${it.description ? ': ' + it.description : ''}`)
       .join('\n');
+
+    // Build handoff internal note for field crew
+    const handoffParts = [
+      proposal.selected_pricing_option_title ? `Approved option: ${proposal.selected_pricing_option_title}` : null,
+      proposal.close_outcome === 'won' ? `Deal closed: Won${proposal.closed_at ? ' on ' + new Date(proposal.closed_at).toLocaleDateString() : ''}` : null,
+      proposal.close_note ? `Sales handoff note: ${proposal.close_note}` : null,
+    ].filter(Boolean).join('\n');
+    const internalNotes = handoffParts || undefined;
+
     const wo = await base44.entities.WorkOrder.create({
       work_order_number: nextNum,
       client_id: proposal.client_id,
@@ -133,7 +157,14 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
       description: scopeDescription || proposal.notes || '',
       line_items: scopeItems,
       notes: proposal.notes,
+      internal_notes: internalNotes,
       status: 'draft',
+      // Conversion traceability
+      source_proposal_id: proposal.id,
+      source_proposal_number: proposal.proposal_number || null,
+      source_close_outcome: proposal.close_outcome || null,
+      source_selected_pricing_option_id: proposal.selected_pricing_option_id || null,
+      source_selected_pricing_option_title: proposal.selected_pricing_option_title || null,
     });
     await base44.entities.Proposal.update(proposal.id, {
       work_order_id: wo.id,
