@@ -44,8 +44,9 @@ import Proposals from './pages/Proposals.jsx';
 import SalesPipeline from './pages/SalesPipeline';
 import ProposalEditor from './pages/ProposalEditor';
 import PublicProposalView from './pages/PublicProposalView';
-import ClientDocumentView from './pages/ClientDocumentView';
 import ClientPortal from './pages/ClientPortal';
+// ClientDocumentView removed — document_token flow was never wired.
+// Proposals → /proposal-view?id=  |  Estimates → /client-estimate?id=
 
 
 const ProtectedRoute = ({ children }) => {
@@ -137,7 +138,6 @@ const AuthenticatedApp = () => {
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />
       <Route path="/proposal-view" element={<PublicProposalView />} />
-      <Route path="/client-document" element={<ClientDocumentView />} />
       <Route path="/client-portal" element={<ClientPortal />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
