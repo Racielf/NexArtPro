@@ -12,6 +12,7 @@ import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, Chevro
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CashflowSummary from '@/components/invoices/CashflowSummary';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
+import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 
 export default function Invoices() {
   const navigate = useNavigate();
@@ -53,7 +54,26 @@ export default function Invoices() {
   };
 
   const handleMarkPaid = async (inv) => {
-    await base44.entities.Invoice.update(inv.id, { status: 'paid', paid_at: new Date().toISOString(), amount_paid: inv.total });
+    const now = new Date().toISOString();
+    const fullPayment = {
+      id: `pay-${Date.now()}`,
+      amount: inv.total,
+      method: 'manual',
+      payment_date: now,
+      note: 'Marked as paid',
+      recorded_by: 'Admin',
+      recorded_at: now,
+    };
+    const updatedPayments = [...(inv?.payments || []), fullPayment];
+    const derived = computeInvoiceDerivedFields({ ...inv, payments: updatedPayments });
+
+    await base44.entities.Invoice.update(inv.id, {
+      payments: updatedPayments,
+      amount_paid: derived.amount_paid,
+      balance_due: derived.balance_due,
+      payment_status: derived.payment_status,
+      paid_at: now,
+    });
     toast.success('Invoice marked as paid!');
     loadData();
   };
