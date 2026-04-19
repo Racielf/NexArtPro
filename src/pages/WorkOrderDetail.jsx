@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   ArrowLeft, Pencil, Eye, Printer, Send, CheckCircle2,
   User, Phone, Mail, MapPin, Calendar, Briefcase, Clock,
-  ClipboardList
+  ClipboardList, Play, Square, Trash2
 } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
 import WOTimeTracking from '@/components/workorders/WOTimeTracking';
@@ -27,6 +27,8 @@ export default function WorkOrderDetail() {
   const [savingExecution, setSavingExecution] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editingAssignment, setEditingAssignment] = useState('');
 
   useEffect(() => { loadWorkOrder(); }, [id]);
 
@@ -52,6 +54,17 @@ export default function WorkOrderDetail() {
     setSavingExecution(true);
     await base44.entities.WorkOrder.update(id, execution);
     setSavingExecution(false);
+    toast.success('Execution notes saved');
+  };
+
+  const saveTaskAssignment = async (taskId, newAssignment) => {
+    const updatedTasks = tasks.map(t =>
+      t.id === taskId ? { ...t, assigned_to: newAssignment } : t
+    );
+    setTasks(updatedTasks);
+    await base44.entities.WorkOrder.update(id, { tasks: updatedTasks });
+    setEditingTaskId(null);
+    toast.success('Task assignment saved');
   };
 
   const markCompleted = async () => {
@@ -65,21 +78,34 @@ export default function WorkOrderDetail() {
     toast.success('Work order marked as completed!');
   };
 
-  const toggleTask = async (taskId) => {
-    // Update new tasks array structure
+  const updateTask = async (taskId, updates) => {
     const updatedTasks = tasks.map(t => {
       if (t.id === taskId) {
-        const isCompleted = t.status === 'completed';
-        return {
-          ...t,
-          status: isCompleted ? 'pending' : 'completed',
-          completed_at: isCompleted ? null : new Date().toISOString()
-        };
+        const updated = { ...t, ...updates };
+        // Timestamps: set started_at when transitioning to in_progress, set completed_at when marking completed
+        if (updates.status === 'in_progress' && !t.started_at) {
+          updated.started_at = new Date().toISOString();
+        }
+        if (updates.status === 'completed' && !t.completed_at) {
+          updated.completed_at = new Date().toISOString();
+        }
+        if (updates.status === 'pending') {
+          updated.started_at = null;
+          updated.completed_at = null;
+        }
+        return updated;
       }
       return t;
     });
     setTasks(updatedTasks);
     await base44.entities.WorkOrder.update(id, { tasks: updatedTasks });
+  };
+
+  const toggleTask = (taskId) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const nextStatus = task.status === 'completed' ? 'pending' : task.status === 'in_progress' ? 'completed' : 'in_progress';
+    updateTask(taskId, { status: nextStatus });
   };
 
   if (loading) return (
@@ -291,40 +317,105 @@ export default function WorkOrderDetail() {
                   })()}
                   {tasks.map(task => {
                     const isCompleted = task.status === 'completed';
+                    const isInProgress = task.status === 'in_progress';
                     return (
-                      <button
+                      <div
                         key={task.id}
-                        onClick={() => toggleTask(task.id)}
-                        className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
+                        className={`flex items-start gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
                           isCompleted
                             ? 'bg-green-50 border-green-200'
-                            : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                            : isInProgress ? 'bg-blue-50 border-blue-200'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
                         }`}
                       >
                         <div className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                          isCompleted ? 'bg-green-500 border-green-500' : 'border-slate-300'
+                          isCompleted ? 'bg-green-500 border-green-500' : isInProgress ? 'bg-blue-500 border-blue-500' : 'border-slate-300'
                         }`}>
                           {isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
+                          {isInProgress && <div className="w-2 h-2 bg-white rounded-full" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium leading-tight ${isCompleted ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                          <p className={`text-sm font-medium leading-tight ${isCompleted || isInProgress ? 'text-slate-700' : 'text-slate-800'}`}>
                             {task.title}
                           </p>
                           {task.description && (
-                            <p className={`text-xs mt-0.5 ${isCompleted ? 'text-slate-300' : 'text-slate-400'}`}>{task.description}</p>
+                            <p className={`text-xs mt-0.5 ${isCompleted ? 'text-slate-300' : 'text-slate-500'}`}>{task.description}</p>
+                          )}
+                          <div className="mt-1.5 flex items-center gap-2">
+                            {editingTaskId === task.id ? (
+                              <>
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  value={editingAssignment}
+                                  onChange={e => setEditingAssignment(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') saveTaskAssignment(task.id, editingAssignment);
+                                    if (e.key === 'Escape') setEditingTaskId(null);
+                                  }}
+                                  placeholder="Worker name…"
+                                  className="h-6 text-xs px-2 border border-slate-200 rounded bg-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-primary flex-1"
+                                />
+                                <button
+                                  onClick={() => saveTaskAssignment(task.id, editingAssignment)}
+                                  className="text-xs px-1.5 py-0.5 rounded bg-primary text-white hover:bg-primary/90 transition-colors"
+                                >
+                                  Save
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setEditingTaskId(task.id);
+                                  setEditingAssignment(task.assigned_to || '');
+                                }}
+                                className="text-[10px] text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-2 py-0.5 rounded transition-colors"
+                              >
+                                {task.assigned_to ? `👤 ${task.assigned_to}` : '👤 Unassigned'}
+                              </button>
+                            )}
+                          </div>
+                          {isInProgress && task.started_at && (
+                            <p className="text-[10px] text-blue-600 mt-1">
+                              Started {new Date(task.started_at).toLocaleString()}
+                            </p>
                           )}
                           {isCompleted && task.completed_at && (
                             <p className="text-[10px] text-green-600 mt-1">
-                              Completed {new Date(task.completed_at).toLocaleString()}
+                              ✓ Completed {new Date(task.completed_at).toLocaleString()}
                             </p>
                           )}
                         </div>
-                        <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                          isCompleted ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          {isCompleted ? 'Done' : 'Pending'}
-                        </span>
-                      </button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {!isCompleted && (
+                            <button
+                              onClick={() => updateTask(task.id, { status: isInProgress ? 'pending' : 'in_progress' })}
+                              className={`p-1 rounded transition-colors ${isInProgress ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'text-slate-400 hover:bg-slate-100'}`}
+                              title={isInProgress ? 'Mark as Pending' : 'Mark as In Progress'}
+                            >
+                              {isInProgress ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                          {!isCompleted && (
+                            <button
+                              onClick={() => updateTask(task.id, { status: 'completed' })}
+                              className="p-1 rounded text-slate-400 hover:bg-green-100 hover:text-green-600 transition-colors"
+                              title="Mark as Complete"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {isCompleted && (
+                            <button
+                              onClick={() => updateTask(task.id, { status: 'pending' })}
+                              className="p-1 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                              title="Reset to Pending"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>

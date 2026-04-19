@@ -138,6 +138,22 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
       .map(it => `• ${it.service_name}${it.quantity ? ` (${it.quantity}${it.unit ? ' ' + it.unit : ''})` : ''}${it.description ? ': ' + it.description : ''}`)
       .join('\n');
 
+    // Generate tasks from proposal items (same structure as Estimate path)
+    const tasks = [];
+    let order = 0;
+    (proposal.items || []).forEach(item => {
+      tasks.push({
+        id: `task-${order}`,
+        title: item.service_name || `Task ${order + 1}`,
+        description: item.description || '',
+        status: 'pending',
+        assigned_to: '',
+        order: order++,
+        started_at: null,
+        completed_at: null
+      });
+    });
+
     // Build handoff internal note for field crew
     const handoffParts = [
       proposal.selected_pricing_option_title ? `Approved option: ${proposal.selected_pricing_option_title}` : null,
@@ -159,6 +175,8 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
       notes: proposal.notes,
       internal_notes: internalNotes,
       status: 'draft',
+      tasks: tasks,
+      task_statuses: {},
       // Conversion traceability
       source_proposal_id: proposal.id,
       source_proposal_number: proposal.proposal_number || null,
