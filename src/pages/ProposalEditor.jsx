@@ -20,6 +20,8 @@ import ProposalPresentationModeSelector from '@/components/proposals/ProposalPre
 import ContentLibraryPopover from '@/components/proposals/ContentLibraryPopover';
 import SmartSuggestionsPanel from '@/components/proposals/SmartSuggestionsPanel';
 import { generateSmartSuggestions } from '@/lib/smartSuggestions';
+import SalesDecisionPanel from '@/components/proposals/SalesDecisionPanel';
+import { runSalesDecisionEngine } from '@/lib/salesDecisionEngine';
 import { useQuery } from '@tanstack/react-query';
 
 const STATUS_BADGE = {
@@ -60,6 +62,8 @@ export default function ProposalEditor() {
   const [isPreview, setIsPreview] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
+  const [decision, setDecision] = useState(null);
+  const [crmStats, setCrmStats] = useState({});
   const pdfElementRef = useRef(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
@@ -74,6 +78,17 @@ export default function ProposalEditor() {
     staleTime: 1000 * 60 * 5, // 5 min cache
   });
 
+  // Load CRM stats for current client
+  const { data: clientProposals = [] } = useQuery({
+    queryKey: ['client-proposals', proposal?.client_id],
+    queryFn: async () => {
+      if (!proposal?.client_id) return [];
+      return await base44.entities.Proposal.filter({ client_id: proposal.client_id }, '-created_date', 100);
+    },
+    enabled: !!proposal?.client_id,
+    staleTime: 1000 * 60 * 5,
+  });
+
   // Generate suggestions whenever proposal or details change
   useEffect(() => {
     if (proposal && hasClient) {
@@ -83,6 +98,24 @@ export default function ProposalEditor() {
       setSuggestions([]);
     }
   }, [proposal?.id, proposal?.status, proposalDetails, closedProposals.length]);
+
+  // Generate sales decision engine guidance
+  useEffect(() => {
+    if (proposal && hasClient) {
+      // Calculate CRM stats for this client
+      const totalProposals = clientProposals.length;
+      const wonProposals = clientProposals.filter(p => p.close_outcome === 'won').length;
+      const stats = { totalProposals, wonProposals };
+      setCrmStats(stats);
+
+      // Run decision engine
+      const dec = runSalesDecisionEngine(proposal, proposalDetails, stats, closedProposals);
+      setDecision(dec);
+    } else {
+      setDecision(null);
+      setCrmStats({});
+    }
+  }, [proposal?.id, proposal?.client_id, proposal?.status, proposalDetails, closedProposals.length, clientProposals.length]);
 
   useEffect(() => { load(); }, []);
 
@@ -327,9 +360,10 @@ export default function ProposalEditor() {
               <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow.
             </div>
           )}
-          {hasClient && suggestions.length > 0 && !isPreview && (
-            <div className="mb-4">
-              <SmartSuggestionsPanel suggestions={suggestions} />
+          {hasClient && !isPreview && (
+            <div className="space-y-3 mb-4">
+              {decision && <SalesDecisionPanel decision={decision} />}
+              {suggestions.length > 0 && <SmartSuggestionsPanel suggestions={suggestions} />}
             </div>
           )}
           <div ref={pdfElementRef}>
