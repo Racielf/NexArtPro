@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import {
   CheckCircle, XCircle, Loader2, Printer, Download,
-  PenLine, MessageSquare, Clock, Eye, AlertTriangle, Shield
+  Clock, Eye, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { logComm } from '@/lib/commTracking';
@@ -17,9 +17,7 @@ import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import {
   notifyEstimateViewed,
   notifyEstimateApproved,
-  notifyEstimateSigned,
   notifyEstimateDeclined,
-  notifyEstimateChangesRequested,
 } from '@/lib/businessNotifications';
 import {
   markEstimateViewed,
