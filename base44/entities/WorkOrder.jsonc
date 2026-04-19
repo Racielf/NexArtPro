@@ -166,9 +166,48 @@
       "type": "string",
       "description": "Problems or issues found during execution"
     },
+    "tasks": {
+      "type": "array",
+      "description": "Structured task breakdown for job execution tracking",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed"
+            ],
+            "default": "pending"
+          },
+          "assigned_to": {
+            "type": "string"
+          },
+          "order": {
+            "type": "number"
+          },
+          "started_at": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "task_statuses": {
       "type": "object",
-      "description": "Map of item id \u2192 { status: pending|done, completed_at, completed_by_worker_id }"
+      "description": "Legacy map of item id \u2192 { status: pending|done, completed_at, completed_by_worker_id } (for backward compatibility)"
     },
     "company_id": {
       "type": "string",

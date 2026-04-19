@@ -42,6 +42,24 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
       const user = await base44.auth.me();
       const woNum = await getNextDocumentNumber('work_order');
 
+      // Generate tasks from estimate groups
+      const tasks = [];
+      let order = 0;
+      (estimate.groups || []).forEach(group => {
+        (group.items || []).forEach(item => {
+          tasks.push({
+            id: `task-${order}`,
+            title: item.service_name || `Task ${order + 1}`,
+            description: item.description || '',
+            status: 'pending',
+            assigned_to: '',
+            order: order++,
+            started_at: null,
+            completed_at: null
+          });
+        });
+      });
+
       const wo = await base44.entities.WorkOrder.create({
         work_order_number: woNum,
         estimate_id: estimate.id,
@@ -60,6 +78,8 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
         total: estimate.total || 0,
         notes: estimate.notes || '',
         internal_notes: estimate.internal_notes || '',
+        tasks: tasks,
+        task_statuses: {}, // legacy field, now using tasks array
         assigned_by: user?.full_name || user?.email || 'Admin',
         assigned_at: new Date().toISOString(),
       });

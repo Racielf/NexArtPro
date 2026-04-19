@@ -21,6 +21,7 @@ export default function WorkOrderDetail() {
 
   const [workOrder, setWorkOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState([]);
   const [taskStatuses, setTaskStatuses] = useState({});
   const [execution, setExecution] = useState({ work_summary: '', notes: '', issues_found: '' });
   const [savingExecution, setSavingExecution] = useState(false);
@@ -35,6 +36,8 @@ export default function WorkOrderDetail() {
     if (list.length) {
       const wo = list[0];
       setWorkOrder(wo);
+      // Use new tasks array if available, fall back to legacy task_statuses
+      setTasks(wo.tasks || []);
       setTaskStatuses(wo.task_statuses || {});
       setExecution({
         work_summary: wo.work_summary || '',
@@ -62,16 +65,21 @@ export default function WorkOrderDetail() {
     toast.success('Work order marked as completed!');
   };
 
-  const toggleTask = async (itemId) => {
-    const isDone = taskStatuses[itemId]?.status === 'done';
-    const updated = {
-      ...taskStatuses,
-      [itemId]: isDone
-        ? { status: 'pending' }
-        : { status: 'done', completed_at: new Date().toISOString() }
-    };
-    setTaskStatuses(updated);
-    await base44.entities.WorkOrder.update(id, { task_statuses: updated });
+  const toggleTask = async (taskId) => {
+    // Update new tasks array structure
+    const updatedTasks = tasks.map(t => {
+      if (t.id === taskId) {
+        const isCompleted = t.status === 'completed';
+        return {
+          ...t,
+          status: isCompleted ? 'pending' : 'completed',
+          completed_at: isCompleted ? null : new Date().toISOString()
+        };
+      }
+      return t;
+    });
+    setTasks(updatedTasks);
+    await base44.entities.WorkOrder.update(id, { tasks: updatedTasks });
   };
 
   if (loading) return (
@@ -266,56 +274,55 @@ export default function WorkOrderDetail() {
                 )}
               </div>
 
-              {allItems.length > 0 ? (
+              {tasks.length > 0 ? (
                 <div className="space-y-2">
                   {/* Progress bar */}
                   {(() => {
-                    const doneCount = allItems.filter(item => taskStatuses[item.id || item.service_name]?.status === 'done').length;
-                    const pct = Math.round((doneCount / allItems.length) * 100);
+                    const completedCount = tasks.filter(t => t.status === 'completed').length;
+                    const pct = Math.round((completedCount / tasks.length) * 100);
                     return (
                       <div className="flex items-center gap-3 mb-4">
                         <div className="flex-1 bg-slate-100 rounded-full h-2">
                           <div className="bg-green-500 h-2 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">{doneCount}/{allItems.length} done</span>
+                        <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">{completedCount}/{tasks.length} done</span>
                       </div>
                     );
                   })()}
-                  {allItems.map((item, i) => {
-                    const key = item.id || item.service_name || String(i);
-                    const isDone = taskStatuses[key]?.status === 'done';
+                  {tasks.map(task => {
+                    const isCompleted = task.status === 'completed';
                     return (
                       <button
-                        key={key}
-                        onClick={() => toggleTask(key)}
+                        key={task.id}
+                        onClick={() => toggleTask(task.id)}
                         className={`w-full flex items-start gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
-                          isDone
+                          isCompleted
                             ? 'bg-green-50 border-green-200'
                             : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                         }`}
                       >
                         <div className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                          isDone ? 'bg-green-500 border-green-500' : 'border-slate-300'
+                          isCompleted ? 'bg-green-500 border-green-500' : 'border-slate-300'
                         }`}>
-                          {isDone && <CheckCircle2 className="w-3 h-3 text-white" />}
+                          {isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium leading-tight ${isDone ? 'line-through text-slate-400' : 'text-slate-800'}`}>
-                            {item.service_name}
+                          <p className={`text-sm font-medium leading-tight ${isCompleted ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                            {task.title}
                           </p>
-                          {item.description && (
-                            <p className={`text-xs mt-0.5 ${isDone ? 'text-slate-300' : 'text-slate-400'}`}>{item.description}</p>
+                          {task.description && (
+                            <p className={`text-xs mt-0.5 ${isCompleted ? 'text-slate-300' : 'text-slate-400'}`}>{task.description}</p>
                           )}
-                          {isDone && taskStatuses[key]?.completed_at && (
+                          {isCompleted && task.completed_at && (
                             <p className="text-[10px] text-green-600 mt-1">
-                              Completed {new Date(taskStatuses[key].completed_at).toLocaleString()}
+                              Completed {new Date(task.completed_at).toLocaleString()}
                             </p>
                           )}
                         </div>
                         <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                          isDone ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+                          isCompleted ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
                         }`}>
-                          {isDone ? 'Done' : 'Pending'}
+                          {isCompleted ? 'Done' : 'Pending'}
                         </span>
                       </button>
                     );
@@ -324,7 +331,7 @@ export default function WorkOrderDetail() {
               ) : (
                 <div className="border border-dashed border-slate-200 rounded-lg py-8 flex flex-col items-center text-slate-400">
                   <ClipboardList className="w-6 h-6 mb-2" />
-                  <p className="text-sm">No services listed</p>
+                  <p className="text-sm">No tasks generated from estimate</p>
                 </div>
               )}
             </div>
