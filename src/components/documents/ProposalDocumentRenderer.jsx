@@ -73,7 +73,7 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
   return (
     <div style={{ fontFamily: FONT.family, fontSize: FONT.size.md, lineHeight: FONT.lineHeight.normal, background: COLORS.white, color: COLORS.text.primary, minWidth: 640 }}>
 
-      {/* ═══ 1. HEADER ═══ */}
+      {/* ═══ HEADER ═══ */}
       <PDFHeader
         docLabel={T('docLabel')}
         number={estimate.estimate_number}
@@ -86,7 +86,7 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
 
       <div style={{ padding: `0 ${SPACE.page}px` }}>
 
-        {/* ═══ 2. CLIENT / PROJECT INFO ═══ */}
+        {/* ═══ CLIENT / PROJECT INFO ═══ */}
         <PDFSectionBlock title={T('clientProjectInfo')} titleEs={esTitle('clientProjectInfo')} accent={ACCENT} noBorder style={{ paddingTop: SPACE['2xl'] }}>
           <PDFInfoGrid
             variant="proposal"
@@ -116,7 +116,9 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
           />
         </PDFSectionBlock>
 
-        {/* ═══ 3. COVER NOTE ═══ */}
+        {/* ══════════════════════════════════════
+            SECTION 1 — COVER NOTE
+        ══════════════════════════════════════ */}
         <PDFSectionBlock title={T('coverNote')} titleEs={esTitle('coverNote')} accent={ACCENT}>
           <div style={S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder)}>
             <p style={{ fontSize: FONT.size.md, color: COLORS.text.secondary, lineHeight: FONT.lineHeight.relaxed, margin: 0 }}>
@@ -127,33 +129,50 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
           </div>
         </PDFSectionBlock>
 
-        {/* ═══ 4. PROJECT SUMMARY (title only — notes moved below services) ═══ */}
-        {estimate.title && (
-          <PDFSectionBlock title={T('projectSummary')} titleEs={esTitle('projectSummary')} accent={ACCENT}>
-            <div style={{ fontWeight: FONT.weight.semibold, fontSize: FONT.size.lg, color: COLORS.text.primary, marginBottom: SPACE.sm }}>{estimate.title}</div>
+        {/* ══════════════════════════════════════
+            SECTION 2 — EXECUTIVE SUMMARY
+            Source: proposal_details.scopeOfWork → estimate.notes (via mapper)
+        ══════════════════════════════════════ */}
+        {estimate.notes && (
+          <PDFSectionBlock title={T('executiveSummary')} titleEs={esTitle('executiveSummary')} accent={ACCENT}>
+            <div style={S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder)}>
+              <p style={{ ...S.body, margin: 0, whiteSpace: 'pre-wrap' }}>{estimate.notes}</p>
+            </div>
           </PDFSectionBlock>
         )}
 
-        {/* ═══ 5. SERVICES INCLUDED ═══ */}
+        {/* ══════════════════════════════════════
+            SECTION 3 — SCOPE OF WORK (services)
+            Source: estimate.groups / line items
+        ══════════════════════════════════════ */}
         {opts.showBreakdown && mainGroups.length > 0 && (
-          <PDFSectionBlock title={T('servicesIncluded')} titleEs={esTitle('servicesIncluded')} accent={ACCENT}>
+          <PDFSectionBlock title={T('scopeOfWork')} titleEs={esTitle('scopeOfWork')} accent={ACCENT}>
             <p style={{ ...S.body, marginBottom: SPACE.md }}>{T('servicesIntro')}</p>
             <PDFLineItemsTable groups={mainGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} variant="proposal" />
           </PDFSectionBlock>
         )}
 
-        {/* ═══ 5b. PROJECT NOTES (after services) ═══ */}
-        {estimate.notes && (
-          <PDFSectionBlock title={T('projectSummary')} titleEs={esTitle('projectSummary')} accent={ACCENT}>
-            <p style={S.body}>{estimate.notes}</p>
-          </PDFSectionBlock>
-        )}
-
-        {/* ═══ 6. WHAT'S INCLUDED ═══ */}
+        {/* ══════════════════════════════════════
+            SECTION 4 — WHAT'S INCLUDED
+            Source: proposal_details.inclusions → estimate.payment_terms (via mapper)
+        ══════════════════════════════════════ */}
         <PDFSectionBlock title={T('whatsIncluded')} titleEs={esTitle('whatsIncluded')} accent={ACCENT}>
           <div style={S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder)}>
             {estimate.payment_terms ? (
-              <p style={S.body}>{estimate.payment_terms}</p>
+              (() => {
+                // Strip the "What's Included:\n" prefix injected by the mapper
+                const raw = estimate.payment_terms;
+                const prefix = "What's Included:\n";
+                const text = raw.startsWith(prefix) ? raw.slice(prefix.length) : raw;
+                return (
+                  <div>
+                    <div style={{ fontWeight: FONT.weight.semibold, color: COLORS.text.secondary, marginBottom: 8, fontSize: FONT.size.base }}>
+                      {T('whatsIncludedTitle')}
+                    </div>
+                    <p style={{ ...S.body, margin: 0, whiteSpace: 'pre-wrap' }}>{text}</p>
+                  </div>
+                );
+              })()
             ) : (
               <div style={{ fontSize: FONT.size.base, color: COLORS.text.secondary, lineHeight: FONT.lineHeight.relaxed }}>
                 <div style={{ fontWeight: FONT.weight.semibold, color: COLORS.text.secondary, marginBottom: 6 }}>{T('whatsIncludedTitle')}</div>
@@ -165,7 +184,38 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
           </div>
         </PDFSectionBlock>
 
-        {/* ═══ 7. OPTIONAL ADD-ONS ═══ */}
+        {/* ══════════════════════════════════════
+            SECTION 5 — WHAT'S NOT INCLUDED (exclusions)
+            Source: proposal_details.exclusions → estimate.exclusions (via mapper)
+        ══════════════════════════════════════ */}
+        {estimate.exclusions && (
+          <PDFSectionBlock title={T('whatsNotIncludedTitle')} titleEs={esTitle('whatsNotIncludedTitle')} accent={ACCENT}>
+            <div style={S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder)}>
+              <p style={{ ...S.body, margin: 0, whiteSpace: 'pre-wrap' }}>{estimate.exclusions}</p>
+            </div>
+          </PDFSectionBlock>
+        )}
+
+        {/* ══════════════════════════════════════
+            SECTION 6 — PROJECT TIMELINE
+            Source: proposal_details.timeline → estimate.project_start_date (via mapper)
+        ══════════════════════════════════════ */}
+        <PDFSectionBlock title={T('scheduleTimeline')} titleEs={esTitle('scheduleTimeline')} accent={ACCENT}>
+          {estimate.project_start_date ? (
+            <div style={S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder)}>
+              <div style={{ fontWeight: FONT.weight.semibold, color: COLORS.text.muted, fontSize: FONT.size.xs, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: SPACE.sm }}>
+                {T('estimatedStart')}
+              </div>
+              <p style={{ ...S.body, margin: 0, whiteSpace: 'pre-wrap', color: COLORS.text.primary }}>{estimate.project_start_date}</p>
+            </div>
+          ) : (
+            <p style={{ ...S.body, color: COLORS.text.faint, fontStyle: 'italic' }}>{T('scheduleDefault')}</p>
+          )}
+        </PDFSectionBlock>
+
+        {/* ══════════════════════════════════════
+            SECTION 6b — OPTIONAL ADD-ONS
+        ══════════════════════════════════════ */}
         {opts.showBreakdown && addOnGroups.length > 0 && (
           <PDFSectionBlock title={T('optionalAddOns')} titleEs={esTitle('optionalAddOns')} accent={ACCENT}>
             <p style={{ ...S.body, marginBottom: SPACE.md }}>{T('addOnsIntro')}</p>
@@ -173,29 +223,9 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
           </PDFSectionBlock>
         )}
 
-        {/* ═══ 8. SCHEDULE / TIMELINE ═══ */}
-        <PDFSectionBlock title={T('scheduleTimeline')} titleEs={esTitle('scheduleTimeline')} accent={ACCENT}>
-          {(startDate || endDate) ? (
-            <div style={{ display: 'flex', gap: SPACE.xl }}>
-              {startDate && (
-                <div style={{ ...S.card(COLORS.bg.card, COLORS.border.medium), flex: 1 }}>
-                  <div style={S.tinyLabel}>{T('estimatedStart')}</div>
-                  <div style={{ fontSize: FONT.size.lg, fontWeight: FONT.weight.semibold, color: COLORS.text.primary }}>{startDate}</div>
-                </div>
-              )}
-              {endDate && (
-                <div style={{ ...S.card(COLORS.bg.card, COLORS.border.medium), flex: 1 }}>
-                  <div style={S.tinyLabel}>{T('estimatedCompletion')}</div>
-                  <div style={{ fontSize: FONT.size.lg, fontWeight: FONT.weight.semibold, color: COLORS.text.primary }}>{endDate}</div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p style={{ ...S.body, color: COLORS.text.faint, fontStyle: 'italic' }}>{T('scheduleDefault')}</p>
-          )}
-        </PDFSectionBlock>
-
-        {/* ═══ INVESTMENT SUMMARY ═══ */}
+        {/* ══════════════════════════════════════
+            SECTION 7 — PRICING SUMMARY
+        ══════════════════════════════════════ */}
         {opts.showPrices && (
           <PDFSectionBlock title={T('investmentSummary')} titleEs={esTitle('investmentSummary')} accent={ACCENT}>
             <PDFTotalsBlock
@@ -212,16 +242,12 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
           </PDFSectionBlock>
         )}
 
-        {/* ═══ 9. TERMS ═══ */}
+        {/* ══════════════════════════════════════
+            SECTION 8 — TERMS & CONDITIONS
+        ══════════════════════════════════════ */}
         {opts.showTerms && (
           <PDFSectionBlock title={T('terms')} titleEs={esTitle('terms')} accent={ACCENT}>
-            {estimate.exclusions && (
-              <div style={{ marginBottom: SPACE.lg }}>
-                <div style={S.subHeading}>{T('whatsNotIncluded')}</div>
-                <p style={S.body}>{estimate.exclusions}</p>
-              </div>
-            )}
-            {estimate.payment_terms && (
+            {estimate.payment_terms && !estimate.payment_terms.startsWith("What's Included:") && (
               <div style={{ marginBottom: SPACE.lg }}>
                 <div style={S.subHeading}>{T('paymentTerms')}</div>
                 <p style={S.body}>{estimate.payment_terms}</p>
@@ -238,7 +264,7 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
           </PDFSectionBlock>
         )}
 
-        {/* ═══ 9b. PAYMENT METHODS ═══ */}
+        {/* ═══ PAYMENT METHODS ═══ */}
         {cc.payment_methods && cc.payment_methods.trim() && (
           <PDFSectionBlock title="Payment Methods" accent={ACCENT}>
             <PaymentMethodsSection
@@ -250,7 +276,23 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
           </PDFSectionBlock>
         )}
 
-        {/* ═══ 10. ACCEPTANCE ═══ */}
+        {/* ══════════════════════════════════════
+            CALL TO ACTION — closing message
+        ══════════════════════════════════════ */}
+        <PDFSectionBlock title={T('callToAction')} titleEs={esTitle('callToAction')} accent={ACCENT}>
+          <div style={{
+            ...S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder),
+            borderLeft: `4px solid ${ACCENT}`,
+          }}>
+            <p style={{ fontSize: FONT.size.md, color: COLORS.text.secondary, lineHeight: FONT.lineHeight.relaxed, margin: 0 }}>
+              {T('callToActionBody')}
+            </p>
+          </div>
+        </PDFSectionBlock>
+
+        {/* ══════════════════════════════════════
+            ACCEPTANCE / SIGNATURE
+        ══════════════════════════════════════ */}
         {opts.showSignatures && (
           <PDFSectionBlock title={T('acceptance')} titleEs={esTitle('acceptance')} accent={ACCENT}>
             <div style={{ ...S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder), marginBottom: SPACE.xl }}>

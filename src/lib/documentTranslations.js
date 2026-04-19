@@ -23,14 +23,18 @@ const PROPOSAL = {
   yourInvestment:     { en: 'Your Investment', es: 'Su Inversión' },
 
   coverNote:          { en: 'Cover Note', es: 'Nota de Presentación' },
+  executiveSummary:   { en: 'Executive Summary', es: 'Resumen Ejecutivo' },
+  scopeOfWork:        { en: 'Scope of Work', es: 'Alcance del Trabajo' },
   projectSummary:     { en: 'Project Summary', es: 'Resumen del Proyecto' },
   servicesIncluded:   { en: 'Services Included', es: 'Servicios Incluidos' },
   whatsIncluded:      { en: "What's Included", es: 'Lo Que Incluye' },
+  whatsNotIncludedTitle: { en: "What's Not Included", es: 'Lo Que No Incluye' },
   optionalAddOns:     { en: 'Optional Add-ons', es: 'Opciones Adicionales' },
-  scheduleTimeline:   { en: 'Schedule / Timeline', es: 'Cronograma / Plazo' },
-  investmentSummary:  { en: 'Investment Summary', es: 'Resumen de Inversión' },
-  terms:              { en: 'Terms', es: 'Términos' },
+  scheduleTimeline:   { en: 'Project Timeline', es: 'Cronograma del Proyecto' },
+  investmentSummary:  { en: 'Pricing Summary', es: 'Resumen de Precios' },
+  terms:              { en: 'Terms & Conditions', es: 'Términos y Condiciones' },
   acceptance:         { en: 'Acceptance', es: 'Aceptación' },
+  callToAction:       { en: 'Ready to Get Started?', es: '¿Listo para Comenzar?' },
 
   // Sub-labels
   estimatedStart:       { en: 'Estimated Start', es: 'Inicio Estimado' },
@@ -42,6 +46,12 @@ const PROPOSAL = {
   authorizedRep:        { en: 'Authorized Representative', es: 'Representante Autorizado' },
   clientSignature:      { en: 'Client Signature', es: 'Firma del Cliente' },
   date:                 { en: 'Date', es: 'Fecha' },
+
+  // Body copy — Call to Action
+  callToActionBody: {
+    en: 'To proceed with this project, please review and accept this proposal. We are ready to begin upon your approval. Feel free to reach out with any questions — we are here to make this process as smooth as possible.',
+    es: 'Para continuar con este proyecto, por favor revise y acepte esta propuesta. Estamos listos para comenzar con su aprobación. No dude en comunicarse con cualquier pregunta — estamos aquí para hacer este proceso lo más sencillo posible.',
+  },
 
   // Body copy — Cover Note
   coverGreeting:      { en: 'Dear', es: 'Estimado(a)' },
