@@ -121,6 +121,9 @@ export function mapProposalToEstimate(proposal, proposalDetails, language) {
     // Pricing options (price anchoring — optional, empty array = single-price mode)
     pricing_options: details.pricingOptions || [],
 
+    // Presentation strategy — how to display pricing/scope to client
+    presentation_mode: details.presentation_mode || 'detailed',
+
     // Status
     status: proposal.status || 'draft',
 

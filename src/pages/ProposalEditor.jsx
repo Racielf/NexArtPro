@@ -16,6 +16,7 @@ import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 import ProposalPricingOptions from '@/components/proposals/ProposalPricingOptions';
 import ProposalPresetPicker from '@/components/proposals/ProposalPresetPicker';
+import ProposalPresentationModeSelector from '@/components/proposals/ProposalPresentationModeSelector';
 
 const STATUS_BADGE = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -47,6 +48,7 @@ export default function ProposalEditor() {
     inclusions: '',
     exclusions: '',
     timeline: '',
+    presentation_mode: 'detailed',
     pricingOptions: [],
   });
   const [showSend, setShowSend] = useState(false);
@@ -63,7 +65,7 @@ export default function ProposalEditor() {
   // Legacy fallback: if proposal_details is absent, try to parse from old JSON-in-notes format
   useEffect(() => {
     if (!proposal) return;
-    const empty = { scopeOfWork: '', inclusions: '', exclusions: '', timeline: '', pricingOptions: [] };
+    const empty = { scopeOfWork: '', inclusions: '', exclusions: '', timeline: '', presentation_mode: 'detailed', pricingOptions: [] };
 
     if (proposal.proposal_details && Object.values(proposal.proposal_details).some(v => v)) {
       setProposalDetails({ ...empty, ...proposal.proposal_details });
@@ -332,6 +334,14 @@ export default function ProposalEditor() {
                 <ProposalPresetPicker
                   proposalDetails={proposalDetails}
                   onApply={preset => setProposalDetails(p => ({ ...p, ...preset, pricingOptions: p.pricingOptions }))}
+                />
+              )}
+
+              {/* Presentation Mode Selector — controls how pricing/scope display to client */}
+              {!isPreview && (
+                <ProposalPresentationModeSelector
+                  mode={proposalDetails.presentation_mode || 'detailed'}
+                  onChange={mode => setProposalDetails(p => ({ ...p, presentation_mode: mode }))}
                 />
               )}
 

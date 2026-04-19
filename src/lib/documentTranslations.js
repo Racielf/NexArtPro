@@ -32,6 +32,7 @@ const PROPOSAL = {
   optionalAddOns:     { en: 'Optional Add-ons', es: 'Opciones Adicionales' },
   scheduleTimeline:   { en: 'Project Timeline', es: 'Cronograma del Proyecto' },
   investmentSummary:  { en: 'Pricing Summary', es: 'Resumen de Precios' },
+  totalInvestment:    { en: 'Total Investment', es: 'Inversión Total' },
   terms:              { en: 'Terms & Conditions', es: 'Términos y Condiciones' },
   acceptance:         { en: 'Acceptance', es: 'Aceptación' },
   callToAction:       { en: 'Ready to Get Started?', es: '¿Listo para Comenzar?' },

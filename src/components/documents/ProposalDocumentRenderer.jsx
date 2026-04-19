@@ -38,6 +38,7 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
   const T = (key) => tb('proposal', key, lang);
   const primaryLang = lang === 'bilingual' ? 'en' : lang;
   const bilingualEs = lang === 'bilingual';
+  const presentationMode = estimate.presentation_mode || 'detailed';
 
   const opts = {
     showPrices: options.showPrices !== false,
@@ -144,11 +145,33 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
         {/* ══════════════════════════════════════
             SECTION 3 — SCOPE OF WORK (services)
             Source: estimate.groups / line items
+            Adapted by presentation_mode: detailed, grouped, lump_sum, options_only
         ══════════════════════════════════════ */}
-        {opts.showBreakdown && mainGroups.length > 0 && (
+        {opts.showBreakdown && mainGroups.length > 0 && ['detailed', 'grouped'].includes(presentationMode) && (
           <PDFSectionBlock title={T('scopeOfWork')} titleEs={esTitle('scopeOfWork')} accent={ACCENT}>
             <p style={{ ...S.body, marginBottom: SPACE.md }}>{T('servicesIntro')}</p>
-            <PDFLineItemsTable groups={mainGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} variant="proposal" />
+            {presentationMode === 'detailed' ? (
+              <PDFLineItemsTable groups={mainGroups} showPrices={opts.showPrices} accent={ACCENT} lang={primaryLang} variant="proposal" />
+            ) : (
+              /* grouped: show group totals only, no line items */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+                {mainGroups.map((group, idx) => {
+                  const subtotal = group.items?.reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0) || 0;
+                  return (
+                    <div key={group.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACE.md}px 0`, borderBottom: `1px solid ${COLORS.border.light}` }}>
+                      <span style={{ fontSize: FONT.size.base, fontWeight: FONT.weight.semibold, color: COLORS.text.primary }}>
+                        {group.name || `Group ${idx + 1}`}
+                      </span>
+                      {opts.showPrices && (
+                        <span style={{ fontSize: FONT.size.base, fontWeight: FONT.weight.bold, color: ACCENT }}>
+                          ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </PDFSectionBlock>
         )}
 
@@ -226,6 +249,7 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
         {/* ══════════════════════════════════════
             SECTION 7a — INVESTMENT OPTIONS (price anchoring)
             Conditional: only renders when pricingOptions[] has items
+            Note: shows regardless of presentation_mode (always client-facing when present)
         ══════════════════════════════════════ */}
         {opts.showPrices && estimate.pricing_options?.length > 0 && (
           <PDFSectionBlock title={T('investmentOptions')} titleEs={esTitle('investmentOptions')} accent={ACCENT}>
@@ -319,20 +343,34 @@ export default function ProposalDocumentRenderer({ estimate, options = {}, lang:
 
         {/* ══════════════════════════════════════
             SECTION 7 — PRICING SUMMARY
+            Skipped if presentation_mode === 'options_only'
         ══════════════════════════════════════ */}
-        {opts.showPrices && (
+        {opts.showPrices && presentationMode !== 'options_only' && (
           <PDFSectionBlock title={T('investmentSummary')} titleEs={esTitle('investmentSummary')} accent={ACCENT}>
-            <PDFTotalsBlock
-              estimate={estimate}
-              total={total}
-              depositPct={depositPct}
-              depositAmount={depositAmount}
-              remaining={remaining}
-              showDeposit={depositPct > 0}
-              accent={ACCENT}
-              lang={primaryLang}
-              variant="proposal"
-            />
+            {presentationMode === 'lump_sum' ? (
+              /* Lump sum: only show total, no breakdown */
+              <div style={{ ...S.card(COLORS.proposal.cardBg, COLORS.proposal.cardBorder) }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: FONT.size.xs, fontWeight: FONT.weight.bold, color: COLORS.text.muted, textTransform: 'uppercase', marginBottom: SPACE.md }}>{T('totalInvestment')}</div>
+                  <div style={{ fontSize: FONT.size['4xl'], fontWeight: FONT.weight.extrabold, color: ACCENT, lineHeight: 1 }}>
+                    ${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* detailed/grouped: full breakdown */
+              <PDFTotalsBlock
+                estimate={estimate}
+                total={total}
+                depositPct={depositPct}
+                depositAmount={depositAmount}
+                remaining={remaining}
+                showDeposit={depositPct > 0}
+                accent={ACCENT}
+                lang={primaryLang}
+                variant="proposal"
+              />
+            )}
           </PDFSectionBlock>
         )}
 
