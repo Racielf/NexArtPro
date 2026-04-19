@@ -8,6 +8,7 @@ import SalesEstimateCard from '@/components/sales/SalesEstimateCard';
 import SalesFollowUpBar from '@/components/sales/SalesFollowUpBar';
 import ProposalPipelineCard from '@/components/proposals/ProposalPipelineCard';
 import ProposalReminderBar from '@/components/proposals/ProposalReminderBar';
+import ProposalAnalyticsPanel from '@/components/proposals/ProposalAnalyticsPanel';
 import { computeProposalReminders } from '@/lib/proposalReminders';
 import {
   PIPELINE_STAGES,
@@ -204,6 +205,9 @@ export default function SalesPipeline() {
             reminders={proposalReminders}
             onFilter={() => setActiveFilter('needs_follow_up')}
           />
+
+          {/* Proposal analytics panel */}
+          <ProposalAnalyticsPanel proposals={proposals} />
 
           {/* Quick stats */}
           <div className="flex items-center gap-4 text-xs text-slate-500">
