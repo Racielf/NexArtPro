@@ -111,8 +111,13 @@ export async function executeSend({
   const pdfPromise = (async () => {
     try {
       const { filename, base64 } = await generateEstimatePdfBase64(estimate, currentOptions, currentTemplate);
-      // Store PDF as private file
-      const pdfFile = new Blob([Buffer.from(base64, 'base64')], { type: 'application/pdf' });
+      // Store PDF as private file (convert base64 to Blob using browser APIs)
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const pdfFile = new Blob([bytes], { type: 'application/pdf' });
       const uploadRes = await base44.integrations.Core.UploadFile({ file: pdfFile });
       pdfUrl = uploadRes?.file_url;
     } catch (err) {
