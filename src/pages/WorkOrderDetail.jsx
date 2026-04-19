@@ -13,6 +13,8 @@ import StatusBadge from '@/components/shared/StatusBadge';
 import WOTimeTracking from '@/components/workorders/WOTimeTracking';
 import WOExpenses from '@/components/workorders/WOExpenses';
 import WOReceipts from '@/components/workorders/WOReceipts';
+import WOFieldExecution from '@/components/workorders/WOFieldExecution';
+import WOCompletionEvidence from '@/components/workorders/WOCompletionEvidence';
 import WorkOrderPreviewModal from '@/components/workorders/WorkOrderPreviewModal';
 
 export default function WorkOrderDetail() {
@@ -480,7 +482,13 @@ export default function WorkOrderDetail() {
           {/* 4. Materials & Expenses */}
           <WOExpenses workOrderId={id} workOrderNumber={workOrder.work_order_number} />
 
-          {/* 5. Receipts & Photos */}
+          {/* 5. Field Execution Evidence */}
+          <WOFieldExecution
+            workOrder={workOrder}
+            workOrderId={id}
+          />
+
+          {/* 6. Receipts & Photos */}
           <WOReceipts
             workOrderId={id}
             workOrderNumber={workOrder.work_order_number}
@@ -501,13 +509,16 @@ export default function WorkOrderDetail() {
             const isInvoiced  = workOrder.status === 'invoiced';
 
             if (isCompleted) return (
-              <div className="rounded-xl border border-green-200 bg-green-50 shadow-sm px-6 py-4 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-semibold text-green-800">Work Order Completed</p>
-                  {workOrder.completed_at && (
-                    <p className="text-xs text-green-600 mt-0.5">{new Date(workOrder.completed_at).toLocaleString()}</p>
-                  )}
+              <div className="space-y-4">
+                <WOCompletionEvidence workOrder={workOrder} />
+                <div className="rounded-xl border border-green-200 bg-green-50 shadow-sm px-6 py-4 flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">Work Order Completed</p>
+                    {workOrder.completed_at && (
+                      <p className="text-xs text-green-600 mt-0.5">{new Date(workOrder.completed_at).toLocaleString()}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             );

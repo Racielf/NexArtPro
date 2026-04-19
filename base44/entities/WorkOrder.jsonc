@@ -166,6 +166,53 @@
       "type": "string",
       "description": "Problems or issues found during execution"
     },
+    "field_notes": {
+      "type": "array",
+      "description": "Timestamped field execution notes with creator attribution",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "execution_checklist": {
+      "type": "array",
+      "description": "Completion checklist items tracking field execution milestones",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "item": {
+            "type": "string",
+            "description": "Checklist item label (e.g. 'Materials delivered', 'Work completed')"
+          },
+          "completed": {
+            "type": "boolean",
+            "default": false
+          },
+          "completed_at": {
+            "type": "string"
+          },
+          "completed_by": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "tasks": {
       "type": "array",
       "description": "Structured task breakdown for job execution tracking",
