@@ -129,6 +129,15 @@
       "default": "none",
       "description": "Follow-up pipeline position"
     },
+    "last_contacted_at": {
+      "type": "string",
+      "description": "Timestamp of last contact attempt (send, resend, copy link)"
+    },
+    "follow_up_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total number of follow-up contacts"
+    },
     "expiration_date": {
       "type": "string",
       "format": "date"

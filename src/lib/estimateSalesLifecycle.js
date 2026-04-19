@@ -76,11 +76,15 @@ export async function generatePublicShareToken(estimate) {
  */
 export async function markEstimateSent(estimateId, { documentConfig, estimate } = {}) {
   const ts = now();
+  const currentFollowUpCount = estimate?.follow_up_count || 0;
+  
   const payload = {
     status: 'sent',
     sent_at: ts,
     sales_stage: deriveSalesStage('sent'),
     last_client_event: 'sent',
+    last_contacted_at: ts,
+    follow_up_count: currentFollowUpCount + 1,
     next_follow_up_at: defaultFollowUpDate(),
     follow_up_status: 'pending',
     follow_up_stage: 'initial',
