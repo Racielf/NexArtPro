@@ -68,12 +68,15 @@ export default function ClientFormModal({ open, onOpenChange, client = null, onS
     } catch (err) {
       if (err?.message?.includes('not found')) {
         toast.error('Customer not found. Creating as new instead...');
-        const saved = await base44.entities.Client.create(data);
-        onOpenChange(false);
-        onSaved?.({ ...data, id: saved?.id });
+        try {
+          const saved = await base44.entities.Client.create(data);
+          onOpenChange(false);
+          onSaved?.({ ...data, id: saved?.id });
+        } catch (createErr) {
+          toast.error(createErr?.message || 'Failed to create customer as fallback');
+        }
       } else {
         toast.error(err?.message || 'Failed to save customer');
-        throw err;
       }
     } finally {
       setSaving(false);

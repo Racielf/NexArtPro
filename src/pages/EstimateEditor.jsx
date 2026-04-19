@@ -112,23 +112,29 @@ export default function EstimateEditor() {
 
   const handleCustomerChange = async (customerData, clientRecord) => {
     setSaving(true);
-    const updated = { ...estimate, ...customerData };
-    
-    // Auto-resolve document language from client preference (only if not already set)
-    const savePayload = { ...updated, updated_by: 'Admin' };
-    if (clientRecord) {
-      const autoLang = getAutoLanguageForClient(estimate, clientRecord);
-      if (autoLang) {
-        savePayload.document_language = autoLang;
-        updated.document_language = autoLang;
+    try {
+      const updated = { ...estimate, ...customerData };
+
+      // Auto-resolve document language from client preference (only if not already set)
+      const savePayload = { ...updated, updated_by: 'Admin' };
+      if (clientRecord) {
+        const autoLang = getAutoLanguageForClient(estimate, clientRecord);
+        if (autoLang) {
+          savePayload.document_language = autoLang;
+          updated.document_language = autoLang;
+        }
       }
+
+      await base44.entities.Estimate.update(estimateId, savePayload);
+      setEstimate(updated);
+      if (clientRecord) setClient(clientRecord);
+      if (customerData.client_name) toast.success('Customer saved');
+    } catch (err) {
+      console.error('[EstimateEditor.handleCustomerChange] Save failed:', err);
+      toast.error(err?.message || 'Failed to save customer');
+    } finally {
+      setSaving(false);
     }
-    
-    await base44.entities.Estimate.update(estimateId, savePayload);
-    setEstimate(updated);
-    if (clientRecord) setClient(clientRecord);
-    setSaving(false);
-    if (customerData.client_name) toast.success('Customer saved');
   };
 
   const handleTemplateChange = async (templateKey) => {
