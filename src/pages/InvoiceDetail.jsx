@@ -18,6 +18,7 @@ import PaymentHistory from '@/components/invoices/PaymentHistory';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { getInvoiceNextAction } from '@/lib/nextActionLogic';
+import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import { AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 export default function InvoiceDetail() {
@@ -261,6 +262,13 @@ export default function InvoiceDetail() {
             {invoice.client_phone && <p className="text-xs text-slate-500 mt-1">📞 {invoice.client_phone}</p>}
             {invoice.client_email && <p className="text-xs text-slate-500 mt-1">✉ {invoice.client_email}</p>}
           </div>
+
+          {/* Execution Evidence */}
+          {workOrder && (
+            <div className="px-4 py-4 border-b border-slate-100">
+              <ExecutionSummaryBlock workOrder={workOrder} compact={true} />
+            </div>
+          )}
 
           {/* Collections Context */}
           {invoice && (

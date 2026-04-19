@@ -5,6 +5,7 @@ import { Loader2, FileText, Hammer, Receipt, Inbox } from 'lucide-react';
 import ClientPortalLogin from '@/components/client-portal/ClientPortalLogin';
 import ClientPortalHeader from '@/components/client-portal/ClientPortalHeader';
 import DocumentCard from '@/components/client-portal/DocumentCard';
+import InvoiceViewModal from '@/components/client-portal/InvoiceViewModal';
 
 function normalizePhone(raw) {
   return (raw || '').replace(/\D/g, '').slice(-10);
@@ -21,6 +22,7 @@ export default function ClientPortal() {
   const [workOrders, setWorkOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [tab, setTab] = useState('all');
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   // Check sessionStorage for existing session
   useEffect(() => {
@@ -103,8 +105,10 @@ export default function ClientPortal() {
   const handleDocClick = (type, doc) => {
     if (type === 'estimate') {
       navigate(`/client-estimate?id=${doc.id}`);
+    } else if (type === 'invoice') {
+      setSelectedInvoice(doc);
     }
-    // Work orders and invoices open in-place (could be expanded later)
+    // Work orders: expand later if needed
   };
 
   if (!authed) {
@@ -131,6 +135,9 @@ export default function ClientPortal() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {selectedInvoice && (
+        <InvoiceViewModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
+      )}
       <ClientPortalHeader clientName={client.name} onLogout={handleLogout} />
 
       <div className="max-w-3xl mx-auto px-4 py-8">
