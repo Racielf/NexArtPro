@@ -7,8 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { logComm } from '@/lib/commTracking';
-import ClientSignaturePad from '@/components/estimates/ClientSignaturePad';
-import ClientChangesRequest from '@/components/estimates/ClientChangesRequest';
+
 import FinalDocumentRenderer from '@/components/documents/FinalDocumentRenderer';
 import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
 import { downloadEstimate } from '@/lib/estimatePrint';
@@ -25,10 +24,7 @@ import {
 import {
   markEstimateViewed,
   approveEstimate,
-  signEstimate,
   declineEstimate,
-  requestEstimateChanges,
-  recordFollowUp,
 } from '@/lib/estimateSalesLifecycle';
 
 export default function ClientEstimateView() {
@@ -38,8 +34,7 @@ export default function ClientEstimateView() {
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
-  const [showSignPad, setShowSignPad] = useState(false);
-  const [showChanges, setShowChanges] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -100,57 +95,13 @@ export default function ClientEstimateView() {
   const handleDecline = async () => {
     setActing(true);
     try {
-      const updates = await declineEstimate(estimate.id, { declinedReason: '' });
+      const updates = await declineEstimate(estimate.id, { declinedReason });
       setEstimate(e => ({ ...e, ...updates }));
       notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
       toast.success('Estimate declined. Thank you for letting us know.');
     } catch (err) {
       console.warn('[handleDecline] failed:', err?.message);
       toast.error('Could not decline. Please try again.');
-    } finally {
-      setActing(false);
-    }
-  };
-
-  const handleSign = async ({ base64, signerName, signerEmail }) => {
-    setShowSignPad(false);
-    setActing(true);
-    try {
-      const updates = await signEstimate(estimate.id, { signerName, signerEmail, signatureBase64: base64, estimate });
-      setEstimate(e => ({ ...e, ...updates }));
-      notifyEstimateSigned(estimate, { signerName, signerEmail }).catch(err => console.warn('[notify] signed failed:', err?.message));
-      toast.success('Estimate signed successfully!');
-    } catch (err) {
-      console.warn('[handleSign] failed:', err?.message);
-      toast.error('Could not save signature. Please try again.');
-    } finally {
-      setActing(false);
-    }
-  };
-
-  const handleChangesRequest = async (note) => {
-    setShowChanges(false);
-    setActing(true);
-    try {
-      // Archive current version
-      await base44.entities.EstimateVersionHistory.create({
-        estimate_id: estimate.id,
-        estimate_number: estimate.estimate_number,
-        version: estimate.version || 1,
-        client_name: estimate.client_name,
-        status_at_archive: estimate.status,
-        archived_reason: 'changes_requested',
-        changes_note: note,
-        snapshot: estimate,
-        total_at_archive: estimate.total || 0,
-      });
-      const updates = await requestEstimateChanges(estimate.id, { note, currentVersion: estimate.version });
-      setEstimate(e => ({ ...e, ...updates }));
-      notifyEstimateChangesRequested(estimate, note).catch(err => console.warn('[notify] changes failed:', err?.message));
-      toast.success('Change request sent! We\'ll review and send a revised estimate.');
-    } catch (err) {
-      console.warn('[handleChangesRequest] failed:', err?.message);
-      toast.error('Could not send request. Please try again.');
     } finally {
       setActing(false);
     }
@@ -178,17 +129,15 @@ export default function ClientEstimateView() {
     </div>
   );
 
-  const isFinal = ['approved', 'signed', 'declined', 'converted'].includes(estimate.status);
-  const canAct = !isFinal && estimate.status !== 'changes_requested';
+  const isFinal = ['approved', 'declined'].includes(estimate.status);
+  const canAct = !isFinal;
 
   const dc = getDocTypeConfig(estimate?.document_type);
   const docLabel = dc.label;
 
   const statusBanner = {
     approved: { bg: 'bg-green-50 border-green-200', icon: <CheckCircle className="w-5 h-5 text-green-600" />, title: `${docLabel} Approved`, body: "Thank you! We'll be in touch soon to schedule the work." },
-    signed: { bg: 'bg-green-50 border-green-200', icon: <PenLine className="w-5 h-5 text-green-600" />, title: `Signed by ${estimate.signer_name || 'you'}`, body: `Signed on ${estimate.signed_at ? new Date(estimate.signed_at).toLocaleString() : ''}` },
     declined: { bg: 'bg-red-50 border-red-200', icon: <XCircle className="w-5 h-5 text-red-500" />, title: `${docLabel} Declined`, body: 'We appreciate your feedback. Contact us if you change your mind.' },
-    changes_requested: { bg: 'bg-amber-50 border-amber-200', icon: <MessageSquare className="w-5 h-5 text-amber-500" />, title: 'Changes Requested', body: `We received your request and will send a revised ${docLabel.toLowerCase()} soon.` },
     viewed: { bg: 'bg-blue-50 border-blue-200', icon: <Eye className="w-5 h-5 text-blue-500" />, title: `${docLabel} Viewed`, body: 'Please review below and take action when ready.' },
   }[estimate.status];
 
@@ -222,38 +171,34 @@ export default function ClientEstimateView() {
       {canAct && (
         <div className="px-8 py-7 bg-slate-50 border border-slate-200 rounded-xl">
           <p className="text-sm text-slate-500 mb-5 text-center">Please review this estimate and choose an action below.</p>
-          <div className="flex flex-col gap-3">
-            <Button
-              onClick={() => setShowSignPad(true)}
-              disabled={acting}
-              className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 gap-2 text-sm font-semibold"
-            >
-              <PenLine className="w-4 h-4" />Sign &amp; Accept Estimate
-            </Button>
+          <div className="space-y-3">
             <Button
               onClick={handleApprove}
               disabled={acting}
-              variant="outline"
-              className="w-full border-green-300 text-green-700 hover:bg-green-50 rounded-xl h-10 gap-2 text-sm"
+              className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 gap-2 text-sm font-semibold"
             >
-              <CheckCircle className="w-4 h-4" />Approve without Signature
+              <CheckCircle className="w-4 h-4" />Approve
             </Button>
-            <Button
-              onClick={() => setShowChanges(true)}
-              disabled={acting}
-              variant="outline"
-              className="w-full border-amber-300 text-amber-700 hover:bg-amber-50 rounded-xl h-10 gap-2 text-sm"
-            >
-              <MessageSquare className="w-4 h-4" />Request Changes
-            </Button>
-            <Button
-              onClick={handleDecline}
-              disabled={acting}
-              variant="ghost"
-              className="w-full text-red-500 hover:bg-red-50 rounded-xl h-9 gap-2 text-sm"
-            >
-              <XCircle className="w-4 h-4" />Decline
-            </Button>
+            <div className="space-y-2">
+              <div className="relative">
+                <textarea
+                  placeholder="Optional: Tell us why you're declining (optional)"
+                  value={declineReason}
+                  onChange={(e) => setDeclineReason(e.target.value)}
+                  disabled={acting}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-1 focus:ring-red-500 focus:outline-none"
+                  rows="2"
+                />
+              </div>
+              <Button
+                onClick={handleDecline}
+                disabled={acting}
+                variant="outline"
+                className="w-full border-red-300 text-red-600 hover:bg-red-50 rounded-xl h-10 gap-2 text-sm"
+              >
+                <XCircle className="w-4 h-4" />Decline
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -282,18 +227,7 @@ export default function ClientEstimateView() {
           />
       </div>
 
-      {showSignPad && (
-        <ClientSignaturePad
-          onSign={handleSign}
-          onCancel={() => setShowSignPad(false)}
-        />
-      )}
-      {showChanges && (
-        <ClientChangesRequest
-          onSubmit={handleChangesRequest}
-          onCancel={() => setShowChanges(false)}
-        />
-      )}
+
     </>
   );
 }

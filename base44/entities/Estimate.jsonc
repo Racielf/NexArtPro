@@ -61,82 +61,45 @@
       "type": "string",
       "enum": [
         "draft",
-        "scheduled",
-        "on_my_way",
-        "visit_completed",
         "sent",
         "viewed",
-        "changes_requested",
         "approved",
-        "signed",
-        "declined",
-        "converted"
+        "declined"
       ],
       "default": "draft"
     },
-    "sales_stage": {
+    "viewed_at": {
       "type": "string",
-      "enum": [
-        "lead",
-        "presented",
-        "engaged",
-        "negotiation",
-        "won",
-        "lost",
-        "converted"
-      ],
-      "default": "lead",
-      "description": "Sales pipeline stage derived from status transitions"
+      "description": "Timestamp when client first opened estimate"
     },
-    "view_count": {
-      "type": "number",
-      "default": 0,
-      "description": "Number of times client has viewed this estimate"
-    },
-    "last_viewed_at": {
+    "approved_at": {
       "type": "string",
-      "description": "Timestamp of the most recent client view"
+      "description": "Timestamp when client approved"
     },
-    "last_client_event": {
+    "declined_at": {
       "type": "string",
-      "description": "Last client action: viewed, approved, signed, declined, changes_requested"
+      "description": "Timestamp when client declined"
     },
-    "next_follow_up_at": {
+    "declined_reason": {
       "type": "string",
-      "description": "Suggested next follow-up datetime"
+      "description": "Reason provided by client when declining"
     },
-    "follow_up_status": {
+    "accepted_by": {
       "type": "string",
-      "enum": [
-        "none",
-        "pending",
-        "action_required",
-        "completed"
-      ],
-      "default": "none",
-      "description": "Current follow-up state"
-    },
-    "follow_up_stage": {
-      "type": "string",
-      "enum": [
-        "none",
-        "initial",
-        "post_view",
-        "revision",
-        "won",
-        "lost"
-      ],
-      "default": "none",
-      "description": "Follow-up pipeline position"
+      "description": "Name of person who approved estimate"
     },
     "last_contacted_at": {
       "type": "string",
-      "description": "Timestamp of last contact attempt (send, resend, copy link)"
+      "description": "Timestamp of last send/contact event"
     },
     "follow_up_count": {
       "type": "number",
       "default": 0,
-      "description": "Total number of follow-up contacts"
+      "description": "Total number of send/contact events"
+    },
+    "next_follow_up_date": {
+      "type": "string",
+      "description": "Suggested next follow-up date"
     },
     "expiration_date": {
       "type": "string",
@@ -440,60 +403,9 @@
     "sent_at": {
       "type": "string"
     },
-    "viewed_at": {
-      "type": "string"
-    },
-    "approved_at": {
-      "type": "string"
-    },
-    "approved_by": {
-      "type": "string",
-      "description": "Email or name of admin who approved manually"
-    },
-    "approval_note": {
-      "type": "string",
-      "description": "Internal note when manually approved"
-    },
-    "declined_at": {
-      "type": "string",
-      "description": "Timestamp when estimate was declined"
-    },
-    "declined_reason": {
-      "type": "string"
-    },
-    "changes_requested_at": {
-      "type": "string"
-    },
-    "changes_requested_note": {
-      "type": "string"
-    },
     "version": {
       "type": "number",
       "default": 1
-    },
-    "signer_name": {
-      "type": "string"
-    },
-    "signer_email": {
-      "type": "string"
-    },
-    "signer_ip": {
-      "type": "string"
-    },
-    "signed_at": {
-      "type": "string"
-    },
-    "signature_image_base64": {
-      "type": "string"
-    },
-    "signature_on_file": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether a signature was captured at acceptance"
-    },
-    "acceptance_proof": {
-      "type": "object",
-      "description": "Immutable acceptance proof snapshot \u2014 client-safe commercial/legal record of acceptance event"
     },
     "scheduled_date": {
       "type": "string",
