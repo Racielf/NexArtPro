@@ -6,6 +6,8 @@ import {
   Send, CheckCircle, XCircle, RotateCcw, Eye, Printer, Download,
   FileText, ClipboardList, ChevronRight, AlertCircle, FileEdit
 } from 'lucide-react';
+import ProposalNextAction from '@/components/proposals/ProposalNextAction';
+import ProposalFollowUpWidget from '@/components/proposals/ProposalFollowUpWidget';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { mapProposalToEstimate } from '@/lib/proposalDocumentMapper';
 import ProposalAdjustmentModal from '@/components/proposals/ProposalAdjustmentModal';
@@ -202,9 +204,13 @@ function ApplyAdjustmentBtn({ proposal, onConverted }) {
   );
 }
 
-export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenPreview, onOpenSend, pdfElementRef }) {
+export default function ProposalActionsPanel({ proposal: proposalProp, onStatusChange, onOpenPreview, onOpenSend, pdfElementRef }) {
   const navigate = useNavigate();
+  const [proposal, setProposal] = useState(proposalProp);
   const [loading, setLoading] = useState(false);
+
+  // Keep local proposal in sync when parent updates
+  useEffect(() => { setProposal(proposalProp); }, [proposalProp]);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [showAdjustment, setShowAdjustment] = useState(false);
   const [lossModalOpen, setLossModalOpen] = useState(false);
@@ -287,6 +293,11 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${badge.cls}`}>
           {badge.label}
         </span>
+      </div>
+
+      {/* Next Sales Action — decision guidance */}
+      <div className="px-3 pt-3">
+        <ProposalNextAction proposal={proposal} />
       </div>
 
       <div className="flex-1 px-3 py-3 space-y-1.5">
@@ -442,6 +453,17 @@ export default function ProposalActionsPanel({ proposal, onStatusChange, onOpenP
               cls="text-amber-700 border-amber-200 hover:bg-amber-50" />
           </>
         )}
+
+        {/* Follow-up Widget — active proposals only */}
+        <div className="pt-2">
+          <ProposalFollowUpWidget
+            proposal={proposal}
+            onUpdate={(updated) => {
+              setProposal(updated);
+              onStatusChange(updated.status, updated);
+            }}
+          />
+        </div>
 
         {/* Metadata */}
         <div className="pt-3 space-y-1 border-t border-slate-100 mt-2">

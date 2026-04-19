@@ -113,7 +113,7 @@
     },
     "proposal_details": {
       "type": "object",
-      "description": "Structured proposal content: scope, inclusions, exclusions, timeline. Replaces legacy JSON-in-notes pattern.",
+      "description": "Structured proposal content: scope, inclusions, exclusions, timeline.",
       "properties": {
         "scopeOfWork": {
           "type": "string"
@@ -172,16 +172,14 @@
     },
     "signature_on_file": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether a signature was captured at acceptance"
+      "default": false
     },
     "signature_image_base64": {
-      "type": "string",
-      "description": "Client signature image if drawn"
+      "type": "string"
     },
     "acceptance_proof": {
       "type": "object",
-      "description": "Immutable acceptance proof snapshot \u2014 client-safe commercial/legal record"
+      "description": "Immutable acceptance proof snapshot"
     },
     "rejected_at": {
       "type": "string"
@@ -202,15 +200,30 @@
       "type": "number"
     },
     "adjustment_estimate_id": {
-      "type": "string",
-      "description": "Estimate created for negotiation/adjustment"
+      "type": "string"
     },
     "adjustment_estimate_number": {
       "type": "number"
     },
     "adjustment_reason": {
+      "type": "string"
+    },
+    "last_follow_up_at": {
       "type": "string",
-      "description": "Reason/change log when adjustment estimate was requested"
+      "description": "Timestamp of last manual follow-up action"
+    },
+    "next_follow_up_at": {
+      "type": "string",
+      "description": "Scheduled next follow-up datetime"
+    },
+    "follow_up_note": {
+      "type": "string",
+      "description": "Last follow-up note or memo"
+    },
+    "follow_up_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total number of follow-ups performed"
     },
     "company_id": {
       "type": "string",
