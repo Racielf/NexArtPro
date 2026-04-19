@@ -264,7 +264,6 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         <><Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Confirm & Send'}</>
       )}
     </Button>,
-    <DocumentCloseButton key="close" onClick={onClose} />,
   ];
 
   const banners = (
