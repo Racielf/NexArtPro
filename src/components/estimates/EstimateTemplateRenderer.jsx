@@ -4,6 +4,7 @@ import { buildEstimateDocumentViewModel } from '@/lib/buildEstimateDocumentViewM
 import CleanTemplate from './templates/CleanTemplate';
 import PremiumTemplate from './templates/PremiumTemplate';
 import ModernCardTemplate from './templates/ModernCardTemplate';
+import FieldClassicTemplate from './templates/FieldClassicTemplate';
 
 /**
  * EstimateTemplateRenderer — Thin dispatcher.
@@ -17,6 +18,7 @@ import ModernCardTemplate from './templates/ModernCardTemplate';
  *   clean        — Modern professional contractor estimate
  *   premium      — Presentation-level formal proposal
  *   modern_card  — Contemporary SaaS-style card layout
+ *   field_classic — Contractor field-style compact header layout
  *
  * Legacy backward-compat mapping:
  *   standard, minimal, professional, detailed → clean
@@ -30,6 +32,7 @@ const TEMPLATE_MAP = {
   clean: 'clean',
   premium: 'premium',
   modern_card: 'modern_card',
+  field_classic: 'field_classic',
   // Legacy → new
   standard: 'clean',
   minimal: 'clean',
@@ -65,6 +68,8 @@ export default function EstimateTemplateRenderer({ estimate, template = 'clean',
       return <PremiumTemplate vm={vm} />;
     case 'modern_card':
       return <ModernCardTemplate vm={vm} />;
+    case 'field_classic':
+      return <FieldClassicTemplate vm={vm} />;
     case 'clean':
     default:
       return <CleanTemplate vm={vm} />;

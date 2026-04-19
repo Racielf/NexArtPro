@@ -26,6 +26,11 @@ export const TEMPLATES = {
     description: 'Contemporary card layout — modular, SaaS-style sections',
     key: 'modern_card',
   },
+  field_classic: {
+    name: 'Field Classic',
+    description: 'Contractor field-style — compact header, practical layout',
+    key: 'field_classic',
+  },
 };
 
 export const TEMPLATE_KEYS = Object.keys(TEMPLATES);

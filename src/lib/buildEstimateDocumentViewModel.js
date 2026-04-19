@@ -44,7 +44,7 @@ const STATUS_COLORS = {
 
 // ─── Template alias normalization ──────────────────────────────────────────────
 const TEMPLATE_ALIASES = { professional: 'clean', detailed: 'clean', standard: 'clean', minimal: 'clean', modern: 'modern_card', executive: 'premium', compact: 'modern_card', pro: 'modern_card' };
-const VALID_TEMPLATES = ['clean', 'premium', 'modern_card'];
+const VALID_TEMPLATES = ['clean', 'premium', 'modern_card', 'field_classic'];
 
 function resolveTemplate(template) {
   if (VALID_TEMPLATES.includes(template)) return template;
