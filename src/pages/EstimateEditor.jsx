@@ -89,6 +89,7 @@ export default function EstimateEditor() {
       await base44.entities.Estimate.update(estimateId, { ...sanitized, updated_by: 'Admin' });
       setEstimate(sanitized);
       setSavedAt(Date.now());
+      toast.success(`Estimate #${sanitized.estimate_number} saved`);
     } catch (err) {
       console.error('[EstimateEditor] Save failed:', err);
       setSaveError(true);
