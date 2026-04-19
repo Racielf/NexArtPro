@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Printer, Download, Send, CheckCircle, Link } from 'lucide-react';
 import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
@@ -66,21 +66,19 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
    const [lossModalOpen, setLossModalOpen] = useState(false);
    const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [], materialsWithoutCost: [] });
    const [attachWarningOpen, setAttachWarningOpen] = useState(false);
-    const [attachWarningReasons, setAttachWarningReasons] = useState([]);
-    const [includedAttachmentIds, setIncludedAttachmentIds] = useState(
-      (estimate?.attachments || []).filter(a => a.intent === 'send_to_client').map(a => a.id) || []
-    );
+     const [attachWarningReasons, setAttachWarningReasons] = useState([]);
+     const [includedAttachmentIds, setIncludedAttachmentIds] = useState(
+       (estimate?.attachments || []).filter(a => a.intent === 'send_to_client').map(a => a.id) || []
+     );
+   const [publicToken, setPublicToken] = useState(null);
 
-  if (!open) return null;
+   useEffect(() => {
+     if (estimate?.id && estimate?.client_email && !publicToken) {
+       generatePublicShareToken(estimate).then(setPublicToken);
+     }
+   }, [estimate?.id, estimate?.client_email, publicToken]);
 
-  // Generate public share token (async state would complicate this, so compute in effect)
-  const [publicToken, setPublicToken] = React.useState(null);
-
-  React.useEffect(() => {
-    if (estimate?.id && estimate?.client_email && !publicToken) {
-      generatePublicShareToken(estimate).then(setPublicToken);
-    }
-  }, [estimate?.id, estimate?.client_email, publicToken]);
+   if (!open) return null;
 
   const clientLink = publicToken 
     ? `${window.location.origin}/client-estimate?token=${publicToken}`

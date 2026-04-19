@@ -1,7 +1,7 @@
 import { Resend } from 'npm:resend@3.2.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const apiKey = Deno.env.get('RESEND_API_KEY');
+const apiKey = globalThis.Deno?.env?.get('RESEND_API_KEY') || Deno.env.get('RESEND_API_KEY');
 const resend = new Resend(apiKey);
 
 export default async (req) => {
