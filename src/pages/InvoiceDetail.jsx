@@ -13,6 +13,8 @@ import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRen
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import PaymentReceiptPreviewModal from '@/components/payments/PaymentReceiptPreviewModal';
 import { buildReceipt } from '@/components/payments/paymentReceiptUtils';
+import PaymentInputModal from '@/components/invoices/PaymentInputModal';
+import PaymentHistory from '@/components/invoices/PaymentHistory';
 
 export default function InvoiceDetail() {
   const navigate = useNavigate();
@@ -25,6 +27,7 @@ export default function InvoiceDetail() {
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [receiptModal, setReceiptModal] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   useEffect(() => { loadInvoice(); }, []);
 
@@ -143,6 +146,12 @@ export default function InvoiceDetail() {
     {receiptModal && receipt && (
       <PaymentReceiptPreviewModal receipt={receipt} onClose={() => setReceiptModal(false)} />
     )}
+    <PaymentInputModal
+      open={paymentModalOpen}
+      onClose={() => setPaymentModalOpen(false)}
+      invoice={invoice}
+      onPaymentAdded={(updates) => setInvoice(i => ({ ...i, ...updates }))}
+    />
     <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 overflow-hidden">
       {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 flex items-center justify-between px-5 py-3 flex-shrink-0 shadow-sm">
@@ -259,7 +268,21 @@ export default function InvoiceDetail() {
            {invoice.status === 'paid' && (
              <p className="text-xs text-green-600 font-bold">✓ PAID IN FULL</p>
            )}
+           {invoice.status !== 'paid' && (
+             <button onClick={() => setPaymentModalOpen(true)}
+               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-lg text-sm transition-colors mt-2">
+               + Add Payment
+             </button>
+           )}
           </div>
+
+          {/* Payments History */}
+          {(invoice.payments?.length > 0 || invoice.amount_paid > 0) && (
+            <div className="px-4 py-4 border-b border-slate-100">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Payment History</p>
+              <PaymentHistory invoice={invoice} onPaymentRemoved={(updates) => setInvoice(i => ({ ...i, ...updates }))} />
+            </div>
+          )}
           </div>
           </div>
           </div>

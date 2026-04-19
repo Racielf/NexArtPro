@@ -10,6 +10,7 @@ import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2 } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import CashflowSummary from '@/components/invoices/CashflowSummary';
 
 export default function Invoices() {
   const navigate = useNavigate();
@@ -133,31 +134,8 @@ export default function Invoices() {
       <PageHeader title="Invoices" subtitle={`${invoices.length} total`} />
 
       <PageShell>
-        {/* Summary */}
-        <div className="grid grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Collected</p>
-                <p className="text-xl font-bold text-green-600">${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Pending</p>
-                <p className="text-xl font-bold text-orange-600">${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Cashflow Summary */}
+        <CashflowSummary />
 
         <div className="flex items-center gap-3">
           {filtered.length > 0 && (
