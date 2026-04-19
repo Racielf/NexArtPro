@@ -95,7 +95,7 @@ export default function ClientEstimateView() {
   const handleDecline = async () => {
     setActing(true);
     try {
-      const updates = await declineEstimate(estimate.id, { declinedReason });
+      const updates = await declineEstimate(estimate.id, { declinedReason: declineReason });
       setEstimate(e => ({ ...e, ...updates }));
       notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
       toast.success('Estimate declined. Thank you for letting us know.');
