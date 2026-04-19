@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { MapPin, Mail, Phone, Bell, BellOff, Pencil, Search, UserPlus, Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ClientFormModal from '@/components/proposals/ClientFormModal';
+import ClientCRMSummary from '@/components/shared/ClientCRMSummary';
+import ClientRecentActivity from '@/components/shared/ClientRecentActivity';
 
 export default function ProposalSidebarCustomer({ proposal, onCustomerChange }) {
   const [clients, setClients] = useState([]);
@@ -160,6 +162,20 @@ export default function ProposalSidebarCustomer({ proposal, onCustomerChange }) 
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
+          </div>
+
+          {/* CRM CONTEXT */}
+          <div className="px-3 py-3 border-t border-slate-100 bg-white">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-3">Commercial Context</p>
+            {proposal?.client_id && (
+              <>
+                <ClientCRMSummary clientId={proposal.client_id} clientName={proposal.client_name} />
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-2">Recent Activity</p>
+                  <ClientRecentActivity clientId={proposal.client_id} limit={3} />
+                </div>
+              </>
+            )}
           </div>
 
           {address && (
