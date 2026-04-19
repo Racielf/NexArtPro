@@ -17,6 +17,7 @@ import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHis
 import ProposalPricingOptions from '@/components/proposals/ProposalPricingOptions';
 import ProposalPresetPicker from '@/components/proposals/ProposalPresetPicker';
 import ProposalPresentationModeSelector from '@/components/proposals/ProposalPresentationModeSelector';
+import ContentLibraryPopover from '@/components/proposals/ContentLibraryPopover';
 
 const STATUS_BADGE = {
   draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
@@ -354,6 +355,14 @@ export default function ProposalEditor() {
                   placeholder="Describe the work to be performed in detail..."
                   className="w-full h-24 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                 />
+                {!isPreview && (
+                  <ContentLibraryPopover
+                    type="scope"
+                    currentValue={proposalDetails.scopeOfWork}
+                    onInsert={v => setProposalDetails(p => ({ ...p, scopeOfWork: v }))}
+                    label="Scope of Work"
+                  />
+                )}
               </div>
 
               {/* Inclusions */}
@@ -365,6 +374,14 @@ export default function ProposalEditor() {
                   placeholder="List items included in this proposal (one per line recommended)..."
                   className="w-full h-24 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                 />
+                {!isPreview && (
+                  <ContentLibraryPopover
+                    type="inclusion"
+                    currentValue={proposalDetails.inclusions}
+                    onInsert={v => setProposalDetails(p => ({ ...p, inclusions: v }))}
+                    label="What's Included"
+                  />
+                )}
               </div>
 
               {/* Exclusions */}
@@ -376,6 +393,14 @@ export default function ProposalEditor() {
                   placeholder="List items NOT included in this proposal..."
                   className="w-full h-24 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                 />
+                {!isPreview && (
+                  <ContentLibraryPopover
+                    type="exclusion"
+                    currentValue={proposalDetails.exclusions}
+                    onInsert={v => setProposalDetails(p => ({ ...p, exclusions: v }))}
+                    label="What's Excluded"
+                  />
+                )}
               </div>
 
               {/* Timeline */}
@@ -387,6 +412,14 @@ export default function ProposalEditor() {
                   placeholder="e.g. Start: Jan 15, 2026 | Duration: 5 days | Completion: Jan 20, 2026"
                   className="w-full h-20 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
                 />
+                {!isPreview && (
+                  <ContentLibraryPopover
+                    type="timeline"
+                    currentValue={proposalDetails.timeline}
+                    onInsert={v => setProposalDetails(p => ({ ...p, timeline: v }))}
+                    label="Project Timeline"
+                  />
+                )}
               </div>
 
               {/* Investment Options — price anchoring (optional) */}
