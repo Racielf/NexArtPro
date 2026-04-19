@@ -91,3 +91,45 @@ export async function createNewVersionFromEstimate(estimate, base44) {
     return null;
   }
 }
+
+/**
+ * updateEstimateWithVersionGuard — Central guarded update path
+ * If locked: creates new version first, applies changes to new version, returns new version
+ * If unlocked: updates current estimate normally, returns updated estimate
+ * 
+ * @param {Object} estimate - current estimate
+ * @param {Object} changes - partial changes to apply
+ * @param {Object} base44 - Base44 SDK client
+ * @param {Function} onNavigate - optional callback to navigate to new version
+ * @returns {Promise<Object|null>} updated/new estimate or null on error
+ */
+export async function updateEstimateWithVersionGuard(estimate, changes, base44, onNavigate) {
+  if (!estimate || !base44) return null;
+
+  try {
+    // If NOT locked, update current estimate directly
+    if (!isEstimateLocked(estimate)) {
+      const payload = { ...changes, updated_by: 'Admin' };
+      await base44.entities.Estimate.update(estimate.id, payload);
+      return { ...estimate, ...changes };
+    }
+
+    // If locked: create new version, apply changes to it, return new version
+    const newVersion = await createNewVersionFromEstimate(estimate, base44);
+    if (!newVersion) return null;
+
+    // Apply requested changes to new version
+    const newPayload = { ...changes, updated_by: 'Admin' };
+    await base44.entities.Estimate.update(newVersion.id, newPayload);
+
+    // Navigate to new version if callback provided
+    if (onNavigate) {
+      onNavigate(newVersion.id);
+    }
+
+    return { ...newVersion, ...changes };
+  } catch (err) {
+    console.error('[updateEstimateWithVersionGuard] failed:', err?.message);
+    return null;
+  }
+}

@@ -23,7 +23,7 @@ import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHis
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
-import { isEstimateLocked, createNewVersionFromEstimate } from '@/lib/estimateVersioning';
+import { isEstimateLocked, createNewVersionFromEstimate, updateEstimateWithVersionGuard } from '@/lib/estimateVersioning';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -146,22 +146,31 @@ export default function EstimateEditor() {
   const handleCustomerChange = async (customerData, clientRecord) => {
     setSaving(true);
     try {
-      const updated = { ...estimate, ...customerData };
+      let finalData = { ...customerData };
 
       // Auto-resolve document language from client preference (only if not already set)
-      const savePayload = { ...updated, updated_by: 'Admin' };
       if (clientRecord) {
         const autoLang = getAutoLanguageForClient(estimate, clientRecord);
         if (autoLang) {
-          savePayload.document_language = autoLang;
-          updated.document_language = autoLang;
+          finalData.document_language = autoLang;
         }
       }
 
-      await base44.entities.Estimate.update(estimateId, savePayload);
-      setEstimate(updated);
-      if (clientRecord) setClient(clientRecord);
-      if (customerData.client_name) toast.success('Customer saved');
+      // Use guarded path for locked estimates
+      const result = await updateEstimateWithVersionGuard(estimate, finalData, base44, (newEstimateId) => {
+        if (isEstimateLocked(estimate)) {
+          toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
+          navigate(`/estimate-editor?id=${newEstimateId}`);
+        }
+      });
+
+      if (result) {
+        setEstimate(result);
+        if (clientRecord) setClient(clientRecord);
+        if (customerData.client_name && !isEstimateLocked(estimate)) toast.success('Customer saved');
+      } else {
+        toast.error('Failed to save customer');
+      }
     } catch (err) {
       console.error('[EstimateEditor.handleCustomerChange] Save failed:', err);
       toast.error(err?.message || 'Failed to save customer');
@@ -172,22 +181,40 @@ export default function EstimateEditor() {
 
   const handleTemplateChange = async (templateKey) => {
     const updatedConfig = { ...(estimate.document_config || {}), template: templateKey };
-    const updated = { ...estimate, document_config: updatedConfig };
-    setEstimate(updated);
-    await base44.entities.Estimate.update(estimateId, { document_config: updatedConfig });
+    const result = await updateEstimateWithVersionGuard(estimate, { document_config: updatedConfig }, base44, (newEstimateId) => {
+      if (isEstimateLocked(estimate)) {
+        toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
+        navigate(`/estimate-editor?id=${newEstimateId}`);
+      }
+    });
+    if (result) {
+      setEstimate(result);
+    }
   };
 
   const handleDocumentOptionsSave = async (newOptions) => {
     const updatedConfig = { ...(estimate.document_config || {}), options: newOptions };
-    const updated = { ...estimate, document_config: updatedConfig };
-    setEstimate(updated);
-    await base44.entities.Estimate.update(estimateId, { document_config: updatedConfig });
+    const result = await updateEstimateWithVersionGuard(estimate, { document_config: updatedConfig }, base44, (newEstimateId) => {
+      if (isEstimateLocked(estimate)) {
+        toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
+        navigate(`/estimate-editor?id=${newEstimateId}`);
+      }
+    });
+    if (result) {
+      setEstimate(result);
+    }
   };
 
   const handleLanguageChange = async (lang) => {
-    const updated = { ...estimate, document_language: lang };
-    setEstimate(updated);
-    await base44.entities.Estimate.update(estimateId, { document_language: lang });
+    const result = await updateEstimateWithVersionGuard(estimate, { document_language: lang }, base44, (newEstimateId) => {
+      if (isEstimateLocked(estimate)) {
+        toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
+        navigate(`/estimate-editor?id=${newEstimateId}`);
+      }
+    });
+    if (result) {
+      setEstimate(result);
+    }
   };
 
   const handleCancel = () => {
@@ -359,9 +386,15 @@ export default function EstimateEditor() {
                 client={client}
                 onCustomerChange={handleCustomerChange}
                 onAttachmentsUpdate={async (newAttachments) => {
-                  const updated = { ...estimate, attachments: newAttachments };
-                  setEstimate(updated);
-                  await base44.entities.Estimate.update(estimateId, { attachments: newAttachments });
+                  const result = await updateEstimateWithVersionGuard(estimate, { attachments: newAttachments }, base44, (newEstimateId) => {
+                    if (isEstimateLocked(estimate)) {
+                      toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
+                      navigate(`/estimate-editor?id=${newEstimateId}`);
+                    }
+                  });
+                  if (result) {
+                    setEstimate(result);
+                  }
                 }}
               />
             </>
@@ -414,21 +447,39 @@ export default function EstimateEditor() {
             {estimate.document_type === 'BID' && (
               <div className="flex items-center gap-2">
                 <input
-                  type="text"
-                  value={jobNumber}
-                  onChange={e => setJobNumber(e.target.value)}
-                  onBlur={() => base44.entities.Estimate.update(estimateId, { job_number: jobNumber })}
-                  placeholder="Job #"
-                  className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
-                />
-                <input
-                  type="text"
-                  value={planReference}
-                  onChange={e => setPlanReference(e.target.value)}
-                  onBlur={() => base44.entities.Estimate.update(estimateId, { plan_reference: planReference })}
-                  placeholder="Plan Ref"
-                  className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
-                />
+                   type="text"
+                   value={jobNumber}
+                   onChange={e => setJobNumber(e.target.value)}
+                   onBlur={() => {
+                     updateEstimateWithVersionGuard(estimate, { job_number: jobNumber }, base44, (newEstimateId) => {
+                       if (isEstimateLocked(estimate)) {
+                         toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
+                         navigate(`/estimate-editor?id=${newEstimateId}`);
+                       }
+                     }).then(result => {
+                       if (result) setEstimate(result);
+                     }).catch(err => console.error('[jobNumber onBlur] failed:', err));
+                   }}
+                   placeholder="Job #"
+                   className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+                 />
+                 <input
+                   type="text"
+                   value={planReference}
+                   onChange={e => setPlanReference(e.target.value)}
+                   onBlur={() => {
+                     updateEstimateWithVersionGuard(estimate, { plan_reference: planReference }, base44, (newEstimateId) => {
+                       if (isEstimateLocked(estimate)) {
+                         toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
+                         navigate(`/estimate-editor?id=${newEstimateId}`);
+                       }
+                     }).then(result => {
+                       if (result) setEstimate(result);
+                     }).catch(err => console.error('[planReference onBlur] failed:', err));
+                   }}
+                   placeholder="Plan Ref"
+                   className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+                 />
               </div>
             )}
             <button
