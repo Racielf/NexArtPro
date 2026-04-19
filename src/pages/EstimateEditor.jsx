@@ -21,6 +21,7 @@ import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButto
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
+import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
 
 export default function EstimateEditor() {
@@ -313,16 +314,23 @@ export default function EstimateEditor() {
               </button>
             </div>
           ) : (
-            <EstimateSidebarCustomer
-              estimate={estimate}
-              client={client}
-              onCustomerChange={handleCustomerChange}
-              onAttachmentsUpdate={async (newAttachments) => {
-                const updated = { ...estimate, attachments: newAttachments };
-                setEstimate(updated);
-                await base44.entities.Estimate.update(estimateId, { attachments: newAttachments });
-              }}
-            />
+            <>
+              {estimate.id && (
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <TransmissionPanel estimateId={estimate.id} />
+                </div>
+              )}
+              <EstimateSidebarCustomer
+                estimate={estimate}
+                client={client}
+                onCustomerChange={handleCustomerChange}
+                onAttachmentsUpdate={async (newAttachments) => {
+                  const updated = { ...estimate, attachments: newAttachments };
+                  setEstimate(updated);
+                  await base44.entities.Estimate.update(estimateId, { attachments: newAttachments });
+                }}
+              />
+            </>
           )}
         </div>
 

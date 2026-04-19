@@ -10,6 +10,7 @@ import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRen
 import BidDocumentRenderer from '@/components/documents/BidDocumentRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import SendEstimateModal from '@/components/estimates/SendEstimateModal';
+import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 
 export default function SendEstimate() {
   const navigate = useNavigate();
@@ -115,6 +116,13 @@ export default function SendEstimate() {
                 <input type="checkbox" defaultChecked className="accent-primary" />
                 <span className="text-xs text-slate-700">Option #1</span>
               </div>
+            </div>
+          )}
+
+          {/* Transmissions */}
+          {estimate && (
+            <div className="px-4 py-4 border-b border-slate-200">
+              <TransmissionPanel estimateId={estimate.id} />
             </div>
           )}
 
