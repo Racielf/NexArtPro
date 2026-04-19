@@ -31,10 +31,11 @@
       "type": "string",
       "enum": [
         "sent",
-        "failed"
+        "failed",
+        "bounced"
       ],
       "default": "sent",
-      "description": "Transmission status: sent = successful delivery to provider, failed = error before/during send"
+      "description": "Transmission status: sent = successful delivery to provider, failed = error before/during send, bounced = permanent bounce from recipient"
     },
     "sent_at": {
       "type": "string",
@@ -45,6 +46,26 @@
       "type": "string",
       "format": "date-time",
       "description": "Timestamp when send failed (null if successful)"
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when email was delivered to recipient (from Resend webhook)"
+    },
+    "opened_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when email was opened by recipient (from Resend webhook)"
+    },
+    "clicked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when link was clicked in email (from Resend webhook)"
+    },
+    "bounced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when email bounced (from Resend webhook)"
     },
     "error_message": {
       "type": "string",
