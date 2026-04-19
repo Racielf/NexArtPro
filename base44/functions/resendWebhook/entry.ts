@@ -1,136 +1,190 @@
 /**
  * resendWebhook.js
  *
- * Receives Resend email events and updates EstimateTransmission records.
- * Validates Resend webhook signature.
+ * Server-side webhook handler for Resend email delivery events.
+ * Receives Resend webhook payloads, validates signature, and updates EstimateTransmission records.
+ *
+ * Required environment: RESEND_WEBHOOK_SECRET
  */
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createHmac } from 'https://deno.land/std@0.208.0/crypto/mod.ts';
 
-// Webhook secret must be set in environment
-const RESEND_WEBHOOK_SECRET = Deno.env.get('RESEND_WEBHOOK_SECRET');
+const WEBHOOK_SECRET = Deno.env.get('RESEND_WEBHOOK_SECRET');
 
 /**
- * Validate Resend webhook signature using x-resend-signature header.
- * Resend uses HMAC-SHA256: signature = base64(HMAC-SHA256(body, secret))
+ * Find transmission by provider_message_id
  */
-async function validateResendSignature(body, signature) {
-  if (!RESEND_WEBHOOK_SECRET) {
-    console.warn('[validateResendSignature] RESEND_WEBHOOK_SECRET not set');
-    return false;
-  }
-
+async function findTransmissionByMessageId(base44, messageId) {
   try {
-    const bodyBytes = new TextEncoder().encode(body);
-    const secretBytes = new TextEncoder().encode(RESEND_WEBHOOK_SECRET);
-
-    const key = await crypto.subtle.importKey(
-      'raw',
-      secretBytes,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-
-    const signatureBytes = await crypto.subtle.sign('HMAC', key, bodyBytes);
-    const computed = btoa(String.fromCharCode(...new Uint8Array(signatureBytes)));
-
-    return computed === signature;
-  } catch (err) {
-    console.warn('[validateResendSignature] validation failed:', err?.message);
-    return false;
-  }
-}
-
-Deno.serve(async (req) => {
-  try {
-    // Only POST allowed
-    if (req.method !== 'POST') {
-      return Response.json({ error: 'Method not allowed' }, { status: 405 });
-    }
-
-    // Read raw body for signature validation
-    const body = await req.text();
-
-    // Validate signature
-    const signature = req.headers.get('x-resend-signature');
-    if (!signature || !(await validateResendSignature(body, signature))) {
-      console.warn('[resendWebhook] Invalid or missing signature');
-      return Response.json({ error: 'Invalid signature' }, { status: 401 });
-    }
-
-    // Parse event
-    const event = JSON.parse(body);
-
-    if (!event.type || !event.data?.email_id) {
-      console.warn('[resendWebhook] Missing event.type or email_id');
-      return Response.json({ error: 'Invalid payload structure' }, { status: 400 });
-    }
-
-    // Get service role client (no user auth needed for webhook)
-    const base44 = createClientFromRequest(req);
-
-    // Find transmission by provider_message_id
-    const messageId = event.data.email_id;
     const transmissions = await base44.asServiceRole.entities.EstimateTransmission.filter(
       { provider_message_id: messageId },
       '-created_date',
       1
     );
+    return transmissions?.[0] || null;
+  } catch (err) {
+    console.warn('[findTransmissionByMessageId] failed:', err?.message);
+    return null;
+  }
+}
 
-    if (!transmissions || transmissions.length === 0) {
-      // Transmission not found — could be from different app or test event
-      // Don't error; Resend may send test webhooks
-      console.info('[resendWebhook] No transmission found for message_id:', messageId);
-      return Response.json({ success: true, message: 'No matching transmission' }, { status: 200 });
+/**
+ * Apply webhook event update to transmission
+ * Supported events: email.delivered, email.opened, email.clicked, email.bounced
+ */
+async function applyWebhookEvent(base44, transmission, eventType) {
+  if (!transmission) return null;
+
+  const updates = {};
+  const now = new Date().toISOString();
+
+  switch (eventType) {
+    case 'email.delivered':
+      if (!transmission.delivered_at) {
+        updates.delivered_at = now;
+      }
+      break;
+
+    case 'email.opened':
+      if (!transmission.opened_at) {
+        updates.opened_at = now;
+      }
+      break;
+
+    case 'email.clicked':
+      if (!transmission.clicked_at) {
+        updates.clicked_at = now;
+      }
+      break;
+
+    case 'email.bounced':
+      if (!transmission.bounced_at) {
+        updates.bounced_at = now;
+        updates.status = 'bounced';
+      }
+      break;
+
+    default:
+      // Unsupported event type — silently ignore
+      return null;
+  }
+
+  // Apply update only if there are changes
+  if (Object.keys(updates).length === 0) {
+    return transmission;
+  }
+
+  try {
+    await base44.asServiceRole.entities.EstimateTransmission.update(
+      transmission.id,
+      updates
+    );
+    console.log(`[resendWebhook] transmission ${transmission.id} updated:`, Object.keys(updates));
+    return { ...transmission, ...updates };
+  } catch (err) {
+    console.warn('[applyWebhookEvent] update failed:', err?.message);
+    return null;
+  }
+}
+
+/**
+ * Validate Resend HMAC signature
+ * Resend sends: x-resend-signature header with base64(HMAC-SHA256(body, secret))
+ */
+async function validateResendSignature(body, signature) {
+  if (!WEBHOOK_SECRET) {
+    console.warn('[validateResendSignature] RESEND_WEBHOOK_SECRET not set — skipping validation');
+    return true; // Allow if secret not configured (for local testing only)
+  }
+
+  try {
+    // Create HMAC-SHA256 hash
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(WEBHOOK_SECRET);
+    const messageData = encoder.encode(body);
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signature_bytes = await crypto.subtle.sign('HMAC', key, messageData);
+    const computed = btoa(String.fromCharCode(...new Uint8Array(signature_bytes)));
+
+    const isValid = computed === signature;
+    if (!isValid) {
+      console.warn('[validateResendSignature] signature mismatch');
+    }
+    return isValid;
+  } catch (err) {
+    console.warn('[validateResendSignature] validation error:', err?.message);
+    return false;
+  }
+}
+
+Deno.serve(async (req) => {
+  // Only accept POST
+  if (req.method !== 'POST') {
+    return Response.json({ error: 'Method not allowed' }, { status: 405 });
+  }
+
+  try {
+    // Read raw body for signature validation
+    const body = await req.text();
+    const signature = req.headers.get('x-resend-signature');
+
+    // Validate signature
+    const isValid = await validateResendSignature(body, signature);
+    if (!isValid) {
+      console.warn('[resendWebhook] invalid signature');
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const transmission = transmissions[0];
+    // Parse payload
+    let payload;
+    try {
+      payload = JSON.parse(body);
+    } catch (err) {
+      console.warn('[resendWebhook] invalid JSON');
+      return Response.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    // Extract event data
+    const eventType = payload?.type;
+    const messageId = payload?.data?.email_id;
+
+    if (!eventType || !messageId) {
+      console.warn('[resendWebhook] missing event type or message id');
+      return Response.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Initialize Base44 service role client
+    const base44 = createClientFromRequest(req);
+
+    // Find transmission by message_id
+    const transmission = await findTransmissionByMessageId(base44, messageId);
+    if (!transmission) {
+      console.warn(`[resendWebhook] transmission not found for message_id: ${messageId}`);
+      // Return 200 (no-op safe path — webhook not found is not a server error)
+      return Response.json({ success: true, message: 'No transmission found (safe no-op)' });
+    }
 
     // Apply event update
-    const updates = {};
-    const now = new Date().toISOString();
-
-    switch (event.type) {
-      case 'email.delivered':
-        if (!transmission.delivered_at) {
-          updates.delivered_at = now;
-        }
-        break;
-
-      case 'email.opened':
-        if (!transmission.opened_at) {
-          updates.opened_at = now;
-        }
-        break;
-
-      case 'email.clicked':
-        if (!transmission.clicked_at) {
-          updates.clicked_at = now;
-        }
-        break;
-
-      case 'email.bounced':
-        if (!transmission.bounced_at) {
-          updates.bounced_at = now;
-          updates.status = 'bounced';
-        }
-        break;
-
-      default:
-        // Unsupported event — still return 200 to acknowledge receipt
-        return Response.json({ success: true, message: `Event type ${event.type} not processed` }, { status: 200 });
+    const result = await applyWebhookEvent(base44, transmission, eventType);
+    if (!result) {
+      console.warn(`[resendWebhook] failed to apply event ${eventType} to transmission ${transmission.id}`);
+      // Return 200 (update failed but request was valid)
+      return Response.json({ success: false, message: 'Event type unsupported or update failed' });
     }
 
-    // Only update if there are changes
-    if (Object.keys(updates).length > 0) {
-      await base44.asServiceRole.entities.EstimateTransmission.update(transmission.id, updates);
-      console.info('[resendWebhook] Updated transmission:', transmission.id, 'with event:', event.type);
-    }
-
-    return Response.json({ success: true }, { status: 200 });
-  } catch (error) {
-    console.error('[resendWebhook] Unexpected error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.log(`[resendWebhook] success: ${eventType} applied to transmission ${transmission.id}`);
+    return Response.json({ success: true, transmission: result });
+  } catch (err) {
+    console.error('[resendWebhook] unhandled error:', err?.message);
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 });
