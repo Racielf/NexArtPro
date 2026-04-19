@@ -6,6 +6,7 @@ import {
   ExclusionsSection, WarrantySection,
   TimelineSection, PaymentTermsBullets, AcceptanceSection,
   ScopeSummarySection, AssumptionsSection, ChangeRequestSection,
+  WhatsIncludedSection,
 } from '../../documents/ProposalSections';
 import DocumentAttachmentsSection from '../../documents/DocumentAttachmentsSection';
 
@@ -257,6 +258,7 @@ export default function ModernCardTemplate({ vm }) {
         <div style={{ ...card(), padding: '22px 24px', marginBottom: 20 }}>
           {text.scopeSummary && <ScopeSummarySection scopeSummary={text.scopeSummary} font={FONT} dark={DARK} muted={MUTED} sectionLabelStyle={sectionLabel} />}
           {text.assumptions && <AssumptionsSection assumptions={text.assumptions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />}
+          {text.includedScopeBullets?.length > 0 && <WhatsIncludedSection bullets={text.includedScopeBullets} font={FONT} dark={DARK} muted={MUTED} border={BORDER} sectionLabelStyle={sectionLabel} />}
         </div>
       )}
 

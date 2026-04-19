@@ -545,6 +545,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   const [scopeSummary, setScopeSummary] = useState(estimate?.scope_summary || '');
   const [assumptions, setAssumptions] = useState(estimate?.assumptions || '');
   const [changeRequestPolicy, setChangeRequestPolicy] = useState(estimate?.change_request_policy || '');
+  const [includedScopeBullets, setIncludedScopeBullets] = useState(estimate?.included_scope_bullets || '');
   const [materials, setMaterials] = useState(() => normalizeMaterials(estimate?.materials || []));
   const [otherCosts, setOtherCosts] = useState(estimate?.other_costs || []);
   const showCost = true; // Materials cost always tracked internally
@@ -599,6 +600,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
     setScopeSummary(estimate.scope_summary || '');
     setAssumptions(estimate.assumptions || '');
     setChangeRequestPolicy(estimate.change_request_policy || '');
+    setIncludedScopeBullets(estimate.included_scope_bullets || '');
     setMaterials(normalizeMaterials(estimate.materials || []));
     setOtherCosts(estimate.other_costs || []);
   }, [estimate?.id]);
@@ -633,6 +635,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
         scope_summary: scopeSummary,
         assumptions,
         change_request_policy: changeRequestPolicy,
+        included_scope_bullets: includedScopeBullets,
         subtotal: result.subtotal,
         discount_amount: result.discountAmount,
         tax_amount: result.taxAmount,
@@ -644,7 +647,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, materials, otherCosts]);
+  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, includedScopeBullets, materials, otherCosts]);
 
   const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
@@ -901,6 +904,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
             <NotesSection label="Scope Summary" placeholder="High-level description of the full scope of work visible to the client…" value={scopeSummary} onChange={setScopeSummary} />
             <NotesSection label="Assumptions & Conditions" placeholder="Agreed project assumptions — site access, permits, materials provided by client…" value={assumptions} onChange={setAssumptions} />
             <NotesSection label="Change Request Policy" placeholder="How changes after approval are handled — process, pricing, written approval required…" value={changeRequestPolicy} onChange={setChangeRequestPolicy} />
+            <NotesSection label="What's Included" placeholder="Each line = one bullet in the document — e.g. Labor and installation&#10;Cleanup and haul-away&#10;All materials listed above" value={includedScopeBullets} onChange={setIncludedScopeBullets} />
           </div>
 
           <button onClick={() => setShowTerms(v => !v)}

@@ -395,6 +395,10 @@
       "type": "string",
       "description": "Policy for handling changes after estimate is approved"
     },
+    "included_scope_bullets": {
+      "type": "string",
+      "description": "Newline-separated list of what is included in this estimate \u2014 each line renders as one bullet in the document"
+    },
     "sent_at": {
       "type": "string"
     },

@@ -6,6 +6,7 @@ import {
   ExclusionsSection, WarrantySection,
   TimelineSection, PaymentTermsBullets, AcceptanceSection,
   ScopeSummarySection, AssumptionsSection, ChangeRequestSection,
+  WhatsIncludedSection,
 } from '../../documents/ProposalSections';
 import DocumentAttachmentsSection from '../../documents/DocumentAttachmentsSection';
 
@@ -262,6 +263,13 @@ export default function PremiumTemplate({ vm }) {
       {text.assumptions && (
         <div style={{ padding: `0 ${P}px` }}>
           <AssumptionsSection assumptions={text.assumptions} font={FONT} muted={MUTED} sectionLabelStyle={sectionLabel} />
+        </div>
+      )}
+
+      {/* ─── WHAT'S INCLUDED ────────────────────────────────── */}
+      {text.includedScopeBullets?.length > 0 && (
+        <div style={{ padding: `0 ${P}px` }}>
+          <WhatsIncludedSection bullets={text.includedScopeBullets} font={FONT} dark={DARK} muted={MUTED} border={BORDER} sectionLabelStyle={sectionLabel} accentColor={ACCENT} />
         </div>
       )}
 

@@ -248,6 +248,12 @@ export function buildEstimateDocumentViewModel({
   };
 
   // ─── Text ────────────────────────────────────────────────────────────────
+  // Parse included_scope_bullets: split by newline or bullet chars, trim, filter empty → always array
+  const includedScopeBullets = safeStr(estimate.included_scope_bullets)
+    .split(/[\n•]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
   const text = {
     notes: safeStr(estimate.notes),
     internalNotes: safeStr(estimate.internal_notes),
@@ -258,6 +264,7 @@ export function buildEstimateDocumentViewModel({
     scopeSummary: safeStr(estimate.scope_summary),
     assumptions: safeStr(estimate.assumptions),
     changeRequestPolicy: safeStr(estimate.change_request_policy),
+    includedScopeBullets,
   };
 
   // ─── Materials ────────────────────────────────────────────────────────────
