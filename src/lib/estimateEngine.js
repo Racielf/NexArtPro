@@ -265,6 +265,7 @@ export function runEstimateEngine(groups = [], {
     groups: processedGroups,
     materials: processedMaterials,
     materialsSubtotal,
+    servicesSubtotal,
     // Customer-facing financials
     subtotal,
     discountAmount: discountAmt,

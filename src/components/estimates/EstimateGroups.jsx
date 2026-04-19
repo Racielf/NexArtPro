@@ -706,7 +706,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
   // Live reactive calculation
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
           totalCost, materialsCost, grossMargin, grossMarginPct,
-          totalVariance, totalBookValue, marginPercentage, materialsSubtotal,
+          totalVariance, totalBookValue, marginPercentage, materialsSubtotal, servicesSubtotal,
           otherCostsTotal, netProfit, netProfitPct } =
     runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts });
 
@@ -861,7 +861,7 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5">
                     <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">Services</p>
-                    <p className="text-sm font-bold text-slate-800 tabular-nums">{fmt(subtotal)}</p>
+                    <p className="text-sm font-bold text-slate-800 tabular-nums">{fmt(servicesSubtotal)}</p>
                   </div>
                   {materialsSubtotal > 0 && (
                     <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
