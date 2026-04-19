@@ -55,7 +55,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
    const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
    const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'clean');
    const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
-   const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from ${appConfig.appName}`);
+   const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from ${appConfig.company.name}`);
    const [message, setMessage] = useState(
      `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`
    );
