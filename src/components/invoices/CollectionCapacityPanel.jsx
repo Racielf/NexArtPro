@@ -1,17 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, User, TrendingUp } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import { buildCollectionCapacityByOwner, getSortedOwners, getUnassignedWorkloadSummary } from '@/lib/invoiceCollectionCapacity';
+import { getInvoiceWorkloadCategory } from '@/lib/invoiceCollectionWorkload';
+import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
+import BillingIssueOwnerSelect from './BillingIssueOwnerSelect';
 
 /**
  * CollectionCapacityPanel — Shows per-owner collections workload distribution
  * Compact operational view of team capacity and unassigned bottlenecks
  */
-export default function CollectionCapacityPanel({ invoices }) {
+export default function CollectionCapacityPanel({ invoices, onAssignmentChange }) {
   const capacityData = buildCollectionCapacityByOwner(invoices);
   const sorted = getSortedOwners(capacityData);
   const unassigned = getUnassignedWorkloadSummary(capacityData);
+  const [expandedUnassigned, setExpandedUnassigned] = useState(false);
 
   if (!invoices.length) return null;
+
+  // Get unassigned urgent invoices for quick assignment
+  const unassignedUrgent = invoices.filter(inv => {
+    const { balance_due } = computeInvoiceDerivedFields(inv);
+    if (balance_due <= 0) return false;
+    const workloadCategory = getInvoiceWorkloadCategory(inv);
+    return workloadCategory === 'urgent' && 
+           (!inv.billing_issue_status || !inv.billing_issue_owner);
+  });
 
   return (
     <div className="space-y-3">
@@ -21,7 +35,12 @@ export default function CollectionCapacityPanel({ invoices }) {
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-red-700">Unassigned Bottleneck</p>
+              <button
+                onClick={() => setExpandedUnassigned(!expandedUnassigned)}
+                className="text-sm font-semibold text-red-700 hover:underline text-left"
+              >
+                Unassigned Bottleneck
+              </button>
               <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-red-600">
                 {unassigned.urgent_count > 0 && (
                   <span className="font-medium">{unassigned.urgent_count} urgent · ${(unassigned.urgent_amount / 1000).toFixed(0)}k</span>
@@ -30,6 +49,25 @@ export default function CollectionCapacityPanel({ invoices }) {
                   <span className="font-medium">{unassigned.billing_issue_count} billing issue{unassigned.billing_issue_count > 1 ? 's' : ''}</span>
                 )}
               </div>
+
+              {/* Expandable list of urgent unassigned */}
+              {expandedUnassigned && unassignedUrgent.length > 0 && (
+                <div className="mt-2.5 space-y-2 border-t border-red-200 pt-2.5">
+                  {unassignedUrgent.slice(0, 5).map(inv => (
+                    <div key={inv.id} className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="font-medium text-red-700">INV#{inv.invoice_number} — {inv.client_name}</span>
+                      <BillingIssueOwnerSelect
+                        currentOwner={inv.billing_issue_owner}
+                        compact
+                        onAssign={async (owner) => {
+                          await base44.entities.Invoice.update(inv.id, { billing_issue_owner: owner });
+                          onAssignmentChange?.();
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

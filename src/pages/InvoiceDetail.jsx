@@ -23,6 +23,7 @@ import { markInvoiceContacted, getLastContactedDisplay } from '@/lib/invoiceActi
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import ClientResponseSummary from '@/components/invoices/ClientResponseSummary';
 import QuickContactActions from '@/components/invoices/QuickContactActions';
+import BillingIssueOwnerSelect from '@/components/invoices/BillingIssueOwnerSelect';
 
 export default function InvoiceDetail() {
   const navigate = useNavigate();
@@ -315,7 +316,21 @@ export default function InvoiceDetail() {
             {/* 2. COLLECTIONS / NEXT ACTION */}
             {(nextAction || isOverdue || followUpTiming) && !isPaid && (
               <div className="px-4 py-3.5 border-b border-slate-100 space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Collections</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Collections</p>
+                  {invoice.billing_issue_status === 'open' && (
+                    <BillingIssueOwnerSelect
+                      currentOwner={invoice.billing_issue_owner}
+                      onAssign={async (owner) => {
+                        setSaving(true);
+                        await base44.entities.Invoice.update(invoiceId, { billing_issue_owner: owner });
+                        setInvoice(i => ({ ...i, billing_issue_owner: owner }));
+                        setSaving(false);
+                        toast.success(owner ? `Assigned to ${owner}` : 'Assignment cleared');
+                      }}
+                    />
+                  )}
+                </div>
 
                 {nextAction && (
                   <div className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${nextAction.bg}`}>

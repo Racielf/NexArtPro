@@ -24,6 +24,7 @@ import { logAuditEvent } from '@/lib/auditLog';
 import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
 import { useAuth } from '@/lib/AuthContext';
 import CollectionCapacityPanel from '@/components/invoices/CollectionCapacityPanel';
+import BillingIssueOwnerSelect from '@/components/invoices/BillingIssueOwnerSelect';
 
 const ESCALATION_BADGE = {
   urgent:   { cls: 'bg-red-100 text-red-700 font-bold border border-red-200', label: (d) => `Final Notice · ${d}d overdue` },
@@ -222,7 +223,10 @@ export default function Invoices() {
          <CashflowSummary />
 
          {/* Team Collection Capacity */}
-         <CollectionCapacityPanel invoices={invoices} />
+         <CollectionCapacityPanel 
+           invoices={invoices}
+           onAssignmentChange={() => loadData()}
+         />
 
          {/* Operator Queue — top actionable invoices */}
          {!loading && invoices.length > 0 && (() => {
@@ -285,15 +289,24 @@ export default function Invoices() {
                    </div>
                    <div className="divide-y divide-slate-100">
                      {queue.billing_issues.slice(0, 3).map(inv => (
-                       <div key={inv.id} onClick={() => navigate(`/invoice-detail?id=${inv.id}`)} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-blue-50/30 cursor-pointer transition-colors">
-                         <div className="min-w-0 flex-1">
+                       <div key={inv.id} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-blue-50/30 transition-colors group">
+                         <div className="min-w-0 flex-1 cursor-pointer" onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
                            <div className="flex items-center gap-2 flex-wrap">
                              <span className="text-xs font-bold text-primary">INV#{inv.invoice_number}</span>
                              <span className="text-sm font-semibold text-slate-800 truncate">{inv.client_name}</span>
                            </div>
-                           <p className="text-xs text-slate-500 mt-0.5">Owner: {inv.billing_issue_owner || 'unassigned'}</p>
+                           <p className="text-xs text-slate-500 mt-0.5">${(computeInvoiceDerivedFields(inv).balance_due).toFixed(2)} due</p>
                          </div>
-                         <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
+                         <div onClick={e => e.stopPropagation()} className="flex-shrink-0">
+                           <BillingIssueOwnerSelect
+                             currentOwner={inv.billing_issue_owner}
+                             compact
+                             onAssign={async (owner) => {
+                               await base44.entities.Invoice.update(inv.id, { billing_issue_owner: owner });
+                               loadData();
+                             }}
+                           />
+                         </div>
                        </div>
                      ))}
                    </div>
