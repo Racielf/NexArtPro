@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CashflowSummary from '@/components/invoices/CashflowSummary';
+import SLAMetricsPanel from '@/components/invoices/SLAMetricsPanel';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
@@ -20,6 +21,7 @@ import { getEscalationBand, getOverdueDays } from '@/lib/invoiceMessageTemplates
 import { Zap } from 'lucide-react';
 import { buildOperatorQueue, QUEUE_LABELS } from '@/lib/invoiceOperatorQueue';
 import { detectSLABreaches } from '@/lib/invoiceSLA';
+import { filterInvoicesBySLAMetric } from '@/lib/invoiceSLAMetrics';
 import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
@@ -49,6 +51,8 @@ export default function Invoices() {
   const [archiveBulkModal, setArchiveBulkModal] = useState(false);
   const [capacityFilterOwner, setCapacityFilterOwner] = useState(null);
   const [capacityFilterCategory, setCapacityFilterCategory] = useState(null);
+  const [slaFilterDimension, setSLAFilterDimension] = useState(null);
+  const [slaFilterValue, setSLAFilterValue] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -169,15 +173,21 @@ export default function Invoices() {
     String(i.invoice_number).includes(search)
   );
   
+  // Apply SLA drill-down filter if set
+  let slaFiltered = searchFiltered;
+  if (slaFilterDimension && slaFilterValue) {
+    slaFiltered = filterInvoicesBySLAMetric(searchFiltered, slaFilterDimension, slaFilterValue);
+  }
+  
   // Apply capacity drill-down filters if set
-  let capacityFiltered = searchFiltered;
+  let capacityFiltered = slaFiltered;
   if (capacityFilterCategory === 'unassigned_urgent') {
-    capacityFiltered = searchFiltered.filter(i => {
+    capacityFiltered = slaFiltered.filter(i => {
       const workloadCategory = getInvoiceWorkloadCategory(i);
       return workloadCategory === 'urgent' && !i.billing_issue_owner;
     });
   } else if (capacityFilterOwner) {
-    capacityFiltered = searchFiltered.filter(i => i.billing_issue_owner === capacityFilterOwner);
+    capacityFiltered = slaFiltered.filter(i => i.billing_issue_owner === capacityFilterOwner);
     if (capacityFilterCategory === 'urgent') {
       capacityFiltered = capacityFiltered.filter(i => getInvoiceWorkloadCategory(i) === 'urgent');
     } else if (capacityFilterCategory === 'action_today') {
@@ -228,6 +238,15 @@ export default function Invoices() {
     loadData();
   };
 
+  const handleSLADrillDown = (dimension, value) => {
+    setSLAFilterDimension(dimension);
+    setSLAFilterValue(value);
+    setCapacityFilterOwner(null);
+    setCapacityFilterCategory(null);
+    setActionFilter('all');
+    setSearch('');
+  };
+
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
   const totalPending = invoices.filter(i => i.status === 'sent').reduce((s, i) => s + (i.total || 0), 0);
   const recentOwners = getRecentOwners(invoices, 5);
@@ -246,6 +265,12 @@ export default function Invoices() {
       <PageShell>
          {/* Financial Overview */}
          <CashflowSummary />
+
+         {/* SLA Metrics Dashboard */}
+         <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+           <h2 className="text-sm font-bold text-slate-900 mb-4">SLA Performance</h2>
+           <SLAMetricsPanel invoices={invoices} onDrillDown={handleSLADrillDown} />
+         </div>
 
          {/* Team Collection Capacity */}
          <CollectionCapacityPanel 
@@ -351,21 +376,41 @@ export default function Invoices() {
            ) : null;
          })()}
 
-         {/* Capacity filter badge */}
-         {(capacityFilterOwner || capacityFilterCategory) && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
-            <span className="text-xs font-medium text-blue-700">
-              Filtering: {capacityFilterOwner ? `${capacityFilterOwner} - ${capacityFilterCategory || 'all'}` : 'Unassigned urgent'}
-            </span>
-            <button
-              onClick={() => {
-                setCapacityFilterOwner(null);
-                setCapacityFilterCategory(null);
-              }}
-              className="text-blue-600 hover:text-blue-700 text-xs font-bold"
-            >
-              ✕
-            </button>
+         {/* Active filter badges */}
+         {(slaFilterDimension || capacityFilterOwner || capacityFilterCategory) && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {slaFilterDimension && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg">
+                <span className="text-xs font-medium text-purple-700">
+                  SLA: {slaFilterDimension} = {slaFilterValue}
+                </span>
+                <button
+                  onClick={() => {
+                    setSLAFilterDimension(null);
+                    setSLAFilterValue(null);
+                  }}
+                  className="text-purple-600 hover:text-purple-700 text-xs font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {(capacityFilterOwner || capacityFilterCategory) && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+                <span className="text-xs font-medium text-blue-700">
+                  Capacity: {capacityFilterOwner ? `${capacityFilterOwner} - ${capacityFilterCategory || 'all'}` : 'Unassigned urgent'}
+                </span>
+                <button
+                  onClick={() => {
+                    setCapacityFilterOwner(null);
+                    setCapacityFilterCategory(null);
+                  }}
+                  className="text-blue-600 hover:text-blue-700 text-xs font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
           </div>
          )}
 
