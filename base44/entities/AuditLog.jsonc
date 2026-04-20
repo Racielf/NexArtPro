@@ -6,7 +6,8 @@
       "type": "string",
       "enum": [
         "archive",
-        "restore"
+        "restore",
+        "purge"
       ],
       "description": "Type of action performed"
     },

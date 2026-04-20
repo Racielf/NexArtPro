@@ -10,6 +10,7 @@ import { isAdmin } from '@/lib/roleUtils';
 import { useAuth } from '@/lib/AuthContext';
 import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
+import PermanentDeleteModal from '@/components/shared/PermanentDeleteModal';
 
 const TABS = [
   { key: 'customers',   label: 'Customers',    icon: User,          entityName: 'Customer',  apiKey: 'Customer',  labelField: r => r.display_name || `${r.first_name} ${r.last_name}`, numField: null },
@@ -25,6 +26,7 @@ export default function RecoveryCenter() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(null);
+  const [purgeTarget, setPurgeTarget] = useState(null); // record to permanently delete
 
   useEffect(() => {
     loadDeleted();
@@ -63,10 +65,32 @@ export default function RecoveryCenter() {
     setRestoring(null);
   };
 
+  const handlePurge = async () => {
+    if (!purgeTarget) return;
+    const tab = TABS.find(t => t.key === activeTab);
+    if (!tab) return;
+    await base44.entities[tab.apiKey].delete(purgeTarget.id);
+    await logAuditEvent('purge', tab.entityName, purgeTarget.id, user?.email, {
+      reason: purgeTarget.delete_reason || null,
+    });
+    toast.success(`${tab.entityName} permanently deleted`);
+    setRecords(prev => prev.filter(r => r.id !== purgeTarget.id));
+    setPurgeTarget(null);
+  };
+
   const tab = TABS.find(t => t.key === activeTab);
+  const purgeLabel = purgeTarget
+    ? [tab?.numField ? tab.numField(purgeTarget) : null, tab?.labelField(purgeTarget)].filter(Boolean).join(' — ')
+    : '';
 
   return (
     <div className="flex flex-col h-full">
+      <PermanentDeleteModal
+        open={!!purgeTarget}
+        entityLabel={purgeLabel}
+        onCancel={() => setPurgeTarget(null)}
+        onConfirm={handlePurge}
+      />
       <PageHeader
         eyebrow="ADMIN"
         title="Recovery Center"
@@ -109,7 +133,7 @@ export default function RecoveryCenter() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             {/* Header */}
             <div className="grid items-center gap-4 px-4 py-3 border-b border-slate-100 bg-slate-50/80"
-              style={{ gridTemplateColumns: '1fr 140px 160px 100px' }}>
+              style={{ gridTemplateColumns: '1fr 140px 160px 160px' }}>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Record</span>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deleted By</span>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deleted At</span>
@@ -122,7 +146,7 @@ export default function RecoveryCenter() {
                 const num = tab?.numField ? tab.numField(record) : null;
                 return (
                   <div key={record.id} className="grid items-center gap-4 px-4 py-3.5"
-                    style={{ gridTemplateColumns: '1fr 140px 160px 100px' }}>
+                    style={{ gridTemplateColumns: '1fr 140px 160px 160px' }}>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         {num && <span className="text-[11px] font-bold text-slate-400 tabular-nums">{num}</span>}
@@ -136,16 +160,26 @@ export default function RecoveryCenter() {
                     <span className="text-[12px] text-slate-500">
                       {record.deleted_at ? new Date(record.deleted_at).toLocaleString() : '—'}
                     </span>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="gap-1.5 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                        className="gap-1 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                         onClick={() => handleRestore(record)}
                         disabled={restoring === record.id}
                       >
                         <RotateCcw className="w-3 h-3" />
                         {restoring === record.id ? 'Restoring…' : 'Restore'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                        onClick={() => setPurgeTarget(record)}
+                        disabled={restoring === record.id}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Delete permanently
                       </Button>
                     </div>
                   </div>

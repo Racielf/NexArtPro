@@ -11,7 +11,7 @@ import { base44 } from '@/api/base44Client';
 
 export async function logAuditEvent(action, entityType, entityId, performedBy, meta = {}) {
   const entry = {
-    action: action === 'delete' ? 'archive' : action, // normalize legacy 'delete' → 'archive'
+    action: action === 'delete' ? 'archive' : action, // normalize legacy 'delete' → 'archive'. 'purge' passes through as-is.
     entity_type: entityType,
     entity_id: entityId,
     performed_by: performedBy || 'unknown',
