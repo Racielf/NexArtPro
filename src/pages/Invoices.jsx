@@ -12,6 +12,7 @@ import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, Chevro
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CashflowSummary from '@/components/invoices/CashflowSummary';
 import SLAMetricsPanel from '@/components/invoices/SLAMetricsPanel';
+import OwnerAccountabilityPanel from '@/components/invoices/OwnerAccountabilityPanel';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
@@ -247,6 +248,15 @@ export default function Invoices() {
     setSearch('');
   };
 
+  const handleOwnerSelect = (owner) => {
+    setCapacityFilterOwner(owner);
+    setCapacityFilterCategory(null);
+    setSLAFilterDimension(null);
+    setSLAFilterValue(null);
+    setActionFilter('all');
+    setSearch('');
+  };
+
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
   const totalPending = invoices.filter(i => i.status === 'sent').reduce((s, i) => s + (i.total || 0), 0);
   const recentOwners = getRecentOwners(invoices, 5);
@@ -270,6 +280,12 @@ export default function Invoices() {
          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
            <h2 className="text-sm font-bold text-slate-900 mb-4">SLA Performance</h2>
            <SLAMetricsPanel invoices={invoices} onDrillDown={handleSLADrillDown} />
+         </div>
+
+         {/* Owner Accountability */}
+         <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+           <h2 className="text-sm font-bold text-slate-900 mb-4">Owner Accountability</h2>
+           <OwnerAccountabilityPanel invoices={invoices} onOwnerSelect={handleOwnerSelect} />
          </div>
 
          {/* Team Collection Capacity */}

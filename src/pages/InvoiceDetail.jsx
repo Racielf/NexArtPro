@@ -20,15 +20,19 @@ import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelp
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
 import { detectSLABreaches } from '@/lib/invoiceSLA';
+import { getActiveSLABreaches, resolveSLABreach, markSLAReviewed } from '@/lib/invoiceSLAResolution';
 import { markInvoiceContacted, getLastContactedDisplay } from '@/lib/invoiceActionHelpers';
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import ClientResponseSummary from '@/components/invoices/ClientResponseSummary';
 import QuickContactActions from '@/components/invoices/QuickContactActions';
 import BillingIssueOwnerSelect from '@/components/invoices/BillingIssueOwnerSelect';
 import { normalizeBillingOwner, getRecentOwners } from '@/lib/billingOwnerNormalization';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function InvoiceDetail() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const urlParams = new URLSearchParams(window.location.search);
   const invoiceId = urlParams.get('id');
 
@@ -42,6 +46,7 @@ export default function InvoiceDetail() {
   const [workOrder, setWorkOrder] = useState(null);
   const [evidenceEval, setEvidenceEval] = useState(null);
   const [recentOwners, setRecentOwners] = useState([]);
+  const [breachResolveNote, setBreachResolveNote] = useState('');
 
   useEffect(() => { loadInvoice(); }, []);
 
@@ -194,6 +199,27 @@ export default function InvoiceDetail() {
   const isPaid = derived.payment_status === 'paid';
   const isPartial = derived.payment_status === 'partial';
   const breaches = detectSLABreaches(invoice);
+  const activeBreaches = getActiveSLABreaches(invoice);
+
+  const handleResolveBreach = async (breachType) => {
+    setSaving(true);
+    const patch = resolveSLABreach(invoice, breachType, actor, breachResolveNote);
+    await base44.entities.Invoice.update(invoiceId, patch);
+    setInvoice(i => ({ ...i, ...patch }));
+    setBreachResolveNote('');
+    setSaving(false);
+    toast.success(`${breachType} marked as resolved`);
+  };
+
+  const handleMarkReviewed = async () => {
+    setSaving(true);
+    const patch = markSLAReviewed(invoice, actor, breachResolveNote);
+    await base44.entities.Invoice.update(invoiceId, patch);
+    setInvoice(i => ({ ...i, ...patch }));
+    setBreachResolveNote('');
+    setSaving(false);
+    toast.success('SLA status reviewed');
+  };
 
   return (
     <>
@@ -324,38 +350,68 @@ export default function InvoiceDetail() {
             {breaches.length > 0 && (
               <div className="px-4 py-3.5 border-b border-slate-100 space-y-2">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">SLA Alerts</p>
-                {breaches.map((breach, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${
-                      breach.severity === 'critical'
-                        ? 'bg-red-50 border-red-200'
-                        : 'bg-amber-50 border-amber-200'
-                    }`}
-                  >
-                    <AlertTriangle
-                      className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
-                        breach.severity === 'critical' ? 'text-red-600' : 'text-amber-600'
+                {breaches.map((breach, idx) => {
+                  const isResolved = !activeBreaches.some(b => b.type === breach.type);
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${
+                        isResolved ? 'bg-slate-50 border-slate-200 opacity-60' :
+                        breach.severity === 'critical'
+                          ? 'bg-red-50 border-red-200'
+                          : 'bg-amber-50 border-amber-200'
                       }`}
-                    />
-                    <div>
-                      <p
-                        className={`font-semibold ${
-                          breach.severity === 'critical' ? 'text-red-700' : 'text-amber-700'
-                        }`}
-                      >
-                        {breach.label}
-                      </p>
-                      <p
-                        className={`text-[11px] mt-0.5 ${
+                    >
+                      <AlertTriangle
+                        className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
+                          isResolved ? 'text-slate-400' :
                           breach.severity === 'critical' ? 'text-red-600' : 'text-amber-600'
                         }`}
-                      >
-                        {breach.description}
-                      </p>
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`font-semibold ${
+                            isResolved ? 'text-slate-600' :
+                            breach.severity === 'critical' ? 'text-red-700' : 'text-amber-700'
+                          }`}
+                        >
+                          {breach.label} {isResolved && '✓'}
+                        </p>
+                        <p
+                          className={`text-[11px] mt-0.5 ${
+                            isResolved ? 'text-slate-500' :
+                            breach.severity === 'critical' ? 'text-red-600' : 'text-amber-600'
+                          }`}
+                        >
+                          {breach.description}
+                        </p>
+                        {!isResolved && (
+                          <button
+                            onClick={() => handleResolveBreach(breach.type)}
+                            disabled={saving}
+                            className="mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/40 hover:bg-white/60 border border-current/20 transition-colors"
+                          >
+                            Mark Resolved
+                          </button>
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
+                {activeBreaches.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-slate-200">
+                    <textarea
+                      value={breachResolveNote}
+                      onChange={e => setBreachResolveNote(e.target.value)}
+                      placeholder="Optional note on resolution…"
+                      rows={2}
+                      className="w-full text-[11px] border border-slate-200 rounded px-2 py-1 text-slate-600 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                    />
+                    <Button size="sm" variant="outline" className="w-full mt-1.5 text-xs h-7" onClick={handleMarkReviewed} disabled={saving}>
+                      {saving ? 'Reviewing…' : 'Mark Reviewed'}
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
             )}
 

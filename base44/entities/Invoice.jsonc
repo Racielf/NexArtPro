@@ -172,6 +172,31 @@
       "type": "string",
       "description": "Internal note explaining how the billing issue was resolved"
     },
+    "sla_last_reviewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when SLA status was last reviewed"
+    },
+    "sla_last_reviewed_by": {
+      "type": "string",
+      "description": "Email or ID of person who last reviewed SLA status"
+    },
+    "sla_resolution_note": {
+      "type": "string",
+      "description": "Internal note about SLA breach resolution actions"
+    },
+    "sla_resolved_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of breach type strings that have been resolved (e.g. ['missed_followup', 'broken_promise'])"
+    },
+    "sla_resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when all active SLA breaches were resolved"
+    },
     "last_contacted_at": {
       "type": "string",
       "format": "date-time"
