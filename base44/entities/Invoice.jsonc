@@ -164,6 +164,14 @@
       "format": "date-time",
       "description": "When the billing issue was marked resolved internally"
     },
+    "billing_issue_owner": {
+      "type": "string",
+      "description": "Internal team member assigned to resolve this billing issue"
+    },
+    "billing_issue_resolution_note": {
+      "type": "string",
+      "description": "Internal note explaining how the billing issue was resolved"
+    },
     "last_contacted_at": {
       "type": "string",
       "format": "date-time"

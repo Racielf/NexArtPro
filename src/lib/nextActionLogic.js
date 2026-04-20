@@ -10,7 +10,7 @@
 
 import {
   Clock, Eye, ArrowRight, RefreshCw, AlertTriangle,
-  CheckCircle2, XCircle, Handshake, HelpCircle, Zap
+  CheckCircle2, XCircle, Handshake, HelpCircle, Zap, User
 } from 'lucide-react';
 import { getInvoiceFollowUpTiming } from './invoiceFollowUpTiming';
 import { getOverdueDays, getEscalationBand } from './invoiceMessageTemplates';
@@ -138,19 +138,25 @@ export function getNextAction(doc) {
      return { icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Payment expected', sub: 'Client says paying soon.' };
     }
 
-    // BILLING ISSUE — active: pause collections, redirect to resolution
+    // BILLING ISSUE — active: pause collections, ownership-aware next action
     if (invoice.billing_issue_status === 'open') {
       const daysOpen = Math.floor((Date.now() - new Date(invoice.billing_issue_opened_at || invoice.client_response_at).getTime()) / 86400000);
-      if (daysOpen >= 3) {
-        return { icon: AlertTriangle, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', label: 'Billing issue pending review', sub: `Open ${daysOpen}d — resolve before resuming collections` };
+      const hasOwner = !!invoice.billing_issue_owner;
+      if (!hasOwner) {
+        return { icon: User, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', label: 'Assign billing issue owner', sub: 'Unassigned — designate who will resolve this' };
       }
-      return { icon: HelpCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Resolve billing question', sub: 'Collections paused until resolved' };
+      if (daysOpen >= 3) {
+        return { icon: AlertTriangle, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', label: 'Billing issue pending review', sub: `Assigned to ${invoice.billing_issue_owner} · ${daysOpen}d open — follow up internally` };
+      }
+      return { icon: HelpCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Await internal resolution', sub: `Assigned to ${invoice.billing_issue_owner} · collections paused` };
     }
 
-    // client response: has question (resolved or no billing_issue_status)
-    if (invoice.client_response_status === 'has_question' && invoice.billing_issue_status === 'resolved') {
-     return { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Issue resolved — follow up on payment', sub: 'Billing question addressed.' };
+    // BILLING ISSUE — resolved and still unpaid: resume collections
+    if (invoice.billing_issue_status === 'resolved' && invoice.client_response_status === 'has_question') {
+      return { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Resume collection', sub: 'Billing issue resolved — follow up on payment' };
     }
+
+    // client response: has question (no billing_issue_status set — legacy fallback)
     if (invoice.client_response_status === 'has_question') {
      return { icon: HelpCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Awaiting clarification', sub: 'Client has a billing question.' };
     }

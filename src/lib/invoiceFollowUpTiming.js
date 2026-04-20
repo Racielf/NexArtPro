@@ -93,20 +93,32 @@ export function getInvoiceFollowUpTiming(invoice) {
     };
   }
 
-  // BILLING ISSUE: active issue — suppress collections, redirect to resolution
+  // BILLING ISSUE: active issue — suppress collections, urgency based on ownership + age
   if (invoice.billing_issue_status === 'open') {
     const daysOpen = daysSince(invoice.billing_issue_opened_at) || 0;
+    const hasOwner = !!invoice.billing_issue_owner;
+
+    if (!hasOwner) {
+      // No owner assigned — medium urgency regardless of age
+      return {
+        next_follow_up_in_days: 0,
+        urgency: 'medium',
+        label: `Billing issue unassigned — assign owner today`,
+      };
+    }
+
     if (daysOpen >= 3) {
       return {
         next_follow_up_in_days: 0,
         urgency: 'medium',
-        label: `Billing issue pending — open ${daysOpen}d, review today`,
+        label: `Billing issue open ${daysOpen}d (${invoice.billing_issue_owner}) — follow up internally`,
       };
     }
+
     return {
       next_follow_up_in_days: Math.max(0, 2 - daysOpen),
       urgency: 'low',
-      label: `Billing issue open — resolve before collecting`,
+      label: `Billing issue assigned to ${invoice.billing_issue_owner} — collections paused`,
     };
   }
 
