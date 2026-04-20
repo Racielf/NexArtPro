@@ -448,6 +448,7 @@ export default function WorkOrderDetail() {
 
           <WOTimeTracking
             workOrderId={id}
+            workOrder={workOrder}
             initialArrival={workOrder.arrival_time}
             initialDeparture={workOrder.departure_time}
           />
