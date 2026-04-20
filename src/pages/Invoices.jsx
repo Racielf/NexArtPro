@@ -17,7 +17,7 @@ import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextAction
 import { filterInvoicesByAction, sortInvoicesByUrgency } from '@/lib/invoiceActionFilter';
 import { executeOneClickFollowUp } from '@/lib/invoiceActionHelpers';
 import { getEscalationBand, getOverdueDays } from '@/lib/invoiceMessageTemplates';
-import { Zap, ChevronRight } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { buildOperatorQueue, QUEUE_LABELS } from '@/lib/invoiceOperatorQueue';
 import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
