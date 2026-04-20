@@ -5,9 +5,11 @@ import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { Search, Phone, Mail, Calendar, ChevronRight, Trash2, Users, UserPlus, PhoneCall, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { useAuth } from '@/lib/AuthContext';
+import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
 
 // ── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, icon: Icon, accent }) {
@@ -32,6 +34,7 @@ export default function Leads() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deleteModal, setDeleteModal] = useState(false);
 
   useEffect(() => { loadLeads(); }, []);
 
@@ -76,15 +79,28 @@ export default function Leads() {
     }
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
+    setDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async (reason) => {
+    setDeleteModal(false);
     const idsArray = Array.from(selectedIds);
-    await archiveManyWithSnapshot(base44.entities.Lead, 'Lead', idsArray, actor);
+    await archiveManyWithSnapshot(base44.entities.Lead, 'Lead', idsArray, actor, reason);
     setSelectedIds(new Set());
     setLeads(leads.filter(l => !selectedIds.has(l.id)));
+    toast.success(`${idsArray.length} lead(s) deleted`);
   };
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
+      <DeleteReasonModal
+        open={deleteModal}
+        onCancel={() => setDeleteModal(false)}
+        onConfirm={handleConfirmDelete}
+        count={selectedIds.size}
+        entityLabel="Lead"
+      />
       <PageHeader eyebrow="CRM" title="Leads" subtitle={`${stats.total} total leads`} />
 
       <PageShell>
@@ -113,7 +129,7 @@ export default function Leads() {
             <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
               <span className="text-sm font-semibold text-red-700">{selectedIds.size} selected</span>
               <Button size="sm" variant="destructive" className="gap-1.5 h-7 text-xs"
-                onClick={() => { if (confirm(`Delete ${selectedIds.size} lead(s)?`)) handleDeleteSelected(); }}>
+                onClick={handleDeleteSelected}>
                 <Trash2 className="w-3 h-3" /> Delete
               </Button>
             </div>

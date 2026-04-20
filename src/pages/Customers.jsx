@@ -10,7 +10,7 @@ import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords } fro
 import { logAuditEvent } from '@/lib/auditLog';
 import { useNavigate } from 'react-router-dom';
 import CustomerFormModal from '@/components/customers/CustomerFormModal';
-import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
+import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
 import { useAuth } from '@/lib/AuthContext';
 
 const CUSTOMER_TYPES = [
@@ -53,7 +53,7 @@ export default function Customers() {
     const { id } = archiveModal;
     setArchiveModal({ open: false, id: null, label: '' });
     await archiveWithSnapshot(base44.entities.Customer, 'Customer', id, actor, reason);
-    toast.success('Customer archived');
+    toast.success('Customer deleted');
     loadCustomers();
   };
 
@@ -81,7 +81,7 @@ export default function Customers() {
     const idsArray = Array.from(selectedIds);
     await archiveManyWithSnapshot(base44.entities.Customer, 'Customer', idsArray, actor, reason);
     setSelectedIds(new Set());
-    toast.success(`${idsArray.length} customer(s) archived`);
+    toast.success(`${idsArray.length} customer(s) deleted`);
     loadCustomers();
   };
 
@@ -98,13 +98,13 @@ export default function Customers() {
   return (
     <div className="flex flex-col h-full bg-slate-50">
 
-      <ArchiveReasonModal
+      <DeleteReasonModal
         open={archiveModal.open}
         onCancel={() => setArchiveModal({ open: false, id: null, label: '' })}
         onConfirm={handleConfirmArchive}
         entityLabel={archiveModal.label || 'Customer'}
       />
-      <ArchiveReasonModal
+      <DeleteReasonModal
         open={archiveBulkModal}
         onCancel={() => setArchiveBulkModal(false)}
         onConfirm={handleConfirmBulkArchive}

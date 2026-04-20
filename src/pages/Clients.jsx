@@ -16,6 +16,7 @@ import ClientDocuments from '@/components/clients/ClientDocuments';
 import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { useAuth } from '@/lib/AuthContext';
+import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
 
 const emptyClient = { full_name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', notes: '' };
 
@@ -32,6 +33,7 @@ export default function Clients() {
   const [expandedComm, setExpandedComm] = useState(null);
   const [expandedDocs, setExpandedDocs] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deleteModal, setDeleteModal] = useState(false);
 
   useEffect(() => { loadClients(); }, []);
 
@@ -59,6 +61,8 @@ export default function Clients() {
   };
 
   const handleDelete = async (id) => {
+    // For single delete, use direct confirmation
+    // In future, could add single-item delete modal
     if (!confirm('Delete this client?')) return;
     await archiveWithSnapshot(base44.entities.Client, 'Client', id, actor);
     toast.success('Client deleted');
@@ -86,9 +90,14 @@ export default function Clients() {
     }
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
+    setDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async (reason) => {
+    setDeleteModal(false);
     const idsArray = Array.from(selectedIds);
-    await archiveManyWithSnapshot(base44.entities.Client, 'Client', idsArray, actor);
+    await archiveManyWithSnapshot(base44.entities.Client, 'Client', idsArray, actor, reason);
     setSelectedIds(new Set());
     setClients(clients.filter(c => !selectedIds.has(c.id)));
     toast.success(`${idsArray.length} client(s) deleted`);
@@ -96,6 +105,13 @@ export default function Clients() {
 
   return (
     <div className="flex flex-col h-full">
+      <DeleteReasonModal
+        open={deleteModal}
+        onCancel={() => setDeleteModal(false)}
+        onConfirm={handleConfirmDelete}
+        count={selectedIds.size}
+        entityLabel="Client"
+      />
       <PageHeader title="Clients" subtitle={`${clients.length} total clients`} actionLabel="New Client" onAction={openCreate} />
 
       <PageShell>
@@ -130,10 +146,8 @@ export default function Clients() {
             {selectedIds.size > 0 && (
               <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
                 <span className="text-sm font-semibold text-foreground">{selectedIds.size} selected</span>
-                <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => {
-                  if (confirm(`Delete ${selectedIds.size} client(s)?`)) handleDeleteSelected();
-                }}>
-                  <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+                <Button size="sm" variant="destructive" className="gap-1.5" onClick={handleDeleteSelected}>
+                   <Trash2 className="w-3.5 h-3.5" /> Delete Selected
                 </Button>
               </div>
             )}

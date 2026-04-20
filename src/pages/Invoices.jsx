@@ -21,7 +21,7 @@ import { Zap } from 'lucide-react';
 import { buildOperatorQueue, QUEUE_LABELS } from '@/lib/invoiceOperatorQueue';
 import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
-import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
+import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
 import { useAuth } from '@/lib/AuthContext';
 import CollectionCapacityPanel from '@/components/invoices/CollectionCapacityPanel';
 import BillingIssueOwnerSelect from '@/components/invoices/BillingIssueOwnerSelect';
@@ -215,7 +215,7 @@ export default function Invoices() {
     await archiveManyWithSnapshot(base44.entities.Invoice, 'Invoice', idsArray, actor, reason);
     setSelectedIds(new Set());
     setInvoices(invoices.filter(i => !selectedIds.has(i.id)));
-    toast.success(`${idsArray.length} invoice(s) archived`);
+    toast.success(`${idsArray.length} invoice(s) deleted`);
   };
 
   const handleOneClickFollowUp = async (e, inv) => {
@@ -233,7 +233,7 @@ export default function Invoices() {
 
   return (
     <div className="flex flex-col h-full">
-      <ArchiveReasonModal
+      <DeleteReasonModal
         open={archiveBulkModal}
         onCancel={() => setArchiveBulkModal(false)}
         onConfirm={handleConfirmBulkArchive}
@@ -425,7 +425,7 @@ export default function Invoices() {
               <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5">
                 <span className="text-sm font-semibold text-primary">{selectedIds.size} seleccionadas</span>
                 <Button size="sm" variant="destructive" className="gap-1.5 h-7 text-xs" onClick={handleDeleteSelected}>
-                  <Trash2 className="w-3 h-3" /> Archivar
+                   <Trash2 className="w-3 h-3" /> Delete
                 </Button>
               </div>
             )}
