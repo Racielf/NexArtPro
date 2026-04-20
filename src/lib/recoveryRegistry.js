@@ -15,7 +15,7 @@
  *   canPurge     — whether Delete Permanently is shown
  */
 
-import { User, Users, FileText, ClipboardList, Receipt, Briefcase } from 'lucide-react';
+import { User, Users, FileText, ClipboardList, Receipt, Briefcase, Package, Camera, FileCheck } from 'lucide-react';
 
 export const RECOVERY_REGISTRY = [
   {
@@ -95,13 +95,44 @@ export const RECOVERY_REGISTRY = [
     canRestore: true,
     canPurge: true,
   },
+  {
+    key: 'workorderexpenses',
+    label: 'Expenses',
+    entityName: 'WorkOrderExpense',
+    apiKey: 'WorkOrderExpense',
+    icon: Package,
+    labelField: r => r.description || '—',
+    numField: r => r.work_order_number ? `WO#${r.work_order_number}` : null,
+    canRestore: true,
+    canPurge: true,
+  },
+  {
+    key: 'projectphotos',
+    label: 'Photos',
+    entityName: 'ProjectPhoto',
+    apiKey: 'ProjectPhoto',
+    icon: Camera,
+    labelField: r => r.caption || `${r.phase || 'photo'}`,
+    numField: r => r.work_order_number ? `WO#${r.work_order_number}` : null,
+    canRestore: true,
+    canPurge: true,
+  },
+  {
+    key: 'workerdocuments',
+    label: 'Worker Documents',
+    entityName: 'WorkerDocument',
+    apiKey: 'WorkerDocument',
+    icon: FileCheck,
+    labelField: r => r.name || r.file_name || '—',
+    numField: null,
+    canRestore: true,
+    canPurge: true,
+  },
 ];
 
 /**
  * Out-of-scope entities (intentionally excluded):
  *
- * - ProjectPhoto     → binary files; hard delete is correct behavior; not a business document
- * - WorkerDocument   → file attachment on Worker; hard delete is correct; not a recoverable workflow record
  * - EstimateAttachments → stored as embedded array in Estimate entity; deletion is local array mutation persisted via Estimate update
  * - Payments         → financial ledger entries; deletion is not a standard user action; no delete UI exists
  * - Appointments     → no delete action in UI; status management only (cancelled)

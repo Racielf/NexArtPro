@@ -5,6 +5,9 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Upload, Trash2, FileText, ExternalLink, Plus, X } from 'lucide-react';
 import { format } from 'date-fns';
+import { archiveWithSnapshot } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
+import { useAuth } from '@/lib/AuthContext';
 
 const DOC_TYPES = {
   id: 'ID / Passport',
@@ -28,6 +31,8 @@ const DOC_COLORS = {
 const EMPTY_FORM = { doc_type: 'other', name: '', expiry_date: '', notes: '' };
 
 export default function WorkerDocuments({ worker }) {
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -73,7 +78,8 @@ export default function WorkerDocuments({ worker }) {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this document?')) return;
-    await base44.entities.WorkerDocument.delete(id);
+    await archiveWithSnapshot(base44.entities.WorkerDocument, 'WorkerDocument', id, actor, 'Deleted by user');
+    await logAuditEvent('archive', 'WorkerDocument', id, actor, {});
     toast.success('Document removed');
     loadDocs();
   };

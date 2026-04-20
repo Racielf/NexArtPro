@@ -3,6 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { ImageIcon, Plus, Trash2, ExternalLink, Upload, Camera } from 'lucide-react';
 import { toast } from 'sonner';
+import { archiveWithSnapshot } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
+import { useAuth } from '@/lib/AuthContext';
 
 const PHASES = [
   { id: 'before', label: 'Before', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
@@ -71,6 +74,8 @@ function PhotoGrid({ photos, onDelete, onUploadClick, uploading }) {
 }
 
 export default function WOReceipts({ workOrderId, workOrderNumber, clientName }) {
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activePhase, setActivePhase] = useState('before');
@@ -107,7 +112,8 @@ export default function WOReceipts({ workOrderId, workOrderNumber, clientName })
 
   const handleDelete = async (photoId) => {
     if (!confirm('Delete this photo?')) return;
-    await base44.entities.ProjectPhoto.delete(photoId);
+    await archiveWithSnapshot(base44.entities.ProjectPhoto, 'ProjectPhoto', photoId, actor, 'Deleted by user');
+    await logAuditEvent('archive', 'ProjectPhoto', photoId, actor, {});
     toast.success('Photo deleted');
     loadPhotos();
   };

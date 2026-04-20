@@ -3,6 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Package, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { archiveWithSnapshot } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
+import { useAuth } from '@/lib/AuthContext';
 
 const PAYMENT_METHODS = ['cash', 'card', 'check', 'company_card', 'advance'];
 const EXPENSE_TYPES = ['materials', 'tools', 'fuel', 'food', 'cash_advance', 'other'];
@@ -17,6 +20,8 @@ const emptyForm = {
 };
 
 export default function WOExpenses({ workOrderId, workOrderNumber }) {
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -52,7 +57,8 @@ export default function WOExpenses({ workOrderId, workOrderNumber }) {
 
   const handleDelete = async (expId) => {
     if (!confirm('Delete this expense?')) return;
-    await base44.entities.WorkOrderExpense.delete(expId);
+    await archiveWithSnapshot(base44.entities.WorkOrderExpense, 'WorkOrderExpense', expId, actor, 'Deleted by user');
+    await logAuditEvent('archive', 'WorkOrderExpense', expId, actor, {});
     toast.success('Expense deleted');
     loadExpenses();
   };
