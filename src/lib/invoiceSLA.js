@@ -281,5 +281,5 @@ export function getPrimaryBreach(invoice) {
   if (breaches.length === 0) return null;
 
   // Return CRITICAL if exists, otherwise first HIGH
-  return breaches.find(b => b.severity === 'CRITICAL') || breaches[0];
+  return breaches.find(b => b.severity === 'critical') || breaches[0];
 }
