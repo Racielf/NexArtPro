@@ -8,6 +8,11 @@
     "estimate_id": {
       "type": "string"
     },
+    "estimate_version": {
+      "type": "number",
+      "default": 1,
+      "description": "Version number of the source Estimate at conversion time \u2014 used for version-aware duplicate prevention"
+    },
     "source_proposal_id": {
       "type": "string",
       "description": "ID of the Proposal this work order was converted from"

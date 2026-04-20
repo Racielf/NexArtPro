@@ -9,8 +9,9 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
 /**
- * Shows only when estimate is approved or signed.
- * Converts estimate → WorkOrder and navigates to the WO detail page.
+ * Shows only when estimate is in an approved state.
+ * Valid trigger statuses: approved (strict lifecycle — no 'signed', no 'converted').
+ * Converts estimate → WorkOrder with full version traceability.
  */
 export default function ConvertToWorkOrderButton({ estimate, onConverted, asDropdownItem = false }) {
   const [loading, setLoading] = useState(false);
@@ -18,23 +19,21 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
 
   if (!estimate) return null;
 
-  const isApproved = ['approved', 'signed'].includes(estimate.status);
+  // Strict lifecycle: only 'approved' is valid. 'signed' and 'converted' are NOT valid estimate statuses.
+  const isApproved = estimate.status === 'approved';
 
   const handleConvert = async () => {
     setLoading(true);
     try {
-      // Check if work order(s) already exist for this estimate
+      const estimateVersion = estimate.version_number ?? 1;
+
+      // Version-aware duplicate prevention: one WO per estimate_id + version_number
       const existing = await base44.entities.WorkOrder.filter({ estimate_id: estimate.id });
-      
-      if (existing.length > 1) {
-        toast.error(`Multiple work orders found (${existing.length}). Contact support to resolve.`);
-        setLoading(false);
-        return;
-      }
-      
-      if (existing.length === 1) {
-        toast.info(`Work Order #${existing[0].work_order_number} already created`);
-        navigate(`/work-orders/${existing[0].id}`);
+      const versionMatch = existing.filter(wo => (wo.estimate_version ?? 1) === estimateVersion);
+
+      if (versionMatch.length > 0) {
+        toast.info(`Work Order #${versionMatch[0].work_order_number} already exists for this version`);
+        navigate(`/work-orders/${versionMatch[0].id}`);
         setLoading(false);
         return;
       }
@@ -42,7 +41,7 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
       const user = await base44.auth.me();
       const woNum = await getNextDocumentNumber('work_order');
 
-      // Generate tasks from estimate groups
+      // Generate tasks from estimate groups (stable — preserves service_name + description)
       const tasks = [];
       let order = 0;
       (estimate.groups || []).forEach(group => {
@@ -55,14 +54,16 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
             assigned_to: '',
             order: order++,
             started_at: null,
-            completed_at: null
+            completed_at: null,
           });
         });
       });
 
+      // Create WorkOrder — totals are COPIED not recalculated, groups preserved
       const wo = await base44.entities.WorkOrder.create({
         work_order_number: woNum,
         estimate_id: estimate.id,
+        estimate_version: estimateVersion,           // version traceability
         appointment_id: estimate.appointment_id || '',
         client_id: estimate.client_id || '',
         client_name: estimate.client_name,
@@ -78,13 +79,15 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
         total: estimate.total || 0,
         notes: estimate.notes || '',
         internal_notes: estimate.internal_notes || '',
-        tasks: tasks,
-        task_statuses: {}, // legacy field, now using tasks array
+        tasks,
+        task_statuses: {},                           // legacy compat field
         assigned_by: user?.full_name || user?.email || 'Admin',
         assigned_at: new Date().toISOString(),
+        company_id: estimate.company_id || 'rc-art',
       });
 
-      await base44.entities.Estimate.update(estimate.id, { status: 'converted' });
+      // INTENTIONALLY NOT mutating estimate status — lifecycle stays at 'approved'
+      // Estimate tracks its own lifecycle independently from WO creation
 
       toast.success(`Work Order #${woNum} created successfully`);
       onConverted?.();
