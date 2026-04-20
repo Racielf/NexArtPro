@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Building2, FileText, Wrench, BookOpen,
-  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw
+  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw, Activity
 } from 'lucide-react';
 import { isAdmin } from '@/lib/roleUtils';
 
@@ -17,7 +17,10 @@ const sections = [
   { id: 'general',   label: 'General',               icon: Settings },
   { id: 'manual',    label: 'Manual del Sistema',    icon: BookMarked },
   // Admin-only — hidden from regular users
-  ...(isAdmin() ? [{ id: 'recovery', label: 'Recovery Center', icon: RotateCcw, adminOnly: true }] : []),
+  ...(isAdmin() ? [
+    { id: 'recovery', label: 'Recovery Center', icon: RotateCcw, adminOnly: true },
+    { id: 'security', label: 'Security Log', icon: Activity, adminOnly: true },
+  ] : []),
 ];
 
 export default function SettingsSidebar({ active, onChange }) {

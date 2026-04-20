@@ -146,3 +146,48 @@ export function getRecoverySessionTimeRemaining() {
     return -1;
   }
 }
+
+/**
+ * Get recent failed attempts for a user in the last N hours
+ */
+export async function getFailedAttemptsInHours({
+  user_identifier,
+  event_type = 'recovery_access_attempt',
+  hours = 24,
+}) {
+  try {
+    const windowStart = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+    const attempts = await base44.entities.AuthSecurityLog.filter({
+      event_type,
+      success: false,
+      user_identifier,
+    });
+
+    return attempts.filter(log => new Date(log.created_date) >= windowStart);
+  } catch (err) {
+    console.error('[securityMonitor] getFailedAttemptsInHours error:', err?.message);
+    return [];
+  }
+}
+
+/**
+ * Get security events by type in the last N hours
+ */
+export async function getSecurityEventsByType({
+  event_type,
+  hours = 24,
+}) {
+  try {
+    const windowStart = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+    const events = await base44.entities.AuthSecurityLog.filter({
+      event_type,
+    });
+
+    return events.filter(log => new Date(log.created_date) >= windowStart);
+  } catch (err) {
+    console.error('[securityMonitor] getSecurityEventsByType error:', err?.message);
+    return [];
+  }
+}
