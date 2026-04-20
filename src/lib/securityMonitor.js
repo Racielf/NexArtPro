@@ -6,6 +6,7 @@
  */
 
 import { base44 } from '@/api/base44Client';
+import { sendSecurityAlertIfNeeded } from '@/lib/securityAlertDispatch';
 
 const RECOVERY_SESSION_KEY = '_recovery_privileged_session';
 const RECOVERY_SESSION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -23,7 +24,7 @@ export async function logSecurityEvent({
   metadata_json = null,
 }) {
   try {
-    await base44.entities.AuthSecurityLog.create({
+    const logEntry = {
       event_type,
       success,
       user_identifier,
@@ -31,7 +32,21 @@ export async function logSecurityEvent({
       origin_path,
       reason,
       metadata_json,
-    });
+    };
+
+    await base44.entities.AuthSecurityLog.create(logEntry);
+
+    // Attempt to send alert if this is a security-relevant event
+    // (async, non-blocking)
+    if (event_type && user_identifier) {
+      setTimeout(() => {
+        sendSecurityAlertIfNeeded(logEntry, {
+          threshold_info: metadata_json?.actual ? `${metadata_json.actual} attempts in window` : null,
+        }).catch(err => {
+          console.error('[securityMonitor] Alert dispatch error:', err?.message);
+        });
+      }, 0); // Non-blocking async
+    }
   } catch (err) {
     console.error('[securityMonitor] Failed to log security event:', err?.message);
     // Do not throw — logging failure should not block the user

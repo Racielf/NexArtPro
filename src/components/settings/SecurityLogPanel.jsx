@@ -7,6 +7,7 @@ import SettingsCard from '@/components/settings/SettingsCard';
 import { AlertTriangle, Activity, Shield, Lock, Search, Calendar, Filter, Clock } from 'lucide-react';
 import { isAdmin } from '@/lib/roleUtils';
 import SecurityAlertsWidget from '@/components/settings/SecurityAlertsWidget';
+import RecentSecurityAlertsWidget from '@/components/settings/RecentSecurityAlertsWidget';
 
 const EVENT_LABELS = {
   recovery_access_attempt: 'Recovery Access Attempt',
@@ -169,6 +170,9 @@ export default function SecurityLogPanel() {
     <SettingsSection title="Security & Monitoring" description="Real-time security event logs and suspicious activity tracking.">
       {/* Critical alerts banner */}
       <SecurityAlertsWidget />
+
+      {/* Recent alert delivery status */}
+      <RecentSecurityAlertsWidget />
 
       {/* Summary cards */}
       {!loading && logs.length > 0 && <SuspiciousSummary events={logs} />}

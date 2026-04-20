@@ -33,7 +33,7 @@ export default function RecoveryAccessModal({ open, onSuccess, onCancel, user })
       setLoading(false);
       setError('Confirmation text does not match. Try again.');
 
-      // Log failed attempt
+      // Log failed attempt (will trigger alert dispatch if threshold crossed)
       await logSecurityEvent({
         event_type: 'recovery_access_attempt',
         success: false,
@@ -54,7 +54,7 @@ export default function RecoveryAccessModal({ open, onSuccess, onCancel, user })
       return;
     }
 
-    // Success
+    // Success (no alert needed for successful access)
     await logSecurityEvent({
       event_type: 'recovery_access_granted',
       success: true,
