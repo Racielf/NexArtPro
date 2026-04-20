@@ -42,9 +42,19 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 30);
 
+      // Resolve linked work_order_id if this estimate was converted to a WO
+      let work_order_id = estimate.work_order_id || null;
+      if (!work_order_id) {
+        const woList = await base44.entities.WorkOrder.filter({ estimate_id: estimate.id });
+        work_order_id = woList?.[0]?.id || null;
+      }
+
       const invoice = await base44.entities.Invoice.create({
         invoice_number: invoiceNum,
         estimate_id: estimate.id,
+        ...(work_order_id ? { work_order_id } : {}),
+        // Traceability snapshot fields
+        ...(estimate.version_number != null ? { estimate_version: estimate.version_number } : {}),
         client_id: estimate.client_id || '',
         client_name: estimate.client_name,
         client_email: estimate.client_email || '',

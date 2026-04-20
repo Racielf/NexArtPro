@@ -14,6 +14,12 @@ const RISK_CONFIG = {
   unknown: { bg: 'bg-slate-50 border-slate-200', text: 'text-slate-500',  icon: Info,           iconCls: 'text-slate-400' },
 };
 
+const LABOR_STATUS_BADGE = {
+  resolved: { cls: 'bg-green-50 text-green-700 border-green-100',  label: 'rate resolved' },
+  partial:  { cls: 'bg-amber-50 text-amber-600 border-amber-100',  label: 'rate missing on worker' },
+  missing:  { cls: 'bg-amber-50 text-amber-600 border-amber-100',  label: 'rate missing' },
+};
+
 export default function JobProfitSummary({ workOrderId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,19 +50,23 @@ export default function JobProfitSummary({ workOrderId }) {
   const risk = data.risk || { level: 'unknown', label: 'Unknown', description: '' };
   const riskCfg = RISK_CONFIG[risk.level] || RISK_CONFIG.unknown;
   const RiskIcon = riskCfg.icon;
+  const laborBadge = LABOR_STATUS_BADGE[data.labor_rate_status] || LABOR_STATUS_BADGE.missing;
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
       <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
         <RiskIcon className={`w-4 h-4 ${riskCfg.iconCls}`} />
         <h2 className="text-sm font-bold text-slate-900">Job Financials</h2>
-        {data.linked_invoice_number && (
-          <span className="ml-auto text-[10px] text-slate-400">INV #{data.linked_invoice_number}</span>
+        {data.invoice_count > 0 && (
+          <span className="ml-auto text-[10px] text-slate-400">
+            {data.invoice_count} invoice{data.invoice_count > 1 ? 's' : ''}
+            {data.linked_invoice_number ? ` · INV #${data.linked_invoice_number}` : ''}
+          </span>
         )}
       </div>
 
       <div className="px-5 py-4 space-y-3">
-        {/* Risk indicator — always shown when revenue is available */}
+        {/* Risk indicator */}
         {risk.level !== 'unknown' && (
           <div className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border ${riskCfg.bg}`}>
             <RiskIcon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${riskCfg.iconCls}`} />
@@ -74,11 +84,15 @@ export default function JobProfitSummary({ workOrderId }) {
           </div>
         )}
 
-        {/* Main metrics */}
+        {/* Main metrics grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Revenue</p>
             <p className="text-base font-bold text-slate-900">{fmt(data.revenue)}</p>
+          </div>
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Collected</p>
+            <p className="text-base font-bold text-green-600">{fmt(data.collected)}</p>
           </div>
           <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Actual Cost</p>
@@ -88,7 +102,7 @@ export default function JobProfitSummary({ workOrderId }) {
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Profit</p>
             <p className={`text-base font-bold ${profitColor}`}>{fmt(data.profit)}</p>
           </div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 col-span-2">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Margin</p>
             <p className={`text-base font-bold ${profitColor}`}>{fmtPct(data.margin)}</p>
           </div>
@@ -100,14 +114,14 @@ export default function JobProfitSummary({ workOrderId }) {
             <span>Materials / Expenses</span>
             <span className="font-medium">{fmt(data.breakdown.material)}</span>
           </div>
-          <div className="flex justify-between text-xs text-slate-400">
+          <div className="flex justify-between text-xs text-slate-500">
             <span className="flex items-center gap-1">
               Labor
-              <span className="px-1 py-0.5 rounded bg-amber-50 text-amber-600 text-[9px] font-semibold border border-amber-100">
-                rate missing
+              <span className={`px-1 py-0.5 rounded text-[9px] font-semibold border ${laborBadge.cls}`}>
+                {laborBadge.label}
               </span>
             </span>
-            <span>{fmt(0)}</span>
+            <span className="font-medium">{fmt(data.breakdown.labor)}</span>
           </div>
         </div>
       </div>
