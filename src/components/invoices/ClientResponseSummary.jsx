@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Check, HelpCircle, Clock, AlertTriangle, CheckCircle2, User } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { buildTimelineEvent, appendCollectionTimelineEvent } from '@/lib/invoiceCollectionTimeline';
+import { useState } from 'react';
 
 /**
  * ClientResponseSummary — Shows client response + promise-to-pay + billing issue status in InvoiceDetail.
@@ -55,20 +57,39 @@ export default function ClientResponseSummary({ invoice, onIssueResolved }) {
   const handleSaveOwner = async () => {
     if (!owner.trim()) return;
     setSavingOwner(true);
-    await base44.entities.Invoice.update(invoice.id, { billing_issue_owner: owner.trim() });
+    const timelineEvent = buildTimelineEvent(
+      'billing_issue_assigned',
+      owner.trim(),
+      '',
+      {}
+    );
+    const timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
+    await base44.entities.Invoice.update(invoice.id, { 
+      billing_issue_owner: owner.trim(),
+      collection_timeline: timeline,
+    });
     toast.success('Owner assigned');
     setSavingOwner(false);
-    onIssueResolved?.({ billing_issue_owner: owner.trim() });
+    onIssueResolved?.({ billing_issue_owner: owner.trim(), collection_timeline: timeline });
   };
 
   const handleResolveIssue = async () => {
     setResolving(true);
     const now = new Date().toISOString();
+    const actor = owner.trim() || 'Admin';
+    const timelineEvent = buildTimelineEvent(
+      'billing_issue_resolved',
+      actor,
+      resolutionNote.trim(),
+      {}
+    );
+    const timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
     const patch = {
       billing_issue_status: 'resolved',
       billing_issue_resolved_at: now,
       ...(resolutionNote.trim() ? { billing_issue_resolution_note: resolutionNote.trim() } : {}),
       ...(owner.trim() ? { billing_issue_owner: owner.trim() } : {}),
+      collection_timeline: timeline,
     };
     await base44.entities.Invoice.update(invoice.id, patch);
     toast.success('Billing issue resolved');

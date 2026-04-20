@@ -21,11 +21,13 @@ import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
 import { detectSLABreaches } from '@/lib/invoiceSLA';
 import { getActiveSLABreaches, resolveSLABreach, markSLAReviewed } from '@/lib/invoiceSLAResolution';
+import { buildTimelineEvent, appendCollectionTimelineEvent } from '@/lib/invoiceCollectionTimeline';
 import { markInvoiceContacted, getLastContactedDisplay } from '@/lib/invoiceActionHelpers';
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import ClientResponseSummary from '@/components/invoices/ClientResponseSummary';
 import QuickContactActions from '@/components/invoices/QuickContactActions';
 import BillingIssueOwnerSelect from '@/components/invoices/BillingIssueOwnerSelect';
+import CollectionTimeline from '@/components/invoices/CollectionTimeline';
 import { normalizeBillingOwner, getRecentOwners } from '@/lib/billingOwnerNormalization';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -117,14 +119,22 @@ export default function InvoiceDetail() {
     };
     const updatedPayments = [...(invoice?.payments || []), fullPayment];
     const derived = computeInvoiceDerivedFields({ ...invoice, payments: updatedPayments });
+    const timelineEvent = buildTimelineEvent(
+      'payment_recorded',
+      actor,
+      'Full payment recorded',
+      { amount: invoice.total }
+    );
+    const timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
     await base44.entities.Invoice.update(invoiceId, {
       payments: updatedPayments,
       amount_paid: derived.amount_paid,
       balance_due: derived.balance_due,
       payment_status: derived.payment_status,
       paid_at: now,
+      collection_timeline: timeline,
     });
-    setInvoice(i => ({ ...i, payments: updatedPayments, amount_paid: derived.amount_paid, balance_due: derived.balance_due, payment_status: derived.payment_status, paid_at: now }));
+    setInvoice(i => ({ ...i, payments: updatedPayments, amount_paid: derived.amount_paid, balance_due: derived.balance_due, payment_status: derived.payment_status, paid_at: now, collection_timeline: timeline }));
     setSaving(false);
     toast.success('Invoice marked as paid!');
   };
@@ -204,6 +214,13 @@ export default function InvoiceDetail() {
   const handleResolveBreach = async (breachType) => {
     setSaving(true);
     const patch = resolveSLABreach(invoice, breachType, actor, breachResolveNote);
+    const timelineEvent = buildTimelineEvent(
+      'sla_breach_resolved',
+      actor,
+      breachResolveNote,
+      { breach_type: breachType }
+    );
+    patch.collection_timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
     await base44.entities.Invoice.update(invoiceId, patch);
     setInvoice(i => ({ ...i, ...patch }));
     setBreachResolveNote('');
@@ -214,6 +231,8 @@ export default function InvoiceDetail() {
   const handleMarkReviewed = async () => {
     setSaving(true);
     const patch = markSLAReviewed(invoice, actor, breachResolveNote);
+    const timelineEvent = buildTimelineEvent('sla_reviewed', actor, breachResolveNote);
+    patch.collection_timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
     await base44.entities.Invoice.update(invoiceId, patch);
     setInvoice(i => ({ ...i, ...patch }));
     setBreachResolveNote('');
@@ -337,7 +356,9 @@ export default function InvoiceDetail() {
                   className="w-full mt-2 text-xs py-1.5 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
                   onClick={async () => {
                     await markInvoiceContacted(invoiceId, base44);
-                    setInvoice(i => ({ ...i, last_contacted_at: new Date().toISOString() }));
+                    const timelineEvent = buildTimelineEvent('client_contacted', actor);
+                    const timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
+                    setInvoice(i => ({ ...i, last_contacted_at: new Date().toISOString(), collection_timeline: timeline }));
                     toast.success('Marked as contacted');
                   }}
                 >
@@ -582,6 +603,11 @@ export default function InvoiceDetail() {
                 <ExecutionSummaryBlock workOrder={workOrder} compact={true} />
               </div>
             )}
+
+            {/* 10. COLLECTIONS TIMELINE */}
+            <div className="px-4 py-3.5 border-b border-slate-100">
+              <CollectionTimeline invoice={invoice} />
+            </div>
           </div>
 
           {/* ── MAIN CONTENT ── */}

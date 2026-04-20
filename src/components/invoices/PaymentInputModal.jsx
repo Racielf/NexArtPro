@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
+import { buildTimelineEvent, appendCollectionTimelineEvent } from '@/lib/invoiceCollectionTimeline';
 
 export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdded }) {
   const [amount, setAmount] = useState('');
@@ -44,13 +45,23 @@ export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdd
       const temp = { ...invoice, payments: updatedPayments };
       const derived = computeInvoiceDerivedFields(temp);
 
-      // Update invoice with ONLY the derived fields (+ payments array)
+      // Build timeline event for payment
+      const timelineEvent = buildTimelineEvent(
+        'payment_recorded',
+        user?.email || user?.full_name || 'Admin',
+        note || undefined,
+        { amount: parseFloat(amount), method }
+      );
+      const timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
+
+      // Update invoice with derived fields + payments array + timeline
       const updates = {
         payments: updatedPayments,
         amount_paid: derived.amount_paid,
         balance_due: derived.balance_due,
         payment_status: derived.payment_status,
         paid_at: derived.payment_status === 'paid' ? new Date().toISOString() : invoice?.paid_at || null,
+        collection_timeline: timeline,
       };
 
       await window.base44.entities.Invoice.update(invoice.id, updates);

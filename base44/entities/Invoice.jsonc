@@ -197,6 +197,60 @@
       "format": "date-time",
       "description": "Timestamp when all active SLA breaches were resolved"
     },
+    "collection_timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique event ID (uuid or timestamp-based)"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "follow_up_sent",
+              "client_contacted",
+              "promise_recorded",
+              "promise_broken",
+              "billing_issue_opened",
+              "billing_issue_assigned",
+              "billing_issue_resolved",
+              "sla_reviewed",
+              "sla_breach_resolved",
+              "payment_recorded",
+              "payment_removed",
+              "internal_note"
+            ],
+            "description": "Type of collection action"
+          },
+          "actor": {
+            "type": "string",
+            "description": "Email or ID of person who performed action"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of action"
+          },
+          "note": {
+            "type": "string",
+            "description": "Optional note about the action"
+          },
+          "meta": {
+            "type": "object",
+            "description": "Optional metadata (e.g., amount for payment, breach_type for sla_breach_resolved)"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "actor",
+          "created_at"
+        ]
+      },
+      "description": "Chronological log of collection actions and events"
+    },
     "last_contacted_at": {
       "type": "string",
       "format": "date-time"
