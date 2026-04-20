@@ -5,20 +5,26 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getJobFinancials } from '@/lib/jobFinancials';
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { TrendingDown, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 
 const RISK_CONFIG = {
-  losing:  { bg: 'bg-red-50 border-red-200',    text: 'text-red-700',    icon: TrendingDown,   iconCls: 'text-red-500' },
-  warning: { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700',  icon: AlertTriangle,  iconCls: 'text-amber-500' },
-  healthy: { bg: 'bg-green-50 border-green-200', text: 'text-green-700',  icon: CheckCircle2,   iconCls: 'text-green-500' },
-  unknown: { bg: 'bg-slate-50 border-slate-200', text: 'text-slate-500',  icon: Info,           iconCls: 'text-slate-400' },
+  losing:  { bg: 'bg-red-50 border-red-200',    text: 'text-red-700',    icon: TrendingDown,  iconCls: 'text-red-500' },
+  warning: { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700',  icon: AlertTriangle, iconCls: 'text-amber-500' },
+  healthy: { bg: 'bg-green-50 border-green-200', text: 'text-green-700',  icon: CheckCircle2,  iconCls: 'text-green-500' },
+  unknown: { bg: 'bg-slate-50 border-slate-200', text: 'text-slate-500',  icon: Info,          iconCls: 'text-slate-400' },
 };
 
 const LABOR_STATUS_BADGE = {
   resolved: { cls: 'bg-green-50 text-green-700 border-green-100',  label: 'rate resolved' },
-  partial:  { cls: 'bg-amber-50 text-amber-600 border-amber-100',  label: 'rate missing on worker' },
+  partial:  { cls: 'bg-amber-50 text-amber-600 border-amber-100',  label: 'rate partial' },
   missing:  { cls: 'bg-amber-50 text-amber-600 border-amber-100',  label: 'rate missing' },
 };
+
+function fmtHours(h) {
+  if (!h) return null;
+  const rounded = Math.round(h * 10) / 10;
+  return `${rounded}h`;
+}
 
 export default function JobProfitSummary({ workOrderId }) {
   const [data, setData] = useState(null);
@@ -51,6 +57,12 @@ export default function JobProfitSummary({ workOrderId }) {
   const riskCfg = RISK_CONFIG[risk.level] || RISK_CONFIG.unknown;
   const RiskIcon = riskCfg.icon;
   const laborBadge = LABOR_STATUS_BADGE[data.labor_rate_status] || LABOR_STATUS_BADGE.missing;
+
+  const laborMeta = data.labor_meta || {};
+  const laborDetail = [
+    laborMeta.total_hours > 0 ? fmtHours(laborMeta.total_hours) : null,
+    laborMeta.worker_count > 0 ? `${laborMeta.worker_count} worker${laborMeta.worker_count > 1 ? 's' : ''}` : null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
@@ -115,11 +127,19 @@ export default function JobProfitSummary({ workOrderId }) {
             <span className="font-medium">{fmt(data.breakdown.material)}</span>
           </div>
           <div className="flex justify-between text-xs text-slate-500">
-            <span className="flex items-center gap-1">
-              Labor
+            <span className="flex items-center gap-1 flex-wrap">
+              <span>Labor</span>
+              {laborDetail && (
+                <span className="text-[10px] text-slate-400">({laborDetail})</span>
+              )}
               <span className={`px-1 py-0.5 rounded text-[9px] font-semibold border ${laborBadge.cls}`}>
                 {laborBadge.label}
               </span>
+              {data.using_legacy_time && (
+                <span className="px-1 py-0.5 rounded text-[9px] font-semibold border bg-slate-50 text-slate-500 border-slate-200">
+                  legacy time
+                </span>
+              )}
             </span>
             <span className="font-medium">{fmt(data.breakdown.labor)}</span>
           </div>
