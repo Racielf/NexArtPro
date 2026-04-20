@@ -10,7 +10,7 @@ import { FileText, Plus, Pencil, Search, X, Trash2 } from 'lucide-react';
 import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
-import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
+import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function Estimates() {
@@ -93,7 +93,7 @@ export default function Estimates() {
     await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', est.id, actor, reason);
     setEstimates(estimates.filter(e => e.id !== est.id));
     setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
-    toast.success(`Estimate #${est.estimate_number} archived`);
+    toast.success(`Estimate #${est.estimate_number} deleted`);
   };
 
   const toggleSelect = (id) => {
@@ -122,19 +122,19 @@ export default function Estimates() {
     await archiveManyWithSnapshot(base44.entities.Estimate, 'Estimate', idsArray, actor, reason);
     setEstimates(estimates.filter(e => !selectedIds.has(e.id)));
     setSelectedIds(new Set());
-    toast.success(`${idsArray.length} estimate(s) archived`);
+    toast.success(`${idsArray.length} estimate(s) deleted`);
   };
 
   return (
     <div className="flex flex-col h-full">
 
-      <ArchiveReasonModal
+      <DeleteReasonModal
         open={archiveModal.open}
         onCancel={() => setArchiveModal({ open: false, estimate: null })}
         onConfirm={handleConfirmArchive}
         entityLabel={archiveModal.estimate ? `Estimate #${archiveModal.estimate.estimate_number}` : 'Estimate'}
       />
-      <ArchiveReasonModal
+      <DeleteReasonModal
         open={archiveBulkModal}
         onCancel={() => setArchiveBulkModal(false)}
         onConfirm={handleConfirmBulkArchive}
@@ -165,7 +165,7 @@ export default function Estimates() {
               ) : (
                 <>
                   <p className="text-sm text-slate-500 mb-4">
-                    This estimate cannot be deleted. You can archive it instead.
+                    This estimate cannot be deleted.
                   </p>
                   <div className="flex justify-end">
                     <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>
@@ -177,7 +177,7 @@ export default function Estimates() {
             ) : (
               <>
                 <p className="text-sm text-slate-500 mb-4">
-                  {selectedIds.size} estimate(s) will be archived. They can be recovered from Recovery Center.
+                  {selectedIds.size} estimate(s) will be deleted.
                 </p>
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>

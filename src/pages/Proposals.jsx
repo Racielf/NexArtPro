@@ -11,7 +11,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
-import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
+import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
 import { ScrollText, Plus, Search, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
@@ -182,8 +182,8 @@ export default function Proposals() {
         onCustomerSelected={handleClientSelected}
       />
 
-      {/* Archive Reason Modal */}
-      <ArchiveReasonModal
+      {/* Delete Reason Modal */}
+      <DeleteReasonModal
         open={archiveModal.open}
         onCancel={() => setArchiveModal({ open: false, proposal: null, reason: '' })}
         onConfirm={handleConfirmArchive}
@@ -197,8 +197,8 @@ export default function Proposals() {
             <h2 className="text-base font-bold mb-2">Delete {deleteModal.proposal ? 'Proposal' : 'Proposals'}?</h2>
             <p className="text-sm text-slate-500 mb-4">
               {deleteModal.proposal 
-                ? `Proposal #${deleteModal.proposal.proposal_number} will be archived.`
-                : `${selectedIds.size} proposal(s) will be archived.`}
+                ? `Proposal #${deleteModal.proposal.proposal_number} will be deleted.`
+                : `${selectedIds.size} proposal(s) will be deleted.`}
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, proposal: null })}>Cancel</Button>
