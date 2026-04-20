@@ -11,7 +11,7 @@ import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { ClipboardList, Search, Pencil, Trash2, User, MapPin, DollarSign } from 'lucide-react';
-import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { useNavigate } from 'react-router-dom';
 import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
@@ -56,8 +56,7 @@ export default function WorkOrders() {
   const handleConfirmArchive = async (reason) => {
     const { id } = archiveModal;
     setArchiveModal({ open: false, id: null, label: '' });
-    await softDeleteEntity(base44.entities.WorkOrder, id, actor, reason);
-    await logAuditEvent('archive', 'WorkOrder', id, actor, { reason });
+    await archiveWithSnapshot(base44.entities.WorkOrder, 'WorkOrder', id, actor, reason);
     toast.success('Work order archived');
     loadData();
   };
@@ -89,8 +88,7 @@ export default function WorkOrders() {
   const handleConfirmBulkArchive = async (reason) => {
     setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.WorkOrder, idsArray, actor, reason);
-    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'WorkOrder', id, actor, { reason })));
+    await archiveManyWithSnapshot(base44.entities.WorkOrder, 'WorkOrder', idsArray, actor, reason);
     setWorkOrders(prev => prev.filter(w => !selectedIds.has(w.id)));
     setSelectedIds(new Set());
     toast.success(`${idsArray.length} work order${idsArray.length === 1 ? '' : 's'} archived`);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { softDeleteMany, softDeleteEntity, filterActiveRecords } from '@/lib/softDelete';
+import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
+import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
 import { ScrollText, Plus, Search, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
@@ -31,6 +32,7 @@ export default function Proposals() {
   const [estimateSearch, setEstimateSearch] = useState('');
   const [showClientModal, setShowClientModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [archiveModal, setArchiveModal] = useState({ open: false, proposal: null, reason: '' });
 
   useEffect(() => { load(); }, []);
 
@@ -118,11 +120,17 @@ export default function Proposals() {
   const handleDelete = async () => {
     const p = deleteModal.proposal;
     if (!p) return;
-    await softDeleteEntity(base44.entities.Proposal, p.id, actor);
-    await logAuditEvent('archive', 'Proposal', p.id, actor);
+    setDeleteModal({ open: false, proposal: null });
+    setArchiveModal({ open: true, proposal: p, reason: '' });
+  };
+
+  const handleConfirmArchive = async (reason) => {
+    const p = archiveModal.proposal;
+    if (!p) return;
+    setArchiveModal({ open: false, proposal: null, reason: '' });
+    await archiveWithSnapshot(base44.entities.Proposal, 'Proposal', p.id, actor, reason);
     setProposals(proposals.filter(x => x.id !== p.id));
     setSelectedIds(prev => { const s = new Set(prev); s.delete(p.id); return s; });
-    setDeleteModal({ open: false, proposal: null });
     toast.success(`Proposal #${p.proposal_number} deleted`);
   };
 
@@ -141,10 +149,9 @@ export default function Proposals() {
     }
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = async (reason) => {
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.Proposal, idsArray, actor);
-    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Proposal', id, actor)));
+    await archiveManyWithSnapshot(base44.entities.Proposal, 'Proposal', idsArray, actor, reason);
     setProposals(proposals.filter(p => !selectedIds.has(p.id)));
     setSelectedIds(new Set());
     setDeleteModal({ open: false, proposal: null });
@@ -175,20 +182,28 @@ export default function Proposals() {
         onCustomerSelected={handleClientSelected}
       />
 
-      {/* Delete Modal */}
+      {/* Archive Reason Modal */}
+      <ArchiveReasonModal
+        open={archiveModal.open}
+        onCancel={() => setArchiveModal({ open: false, proposal: null, reason: '' })}
+        onConfirm={handleConfirmArchive}
+        entityLabel={archiveModal.proposal ? `Proposal #${archiveModal.proposal.proposal_number}` : 'Proposal'}
+      />
+
+      {/* Delete Confirmation Modal */}
       {deleteModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
             <h2 className="text-base font-bold mb-2">Delete {deleteModal.proposal ? 'Proposal' : 'Proposals'}?</h2>
             <p className="text-sm text-slate-500 mb-4">
               {deleteModal.proposal 
-                ? `Proposal #${deleteModal.proposal.proposal_number} will be permanently deleted.`
-                : `${selectedIds.size} proposal(s) will be permanently deleted.`}
+                ? `Proposal #${deleteModal.proposal.proposal_number} will be archived.`
+                : `${selectedIds.size} proposal(s) will be archived.`}
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, proposal: null })}>Cancel</Button>
               <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" 
-                onClick={deleteModal.proposal ? handleDelete : handleDeleteSelected}>
+                onClick={deleteModal.proposal ? handleDelete : () => { setDeleteModal({ open: false, proposal: null }); setArchiveModal({ open: true, proposal: null, reason: '' }); handleDeleteSelected(''); }}>
                 Delete
               </Button>
             </div>
