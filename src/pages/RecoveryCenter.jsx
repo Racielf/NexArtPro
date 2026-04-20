@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { RotateCcw, Trash2, ShieldAlert, Search, Filter, Eye, Archive } from 'lucide-react';
+import { RotateCcw, Trash2, ShieldAlert, Search, Filter, Eye, Archive, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { filterDeletedRecords, restoreEntity } from '@/lib/softDelete';
 import { markVaultPurged } from '@/lib/recoverySnapshot';
@@ -15,6 +15,7 @@ import PageShell from '@/components/layout/PageShell';
 import PermanentDeleteModal from '@/components/shared/PermanentDeleteModal';
 import RecoveryPreviewModal from '@/components/settings/RecoveryPreviewModal';
 import { RECOVERY_REGISTRY } from '@/lib/recoveryRegistry';
+import { groupByTimeline, filterByDateRange, formatDeletedAt } from '@/lib/recoveryTimeline';
 
 export default function RecoveryCenter() {
   const navigate = useNavigate();
@@ -29,6 +30,10 @@ export default function RecoveryCenter() {
   const [search, setSearch] = useState('');
   const [filterBy, setFilterBy] = useState('');
   const [searchDebounce, setSearchDebounce] = useState(null);
+  const [dateFilter, setDateFilter] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [viewMode, setViewMode] = useState('timeline');
 
   const adminCheck = isAdmin() || user?.role === 'admin';
 
@@ -53,6 +58,10 @@ export default function RecoveryCenter() {
     let list = allRecords;
     if (activeKey !== 'all') list = list.filter(r => r._entityKey === activeKey);
     if (filterBy) list = list.filter(r => r.deleted_by === filterBy);
+    
+    // Date range filter
+    list = filterByDateRange(list, dateFilter, customStartDate, customEndDate);
+    
     if (searchDebounce?.trim()) {
       const q = searchDebounce.toLowerCase();
       list = list.filter(r => {
@@ -73,7 +82,7 @@ export default function RecoveryCenter() {
       });
     }
     return list;
-  }, [allRecords, activeKey, filterBy, searchDebounce, vaultMap]);
+  }, [allRecords, activeKey, filterBy, searchDebounce, vaultMap, dateFilter, customStartDate, customEndDate]);
 
   const countByKey = useMemo(() => {
     const counts = { all: allRecords.length };
@@ -203,12 +212,37 @@ export default function RecoveryCenter() {
           })}
         </div>
 
-        {/* Search + actor filter */}
+        {/* Search + filters */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input placeholder="Search name, number, email, reason…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
           </div>
+          
+          {/* Date filter */}
+          <div className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <select value={dateFilter} onChange={e => setDateFilter(e.target.value)}
+              className="h-9 text-sm border border-slate-200 rounded-md px-2 bg-white focus:outline-none focus:border-primary">
+              <option value="all">All time</option>
+              <option value="today">Today</option>
+              <option value="7days">Last 7 days</option>
+              <option value="30days">This month</option>
+              <option value="custom">Custom range</option>
+            </select>
+          </div>
+          
+          {/* Custom date inputs */}
+          {dateFilter === 'custom' && (
+            <>
+              <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)}
+                className="h-9 text-sm border border-slate-200 rounded-md px-2 bg-white focus:outline-none focus:border-primary" />
+              <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)}
+                className="h-9 text-sm border border-slate-200 rounded-md px-2 bg-white focus:outline-none focus:border-primary" />
+            </>
+          )}
+          
+          {/* Actor filter */}
           {deletedByOptions.length > 0 && (
             <div className="flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-slate-400" />
@@ -219,6 +253,21 @@ export default function RecoveryCenter() {
               </select>
             </div>
           )}
+          
+          {/* View mode toggle */}
+          <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-1 ml-auto">
+            {[
+              { key: 'timeline', label: 'Timeline' },
+              { key: 'list', label: 'List' },
+            ].map(({ key, label }) => (
+              <button key={key} onClick={() => setViewMode(key)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Table */}
@@ -233,7 +282,99 @@ export default function RecoveryCenter() {
               {allRecords.length === 0 ? 'No deleted records found' : 'No records match your filters'}
             </p>
           </div>
+        ) : viewMode === 'timeline' ? (
+          // Timeline view (grouped by time period)
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {(() => {
+              const grouped = groupByTimeline(filtered);
+              const groups = Object.entries(grouped);
+              return groups.length === 0 ? (
+                <div className="py-12 text-center text-slate-500">No records for this period</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {groups.map(([groupLabel, records]) => (
+                    <div key={groupLabel}>
+                      {/* Group header */}
+                      <div className="sticky top-0 bg-slate-50 px-4 py-2.5 border-b border-slate-100">
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          {groupLabel} <span className="text-slate-300 font-normal">({records.length})</span>
+                        </p>
+                      </div>
+                      {/* Group records */}
+                      <div className="divide-y divide-slate-100">
+                        {records.map(record => {
+                          const label = record._labelField(record) || '—';
+                          const num = record._numField ? record._numField(record) : null;
+                          const vault = vaultMap[record.id];
+                          return (
+                            <div key={`${record._entityKey}-${record.id}`}
+                              className="px-4 py-3.5 hover:bg-slate-50 transition-colors">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 whitespace-nowrap w-fit">
+                                      {record._entityLabel}
+                                    </span>
+                                    {num && <span className="text-[11px] font-bold text-slate-400 tabular-nums">{num}</span>}
+                                    <span className="font-semibold text-slate-700 text-[13px] truncate">{label}</span>
+                                    {vault && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-600 font-semibold flex items-center gap-0.5">
+                                        <Archive className="w-2.5 h-2.5" />vault
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 mt-1.5 flex-wrap text-[11px] text-slate-500">
+                                    <span>{formatDeletedAt(record.deleted_at)}</span>
+                                    {record.deleted_by && <span>by {record.deleted_by}</span>}
+                                    {record.delete_reason && <span className="text-slate-400 italic">({record.delete_reason})</span>}
+                                  </div>
+                                </div>
+                                <div className="flex justify-end gap-1.5 flex-wrap flex-shrink-0">
+                                  {vault && (
+                                    <Button size="sm" variant="outline"
+                                      className="gap-1 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
+                                      onClick={() => setPreviewVault(vault)}>
+                                      <Eye className="w-3 h-3" />Preview
+                                    </Button>
+                                  )}
+                                  {record._canRestore && (
+                                    <Button size="sm" variant="outline"
+                                      className="gap-1 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                      onClick={() => handleRestore(record)}
+                                      disabled={restoring === record.id}>
+                                      <RotateCcw className="w-3 h-3" />
+                                      {restoring === record.id ? 'Restoring…' : 'Restore'}
+                                    </Button>
+                                  )}
+                                  {record._canPurge && (
+                                    <Button size="sm" variant="outline"
+                                      className="gap-1 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                                      onClick={() => setPurgeTarget(record)}
+                                      disabled={restoring === record.id}>
+                                      <Trash2 className="w-3 h-3" />Delete
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+            <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <p className="text-[11px] text-slate-400">
+                {filtered.length} record{filtered.length !== 1 ? 's' : ''}
+                {filtered.length !== allRecords.length && ` (${allRecords.length} total deleted)`}
+              </p>
+              <p className="text-[11px] text-slate-300">{Object.keys(vaultMap).length} with vault snapshot</p>
+            </div>
+          </div>
         ) : (
+          // List view (original grid layout)
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="grid items-center gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/80"
               style={{ gridTemplateColumns: '90px 1fr 140px 160px 230px' }}>
@@ -273,7 +414,7 @@ export default function RecoveryCenter() {
                     </div>
                     <span className="text-[12px] text-slate-500 truncate">{record.deleted_by || '—'}</span>
                     <span className="text-[12px] text-slate-500">
-                      {record.deleted_at ? new Date(record.deleted_at).toLocaleString() : '—'}
+                      {formatDeletedAt(record.deleted_at)}
                     </span>
                     <div className="flex justify-end gap-1.5 flex-wrap">
                       {vault && (
