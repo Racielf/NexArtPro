@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Clock, Plus } from 'lucide-react';
+import { Clock, Plus, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 function calcHours(start, end) {
@@ -40,10 +40,18 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
   const [newEnd, setNewEnd] = useState('');
   const [addingSession, setAddingSession] = useState(false);
 
+  // Multi-worker support
+  const [workers, setWorkers] = useState([]);
+  const [selectedWorkerId, setSelectedWorkerId] = useState('');
+
+  // Close-session end time per open session (keyed by session.id)
+  const [closeEndTimes, setCloseEndTimes] = useState({});
+
   const totalHours = calcHours(arrival, departure);
 
   useEffect(() => {
     loadSessions();
+    loadWorkers();
   }, [workOrderId]);
 
   const loadSessions = async () => {
@@ -52,6 +60,23 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
     const entries = await base44.entities.WorkOrderTimeEntry.filter({ work_order_id: workOrderId });
     setSessions(entries || []);
     setLoadingSessions(false);
+  };
+
+  const loadWorkers = async () => {
+    const all = await base44.entities.Worker.filter({ active: true });
+    setWorkers(all || []);
+  };
+
+  // Resolve effective worker from selector or fallback to assigned
+  const getEffectiveWorker = () => {
+    if (selectedWorkerId) {
+      const w = workers.find(w => w.id === selectedWorkerId);
+      return w ? { id: w.id, name: w.full_name } : null;
+    }
+    if (workOrder?.assigned_worker_id) {
+      return { id: workOrder.assigned_worker_id, name: workOrder.assigned_worker_name || '' };
+    }
+    return null;
   };
 
   // Legacy save — keeps WorkOrder.arrival_time / departure_time working
@@ -67,8 +92,10 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
 
   // Add a new WorkOrderTimeEntry session
   const handleAddSession = async () => {
+    const worker = getEffectiveWorker();
+
     // GUARDRAIL A: worker required for detailed sessions
-    if (!workOrder?.assigned_worker_id) {
+    if (!worker) {
       toast.error('Assign a worker before tracking detailed time');
       return;
     }
@@ -88,25 +115,22 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
       }
     }
 
-    const today = todayISO();
-
     // GUARDRAIL C: only one open session per work_order + worker at a time
-    const workerId = workOrder.assigned_worker_id;
-    const openEntry = sessions.find(s => !s.end_time && s.worker_id === workerId);
+    const openEntry = sessions.find(s => !s.end_time && s.worker_id === worker.id);
     if (openEntry) {
-      toast.error('There is already an open session for this worker. Close it before adding a new one.');
+      toast.error(`${worker.name || 'This worker'} already has an open session. Close it before adding a new one.`);
       return;
     }
 
     setAddingSession(true);
 
-    const workerName = workOrder?.assigned_worker_name || null;
+    const today = todayISO();
     const duration = newEnd ? calcDecimalHours(newStart, newEnd) : null;
 
     const entry = {
       work_order_id: workOrderId,
-      worker_id: workerId,
-      worker_name: workerName,
+      worker_id: worker.id,
+      worker_name: worker.name,
       work_date: today,
       start_time: newStart,
       end_time: newEnd || null,
@@ -116,10 +140,9 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
 
     await base44.entities.WorkOrderTimeEntry.create(entry);
 
-    // Also update legacy WorkOrder fields on first session of the day
-    // so jobFinancials.js fallback keeps working
+    // Also update legacy WorkOrder fields on first session of the day (main assigned worker only)
     const todaySessions = sessions.filter(s => s.work_date === today);
-    if (todaySessions.length === 0) {
+    if (todaySessions.length === 0 && worker.id === workOrder?.assigned_worker_id) {
       const legacyPatch = { arrival_time: newStart };
       if (newEnd) legacyPatch.departure_time = newEnd;
       await base44.entities.WorkOrder.update(workOrderId, legacyPatch);
@@ -134,31 +157,34 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
     setAddingSession(false);
   };
 
-  // Close an open session
+  // Close an open session — targets specific session by id
   const handleCloseSession = async (session) => {
-    if (!newEnd) {
+    const endTime = closeEndTimes[session.id] || '';
+    if (!endTime) {
       toast.error('Set an end time first');
       return;
     }
     // GUARDRAIL B: prevent invalid or overnight close
-    const duration = calcDecimalHours(session.start_time, newEnd);
+    const duration = calcDecimalHours(session.start_time, endTime);
     if (duration === null || duration <= 0) {
       toast.error('Overnight sessions are not yet supported. End time must be after start time.');
       return;
     }
     await base44.entities.WorkOrderTimeEntry.update(session.id, {
-      end_time: newEnd,
+      end_time: endTime,
       duration_hours: duration,
     });
-    // Update legacy departure_time for the most recent session
-    await base44.entities.WorkOrder.update(workOrderId, { departure_time: newEnd });
-    setDeparture(newEnd);
+    // Update legacy departure_time only for main assigned worker
+    if (session.worker_id === workOrder?.assigned_worker_id) {
+      await base44.entities.WorkOrder.update(workOrderId, { departure_time: endTime });
+      setDeparture(endTime);
+    }
     toast.success('Session closed');
-    setNewEnd('');
+    setCloseEndTimes(prev => { const n = { ...prev }; delete n[session.id]; return n; });
     await loadSessions();
   };
 
-  const openSession = sessions.find(s => s.work_date === todayISO() && !s.end_time);
+  const openSessions = sessions.filter(s => !s.end_time);
   const closedSessions = sessions.filter(s => s.end_time);
 
   return (
@@ -215,33 +241,43 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
         {/* Session entries */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Detailed Sessions (WorkOrderTimeEntry)</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Detailed Sessions</p>
             <span className="text-[10px] text-slate-400 italic">Sessions are recorded for today only</span>
           </div>
-          {!workOrder?.assigned_worker_id && (
+
+          {!workOrder?.assigned_worker_id && workers.length === 0 && (
             <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-xs text-amber-700 font-medium">Assign a worker to this work order to enable detailed time tracking.</p>
             </div>
           )}
 
-          {/* Open session warning */}
-          {openSession && (
-            <div className="mb-3 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-              <div>
-                <p className="text-xs font-semibold text-amber-700">Open session — started at {openSession.start_time}</p>
-                <p className="text-[10px] text-amber-600">Set end time below and click "Close Session"</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="time"
-                  value={newEnd}
-                  onChange={e => setNewEnd(e.target.value)}
-                  className="bg-white border border-amber-200 rounded px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                />
-                <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white text-xs" onClick={() => handleCloseSession(openSession)}>
-                  Close Session
-                </Button>
-              </div>
+          {/* Open sessions — one per worker, each with its own close control */}
+          {openSessions.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {openSessions.map(session => (
+                <div key={session.id} className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <User className="w-3 h-3 text-amber-600 flex-shrink-0" />
+                      <p className="text-xs font-semibold text-amber-700 truncate">
+                        {session.worker_name || 'Unknown worker'} — started at {session.start_time}
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-amber-600">Set end time and close</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <input
+                      type="time"
+                      value={closeEndTimes[session.id] || ''}
+                      onChange={e => setCloseEndTimes(prev => ({ ...prev, [session.id]: e.target.value }))}
+                      className="bg-white border border-amber-200 rounded px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    />
+                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white text-xs" onClick={() => handleCloseSession(session)}>
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -249,21 +285,44 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
           {!loadingSessions && closedSessions.length > 0 && (
             <div className="space-y-1.5 mb-3">
               {closedSessions.map(s => (
-                <div key={s.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-xs text-slate-600">
-                  <span>{s.work_date}</span>
-                  <span>{s.start_time} → {s.end_time}</span>
-                  <span className="font-semibold text-primary">
+                <div key={s.id} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-xs text-slate-600">
+                  <div className="flex items-center gap-1 min-w-0 flex-1">
+                    <User className="w-3 h-3 text-slate-300 flex-shrink-0" />
+                    <span className="font-medium text-slate-700 truncate">{s.worker_name || '—'}</span>
+                  </div>
+                  <span className="text-slate-400 flex-shrink-0">{s.work_date}</span>
+                  <span className="flex-shrink-0">{s.start_time} → {s.end_time}</span>
+                  <span className="font-semibold text-primary flex-shrink-0">
                     {s.duration_hours ? `${s.duration_hours}h` : calcHours(s.start_time, s.end_time) || '—'}
                   </span>
-                  {s.worker_name && <span className="text-slate-400">{s.worker_name}</span>}
                 </div>
               ))}
             </div>
           )}
 
           {/* Add new session */}
-          {!openSession && (
-            <div className="flex items-end gap-3 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+          <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 space-y-3">
+            {/* Worker selector */}
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Worker</p>
+              <select
+                value={selectedWorkerId}
+                onChange={e => setSelectedWorkerId(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">
+                  {workOrder?.assigned_worker_name
+                    ? `${workOrder.assigned_worker_name} (assigned)`
+                    : 'Select worker…'}
+                </option>
+                {workers.map(w => (
+                  <option key={w.id} value={w.id}>{w.full_name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Time inputs */}
+            <div className="flex items-end gap-3">
               <div className="flex-1">
                 <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Start</p>
                 <input
@@ -287,7 +346,7 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
                 {addingSession ? 'Adding…' : 'Add Session'}
               </Button>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
