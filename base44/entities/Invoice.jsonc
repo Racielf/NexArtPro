@@ -16,24 +16,19 @@
       "description": "Estimate version at invoice creation time (traceability snapshot)"
     },
     "source_proposal_id": {
-      "type": "string",
-      "description": "ID of the Proposal this invoice was converted from"
+      "type": "string"
     },
     "source_proposal_number": {
-      "type": "number",
-      "description": "Proposal number at conversion time (snapshot)"
+      "type": "number"
     },
     "source_close_outcome": {
-      "type": "string",
-      "description": "Deal close outcome from source Proposal (won / lost / no_response / withdrawn)"
+      "type": "string"
     },
     "source_selected_pricing_option_id": {
-      "type": "string",
-      "description": "ID of the pricing option the client selected on the source Proposal"
+      "type": "string"
     },
     "source_selected_pricing_option_title": {
-      "type": "string",
-      "description": "Title of the winning pricing option at conversion time (snapshot)"
+      "type": "string"
     },
     "client_id": {
       "type": "string"
@@ -70,7 +65,6 @@
     },
     "groups": {
       "type": "array",
-      "description": "Inherited work groups from estimate/work order",
       "items": {
         "type": "object"
       }
@@ -135,27 +129,44 @@
       "description": "Client payment intent from portal"
     },
     "client_response_note": {
-      "type": "string",
-      "description": "Optional note from client with their response"
+      "type": "string"
     },
     "client_response_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "Timestamp when client provided response"
+      "format": "date-time"
     },
     "promised_payment_date": {
       "type": "string",
-      "format": "date",
-      "description": "Date the client promised to pay (set when client selects will_pay_soon)"
+      "format": "date"
     },
     "promised_payment_note": {
+      "type": "string"
+    },
+    "billing_issue_status": {
       "type": "string",
-      "description": "Optional note accompanying the payment promise"
+      "enum": [
+        "open",
+        "resolved"
+      ],
+      "description": "Set to 'open' when client raises a billing question; 'resolved' when addressed internally"
+    },
+    "billing_issue_note": {
+      "type": "string",
+      "description": "Client's original question or note about the billing issue"
+    },
+    "billing_issue_opened_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the billing issue was raised"
+    },
+    "billing_issue_resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the billing issue was marked resolved internally"
     },
     "last_contacted_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "Timestamp of last follow-up action"
+      "format": "date-time"
     },
     "sent_at": {
       "type": "string"
@@ -165,7 +176,6 @@
     },
     "company_id": {
       "type": "string",
-      "description": "Company identifier for multi-tenant support",
       "default": "rc-art"
     }
   },

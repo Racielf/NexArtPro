@@ -60,6 +60,13 @@ export default function ClientResponseActions({ invoice, onResponseSubmitted }) 
         updates.promised_payment_date = promisedDate;
         updates.promised_payment_note = note || null;
       }
+      // Billing issue: open when client selects has_question
+      if (selectedIntent === 'has_question') {
+        updates.billing_issue_status = 'open';
+        updates.billing_issue_note = note || null;
+        updates.billing_issue_opened_at = now;
+        updates.billing_issue_resolved_at = null;
+      }
       await base44.entities.Invoice.update(invoice.id, updates);
       toast.success('Your response has been recorded');
       setOpen(false);

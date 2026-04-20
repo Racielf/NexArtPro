@@ -93,12 +93,29 @@ export function getInvoiceFollowUpTiming(invoice) {
     };
   }
 
-  // CLIENT RESPONSE: has question — always immediate regardless of last contact
-  if (invoice.client_response_status === 'has_question') {
+  // BILLING ISSUE: active issue — suppress collections, redirect to resolution
+  if (invoice.billing_issue_status === 'open') {
+    const daysOpen = daysSince(invoice.billing_issue_opened_at) || 0;
+    if (daysOpen >= 3) {
+      return {
+        next_follow_up_in_days: 0,
+        urgency: 'medium',
+        label: `Billing issue pending — open ${daysOpen}d, review today`,
+      };
+    }
+    return {
+      next_follow_up_in_days: Math.max(0, 2 - daysOpen),
+      urgency: 'low',
+      label: `Billing issue open — resolve before collecting`,
+    };
+  }
+
+  // CLIENT RESPONSE: has question (no billing_issue_status set — legacy fallback)
+  if (invoice.client_response_status === 'has_question' && invoice.billing_issue_status !== 'resolved') {
     return {
       next_follow_up_in_days: 0,
-      urgency: 'high',
-      label: 'Respond today (client has a question)',
+      urgency: 'medium',
+      label: 'Respond today (client has a billing question)',
     };
   }
 

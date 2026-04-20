@@ -138,7 +138,19 @@ export function getNextAction(doc) {
      return { icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Payment expected', sub: 'Client says paying soon.' };
     }
 
-    // client response: has question
+    // BILLING ISSUE — active: pause collections, redirect to resolution
+    if (invoice.billing_issue_status === 'open') {
+      const daysOpen = Math.floor((Date.now() - new Date(invoice.billing_issue_opened_at || invoice.client_response_at).getTime()) / 86400000);
+      if (daysOpen >= 3) {
+        return { icon: AlertTriangle, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', label: 'Billing issue pending review', sub: `Open ${daysOpen}d — resolve before resuming collections` };
+      }
+      return { icon: HelpCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Resolve billing question', sub: 'Collections paused until resolved' };
+    }
+
+    // client response: has question (resolved or no billing_issue_status)
+    if (invoice.client_response_status === 'has_question' && invoice.billing_issue_status === 'resolved') {
+     return { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Issue resolved — follow up on payment', sub: 'Billing question addressed.' };
+    }
     if (invoice.client_response_status === 'has_question') {
      return { icon: HelpCircle, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', label: 'Awaiting clarification', sub: 'Client has a billing question.' };
     }

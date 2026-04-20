@@ -327,7 +327,10 @@ export default function InvoiceDetail() {
                   </div>
                 );
               })()}
-              <ClientResponseSummary invoice={invoice} />
+              <ClientResponseSummary
+                invoice={invoice}
+                onIssueResolved={(updates) => setInvoice(i => ({ ...i, ...updates }))}
+              />
             </div>
           )}
 
