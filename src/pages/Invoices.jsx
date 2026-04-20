@@ -436,6 +436,7 @@ export default function Invoices() {
               const nextAction = getInvoiceNextAction(inv);
               const followUpTiming = getInvoiceFollowUpTiming(inv);
               const balanceDue = (inv.total || 0) - (inv.amount_paid || 0);
+              const breaches = detectSLABreaches(inv);
 
               return (
                 <div
@@ -477,15 +478,25 @@ export default function Invoices() {
                             </span>
                           );
                         })()}
-                        {followUpTiming && (
-                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium flex items-center gap-1 border ${
-                            followUpTiming.urgency === 'high' ? 'bg-red-50 text-red-600 border-red-200' :
-                            followUpTiming.urgency === 'medium' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                            'bg-blue-50 text-blue-600 border-blue-200'
-                          }`}>
-                            <Clock className="w-2.5 h-2.5" />{followUpTiming.label}
-                          </span>
-                        )}
+                        {(() => {
+                          const breach = breaches.find(b => b.severity === 'critical');
+                          if (breach) {
+                            return (
+                              <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border bg-red-100 text-red-700 border-red-300">
+                                🔴 SLA BREACH
+                              </span>
+                            );
+                          }
+                          return followUpTiming && (
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium flex items-center gap-1 border ${
+                              followUpTiming.urgency === 'high' ? 'bg-red-50 text-red-600 border-red-200' :
+                              followUpTiming.urgency === 'medium' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                              'bg-blue-50 text-blue-600 border-blue-200'
+                            }`}>
+                              <Clock className="w-2.5 h-2.5" />{followUpTiming.label}
+                            </span>
+                          );
+                        })()}
                         {evidence && !evidence.isComplete && (
                           <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200 flex items-center gap-1">
                             <AlertTriangle className="w-2.5 h-2.5" />Evidencia incompleta

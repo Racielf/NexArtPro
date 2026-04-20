@@ -13,6 +13,7 @@ import { getInvoiceWorkloadCategory } from './invoiceCollectionWorkload';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from './invoiceHelpers';
 import { getEscalationBand, getOverdueDays } from './invoiceMessageTemplates';
 import { getInvoiceFollowUpTiming } from './invoiceFollowUpTiming';
+import { detectSLABreaches } from './invoiceSLA';
 
 /**
  * Classify invoice into operator queue group.
@@ -26,6 +27,12 @@ export function getInvoiceQueueGroup(invoice) {
 
   const { balance_due } = computeInvoiceDerivedFields(invoice);
   if (balance_due <= 0) return null; // paid
+
+  // URGENT NOW: SLA breach with critical severity ALWAYS forces urgent_now
+  const breaches = detectSLABreaches(invoice);
+  if (breaches.some(b => b.severity === 'critical')) {
+    return 'urgent_now';
+  }
 
   const workloadCategory = getInvoiceWorkloadCategory(invoice);
   const timing = getInvoiceFollowUpTiming(invoice);

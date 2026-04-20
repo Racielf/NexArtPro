@@ -19,6 +19,7 @@ import PaymentHistory from '@/components/invoices/PaymentHistory';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
+import { detectSLABreaches } from '@/lib/invoiceSLA';
 import { markInvoiceContacted, getLastContactedDisplay } from '@/lib/invoiceActionHelpers';
 import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import ClientResponseSummary from '@/components/invoices/ClientResponseSummary';
@@ -192,6 +193,7 @@ export default function InvoiceDetail() {
   const followUpTiming = getInvoiceFollowUpTiming(invoice);
   const isPaid = derived.payment_status === 'paid';
   const isPartial = derived.payment_status === 'partial';
+  const breaches = detectSLABreaches(invoice);
 
   return (
     <>
@@ -318,7 +320,46 @@ export default function InvoiceDetail() {
               )}
             </div>
 
-            {/* 2. COLLECTIONS / NEXT ACTION */}
+            {/* 2. SLA ALERTS */}
+            {breaches.length > 0 && (
+              <div className="px-4 py-3.5 border-b border-slate-100 space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">SLA Alerts</p>
+                {breaches.map((breach, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${
+                      breach.severity === 'critical'
+                        ? 'bg-red-50 border-red-200'
+                        : 'bg-amber-50 border-amber-200'
+                    }`}
+                  >
+                    <AlertTriangle
+                      className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
+                        breach.severity === 'critical' ? 'text-red-600' : 'text-amber-600'
+                      }`}
+                    />
+                    <div>
+                      <p
+                        className={`font-semibold ${
+                          breach.severity === 'critical' ? 'text-red-700' : 'text-amber-700'
+                        }`}
+                      >
+                        {breach.label}
+                      </p>
+                      <p
+                        className={`text-[11px] mt-0.5 ${
+                          breach.severity === 'critical' ? 'text-red-600' : 'text-amber-600'
+                        }`}
+                      >
+                        {breach.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 3. COLLECTIONS / NEXT ACTION */}
             {(nextAction || isOverdue || followUpTiming) && !isPaid && (
               <div className="px-4 py-3.5 border-b border-slate-100 space-y-2">
                 <div className="flex items-center justify-between">
@@ -386,7 +427,7 @@ export default function InvoiceDetail() {
               </div>
             )}
 
-            {/* 3. CLIENT RESPONSE / PROMISE / BILLING ISSUE */}
+            {/* 4. CLIENT RESPONSE / PROMISE / BILLING ISSUE */}
             {invoice.client_response_at && invoice.client_response_status !== 'no_response' && (
               <div className="px-4 py-3.5 border-b border-slate-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Client Response</p>
@@ -397,10 +438,10 @@ export default function InvoiceDetail() {
               </div>
             )}
 
-            {/* 4. CONTACT ACTIONS */}
+            {/* 5. CONTACT ACTIONS */}
             <QuickContactActions invoice={invoice} isOverdue={isOverdue} />
 
-            {/* 5. CLIENT INFO */}
+            {/* 6. CLIENT INFO */}
             <div className="px-4 py-3.5 border-b border-slate-100">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Bill To</p>
               <p className="font-semibold text-slate-800 text-sm">{invoice.client_name}</p>
@@ -413,7 +454,7 @@ export default function InvoiceDetail() {
               {invoice.client_email && <p className="text-xs text-slate-500 mt-1">✉ {invoice.client_email}</p>}
             </div>
 
-            {/* 6. DATES + TIMELINE */}
+            {/* 7. DATES + TIMELINE */}
             <div className="px-4 py-3.5 border-b border-slate-100 space-y-2.5">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Timeline</p>
               <div>
@@ -447,7 +488,7 @@ export default function InvoiceDetail() {
               )}
             </div>
 
-            {/* 7. LINKED RECORDS + EVIDENCE */}
+            {/* 8. LINKED RECORDS + EVIDENCE */}
             {(invoice.estimate_id || invoice.work_order_id || evidenceEval) && (
               <div className="px-4 py-3.5 border-b border-slate-100 space-y-2">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Linked Records</p>
@@ -478,7 +519,7 @@ export default function InvoiceDetail() {
               </div>
             )}
 
-            {/* 8. EXECUTION EVIDENCE BLOCK */}
+            {/* 9. EXECUTION EVIDENCE BLOCK */}
             {workOrder && (
               <div className="px-4 py-3.5 border-b border-slate-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Execution</p>

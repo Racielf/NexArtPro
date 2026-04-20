@@ -11,16 +11,19 @@
  * - Lack of contact on overdue invoices
  */
 
+import { computeInvoiceDerivedFields, isInvoiceOverdue } from './invoiceHelpers';
+import { getInvoiceFollowUpTiming } from './invoiceFollowUpTiming';
+
 /**
  * detectSLABreaches — Main detection function.
  * Returns array of breach objects for a single invoice.
  *
  * Each breach has:
  * {
- *   breach_type: string (missed_follow_up | broken_promise | unassigned_issue | stale_issue | no_recent_contact)
- *   severity: "CRITICAL" | "HIGH"
- *   details: string (human-readable reason)
- *   breached_at: Date (when violation started)
+ *   type: string (missed_follow_up | broken_promise | unassigned_issue | stale_issue | no_recent_contact)
+ *   severity: 'critical' | 'high'
+ *   label: string (short title)
+ *   description: string (human-readable reason)
  * }
  */
 export function detectSLABreaches(invoice) {
@@ -28,19 +31,20 @@ export function detectSLABreaches(invoice) {
 
   if (!invoice) return breaches;
 
+  // Filter: skip draft/cancelled/paid
+  if (invoice.status === 'draft' || invoice.status === 'cancelled') return breaches;
+  const { balance_due } = computeInvoiceDerivedFields(invoice);
+  if (balance_due <= 0) return breaches;
+
   const now = new Date();
   const today = now.toISOString().split('T')[0];
-
-  // Filter: skip if fully paid
-  const balance_due = (invoice.total || 0) - (invoice.amount_paid || 0);
-  if (balance_due <= 0) return breaches;
 
   // Rule 1: Missed Follow-up (CRITICAL)
   const missedFollowUp = detectMissedFollowUp(invoice, today);
   if (missedFollowUp) breaches.push(missedFollowUp);
 
   // Rule 2: Broken Promise (CRITICAL)
-  const brokenPromise = detectBrokenPromise(invoice, now);
+  const brokenPromise = detectBrokenPromise(invoice, now, balance_due);
   if (brokenPromise) breaches.push(brokenPromise);
 
   // Rule 3: Unassigned Billing Issue (HIGH)
@@ -62,48 +66,31 @@ export function detectSLABreaches(invoice) {
  * Rule 1: Missed Follow-up (CRITICAL)
  *
  * Condition:
- * - followUpTiming.next_follow_up_in_days === 0 (due TODAY)
+ * - timing.next_follow_up_in_days === 0 (due TODAY)
  * - AND last_contacted_at is NOT today
- * - AND unpaid
+ * - AND balance_due > 0
  */
 function detectMissedFollowUp(invoice, today) {
-  if (!invoice.last_contacted_at) {
-    // Never contacted = missed follow-up on first day unpaid
-    if (invoice.status !== 'paid') {
-      return {
-        breach_type: 'missed_follow_up',
-        severity: 'CRITICAL',
-        details: `Never contacted. Created ${invoice.created_date ? new Date(invoice.created_date).toLocaleDateString() : 'unknown'}.`,
-        breached_at: invoice.created_date || new Date().toISOString(),
-      };
-    }
+  const timing = getInvoiceFollowUpTiming(invoice);
+  const { balance_due } = computeInvoiceDerivedFields(invoice);
+
+  // Must have follow-up due today and unpaid
+  if (!timing || timing.next_follow_up_in_days !== 0 || balance_due <= 0) {
     return null;
   }
 
+  // Check if last contact was today
   const lastContactDate = invoice.last_contacted_at?.split('T')[0];
   if (lastContactDate === today) {
-    // Contacted today — no breach
-    return null;
+    return null; // Already contacted today
   }
 
-  // Check if next follow-up is due today (based on timing logic)
-  // This is derived externally, but we can infer from client response state
-  // If promised_payment_date exists and is today, mark as missed
-  if (invoice.promised_payment_date) {
-    const promised = new Date(invoice.promised_payment_date);
-    const nowDate = new Date(today);
-    if (promised.toDateString() === nowDate.toDateString()) {
-      // Today is promised date but no contact today = missed
-      return {
-        breach_type: 'missed_follow_up',
-        severity: 'CRITICAL',
-        details: `Promised payment today (${invoice.promised_payment_date}) but no contact recorded.`,
-        breached_at: invoice.promised_payment_date,
-      };
-    }
-  }
-
-  return null;
+  return {
+    type: 'missed_follow_up',
+    severity: 'critical',
+    label: 'Missed Follow-up',
+    description: `Follow-up due today but no contact yet.`,
+  };
 }
 
 /**
@@ -113,11 +100,10 @@ function detectMissedFollowUp(invoice, today) {
  * - promised_payment_date < today
  * - AND balance_due > 0
  */
-function detectBrokenPromise(invoice, now) {
+function detectBrokenPromise(invoice, now, balance_due) {
   if (!invoice.promised_payment_date) return null;
 
   const promised = new Date(invoice.promised_payment_date);
-  const balance_due = (invoice.total || 0) - (invoice.amount_paid || 0);
 
   if (balance_due <= 0) return null; // Already paid
   if (promised >= now) return null; // Date is in future
@@ -125,10 +111,10 @@ function detectBrokenPromise(invoice, now) {
   // Promised date has passed and still unpaid
   const daysPassed = Math.floor((now - promised) / (1000 * 60 * 60 * 24));
   return {
-    breach_type: 'broken_promise',
-    severity: 'CRITICAL',
-    details: `Promised payment ${daysPassed}d ago (${invoice.promised_payment_date}) but balance due $${balance_due.toFixed(2)}.`,
-    breached_at: invoice.promised_payment_date,
+    type: 'broken_promise',
+    severity: 'critical',
+    label: 'Broken Promise',
+    description: `Promised payment ${daysPassed}d ago (${invoice.promised_payment_date}) but $${balance_due.toFixed(2)} still due.`,
   };
 }
 
@@ -144,10 +130,10 @@ function detectUnassignedIssue(invoice) {
   if (invoice.billing_issue_owner) return null; // Already assigned
 
   return {
-    breach_type: 'unassigned_issue',
-    severity: 'HIGH',
-    details: `Billing issue opened (${invoice.billing_issue_opened_at ? new Date(invoice.billing_issue_opened_at).toLocaleDateString() : 'unknown'}) but no owner assigned.`,
-    breached_at: invoice.billing_issue_opened_at || new Date().toISOString(),
+    type: 'unassigned_issue',
+    severity: 'high',
+    label: 'Unassigned Issue',
+    description: `Billing issue open but no owner assigned.`,
   };
 }
 
@@ -168,10 +154,10 @@ function detectStaleIssue(invoice, now) {
   if (daysSinceOpened < 3) return null; // Less than 3 days = not stale yet
 
   return {
-    breach_type: 'stale_issue',
-    severity: 'HIGH',
-    details: `Billing issue unresolved for ${daysSinceOpened}d (opened ${invoice.billing_issue_opened_at}).`,
-    breached_at: invoice.billing_issue_opened_at,
+    type: 'stale_issue',
+    severity: 'high',
+    label: 'Stale Issue',
+    description: `Billing issue unresolved for ${daysSinceOpened}d.`,
   };
 }
 
@@ -183,19 +169,15 @@ function detectStaleIssue(invoice, now) {
  * - AND daysSince(last_contacted_at) >= 3
  */
 function detectNoRecentContact(invoice, now) {
-  if (!invoice.due_date) return null;
+  if (!isInvoiceOverdue(invoice)) return null;
 
-  const dueDate = new Date(invoice.due_date);
-  if (now <= dueDate) return null; // Not yet overdue
-
-  // Invoice is overdue
   if (!invoice.last_contacted_at) {
     // Never contacted while overdue = breach
     return {
-      breach_type: 'no_recent_contact',
-      severity: 'HIGH',
-      details: `Overdue since ${invoice.due_date} but never contacted.`,
-      breached_at: invoice.due_date,
+      type: 'no_recent_contact',
+      severity: 'high',
+      label: 'No Recent Contact',
+      description: `Overdue but never contacted.`,
     };
   }
 
@@ -204,10 +186,10 @@ function detectNoRecentContact(invoice, now) {
 
   if (daysSinceContact >= 3) {
     return {
-      breach_type: 'no_recent_contact',
-      severity: 'HIGH',
-      details: `Overdue but no contact in ${daysSinceContact}d (last: ${lastContact.toLocaleDateString()}).`,
-      breached_at: new Date(lastContact.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(), // Breach occurred 3 days after last contact
+      type: 'no_recent_contact',
+      severity: 'high',
+      label: 'No Recent Contact',
+      description: `Overdue but no contact in ${daysSinceContact}d.`,
     };
   }
 
@@ -246,10 +228,10 @@ export function computeSLASummary(invoices) {
   (invoices || []).forEach(inv => {
     const breaches = detectSLABreaches(inv);
     breaches.forEach(breach => {
-      if (breach.severity === 'CRITICAL') summary.critical_count++;
-      else if (breach.severity === 'HIGH') summary.high_count++;
+      if (breach.severity === 'critical') summary.critical_count++;
+      else if (breach.severity === 'high') summary.high_count++;
 
-      summary.by_type[breach.breach_type]++;
+      summary.by_type[breach.type]++;
     });
   });
 
@@ -276,9 +258,9 @@ export function groupInvoicesByBreach(invoices) {
     if (breaches.length === 0) return; // No breaches
 
     // Use PRIMARY (most severe) breach type
-    const critical = breaches.find(b => b.severity === 'CRITICAL');
+    const critical = breaches.find(b => b.severity === 'critical');
     const primary = critical || breaches[0];
-    grouped[primary.breach_type].push(inv);
+    grouped[primary.type].push(inv);
   });
 
   return grouped;
