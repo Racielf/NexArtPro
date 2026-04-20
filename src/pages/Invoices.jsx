@@ -25,6 +25,7 @@ import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
 import { useAuth } from '@/lib/AuthContext';
 import CollectionCapacityPanel from '@/components/invoices/CollectionCapacityPanel';
 import BillingIssueOwnerSelect from '@/components/invoices/BillingIssueOwnerSelect';
+import { getInvoiceWorkloadCategory } from '@/lib/invoiceCollectionWorkload';
 
 const ESCALATION_BADGE = {
   urgent:   { cls: 'bg-red-100 text-red-700 font-bold border border-red-200', label: (d) => `Final Notice · ${d}d overdue` },
@@ -44,6 +45,8 @@ export default function Invoices() {
   const { user } = useAuth();
   const actor = user?.email || user?.id || 'unknown';
   const [archiveBulkModal, setArchiveBulkModal] = useState(false);
+  const [capacityFilterOwner, setCapacityFilterOwner] = useState(null);
+  const [capacityFilterCategory, setCapacityFilterCategory] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -163,7 +166,26 @@ export default function Invoices() {
     i.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     String(i.invoice_number).includes(search)
   );
-  const actionFiltered = filterInvoicesByAction(searchFiltered, actionFilter);
+  
+  // Apply capacity drill-down filters if set
+  let capacityFiltered = searchFiltered;
+  if (capacityFilterCategory === 'unassigned_urgent') {
+    capacityFiltered = searchFiltered.filter(i => {
+      const workloadCategory = getInvoiceWorkloadCategory(i);
+      return workloadCategory === 'urgent' && !i.billing_issue_owner;
+    });
+  } else if (capacityFilterOwner) {
+    capacityFiltered = searchFiltered.filter(i => i.billing_issue_owner === capacityFilterOwner);
+    if (capacityFilterCategory === 'urgent') {
+      capacityFiltered = capacityFiltered.filter(i => getInvoiceWorkloadCategory(i) === 'urgent');
+    } else if (capacityFilterCategory === 'action_today') {
+      capacityFiltered = capacityFiltered.filter(i => getInvoiceWorkloadCategory(i) === 'action_today');
+    } else if (capacityFilterCategory === 'billing_issue') {
+      capacityFiltered = capacityFiltered.filter(i => i.billing_issue_status === 'open');
+    }
+  }
+  
+  const actionFiltered = filterInvoicesByAction(capacityFiltered, actionFilter);
   const sorted = sortInvoicesByUrgency(actionFiltered);
   const filtered = sorted;
 
@@ -226,6 +248,12 @@ export default function Invoices() {
          <CollectionCapacityPanel 
            invoices={invoices}
            onAssignmentChange={() => loadData()}
+           onFilterChange={(filterConfig) => {
+             setCapacityFilterOwner(filterConfig.owner || null);
+             setCapacityFilterCategory(filterConfig.category || null);
+             setActionFilter('all'); // reset action filter
+             setSearch(''); // reset search
+           }}
          />
 
          {/* Operator Queue — top actionable invoices */}
@@ -316,8 +344,26 @@ export default function Invoices() {
            ) : null;
          })()}
 
+         {/* Capacity filter badge */}
+         {(capacityFilterOwner || capacityFilterCategory) && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+            <span className="text-xs font-medium text-blue-700">
+              Filtering: {capacityFilterOwner ? `${capacityFilterOwner} - ${capacityFilterCategory || 'all'}` : 'Unassigned urgent'}
+            </span>
+            <button
+              onClick={() => {
+                setCapacityFilterOwner(null);
+                setCapacityFilterCategory(null);
+              }}
+              className="text-blue-600 hover:text-blue-700 text-xs font-bold"
+            >
+              ✕
+            </button>
+          </div>
+         )}
+
          {/* Action bar */}
-        <div className="flex items-center gap-2 flex-wrap">
+         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-1">
             {[
               { key: 'all', label: 'Todos' },
