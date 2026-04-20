@@ -17,7 +17,8 @@ import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextAction
 import { filterInvoicesByAction, sortInvoicesByUrgency } from '@/lib/invoiceActionFilter';
 import { executeOneClickFollowUp } from '@/lib/invoiceActionHelpers';
 import { getEscalationBand, getOverdueDays } from '@/lib/invoiceMessageTemplates';
-import { Zap } from 'lucide-react';
+import { Zap, ChevronRight } from 'lucide-react';
+import { buildOperatorQueue, QUEUE_LABELS } from '@/lib/invoiceOperatorQueue';
 import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
@@ -216,10 +217,89 @@ export default function Invoices() {
       <PageHeader title="Invoices" subtitle={`${invoices.length} total`} />
 
       <PageShell>
-        {/* Financial Overview */}
-        <CashflowSummary />
+         {/* Financial Overview */}
+         <CashflowSummary />
 
-        {/* Action bar */}
+         {/* Operator Queue — top actionable invoices */}
+         {!loading && invoices.length > 0 && (() => {
+           const queue = buildOperatorQueue(invoices);
+           const hasQueue = queue.urgent_now.length > 0 || queue.follow_up_today.length > 0 || queue.billing_issues.length > 0;
+           return hasQueue ? (
+             <div className="space-y-2.5">
+               {queue.urgent_now.length > 0 && (
+                 <div className="bg-white border border-red-200 rounded-xl overflow-hidden">
+                   <div className="px-4 py-2.5 bg-red-50 flex items-center gap-2 border-b border-red-100">
+                     <span className="text-lg">🔴</span>
+                     <span className="text-xs font-bold uppercase tracking-widest text-red-700">Urgent Now</span>
+                     <span className="ml-auto text-xs font-bold text-red-600">{queue.urgent_now.length}</span>
+                   </div>
+                   <div className="divide-y divide-slate-100">
+                     {queue.urgent_now.slice(0, 3).map(inv => (
+                       <div key={inv.id} onClick={() => navigate(`/invoice-detail?id=${inv.id}`)} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-red-50/30 cursor-pointer transition-colors">
+                         <div className="min-w-0 flex-1">
+                           <div className="flex items-center gap-2 flex-wrap">
+                             <span className="text-xs font-bold text-primary">INV#{inv.invoice_number}</span>
+                             <span className="text-sm font-semibold text-slate-800 truncate">{inv.client_name}</span>
+                           </div>
+                           <p className="text-xs text-slate-500 mt-0.5">${(computeInvoiceDerivedFields(inv).balance_due).toFixed(2)} due</p>
+                         </div>
+                         <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
+               {queue.follow_up_today.length > 0 && (
+                 <div className="bg-white border border-amber-200 rounded-xl overflow-hidden">
+                   <div className="px-4 py-2.5 bg-amber-50 flex items-center gap-2 border-b border-amber-100">
+                     <span className="text-lg">🟠</span>
+                     <span className="text-xs font-bold uppercase tracking-widest text-amber-700">Follow-up Today</span>
+                     <span className="ml-auto text-xs font-bold text-amber-600">{queue.follow_up_today.length}</span>
+                   </div>
+                   <div className="divide-y divide-slate-100">
+                     {queue.follow_up_today.slice(0, 3).map(inv => (
+                       <div key={inv.id} onClick={() => navigate(`/invoice-detail?id=${inv.id}`)} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-amber-50/30 cursor-pointer transition-colors">
+                         <div className="min-w-0 flex-1">
+                           <div className="flex items-center gap-2 flex-wrap">
+                             <span className="text-xs font-bold text-primary">INV#{inv.invoice_number}</span>
+                             <span className="text-sm font-semibold text-slate-800 truncate">{inv.client_name}</span>
+                           </div>
+                           <p className="text-xs text-slate-500 mt-0.5">${(computeInvoiceDerivedFields(inv).balance_due).toFixed(2)} due</p>
+                         </div>
+                         <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
+               {queue.billing_issues.length > 0 && (
+                 <div className="bg-white border border-blue-200 rounded-xl overflow-hidden">
+                   <div className="px-4 py-2.5 bg-blue-50 flex items-center gap-2 border-b border-blue-100">
+                     <span className="text-lg">🔵</span>
+                     <span className="text-xs font-bold uppercase tracking-widest text-blue-600">Billing Issues</span>
+                     <span className="ml-auto text-xs font-bold text-blue-600">{queue.billing_issues.length}</span>
+                   </div>
+                   <div className="divide-y divide-slate-100">
+                     {queue.billing_issues.slice(0, 3).map(inv => (
+                       <div key={inv.id} onClick={() => navigate(`/invoice-detail?id=${inv.id}`)} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-blue-50/30 cursor-pointer transition-colors">
+                         <div className="min-w-0 flex-1">
+                           <div className="flex items-center gap-2 flex-wrap">
+                             <span className="text-xs font-bold text-primary">INV#{inv.invoice_number}</span>
+                             <span className="text-sm font-semibold text-slate-800 truncate">{inv.client_name}</span>
+                           </div>
+                           <p className="text-xs text-slate-500 mt-0.5">Owner: {inv.billing_issue_owner || 'unassigned'}</p>
+                         </div>
+                         <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
+             </div>
+           ) : null;
+         })()}
+
+         {/* Action bar */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-1">
             {[
