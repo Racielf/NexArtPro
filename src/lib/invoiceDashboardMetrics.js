@@ -6,6 +6,7 @@
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from './invoiceHelpers';
 import { getInvoiceFollowUpTiming } from './invoiceFollowUpTiming';
 import { getInvoiceCollectionState } from './invoiceCollectionState';
+import { aggregateCashForecast } from './invoiceCashForecast';
 
 /**
  * Get dashboard metrics for invoice collection
@@ -55,6 +56,12 @@ export function getInvoiceDashboardMetrics(invoices = []) {
     else if (state === 'in_review')  metrics.total_in_review  += balanceDue;
     else if (state === 'at_risk')    metrics.total_at_risk    += balanceDue;
   });
+
+  // Cash forecast buckets
+  const forecast = aggregateCashForecast(invoices);
+  metrics.expected_immediate  = forecast.expected_immediate;
+  metrics.expected_short_term = forecast.expected_short_term;
+  metrics.expected_uncertain  = forecast.expected_uncertain;
 
   return metrics;
 }

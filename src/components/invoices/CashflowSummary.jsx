@@ -106,6 +106,38 @@ export default function CashflowSummary() {
       </Card>
     </div>
 
+    {/* Cash-In Forecast */}
+    {metrics.total_outstanding > 0 && (
+      <div className="bg-white border border-border rounded-xl px-5 py-3">
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5">
+          Flujo esperado — Estimado de cobro
+        </p>
+        <div className="flex flex-wrap gap-x-6 gap-y-1.5">
+          <div className="flex items-center gap-2 min-w-[160px]">
+            <span className="w-2 h-2 rounded-full flex-shrink-0 bg-emerald-500" />
+            <span className="text-xs text-muted-foreground w-28">Próximos 3 días</span>
+            <span className={`text-xs font-bold ${metrics.expected_immediate > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
+              {fmt(metrics.expected_immediate)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 min-w-[160px]">
+            <span className="w-2 h-2 rounded-full flex-shrink-0 bg-blue-400" />
+            <span className="text-xs text-muted-foreground w-28">Próximos 10 días</span>
+            <span className={`text-xs font-bold ${metrics.expected_short_term > 0 ? 'text-blue-600' : 'text-slate-300'}`}>
+              {fmt(metrics.expected_short_term)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 min-w-[160px]">
+            <span className="w-2 h-2 rounded-full flex-shrink-0 bg-slate-300" />
+            <span className="text-xs text-muted-foreground w-28">Sin fecha estimada</span>
+            <span className={`text-xs font-bold ${metrics.expected_uncertain > 0 ? 'text-slate-500' : 'text-slate-300'}`}>
+              {fmt(metrics.expected_uncertain)}
+            </span>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* A/R Classification Breakdown */}
     {metrics.total_outstanding > 0 && (
       <div className="bg-white border border-border rounded-xl px-5 py-3">
