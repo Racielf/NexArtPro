@@ -13,11 +13,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import CommTimeline from '@/components/shared/CommTimeline';
 import ClientDocuments from '@/components/clients/ClientDocuments';
+import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
+import { useAuth } from '@/lib/AuthContext';
 
 const emptyClient = { full_name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', notes: '' };
 
 export default function Clients() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -33,7 +38,7 @@ export default function Clients() {
   const loadClients = async () => {
     setLoading(true);
     const data = await base44.entities.Client.list('-created_date');
-    setClients(data);
+    setClients(filterActiveRecords(data));
     setLoading(false);
   };
 
@@ -55,7 +60,8 @@ export default function Clients() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this client?')) return;
-    await base44.entities.Client.delete(id);
+    await softDeleteEntity(base44.entities.Client, id, actor);
+    await logAuditEvent('archive', 'Client', id, actor);
     toast.success('Client deleted');
     loadClients();
   };
@@ -83,8 +89,10 @@ export default function Clients() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await Promise.all(idsArray.map(id => handleDelete(id)));
+    await softDeleteMany(base44.entities.Client, idsArray, actor);
+    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Client', id, actor)));
     setSelectedIds(new Set());
+    setClients(clients.filter(c => !selectedIds.has(c.id)));
     toast.success(`${idsArray.length} client(s) deleted`);
   };
 
