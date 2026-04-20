@@ -217,164 +217,184 @@ export default function Invoices() {
       <PageHeader title="Invoices" subtitle={`${invoices.length} total`} />
 
       <PageShell>
-        {/* Cashflow Summary */}
+        {/* Financial Overview */}
         <CashflowSummary />
 
+        {/* Action bar */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 border border-border rounded-lg p-1">
-            {['all', 'today', 'overdue', 'high'].map(filter => (
+          <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-1">
+            {[
+              { key: 'all', label: 'Todos' },
+              { key: 'today', label: 'Hoy' },
+              { key: 'overdue', label: 'Vencidos' },
+              { key: 'high', label: 'Urgentes' },
+            ].map(({ key, label }) => (
               <button
-                key={filter}
-                onClick={() => setActionFilter(filter)}
-                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                  actionFilter === filter
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
+                key={key}
+                onClick={() => setActionFilter(key)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  actionFilter === key
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                {filter === 'all' && 'All'}
-                {filter === 'today' && 'Today'}
-                {filter === 'overdue' && 'Overdue'}
-                {filter === 'high' && 'Urgent'}
+                {label}
               </button>
             ))}
           </div>
+
           {filtered.length > 0 && (
-            <label className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
               <input
                 type="checkbox"
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
                 onChange={toggleSelectAll}
-                className="w-4 h-4 cursor-pointer"
+                className="w-3.5 h-3.5 cursor-pointer"
               />
-              <span className="text-xs font-medium text-muted-foreground">Select all</span>
+              <span className="text-xs text-muted-foreground">Todos</span>
             </label>
           )}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search invoices..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input placeholder="Buscar facturas..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
           </div>
         </div>
 
+        {/* Invoice list */}
         {loading ? (
-          <div className="text-center py-16 text-muted-foreground">Loading...</div>
+          <div className="space-y-2">
+            {[1,2,3].map(i => <div key={i} className="h-20 animate-pulse bg-slate-100 rounded-xl" />)}
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <Receipt className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No invoices yet</p>
+          <div className="text-center py-20">
+            <Receipt className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Sin facturas</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {selectedIds.size > 0 && (
-              <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
-                <span className="text-sm font-semibold text-primary">{selectedIds.size} selected</span>
-                <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => {
-                  handleDeleteSelected();
-                }}>
-                  <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+              <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5">
+                <span className="text-sm font-semibold text-primary">{selectedIds.size} seleccionadas</span>
+                <Button size="sm" variant="destructive" className="gap-1.5 h-7 text-xs" onClick={handleDeleteSelected}>
+                  <Trash2 className="w-3 h-3" /> Archivar
                 </Button>
               </div>
             )}
+
             {filtered.map(inv => {
-               const evidence = evidenceCache[inv.id];
-               const isOverdue = isInvoiceOverdue(inv);
-               const nextAction = getInvoiceNextAction(inv);
-               const followUpTiming = getInvoiceFollowUpTiming(inv);
-               return (
-               <Card key={inv.id} className={`${isOverdue ? 'border-red-200 bg-red-50/30' : 'bg-white'} hover:shadow-sm hover:border-border/70 transition-all border-border cursor-pointer`} onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}>
-                 <CardContent className="p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <label className="flex-shrink-0" onClick={e => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(inv.id)}
-                          onChange={() => toggleSelect(inv.id)}
-                          className="w-4 h-4 cursor-pointer"
-                        />
-                      </label>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                           <span className="font-bold text-primary">INV#{inv.invoice_number}</span>
-                           <h3 className="font-semibold text-foreground">{inv.client_name}</h3>
-                           {inv.amount_paid > 0 && inv.amount_paid < inv.total ? (
-                             <StatusBadge status="partial" />
-                           ) : (
-                             <StatusBadge status={inv.status} />
-                           )}
-                           {followUpTiming && (
-                             <div className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
-                               followUpTiming.urgency === 'high' ? 'bg-red-100 text-red-700' :
-                               followUpTiming.urgency === 'medium' ? 'bg-amber-100 text-amber-700' :
-                               'bg-blue-100 text-blue-700'
-                             }`}>
-                               {followUpTiming.urgency === 'high' && <AlertTriangle className="w-3 h-3" />}
-                               {followUpTiming.urgency === 'medium' && <Clock className="w-3 h-3" />}
-                               {followUpTiming.urgency === 'low' && <Clock className="w-3 h-3 opacity-60" />}
-                               {followUpTiming.label}
-                             </div>
-                           )}
-                          {isOverdue && (() => {
-                            const band = getEscalationBand(inv);
-                            const cfg = ESCALATION_BADGE[band] || ESCALATION_BADGE.standard;
-                            const days = getOverdueDays(inv);
-                            return (
-                              <div className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${cfg.cls}`}>
-                                <AlertTriangle className="w-3 h-3" /> {cfg.label(days)}
-                              </div>
-                            );
-                          })()}
-                          {evidence && (
-                            <div className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${
-                              evidence.isComplete ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                            }`}>
-                              {evidence.isComplete ? (
-                                <><CheckCircle2 className="w-3 h-3" /> Evidence</>
-                              ) : (
-                                <><AlertTriangle className="w-3 h-3" /> Incomplete</>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 mt-2 flex-wrap text-sm">
-                          {inv.client_address && (
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <MapPin className="w-3 h-3" />{inv.client_address}
+              const evidence = evidenceCache[inv.id];
+              const isOverdue = isInvoiceOverdue(inv);
+              const nextAction = getInvoiceNextAction(inv);
+              const followUpTiming = getInvoiceFollowUpTiming(inv);
+              const balanceDue = (inv.total || 0) - (inv.amount_paid || 0);
+
+              return (
+                <div
+                  key={inv.id}
+                  onClick={() => navigate(`/invoice-detail?id=${inv.id}`)}
+                  className={`group bg-white border rounded-xl px-4 py-3.5 cursor-pointer hover:shadow-sm transition-all ${
+                    isOverdue ? 'border-red-200 bg-red-50/20' : 'border-border hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Checkbox */}
+                    <label className="flex-shrink-0 mt-0.5" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(inv.id)}
+                        onChange={() => toggleSelect(inv.id)}
+                        className="w-3.5 h-3.5 cursor-pointer"
+                      />
+                    </label>
+
+                    {/* Main content */}
+                    <div className="flex-1 min-w-0">
+                      {/* Row 1: ID + client + status badges */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-primary tabular-nums">INV#{inv.invoice_number}</span>
+                        <span className="font-semibold text-sm text-slate-800 truncate">{inv.client_name}</span>
+                        {inv.amount_paid > 0 && inv.amount_paid < inv.total ? (
+                          <StatusBadge status="partial" />
+                        ) : (
+                          <StatusBadge status={inv.status} />
+                        )}
+                        {isOverdue && (() => {
+                          const band = getEscalationBand(inv);
+                          const cfg = ESCALATION_BADGE[band] || ESCALATION_BADGE.standard;
+                          const days = getOverdueDays(inv);
+                          return (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 ${cfg.cls}`}>
+                              <AlertTriangle className="w-2.5 h-2.5" />{cfg.label(days)}
+                            </span>
+                          );
+                        })()}
+                        {followUpTiming && (
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 ${
+                            followUpTiming.urgency === 'high' ? 'bg-red-100 text-red-700' :
+                            followUpTiming.urgency === 'medium' ? 'bg-amber-100 text-amber-700' :
+                            'bg-blue-50 text-blue-600'
+                          }`}>
+                            <Clock className="w-2.5 h-2.5" />{followUpTiming.label}
+                          </span>
+                        )}
+                        {evidence && !evidence.isComplete && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 flex items-center gap-1">
+                            <AlertTriangle className="w-2.5 h-2.5" />Evidencia incompleta
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Row 2: financial + date info */}
+                      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                        <span className="text-sm font-bold text-slate-900">${(inv.total || 0).toFixed(2)}</span>
+                        {inv.amount_paid > 0 && (
+                          <span className="text-xs text-green-600 font-medium">Pagado: ${(inv.amount_paid || 0).toFixed(2)}</span>
+                        )}
+                        {inv.amount_paid > 0 && inv.amount_paid < inv.total && (
+                          <span className="text-xs text-amber-600 font-medium">Saldo: ${balanceDue.toFixed(2)}</span>
+                        )}
+                        {inv.due_date && (
+                          <span className={`text-xs ${isOverdue ? 'text-red-600 font-semibold' : 'text-slate-400'}`}>
+                            Vence: {inv.due_date}
+                          </span>
+                        )}
+                        {inv.client_address && (
+                          <span className="text-xs text-slate-400 flex items-center gap-1 hidden sm:flex">
+                            <MapPin className="w-3 h-3" />{inv.client_address}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Row 3: next action + 1-click follow-up */}
+                      {(nextAction || (followUpTiming && (followUpTiming.urgency === 'high' || followUpTiming.next_follow_up_in_days === 0 || isOverdue) && inv.status !== 'paid')) && (
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {nextAction && (
+                            <span className={`px-2 py-0.5 rounded text-[10px] flex items-center gap-1 ${nextAction.bg}`}>
+                              <nextAction.icon className={`w-3 h-3 ${nextAction.color}`} />
+                              <span className={nextAction.color}>{nextAction.label}</span>
                             </span>
                           )}
-                          <span className="font-semibold text-foreground">${(inv.total || 0).toFixed(2)}</span>
-                          {inv.amount_paid > 0 && (
-                            <span className="text-xs text-green-600 font-medium">Paid: ${(inv.amount_paid || 0).toFixed(2)}</span>
+                          {followUpTiming && (followUpTiming.urgency === 'high' || followUpTiming.next_follow_up_in_days === 0 || isOverdue) && inv.status !== 'paid' && (
+                            <button
+                              onClick={(e) => handleOneClickFollowUp(e, inv)}
+                              disabled={followingUp === inv.id}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 hover:bg-black text-white transition-colors disabled:opacity-60"
+                            >
+                              <Zap className="w-2.5 h-2.5" />
+                              {followingUp === inv.id ? 'Copiando...' : '1-Click Follow-Up'}
+                            </button>
                           )}
-                          {inv.amount_paid > 0 && inv.amount_paid < inv.total && (
-                            <span className="text-xs text-amber-600 font-medium">Due: ${(inv.total - inv.amount_paid).toFixed(2)}</span>
-                          )}
-                          {inv.due_date && <span className={`text-xs ${isOverdue ? 'text-red-600 font-semibold' : 'text-muted-foreground'}`}>Due: {inv.due_date}</span>}
                         </div>
-                        {nextAction && (
-                          <div className={`mt-2 px-2 py-1 rounded text-xs flex items-center gap-1 ${nextAction.bg}`}>
-                            <nextAction.icon className={`w-3.5 h-3.5 ${nextAction.color}`} />
-                            <span className={nextAction.color}>{nextAction.label}</span>
-                          </div>
-                        )}
-                        {followUpTiming && (followUpTiming.urgency === 'high' || followUpTiming.next_follow_up_in_days === 0 || isOverdue) && inv.status !== 'paid' && (
-                          <button
-                            onClick={(e) => handleOneClickFollowUp(e, inv)}
-                            disabled={followingUp === inv.id}
-                            className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-slate-900 hover:bg-black text-white transition-colors disabled:opacity-60"
-                          >
-                            <Zap className="w-3 h-3" />
-                            {followingUp === inv.id ? 'Copying...' : '1-Click Follow-Up'}
-                          </button>
-                        )}
-                       </div>
-                       </div>
-                       </CardContent>
-                       </Card>
-                       );
-                       })}
-                      </div>
                       )}
-                      </PageShell>
-                      </div>
-                      );
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </PageShell>
+    </div>
+  );
                       }
