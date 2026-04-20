@@ -26,7 +26,10 @@ export default function RecoveryCenter() {
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(null);
 
-  // Admin gate
+  useEffect(() => {
+    loadDeleted();
+  }, [activeTab]);
+
   const adminCheck = isAdmin() || user?.role === 'admin';
   if (!adminCheck) {
     return (
@@ -38,10 +41,6 @@ export default function RecoveryCenter() {
       </div>
     );
   }
-
-  useEffect(() => {
-    loadDeleted();
-  }, [activeTab]);
 
   const loadDeleted = async () => {
     setLoading(true);
