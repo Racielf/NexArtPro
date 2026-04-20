@@ -5,7 +5,14 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getJobFinancials } from '@/lib/jobFinancials';
-import { TrendingUp, TrendingDown, AlertTriangle, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+
+const RISK_CONFIG = {
+  losing:  { bg: 'bg-red-50 border-red-200',    text: 'text-red-700',    icon: TrendingDown,   iconCls: 'text-red-500' },
+  warning: { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700',  icon: AlertTriangle,  iconCls: 'text-amber-500' },
+  healthy: { bg: 'bg-green-50 border-green-200', text: 'text-green-700',  icon: CheckCircle2,   iconCls: 'text-green-500' },
+  unknown: { bg: 'bg-slate-50 border-slate-200', text: 'text-slate-500',  icon: Info,           iconCls: 'text-slate-400' },
+};
 
 export default function JobProfitSummary({ workOrderId }) {
   const [data, setData] = useState(null);
@@ -29,17 +36,19 @@ export default function JobProfitSummary({ workOrderId }) {
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const fmtPct = (n) => `${(n * 100).toFixed(1)}%`;
 
-  const profitColor = data.is_losing_money
+  const profitColor = data.risk?.level === 'losing'
     ? 'text-red-600'
+    : data.risk?.level === 'warning' ? 'text-amber-600'
     : data.profit > 0 ? 'text-green-600' : 'text-slate-500';
+
+  const risk = data.risk || { level: 'unknown', label: 'Unknown', description: '' };
+  const riskCfg = RISK_CONFIG[risk.level] || RISK_CONFIG.unknown;
+  const RiskIcon = riskCfg.icon;
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
       <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
-        {data.is_losing_money
-          ? <TrendingDown className="w-4 h-4 text-red-500" />
-          : <TrendingUp className="w-4 h-4 text-green-500" />
-        }
+        <RiskIcon className={`w-4 h-4 ${riskCfg.iconCls}`} />
         <h2 className="text-sm font-bold text-slate-900">Job Financials</h2>
         {data.linked_invoice_number && (
           <span className="ml-auto text-[10px] text-slate-400">INV #{data.linked_invoice_number}</span>
@@ -47,11 +56,14 @@ export default function JobProfitSummary({ workOrderId }) {
       </div>
 
       <div className="px-5 py-4 space-y-3">
-        {/* Loss warning */}
-        {data.is_losing_money && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200">
-            <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs font-semibold text-red-700">Job is losing money</p>
+        {/* Risk indicator — always shown when revenue is available */}
+        {risk.level !== 'unknown' && (
+          <div className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border ${riskCfg.bg}`}>
+            <RiskIcon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${riskCfg.iconCls}`} />
+            <div>
+              <p className={`text-xs font-semibold ${riskCfg.text}`}>{risk.label}</p>
+              <p className={`text-[11px] mt-0.5 ${riskCfg.text} opacity-80`}>{risk.description}</p>
+            </div>
           </div>
         )}
 

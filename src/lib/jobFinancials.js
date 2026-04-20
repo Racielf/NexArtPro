@@ -46,12 +46,16 @@ export async function getJobFinancials(workOrderId, base44) {
   const profit = revenue - actual_cost;
   const margin = revenue > 0 ? profit / revenue : 0;
 
+  const is_losing_money = actual_cost > revenue && revenue > 0;
+  const risk = classifyJobRisk({ actual_cost, revenue });
+
   return {
     revenue,
     actual_cost,
     profit,
     margin,
-    is_losing_money: actual_cost > revenue && revenue > 0,
+    is_losing_money,
+    risk,
     no_revenue_linked: revenue === 0,
     labor_rate_missing,
     breakdown: {
@@ -61,4 +65,23 @@ export async function getJobFinancials(workOrderId, base44) {
     linked_invoice_id: linkedInvoice?.id || null,
     linked_invoice_number: linkedInvoice?.invoice_number || null,
   };
+}
+
+/**
+ * Classify job financial risk from derived data.
+ * Returns: { level: 'healthy' | 'warning' | 'losing', label, description }
+ * No DB persistence — purely derived.
+ */
+export function classifyJobRisk({ actual_cost, revenue }) {
+  // No revenue = unclassifiable, not "healthy"
+  if (!revenue || revenue === 0) {
+    return { level: 'unknown', label: 'No Revenue', description: 'No linked invoice to compare against' };
+  }
+  if (actual_cost > revenue) {
+    return { level: 'losing', label: 'Losing Money', description: 'Actual cost exceeds revenue on this job' };
+  }
+  if (actual_cost >= revenue * 0.85) {
+    return { level: 'warning', label: 'At Risk', description: 'Cost is approaching revenue (≥85%)' };
+  }
+  return { level: 'healthy', label: 'Healthy', description: 'Cost is well within revenue' };
 }
