@@ -3,15 +3,17 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { RotateCcw, Trash2, ShieldAlert, Search, Filter } from 'lucide-react';
+import { RotateCcw, Trash2, ShieldAlert, Search, Filter, Eye, Archive } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { filterDeletedRecords, restoreEntity } from '@/lib/softDelete';
+import { markVaultPurged } from '@/lib/recoverySnapshot';
 import { logAuditEvent } from '@/lib/auditLog';
 import { isAdmin } from '@/lib/roleUtils';
 import { useAuth } from '@/lib/AuthContext';
 import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import PermanentDeleteModal from '@/components/shared/PermanentDeleteModal';
+import VaultPreviewDrawer from '@/components/settings/VaultPreviewDrawer';
 import { RECOVERY_REGISTRY } from '@/lib/recoveryRegistry';
 
 export default function RecoveryCenter() {
@@ -19,9 +21,11 @@ export default function RecoveryCenter() {
   const { user } = useAuth();
   const [activeKey, setActiveKey] = useState('all');
   const [allRecords, setAllRecords] = useState([]);
+  const [vaultMap, setVaultMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(null);
   const [purgeTarget, setPurgeTarget] = useState(null);
+  const [previewVault, setPreviewVault] = useState(null);
   const [search, setSearch] = useState('');
   const [filterBy, setFilterBy] = useState('');
 
@@ -45,11 +49,17 @@ export default function RecoveryCenter() {
       list = list.filter(r => {
         const label = r._labelField(r) || '';
         const num = r._numField ? r._numField(r) : '';
-        return label.toLowerCase().includes(q) || num.toLowerCase().includes(q) || (r.delete_reason || '').toLowerCase().includes(q);
+        const vault = vaultMap[r.id];
+        return (
+          label.toLowerCase().includes(q) ||
+          num.toLowerCase().includes(q) ||
+          (r.delete_reason || '').toLowerCase().includes(q) ||
+          (vault?.search_text || '').includes(q)
+        );
       });
     }
     return list;
-  }, [allRecords, activeKey, filterBy, search]);
+  }, [allRecords, activeKey, filterBy, search, vaultMap]);
 
   const countByKey = useMemo(() => {
     const counts = { all: allRecords.length };
@@ -71,26 +81,38 @@ export default function RecoveryCenter() {
   const loadAllDeleted = async () => {
     setLoading(true);
     setAllRecords([]);
+    setVaultMap({});
     const results = [];
-    await Promise.all(
-      RECOVERY_REGISTRY.map(async (entry) => {
-        const all = await base44.entities[entry.apiKey].list('-deleted_at');
-        const deleted = filterDeletedRecords(all);
-        deleted.forEach(r => {
-          results.push({
-            ...r,
-            _entityKey: entry.key,
-            _entityLabel: entry.label,
-            _entityName: entry.entityName,
-            _apiKey: entry.apiKey,
-            _labelField: entry.labelField,
-            _numField: entry.numField,
-            _canRestore: entry.canRestore,
-            _canPurge: entry.canPurge,
+    const [, vaultAll] = await Promise.all([
+      Promise.all(
+        RECOVERY_REGISTRY.map(async (entry) => {
+          const all = await base44.entities[entry.apiKey].list('-deleted_at');
+          filterDeletedRecords(all).forEach(r => {
+            results.push({
+              ...r,
+              _entityKey: entry.key,
+              _entityLabel: entry.label,
+              _entityName: entry.entityName,
+              _apiKey: entry.apiKey,
+              _labelField: entry.labelField,
+              _numField: entry.numField,
+              _canRestore: entry.canRestore,
+              _canPurge: entry.canPurge,
+            });
           });
-        });
-      })
-    );
+        })
+      ),
+      base44.entities.RecoveryVault.list('-deleted_at').catch(() => []),
+    ]);
+    // vault map: entity_id → most recent active vault entry
+    const map = {};
+    (vaultAll || []).forEach(v => {
+      if (!v.is_purged) {
+        const existing = map[v.entity_id];
+        if (!existing || new Date(v.deleted_at) > new Date(existing.deleted_at)) map[v.entity_id] = v;
+      }
+    });
+    setVaultMap(map);
     results.sort((a, b) => new Date(b.deleted_at || 0) - new Date(a.deleted_at || 0));
     setAllRecords(results);
     setLoading(false);
@@ -98,21 +120,23 @@ export default function RecoveryCenter() {
 
   const handleRestore = async (record) => {
     setRestoring(record.id);
+    setPreviewVault(null);
     await restoreEntity(base44.entities[record._apiKey], record.id, user?.email || 'admin');
     await logAuditEvent('restore', record._entityName, record.id, user?.email, {});
     toast.success(`${record._entityName} restored`);
     setAllRecords(prev => prev.filter(r => r.id !== record.id));
+    setVaultMap(prev => { const n = { ...prev }; delete n[record.id]; return n; });
     setRestoring(null);
   };
 
   const handlePurge = async () => {
     if (!purgeTarget) return;
     await base44.entities[purgeTarget._apiKey].delete(purgeTarget.id);
-    await logAuditEvent('purge', purgeTarget._entityName, purgeTarget.id, user?.email, {
-      reason: purgeTarget.delete_reason || null,
-    });
+    await logAuditEvent('purge', purgeTarget._entityName, purgeTarget.id, user?.email, { reason: purgeTarget.delete_reason || null });
+    await markVaultPurged(purgeTarget.id, user?.email || 'admin');
     toast.success(`${purgeTarget._entityName} permanently deleted`);
     setAllRecords(prev => prev.filter(r => r.id !== purgeTarget.id));
+    setVaultMap(prev => { const n = { ...prev }; delete n[purgeTarget.id]; return n; });
     setPurgeTarget(null);
   };
 
@@ -122,23 +146,27 @@ export default function RecoveryCenter() {
 
   return (
     <div className="flex flex-col h-full">
-      <PermanentDeleteModal
-        open={!!purgeTarget}
-        entityLabel={purgeLabel}
-        onCancel={() => setPurgeTarget(null)}
-        onConfirm={handlePurge}
-      />
+      <PermanentDeleteModal open={!!purgeTarget} entityLabel={purgeLabel} onCancel={() => setPurgeTarget(null)} onConfirm={handlePurge} />
+      {previewVault && (
+        <VaultPreviewDrawer
+          vaultEntry={previewVault}
+          onClose={() => setPreviewVault(null)}
+          onRestore={() => {
+            const record = allRecords.find(r => r.id === previewVault.entity_id);
+            if (record) handleRestore(record);
+            else setPreviewVault(null);
+          }}
+        />
+      )}
       <PageHeader eyebrow="ADMIN" title="Recovery Center" subtitle="Restore soft-deleted records" />
       <PageShell>
 
-        {/* Module tabs — from registry */}
+        {/* Module tabs */}
         <div className="flex items-center gap-1 flex-wrap bg-white border border-slate-200 rounded-xl p-1 self-start">
-          <button
-            onClick={() => setActiveKey('all')}
+          <button onClick={() => setActiveKey('all')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               activeKey === 'all' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-            }`}
-          >
+            }`}>
             All
             {countByKey.all > 0 && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeKey === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>{countByKey.all}</span>}
           </button>
@@ -150,8 +178,7 @@ export default function RecoveryCenter() {
               <button key={entry.key} onClick={() => setActiveKey(entry.key)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   isActive ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                }`}
-              >
+                }`}>
                 <Icon className="w-3.5 h-3.5" />
                 {entry.label}
                 {count > 0 && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>{count}</span>}
@@ -164,16 +191,13 @@ export default function RecoveryCenter() {
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input placeholder="Search by name, number, reason…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
+            <Input placeholder="Search name, number, email, reason…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
           </div>
           {deletedByOptions.length > 0 && (
             <div className="flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <select
-                value={filterBy}
-                onChange={e => setFilterBy(e.target.value)}
-                className="h-9 text-sm border border-slate-200 rounded-md px-2 bg-white focus:outline-none focus:border-primary"
-              >
+              <select value={filterBy} onChange={e => setFilterBy(e.target.value)}
+                className="h-9 text-sm border border-slate-200 rounded-md px-2 bg-white focus:outline-none focus:border-primary">
                 <option value="">All actors</option>
                 {deletedByOptions.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
@@ -196,25 +220,32 @@ export default function RecoveryCenter() {
         ) : (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="grid items-center gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/80"
-              style={{ gridTemplateColumns: '90px 1fr 140px 160px 190px' }}>
+              style={{ gridTemplateColumns: '90px 1fr 140px 160px 230px' }}>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Module</span>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Record</span>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deleted By</span>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deleted At</span>
               <div />
             </div>
-
             <div className="divide-y divide-slate-100">
               {filtered.map(record => {
                 const label = record._labelField(record) || '—';
                 const num = record._numField ? record._numField(record) : null;
+                const vault = vaultMap[record.id];
                 return (
                   <div key={`${record._entityKey}-${record.id}`}
                     className="grid items-center gap-3 px-4 py-3.5"
-                    style={{ gridTemplateColumns: '90px 1fr 140px 160px 190px' }}>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 whitespace-nowrap w-fit">
-                      {record._entityLabel}
-                    </span>
+                    style={{ gridTemplateColumns: '90px 1fr 140px 160px 230px' }}>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 whitespace-nowrap w-fit">
+                        {record._entityLabel}
+                      </span>
+                      {vault && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-600 font-semibold w-fit flex items-center gap-0.5">
+                          <Archive className="w-2.5 h-2.5" />vault
+                        </span>
+                      )}
+                    </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         {num && <span className="text-[11px] font-bold text-slate-400 tabular-nums flex-shrink-0">{num}</span>}
@@ -228,7 +259,14 @@ export default function RecoveryCenter() {
                     <span className="text-[12px] text-slate-500">
                       {record.deleted_at ? new Date(record.deleted_at).toLocaleString() : '—'}
                     </span>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1.5 flex-wrap">
+                      {vault && (
+                        <Button size="sm" variant="outline"
+                          className="gap-1 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
+                          onClick={() => setPreviewVault(vault)}>
+                          <Eye className="w-3 h-3" />Preview
+                        </Button>
+                      )}
                       {record._canRestore && (
                         <Button size="sm" variant="outline"
                           className="gap-1 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
@@ -243,8 +281,7 @@ export default function RecoveryCenter() {
                           className="gap-1 text-xs border-red-200 text-red-600 hover:bg-red-50"
                           onClick={() => setPurgeTarget(record)}
                           disabled={restoring === record.id}>
-                          <Trash2 className="w-3 h-3" />
-                          Delete permanently
+                          <Trash2 className="w-3 h-3" />Delete permanently
                         </Button>
                       )}
                     </div>
@@ -252,12 +289,12 @@ export default function RecoveryCenter() {
                 );
               })}
             </div>
-
-            <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50">
+            <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
               <p className="text-[11px] text-slate-400">
                 {filtered.length} record{filtered.length !== 1 ? 's' : ''}
                 {filtered.length !== allRecords.length && ` (${allRecords.length} total deleted)`}
               </p>
+              <p className="text-[11px] text-slate-300">{Object.keys(vaultMap).length} with vault snapshot</p>
             </div>
           </div>
         )}
