@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, DollarSign, Clock, AlertTriangle, Zap } from 'lucide-react';
+import { CheckCircle, DollarSign, Clock, AlertTriangle, Zap, HandCoins, ShieldAlert, HelpCircle, Banknote } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { getInvoiceDashboardMetrics } from '@/lib/invoiceDashboardMetrics';
@@ -21,11 +21,18 @@ export default function CashflowSummary() {
 
   if (loading) return <div className="text-slate-400 text-sm">Loading...</div>;
 
-  // Get all metrics using pure derivation
   const metrics = getInvoiceDashboardMetrics(invoices);
-  const overdueInvoices = invoices.filter(i => isInvoiceOverdue(i));
+  const fmt = (n) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
+
+  const arBreakdown = [
+    { key: 'collectable', label: 'Cobrable',   value: metrics.total_collectable, color: 'text-blue-600',   dot: 'bg-blue-500' },
+    { key: 'promised',    label: 'Prometido',  value: metrics.total_promised,    color: 'text-emerald-600', dot: 'bg-emerald-500' },
+    { key: 'in_review',   label: 'En revisión', value: metrics.total_in_review,   color: 'text-amber-600',  dot: 'bg-amber-400' },
+    { key: 'at_risk',     label: 'En riesgo',  value: metrics.total_at_risk,     color: 'text-red-600',    dot: 'bg-red-500' },
+  ];
 
   return (
+    <div className="space-y-3">
     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
       {/* Total Invoiced */}
       <Card>
@@ -97,6 +104,27 @@ export default function CashflowSummary() {
           </div>
         </CardContent>
       </Card>
+    </div>
+
+    {/* A/R Classification Breakdown */}
+    {metrics.total_outstanding > 0 && (
+      <div className="bg-white border border-border rounded-xl px-5 py-3">
+        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5">
+          Clasificación A/R — Saldo pendiente
+        </p>
+        <div className="flex flex-wrap gap-x-6 gap-y-1.5">
+          {arBreakdown.map(({ key, label, value, color, dot }) => (
+            <div key={key} className="flex items-center gap-2 min-w-[140px]">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`} />
+              <span className="text-xs text-muted-foreground w-24">{label}</span>
+              <span className={`text-xs font-bold ${value > 0 ? color : 'text-slate-300'}`}>
+                {fmt(value)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
     </div>
   );
 }

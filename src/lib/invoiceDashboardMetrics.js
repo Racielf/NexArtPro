@@ -5,6 +5,7 @@
 
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from './invoiceHelpers';
 import { getInvoiceFollowUpTiming } from './invoiceFollowUpTiming';
+import { getInvoiceCollectionState } from './invoiceCollectionState';
 
 /**
  * Get dashboard metrics for invoice collection
@@ -18,6 +19,11 @@ export function getInvoiceDashboardMetrics(invoices = []) {
     total_overdue: 0,
     overdue_invoice_count: 0,
     follow_up_today_count: 0,
+    // A/R classification totals
+    total_collectable: 0,
+    total_promised: 0,
+    total_in_review: 0,
+    total_at_risk: 0,
   };
 
   invoices.forEach(inv => {
@@ -40,6 +46,14 @@ export function getInvoiceDashboardMetrics(invoices = []) {
     if (timing && timing.next_follow_up_in_days === 0) {
       metrics.follow_up_today_count += 1;
     }
+
+    // A/R classification
+    const state = getInvoiceCollectionState(inv);
+    const balanceDue = derived.balance_due;
+    if (state === 'collectable') metrics.total_collectable += balanceDue;
+    else if (state === 'promised')   metrics.total_promised   += balanceDue;
+    else if (state === 'in_review')  metrics.total_in_review  += balanceDue;
+    else if (state === 'at_risk')    metrics.total_at_risk    += balanceDue;
   });
 
   return metrics;
