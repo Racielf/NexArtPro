@@ -175,12 +175,14 @@ export default function RecoveryCenter() {
       ),
       base44.entities.RecoveryVault.list('-deleted_at').catch(() => []),
     ]);
-    // vault map: entity_id → most recent active vault entry
+    // vault map: entity_id → most recent vault entry (any state)
+    // Shows all vault entries including restored/purged for full audit trail
     const map = {};
     (vaultAll || []).forEach(v => {
-      if (!v.is_purged) {
-        const existing = map[v.entity_id];
-        if (!existing || new Date(v.deleted_at) > new Date(existing.deleted_at)) map[v.entity_id] = v;
+      const existing = map[v.entity_id];
+      // Keep most recent vault entry regardless of state
+      if (!existing || new Date(v.deleted_at) > new Date(existing.deleted_at)) {
+        map[v.entity_id] = v;
       }
     });
     setVaultMap(map);
@@ -421,32 +423,47 @@ export default function RecoveryCenter() {
                                     {record.delete_reason && <span className="text-slate-400 italic">({record.delete_reason})</span>}
                                   </div>
                                 </div>
-                                <div className="flex justify-end gap-1.5 flex-wrap flex-shrink-0">
-                                  {vault && (
-                                    <Button size="sm" variant="outline"
-                                      className="gap-1 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
-                                      onClick={() => setPreviewVault(vault)}>
-                                      <Eye className="w-3 h-3" />Preview
-                                    </Button>
-                                  )}
-                                  {record._canRestore && (
-                                    <Button size="sm" variant="outline"
-                                      className="gap-1 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                                      onClick={() => handleRestore(record)}
-                                      disabled={restoring === record.id}>
-                                      <RotateCcw className="w-3 h-3" />
-                                      {restoring === record.id ? 'Restoring…' : 'Restore'}
-                                    </Button>
-                                  )}
-                                  {record._canPurge && (
-                                    <Button size="sm" variant="outline"
-                                      className="gap-1 text-xs border-red-200 text-red-600 hover:bg-red-50"
-                                      onClick={() => setPurgeTarget(record)}
-                                      disabled={restoring === record.id}>
-                                      <Trash2 className="w-3 h-3" />Delete
-                                    </Button>
-                                  )}
-                                </div>
+                                <div className="flex justify-end gap-1.5 flex-wrap flex-shrink-0 items-center">
+                                   {vault?.is_restored && (
+                                     <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                                       ✓ Restored
+                                     </span>
+                                   )}
+                                   {vault?.is_purged && (
+                                     <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-700">
+                                       ✗ Purged
+                                     </span>
+                                   )}
+                                   {vault && !vault.is_restored && !vault.is_purged && (
+                                     <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                                       ⟳ Recoverable
+                                     </span>
+                                   )}
+                                   {vault && (
+                                     <Button size="sm" variant="outline"
+                                       className="gap-1 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
+                                       onClick={() => setPreviewVault(vault)}>
+                                       <Eye className="w-3 h-3" />Preview
+                                     </Button>
+                                   )}
+                                   {record._canRestore && !vault?.is_purged && !vault?.is_restored && (
+                                     <Button size="sm" variant="outline"
+                                       className="gap-1 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                       onClick={() => handleRestore(record)}
+                                       disabled={restoring === record.id}>
+                                       <RotateCcw className="w-3 h-3" />
+                                       {restoring === record.id ? 'Restoring…' : 'Restore'}
+                                     </Button>
+                                   )}
+                                   {record._canPurge && !vault?.is_purged && (
+                                     <Button size="sm" variant="outline"
+                                       className="gap-1 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                                       onClick={() => setPurgeTarget(record)}
+                                       disabled={restoring === record.id}>
+                                       <Trash2 className="w-3 h-3" />Delete
+                                     </Button>
+                                   )}
+                                 </div>
                               </div>
                             </div>
                           );
@@ -508,32 +525,47 @@ export default function RecoveryCenter() {
                     <span className="text-[12px] text-slate-500">
                       {formatDeletedAt(record.deleted_at)}
                     </span>
-                    <div className="flex justify-end gap-1.5 flex-wrap">
-                      {vault && (
-                        <Button size="sm" variant="outline"
-                          className="gap-1 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
-                          onClick={() => setPreviewVault(vault)}>
-                          <Eye className="w-3 h-3" />Preview
-                        </Button>
-                      )}
-                      {record._canRestore && (
-                        <Button size="sm" variant="outline"
-                          className="gap-1 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                          onClick={() => handleRestore(record)}
-                          disabled={restoring === record.id}>
-                          <RotateCcw className="w-3 h-3" />
-                          {restoring === record.id ? 'Restoring…' : 'Restore'}
-                        </Button>
-                      )}
-                      {record._canPurge && (
-                        <Button size="sm" variant="outline"
-                          className="gap-1 text-xs border-red-200 text-red-600 hover:bg-red-50"
-                          onClick={() => setPurgeTarget(record)}
-                          disabled={restoring === record.id}>
-                          <Trash2 className="w-3 h-3" />Delete permanently
-                        </Button>
-                      )}
-                    </div>
+                    <div className="flex justify-end gap-1.5 flex-wrap items-center">
+                       {vault?.is_restored && (
+                         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                           ✓ Restored
+                         </span>
+                       )}
+                       {vault?.is_purged && (
+                         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-700">
+                           ✗ Purged
+                         </span>
+                       )}
+                       {vault && !vault.is_restored && !vault.is_purged && (
+                         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                           ⟳ Recoverable
+                         </span>
+                       )}
+                       {vault && (
+                         <Button size="sm" variant="outline"
+                           className="gap-1 text-xs border-slate-200 text-slate-600 hover:bg-slate-50"
+                           onClick={() => setPreviewVault(vault)}>
+                           <Eye className="w-3 h-3" />Preview
+                         </Button>
+                       )}
+                       {record._canRestore && !vault?.is_purged && !vault?.is_restored && (
+                         <Button size="sm" variant="outline"
+                           className="gap-1 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                           onClick={() => handleRestore(record)}
+                           disabled={restoring === record.id}>
+                           <RotateCcw className="w-3 h-3" />
+                           {restoring === record.id ? 'Restoring…' : 'Restore'}
+                         </Button>
+                       )}
+                       {record._canPurge && !vault?.is_purged && (
+                         <Button size="sm" variant="outline"
+                           className="gap-1 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                           onClick={() => setPurgeTarget(record)}
+                           disabled={restoring === record.id}>
+                           <Trash2 className="w-3 h-3" />Delete permanently
+                         </Button>
+                       )}
+                     </div>
                   </div>
                 );
               })}
