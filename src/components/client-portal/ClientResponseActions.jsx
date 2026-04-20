@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Check, HelpCircle, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,6 +15,7 @@ export default function ClientResponseActions({ invoice, onResponseSubmitted }) 
   const [open, setOpen] = useState(false);
   const [selectedIntent, setSelectedIntent] = useState(null);
   const [note, setNote] = useState('');
+  const [promisedDate, setPromisedDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const intents = [
@@ -49,21 +51,23 @@ export default function ClientResponseActions({ invoice, onResponseSubmitted }) 
     setSubmitting(true);
     try {
       const now = new Date().toISOString();
-      await base44.entities.Invoice.update(invoice.id, {
+      const updates = {
         client_response_status: selectedIntent,
         client_response_note: note || null,
         client_response_at: now,
-      });
+      };
+      if (selectedIntent === 'will_pay_soon' && promisedDate) {
+        updates.promised_payment_date = promisedDate;
+        updates.promised_payment_note = note || null;
+      }
+      await base44.entities.Invoice.update(invoice.id, updates);
       toast.success('Your response has been recorded');
       setOpen(false);
       setSelectedIntent(null);
       setNote('');
+      setPromisedDate('');
       if (onResponseSubmitted) {
-        onResponseSubmitted({
-          client_response_status: selectedIntent,
-          client_response_note: note,
-          client_response_at: now,
-        });
+        onResponseSubmitted({ ...updates });
       }
     } catch (err) {
       toast.error('Failed to save response');
@@ -125,8 +129,23 @@ export default function ClientResponseActions({ invoice, onResponseSubmitted }) 
               );
             })}
 
-            {selectedIntent && (
+            {selectedIntent === 'will_pay_soon' && (
               <div className="pt-2">
+                <label className="text-sm font-semibold text-slate-700 mb-1 block">
+                  Expected payment date (optional)
+                </label>
+                <Input
+                  type="date"
+                  value={promisedDate}
+                  onChange={e => setPromisedDate(e.target.value)}
+                  className="text-sm"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+            )}
+
+            {selectedIntent && (
+              <div className="pt-1">
                 <label className="text-sm font-semibold text-slate-700 mb-1 block">
                   Additional note (optional)
                 </label>

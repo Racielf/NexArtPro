@@ -50,6 +50,32 @@ export function getInvoiceFollowUpTiming(invoice) {
     return null;
   }
 
+  // PROMISE TO PAY: if client gave a future payment date, suppress follow-up until that date
+  if (invoice.promised_payment_date) {
+    const promisedDate = new Date(invoice.promised_payment_date);
+    promisedDate.setHours(0, 0, 0, 0);
+    const daysUntilPromise = Math.floor((promisedDate - today) / 86400000);
+
+    if (daysUntilPromise > 0) {
+      // Promise still upcoming — suppress
+      return {
+        next_follow_up_in_days: daysUntilPromise,
+        urgency: 'low',
+        label: `Payment promised for ${invoice.promised_payment_date} — follow up in ${daysUntilPromise}d`,
+      };
+    }
+
+    // Promise date passed and still unpaid — broken promise, elevated urgency
+    if (daysUntilPromise <= 0 && balanceDue > 0) {
+      const daysLate = Math.abs(daysUntilPromise);
+      return {
+        next_follow_up_in_days: 0,
+        urgency: 'high',
+        label: `Payment promise broken (${daysLate === 0 ? 'due today' : `${daysLate}d late`}) — follow up now`,
+      };
+    }
+  }
+
   // OVERDUE + just contacted today → only re-suggest if critical (3+ days overdue)
   if (isOverdue) {
     const daysOverdue = Math.floor((today - dueDate) / 86400000);

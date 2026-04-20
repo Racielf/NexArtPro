@@ -114,7 +114,26 @@ export function getNextAction(doc) {
      return { icon: CheckCircle2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', label: 'Paid', sub: 'No action needed.' };
     }
 
-    // client response: paying soon
+    // PROMISE TO PAY — check before generic will_pay_soon
+    if (invoice.promised_payment_date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const promised = new Date(invoice.promised_payment_date);
+      promised.setHours(0, 0, 0, 0);
+      const daysLeft = Math.floor((promised - today) / 86400000);
+
+      if (daysLeft > 0) {
+        return { icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Await promised payment', sub: `Client promised to pay by ${invoice.promised_payment_date}` };
+      }
+      if (daysLeft === 0) {
+        return { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Payment due today (promised)', sub: 'Follow up if not received' };
+      }
+      // broken promise
+      const daysLate = Math.abs(daysLeft);
+      return { icon: AlertTriangle, color: 'text-red-700', bg: 'bg-red-100 border-red-300', label: 'Follow up on missed payment promise', sub: `Payment was promised ${invoice.promised_payment_date} — ${daysLate}d overdue` };
+    }
+
+    // client response: paying soon (no specific date)
     if (invoice.client_response_status === 'will_pay_soon') {
      return { icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', label: 'Payment expected', sub: 'Client says paying soon.' };
     }

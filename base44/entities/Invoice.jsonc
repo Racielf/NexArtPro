@@ -11,6 +11,10 @@
     "estimate_id": {
       "type": "string"
     },
+    "estimate_version": {
+      "type": "number",
+      "description": "Estimate version at invoice creation time (traceability snapshot)"
+    },
     "source_proposal_id": {
       "type": "string",
       "description": "ID of the Proposal this invoice was converted from"
@@ -139,10 +143,19 @@
       "format": "date-time",
       "description": "Timestamp when client provided response"
     },
+    "promised_payment_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the client promised to pay (set when client selects will_pay_soon)"
+    },
+    "promised_payment_note": {
+      "type": "string",
+      "description": "Optional note accompanying the payment promise"
+    },
     "last_contacted_at": {
       "type": "string",
       "format": "date-time",
-      "description": "Timestamp of last follow-up action (sent, call, email, etc)"
+      "description": "Timestamp of last follow-up action"
     },
     "sent_at": {
       "type": "string"
