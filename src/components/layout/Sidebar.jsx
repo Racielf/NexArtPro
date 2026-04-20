@@ -19,7 +19,9 @@ import {
   BarChart2,
   ScrollText,
   LogOut,
+  RotateCcw,
 } from 'lucide-react';
+import { isAdmin } from '@/lib/roleUtils';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import useCompanyConfig from '@/hooks/useCompanyConfig';
 import { logout } from '@/lib/sessionManager';
@@ -143,9 +145,33 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* ── Bottom: Settings + Logout ── */}
+      {/* ── Bottom: Settings + Recovery + Logout ── */}
       <div className="flex-shrink-0 px-2.5 py-3 space-y-0.5"
         style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {isAdmin() && (
+          <Link
+            to="/recovery-center"
+            style={location.pathname === '/recovery-center' ? {
+              background: 'rgba(37,99,235,0.18)',
+              color: '#93c5fd',
+              borderLeft: '2px solid #3b82f6',
+              paddingLeft: '10px',
+            } : {
+              color: 'rgba(148,163,184,0.85)',
+              borderLeft: '2px solid transparent',
+              paddingLeft: '10px',
+            }}
+            className={`flex items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+              location.pathname === '/recovery-center' ? '' : 'hover:bg-white/[0.05] hover:text-slate-200'
+            }`}
+          >
+            <RotateCcw
+              className="w-[15px] h-[15px] flex-shrink-0"
+              style={{ color: location.pathname === '/recovery-center' ? '#60a5fa' : 'rgba(100,116,139,0.9)', strokeWidth: 1.75 }}
+            />
+            <span>Recovery Center</span>
+          </Link>
+        )}
         <Link
           to="/settings"
           style={location.pathname === '/settings' ? {

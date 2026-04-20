@@ -11,6 +11,8 @@ import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { ClipboardList, Search, Pencil, Trash2, User, MapPin, DollarSign } from 'lucide-react';
+import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
 import { useNavigate } from 'react-router-dom';
 
 export default function WorkOrders() {
@@ -28,7 +30,7 @@ export default function WorkOrders() {
   const loadData = async () => {
     setLoading(true);
     const data = await base44.entities.WorkOrder.list('-created_date');
-    setWorkOrders(data);
+    setWorkOrders(filterActiveRecords(data));
     setLoading(false);
   };
 
@@ -42,9 +44,10 @@ export default function WorkOrders() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this work order?')) return;
-    await base44.entities.WorkOrder.delete(id);
-    toast.success('Work order deleted');
+    if (!confirm('Archive this work order?')) return;
+    await softDeleteEntity(base44.entities.WorkOrder, id, 'admin');
+    await logAuditEvent('delete', 'WorkOrder', id, 'admin');
+    toast.success('Work order archived');
     loadData();
   };
 
@@ -70,10 +73,11 @@ export default function WorkOrders() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await Promise.all(idsArray.map(id => base44.entities.WorkOrder.delete(id)));
+    await softDeleteMany(base44.entities.WorkOrder, idsArray, 'admin');
+    await Promise.all(idsArray.map(id => logAuditEvent('delete', 'WorkOrder', id, 'admin')));
     setWorkOrders(prev => prev.filter(w => !selectedIds.has(w.id)));
     setSelectedIds(new Set());
-    toast.success(`${idsArray.length} work order${idsArray.length === 1 ? '' : 's'} deleted`);
+    toast.success(`${idsArray.length} work order${idsArray.length === 1 ? '' : 's'} archived`);
   };
 
   return (

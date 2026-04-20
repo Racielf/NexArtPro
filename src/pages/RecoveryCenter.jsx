@@ -1,0 +1,165 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { RotateCcw, Trash2, ShieldAlert, User, FileText, ClipboardList, Receipt } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { filterDeletedRecords, restoreEntity } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
+import { isAdmin } from '@/lib/roleUtils';
+import { useAuth } from '@/lib/AuthContext';
+import PageHeader from '@/components/shared/PageHeader';
+import PageShell from '@/components/layout/PageShell';
+
+const TABS = [
+  { key: 'customers',   label: 'Customers',    icon: User,          entityName: 'Customer',  apiKey: 'Customer',  labelField: r => r.display_name || `${r.first_name} ${r.last_name}`, numField: null },
+  { key: 'estimates',   label: 'Estimates',    icon: FileText,      entityName: 'Estimate',  apiKey: 'Estimate',  labelField: r => r.client_name || '—', numField: r => `#${r.estimate_number}` },
+  { key: 'workorders',  label: 'Work Orders',  icon: ClipboardList, entityName: 'WorkOrder', apiKey: 'WorkOrder', labelField: r => r.client_name || '—', numField: r => `WO#${r.work_order_number}` },
+  { key: 'invoices',    label: 'Invoices',     icon: Receipt,       entityName: 'Invoice',   apiKey: 'Invoice',   labelField: r => r.client_name || '—', numField: r => `INV#${r.invoice_number}` },
+];
+
+export default function RecoveryCenter() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('customers');
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(null);
+
+  // Admin gate
+  const adminCheck = isAdmin() || user?.role === 'admin';
+  if (!adminCheck) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center gap-3 text-center px-4">
+        <ShieldAlert className="w-10 h-10 text-red-400" />
+        <p className="font-semibold text-slate-700">Admin access required</p>
+        <p className="text-sm text-slate-400">Recovery Center is only accessible to administrators.</p>
+        <Button size="sm" variant="outline" onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
+      </div>
+    );
+  }
+
+  useEffect(() => {
+    loadDeleted();
+  }, [activeTab]);
+
+  const loadDeleted = async () => {
+    setLoading(true);
+    setRecords([]);
+    const tab = TABS.find(t => t.key === activeTab);
+    if (!tab) { setLoading(false); return; }
+    const all = await base44.entities[tab.apiKey].list('-deleted_at');
+    setRecords(filterDeletedRecords(all));
+    setLoading(false);
+  };
+
+  const handleRestore = async (record) => {
+    const tab = TABS.find(t => t.key === activeTab);
+    if (!tab) return;
+    setRestoring(record.id);
+    await restoreEntity(base44.entities[tab.apiKey], record.id, user?.email || user?.full_name || 'admin');
+    await logAuditEvent('restore', tab.entityName, record.id, user?.email, {});
+    toast.success(`${tab.entityName} restored`);
+    setRecords(prev => prev.filter(r => r.id !== record.id));
+    setRestoring(null);
+  };
+
+  const tab = TABS.find(t => t.key === activeTab);
+
+  return (
+    <div className="flex flex-col h-full">
+      <PageHeader
+        eyebrow="ADMIN"
+        title="Recovery Center"
+        subtitle="Restore soft-deleted records"
+      />
+      <PageShell>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 self-start">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            const isActive = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  isActive ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin" />
+          </div>
+        ) : records.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm py-16 text-center">
+            <RotateCcw className="w-8 h-8 text-slate-200 mx-auto mb-3" />
+            <p className="text-slate-500 font-medium text-sm">No deleted {tab?.label.toLowerCase()} found</p>
+            <p className="text-xs text-slate-400 mt-1">Nothing to recover in this category</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* Header */}
+            <div className="grid items-center gap-4 px-4 py-3 border-b border-slate-100 bg-slate-50/80"
+              style={{ gridTemplateColumns: '1fr 140px 160px 100px' }}>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Record</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deleted By</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Deleted At</span>
+              <div />
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {records.map(record => {
+                const label = tab?.labelField(record) || '—';
+                const num = tab?.numField ? tab.numField(record) : null;
+                return (
+                  <div key={record.id} className="grid items-center gap-4 px-4 py-3.5"
+                    style={{ gridTemplateColumns: '1fr 140px 160px 100px' }}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        {num && <span className="text-[11px] font-bold text-slate-400 tabular-nums">{num}</span>}
+                        <span className="font-semibold text-slate-700 text-[13px] truncate">{label}</span>
+                      </div>
+                      {record.delete_reason && (
+                        <p className="text-[11px] text-slate-400 truncate mt-0.5">Reason: {record.delete_reason}</p>
+                      )}
+                    </div>
+                    <span className="text-[12px] text-slate-500 truncate">{record.deleted_by || '—'}</span>
+                    <span className="text-[12px] text-slate-500">
+                      {record.deleted_at ? new Date(record.deleted_at).toLocaleString() : '—'}
+                    </span>
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                        onClick={() => handleRestore(record)}
+                        disabled={restoring === record.id}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        {restoring === record.id ? 'Restoring…' : 'Restore'}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50">
+              <p className="text-[11px] text-slate-400">{records.length} deleted record{records.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        )}
+      </PageShell>
+    </div>
+  );
+}

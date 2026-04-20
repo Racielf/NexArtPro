@@ -7,6 +7,8 @@ import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { FileText, Plus, Pencil, Search, X, Trash2 } from 'lucide-react';
+import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
 
 export default function Estimates() {
@@ -26,7 +28,7 @@ export default function Estimates() {
   const loadData = async () => {
     setLoading(true);
     const data = await base44.entities.Estimate.list('-created_date');
-    setEstimates(data);
+    setEstimates(filterActiveRecords(data));
     setLoading(false);
   };
 
@@ -74,11 +76,12 @@ export default function Estimates() {
   const handleConfirmDelete = async () => {
     const est = deleteModal.estimate;
     if (!est) return;
-    await base44.entities.Estimate.delete(est.id);
+    await softDeleteEntity(base44.entities.Estimate, est.id, 'admin');
+    await logAuditEvent('delete', 'Estimate', est.id, 'admin');
     setEstimates(estimates.filter(e => e.id !== est.id));
     setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
     setDeleteModal({ open: false, estimate: null, canDelete: false });
-    toast.success(`Estimate #${est.estimate_number} deleted`);
+    toast.success(`Estimate #${est.estimate_number} archived`);
   };
 
   const toggleSelect = (id) => {
@@ -98,11 +101,12 @@ export default function Estimates() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await Promise.all(idsArray.map(id => base44.entities.Estimate.delete(id)));
+    await softDeleteMany(base44.entities.Estimate, idsArray, 'admin');
+    await Promise.all(idsArray.map(id => logAuditEvent('delete', 'Estimate', id, 'admin')));
     setEstimates(estimates.filter(e => !selectedIds.has(e.id)));
     setSelectedIds(new Set());
     setDeleteModal({ open: false, estimate: null, canDelete: false });
-    toast.success(`${idsArray.length} estimate(s) deleted`);
+    toast.success(`${idsArray.length} estimate(s) archived`);
   };
 
   return (
@@ -143,7 +147,7 @@ export default function Estimates() {
             ) : (
               <>
                 <p className="text-sm text-slate-500 mb-4">
-                  {selectedIds.size} estimate(s) will be permanently deleted.
+                  {selectedIds.size} estimate(s) will be archived. They can be recovered from Recovery Center.
                 </p>
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>

@@ -18,6 +18,8 @@ import { filterInvoicesByAction, sortInvoicesByUrgency } from '@/lib/invoiceActi
 import { executeOneClickFollowUp } from '@/lib/invoiceActionHelpers';
 import { getEscalationBand, getOverdueDays } from '@/lib/invoiceMessageTemplates';
 import { Zap } from 'lucide-react';
+import { softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
 
 const ESCALATION_BADGE = {
   urgent:   { cls: 'bg-red-200 text-red-800 font-bold', label: (d) => `Final Notice · ${d}d overdue` },
@@ -40,7 +42,7 @@ export default function Invoices() {
   const loadData = async () => {
     setLoading(true);
     const data = await base44.entities.Invoice.list('-created_date');
-    setInvoices(data);
+    setInvoices(filterActiveRecords(data));
     
     // Pre-load evidence evaluations for invoices with work orders
     const cache = {};
@@ -174,10 +176,11 @@ export default function Invoices() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await Promise.all(idsArray.map(id => base44.entities.Invoice.delete(id)));
+    await softDeleteMany(base44.entities.Invoice, idsArray, 'admin');
+    await Promise.all(idsArray.map(id => logAuditEvent('delete', 'Invoice', id, 'admin')));
     setSelectedIds(new Set());
     setInvoices(invoices.filter(i => !selectedIds.has(i.id)));
-    toast.success(`${idsArray.length} invoice(s) deleted`);
+    toast.success(`${idsArray.length} invoice(s) archived`);
   };
 
   const handleOneClickFollowUp = async (e, inv) => {

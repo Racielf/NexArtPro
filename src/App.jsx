@@ -45,6 +45,7 @@ import SalesPipeline from './pages/SalesPipeline';
 import ProposalEditor from './pages/ProposalEditor';
 import PublicProposalView from './pages/PublicProposalView';
 import ClientPortal from './pages/ClientPortal';
+import RecoveryCenter from './pages/RecoveryCenter';
 // ClientDocumentView removed — document_token flow was never wired.
 // Proposals → /proposal-view?id=  |  Estimates → /client-estimate?id=
 
@@ -134,6 +135,7 @@ const AuthenticatedApp = () => {
         <Route path="/sales-pipeline" element={<SalesPipeline />} />
         <Route path="/proposal-editor" element={<ProposalEditor />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/recovery-center" element={<RecoveryCenter />} />
 
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />

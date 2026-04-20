@@ -6,6 +6,8 @@ import {
   Search, User, Phone, Mail, MapPin, Pencil,
   Plus, Building2, Home, HardHat
 } from 'lucide-react';
+import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
 import { useNavigate } from 'react-router-dom';
 import CustomerFormModal from '@/components/customers/CustomerFormModal';
 
@@ -30,7 +32,7 @@ export default function Customers() {
   const loadCustomers = async () => {
     setLoading(true);
     const data = await base44.entities.Customer.list('-created_date');
-    setCustomers(data);
+    setCustomers(filterActiveRecords(data));
     setLoading(false);
   };
 
@@ -39,8 +41,9 @@ export default function Customers() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this customer?')) return;
-    await base44.entities.Customer.delete(id);
-    toast.success('Customer deleted');
+    await softDeleteEntity(base44.entities.Customer, id, 'admin');
+    await logAuditEvent('delete', 'Customer', id, 'admin');
+    toast.success('Customer archived');
     loadCustomers();
   };
 
@@ -61,9 +64,10 @@ export default function Customers() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await Promise.all(idsArray.map(id => base44.entities.Customer.delete(id)));
+    await softDeleteMany(base44.entities.Customer, idsArray, 'admin');
+    await Promise.all(idsArray.map(id => logAuditEvent('delete', 'Customer', id, 'admin')));
     setSelectedIds(new Set());
-    toast.success(`${idsArray.length} customer(s) deleted`);
+    toast.success(`${idsArray.length} customer(s) archived`);
     loadCustomers();
   };
 
