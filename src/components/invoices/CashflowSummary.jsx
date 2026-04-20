@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, DollarSign, Clock, AlertTriangle, Zap } from 'lucide-react';
+import { CheckCircle, DollarSign, Clock, AlertTriangle, Zap, Flame, ListTodo, HelpCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { getInvoiceDashboardMetrics } from '@/lib/invoiceDashboardMetrics';
 import { filterActiveRecords } from '@/lib/softDelete';
+import { aggregateCollectionWorkload, WORKLOAD_LABELS } from '@/lib/invoiceCollectionWorkload';
 
 export default function CashflowSummary() {
   const [invoices, setInvoices] = useState([]);
@@ -18,6 +19,7 @@ export default function CashflowSummary() {
   if (loading) return <div className="h-24 animate-pulse bg-slate-100 rounded-xl" />;
 
   const metrics = getInvoiceDashboardMetrics(invoices);
+  const workload = aggregateCollectionWorkload(invoices);
   const fmt = (n) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
 
   const kpis = [
@@ -99,37 +101,67 @@ export default function CashflowSummary() {
         ))}
       </div>
 
-      {/* Compact insight strip — forecast + A/R */}
-      {metrics.total_outstanding > 0 && (
-        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 flex flex-wrap gap-x-8 gap-y-2 items-start">
-          {/* Forecast */}
-          <div className="flex flex-col gap-1 min-w-[180px]">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Flujo esperado</p>
-            {forecastRows.map(({ label, value, dot, color }) => (
-              <div key={label} className="flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
-                <span className="text-[11px] text-slate-500 w-28">{label}</span>
-                <span className={`text-[11px] font-semibold ${value > 0 ? color : 'text-slate-300'}`}>{fmt(value)}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Divider */}
-          <div className="hidden md:block w-px bg-slate-100 self-stretch" />
-
-          {/* A/R Classification */}
-          <div className="flex flex-col gap-1 min-w-[180px]">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Clasificación A/R</p>
-            {arRows.map(({ label, value, dot, color }) => (
-              <div key={label} className="flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
-                <span className="text-[11px] text-slate-500 w-28">{label}</span>
-                <span className={`text-[11px] font-semibold ${value > 0 ? color : 'text-slate-300'}`}>{fmt(value)}</span>
-              </div>
-            ))}
+      {/* Collections Workload — operational reality */}
+      {(workload.action_today_count > 0 || workload.urgent_count > 0 || workload.broken_promise_count > 0 || workload.billing_issue_count > 0) && (
+        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Carga de cobro</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[
+              { key: 'urgent', icon: Flame },
+              { key: 'action_today', icon: ListTodo },
+              { key: 'broken_promise', icon: AlertTriangle },
+              { key: 'billing_issue', icon: HelpCircle },
+            ].map(({ key, icon: Icon }) => {
+              const count = workload[`${key}_count`];
+              const amount = workload[`${key}_amount`];
+              const cfg = WORKLOAD_LABELS[key];
+              if (count === 0) return null;
+              return (
+                <div key={key} className={`border rounded-lg px-3 py-2 ${cfg.bg}`}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Icon className="w-3.5 h-3.5" />
+                    <p className="text-[11px] font-semibold text-slate-700">{cfg.label}</p>
+                  </div>
+                  <p className={`text-[12px] font-bold ${cfg.color}`}>{count} invoice{count !== 1 ? 's' : ''}</p>
+                  <p className="text-[10px] text-slate-600">{fmt(amount)}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
+
+      {/* Compact insight strip — forecast + A/R */}
+       {metrics.total_outstanding > 0 && (
+         <div className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 flex flex-wrap gap-x-8 gap-y-2 items-start">
+           {/* Forecast */}
+           <div className="flex flex-col gap-1 min-w-[180px]">
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Flujo esperado</p>
+             {forecastRows.map(({ label, value, dot, color }) => (
+               <div key={label} className="flex items-center gap-2">
+                 <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
+                 <span className="text-[11px] text-slate-500 w-28">{label}</span>
+                 <span className={`text-[11px] font-semibold ${value > 0 ? color : 'text-slate-300'}`}>{fmt(value)}</span>
+               </div>
+             ))}
+           </div>
+
+           {/* Divider */}
+           <div className="hidden md:block w-px bg-slate-100 self-stretch" />
+
+           {/* A/R Classification */}
+           <div className="flex flex-col gap-1 min-w-[180px]">
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Clasificación A/R</p>
+             {arRows.map(({ label, value, dot, color }) => (
+               <div key={label} className="flex items-center gap-2">
+                 <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
+                 <span className="text-[11px] text-slate-500 w-28">{label}</span>
+                 <span className={`text-[11px] font-semibold ${value > 0 ? color : 'text-slate-300'}`}>{fmt(value)}</span>
+               </div>
+             ))}
+           </div>
+         </div>
+       )}
     </div>
   );
 }
