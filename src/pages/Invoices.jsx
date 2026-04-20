@@ -23,6 +23,7 @@ import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
 import { useAuth } from '@/lib/AuthContext';
+import CollectionCapacityPanel from '@/components/invoices/CollectionCapacityPanel';
 
 const ESCALATION_BADGE = {
   urgent:   { cls: 'bg-red-100 text-red-700 font-bold border border-red-200', label: (d) => `Final Notice · ${d}d overdue` },
@@ -219,6 +220,9 @@ export default function Invoices() {
       <PageShell>
          {/* Financial Overview */}
          <CashflowSummary />
+
+         {/* Team Collection Capacity */}
+         <CollectionCapacityPanel invoices={invoices} />
 
          {/* Operator Queue — top actionable invoices */}
          {!loading && invoices.length > 0 && (() => {
