@@ -16,7 +16,14 @@ import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelp
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
 import { filterInvoicesByAction, sortInvoicesByUrgency } from '@/lib/invoiceActionFilter';
 import { executeOneClickFollowUp } from '@/lib/invoiceActionHelpers';
+import { getEscalationBand, getOverdueDays } from '@/lib/invoiceMessageTemplates';
 import { Zap } from 'lucide-react';
+
+const ESCALATION_BADGE = {
+  urgent:   { cls: 'bg-red-200 text-red-800 font-bold', label: (d) => `Final Notice · ${d}d overdue` },
+  firm:     { cls: 'bg-red-100 text-red-700 font-semibold', label: (d) => `Urgent · ${d}d overdue` },
+  standard: { cls: 'bg-orange-100 text-orange-700', label: (d) => `Overdue · ${d}d` },
+};
 
 export default function Invoices() {
   const navigate = useNavigate();
@@ -286,11 +293,16 @@ export default function Invoices() {
                                {followUpTiming.label}
                              </div>
                            )}
-                          {isOverdue && (
-                            <div className="px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 bg-red-100 text-red-700">
-                              <AlertTriangle className="w-3 h-3" /> Overdue
-                            </div>
-                          )}
+                          {isOverdue && (() => {
+                            const band = getEscalationBand(inv);
+                            const cfg = ESCALATION_BADGE[band] || ESCALATION_BADGE.standard;
+                            const days = getOverdueDays(inv);
+                            return (
+                              <div className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${cfg.cls}`}>
+                                <AlertTriangle className="w-3 h-3" /> {cfg.label(days)}
+                              </div>
+                            );
+                          })()}
                           {evidence && (
                             <div className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${
                               evidence.isComplete ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'

@@ -4,8 +4,7 @@
  */
 
 import {
-  generateOverdueNotice,
-  generatePaymentReminder,
+  generateEscalatedMessage,
   generateFollowUp,
 } from './invoiceMessageTemplates';
 
@@ -32,20 +31,15 @@ export function getLastContactedDisplay(lastContactedAt) {
 }
 
 /**
- * Select the correct message template based on invoice context.
+ * Select the correct escalated message based on invoice context.
  * Pure function — no side effects.
+ * Uses escalation bands for overdue invoices (0–4d / 5–9d / 10+d).
  */
 export function selectFollowUpMessage(invoice) {
   if (!invoice) return '';
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dueDate = invoice.due_date ? new Date(invoice.due_date) : null;
-  const isOverdue = dueDate && dueDate < today && (invoice.total - (invoice.amount_paid || 0)) > 0;
-
-  if (isOverdue) return generateOverdueNotice(invoice);
   if (invoice.client_response_status === 'has_question') return generateFollowUp(invoice);
   if (invoice.client_response_status === 'will_pay_soon') return generateFollowUp(invoice);
-  return generatePaymentReminder(invoice);
+  return generateEscalatedMessage(invoice);
 }
 
 /**

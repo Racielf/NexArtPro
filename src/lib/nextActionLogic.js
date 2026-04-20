@@ -13,6 +13,7 @@ import {
   CheckCircle2, XCircle, Handshake, HelpCircle, Zap
 } from 'lucide-react';
 import { getInvoiceFollowUpTiming } from './invoiceFollowUpTiming';
+import { getOverdueDays, getEscalationBand } from './invoiceMessageTemplates';
 
 export const STALE_DAYS = 5;
 
@@ -128,10 +129,18 @@ export function getNextAction(doc) {
      return { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Extension granted', sub: 'Client requested more time.' };
     }
 
-    // overdue
+    // overdue — escalated by age
     if (isOverdue) {
-     const daysOverdue = Math.floor((today - dueDate) / 86400000);
-     return { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Urgent collection', sub: `Overdue ${daysOverdue}d — Balance: $${balanceDue.toFixed(2)}` };
+      const band = getEscalationBand(invoice);
+      const daysOverdue = getOverdueDays(invoice);
+      if (band === 'urgent') {
+        return { icon: AlertTriangle, color: 'text-red-700', bg: 'bg-red-100 border-red-300', label: 'Final notice recommended', sub: `${daysOverdue}d overdue — immediate action required` };
+      }
+      if (band === 'firm') {
+        return { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Urgent collection needed', sub: `${daysOverdue}d overdue — Balance: $${balanceDue.toFixed(2)}` };
+      }
+      // band === 'standard' (1–4 days)
+      return { icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', label: 'Follow up on overdue payment', sub: `${daysOverdue}d overdue — Balance: $${balanceDue.toFixed(2)}` };
     }
 
     // sent, not overdue, partial payment
