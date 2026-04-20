@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { softDeleteMany, softDeleteEntity, filterActiveRecords } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
+import { useAuth } from '@/lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -16,6 +19,8 @@ import ProposalReminderBar from '@/components/proposals/ProposalReminderBar';
 
 export default function Proposals() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const [proposals, setProposals] = useState([]);
   const [estimates, setEstimates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +40,7 @@ export default function Proposals() {
       base44.entities.Proposal.list('-created_date'),
       base44.entities.Estimate.list('-created_date', 100),
     ]);
-    setProposals(props);
+    setProposals(filterActiveRecords(props));
     setEstimates(ests);
     setLoading(false);
   };
@@ -113,7 +118,8 @@ export default function Proposals() {
   const handleDelete = async () => {
     const p = deleteModal.proposal;
     if (!p) return;
-    await base44.entities.Proposal.delete(p.id);
+    await softDeleteEntity(base44.entities.Proposal, p.id, actor);
+    await logAuditEvent('archive', 'Proposal', p.id, actor);
     setProposals(proposals.filter(x => x.id !== p.id));
     setSelectedIds(prev => { const s = new Set(prev); s.delete(p.id); return s; });
     setDeleteModal({ open: false, proposal: null });
@@ -137,7 +143,8 @@ export default function Proposals() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await Promise.all(idsArray.map(id => base44.entities.Proposal.delete(id)));
+    await softDeleteMany(base44.entities.Proposal, idsArray, actor);
+    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Proposal', id, actor)));
     setProposals(proposals.filter(p => !selectedIds.has(p.id)));
     setSelectedIds(new Set());
     setDeleteModal({ open: false, proposal: null });

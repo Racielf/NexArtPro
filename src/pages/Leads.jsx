@@ -5,6 +5,9 @@ import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { Search, Phone, Mail, Calendar, ChevronRight, Trash2, Users, UserPlus, PhoneCall, CheckCircle2 } from 'lucide-react';
+import { softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { logAuditEvent } from '@/lib/auditLog';
+import { useAuth } from '@/lib/AuthContext';
 
 // ── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, icon: Icon, accent }) {
@@ -23,6 +26,8 @@ function KpiCard({ label, value, icon: Icon, accent }) {
 }
 
 export default function Leads() {
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -34,7 +39,7 @@ export default function Leads() {
     try {
       setLoading(true);
       const data = await base44.entities.Lead.list('-created_date');
-      setLeads(data || []);
+      setLeads(filterActiveRecords(data));
     } catch (error) {
       console.error('Error loading leads:', error);
     } finally {
@@ -73,7 +78,8 @@ export default function Leads() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await Promise.all(idsArray.map(id => base44.entities.Lead.delete(id)));
+    await softDeleteMany(base44.entities.Lead, idsArray, actor);
+    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Lead', id, actor)));
     setSelectedIds(new Set());
     setLeads(leads.filter(l => !selectedIds.has(l.id)));
   };

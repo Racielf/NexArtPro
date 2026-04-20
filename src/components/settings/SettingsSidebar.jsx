@@ -1,8 +1,9 @@
 import React from 'react';
 import {
   Building2, FileText, Wrench, BookOpen,
-  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package
+  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw
 } from 'lucide-react';
+import { isAdmin } from '@/lib/roleUtils';
 
 const sections = [
   { id: 'company',   label: 'Company',              icon: Building2 },
@@ -15,6 +16,8 @@ const sections = [
   { id: 'team',      label: 'Team & Access',         icon: ShieldCheck },
   { id: 'general',   label: 'General',               icon: Settings },
   { id: 'manual',    label: 'Manual del Sistema',    icon: BookMarked },
+  // Admin-only — hidden from regular users
+  ...(isAdmin() ? [{ id: 'recovery', label: 'Recovery Center', icon: RotateCcw, adminOnly: true }] : []),
 ];
 
 export default function SettingsSidebar({ active, onChange }) {
@@ -30,11 +33,11 @@ export default function SettingsSidebar({ active, onChange }) {
               onClick={() => onChange(s.id)}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-blue-50 text-blue-600'
+                  ? s.adminOnly ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-600'
                   : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
               }`}
             >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-500' : ''}`} />
+              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? (s.adminOnly ? 'text-red-500' : 'text-blue-500') : ''}`} />
               {s.label}
             </button>
           );

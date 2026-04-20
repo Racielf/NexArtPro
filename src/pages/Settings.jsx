@@ -13,6 +13,7 @@ import CompanyPanel from '@/components/settings/CompanyPanel';
 import { normalizeUserRole } from '@/lib/utils';
 import { getUsers, createUser, toggleUserActive } from '@/lib/userStore';
 import ManualDelSistemaPanel from '@/components/settings/ManualDelSistemaPanel';
+import RecoveryCenterPanel from '@/components/settings/RecoveryCenterPanel';
 
 // ─── Shared input styles ──────────────────────────────────────────────────────
 const inputCls = 'w-64 text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';
@@ -330,6 +331,7 @@ export default function Settings() {
     team:      <TeamAccessPanel userRole={userRole} />,
     general:   <GeneralPanel   state={general}   set={setGeneral}   />,
     manual:    <ManualDelSistemaPanel />,
+    recovery:  <RecoveryCenterPanel />,
   };
 
   return (
