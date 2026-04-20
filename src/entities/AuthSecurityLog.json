@@ -1,0 +1,53 @@
+{
+  "name": "AuthSecurityLog",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "recovery_access_attempt",
+        "recovery_access_granted",
+        "recovery_access_denied",
+        "recovery_restore_attempt",
+        "recovery_purge_attempt",
+        "recovery_session_expired",
+        "suspicious_activity_detected",
+        "invalid_operation_blocked"
+      ],
+      "description": "Type of security event"
+    },
+    "success": {
+      "type": "boolean",
+      "description": "Whether the access/operation was allowed or denied"
+    },
+    "user_identifier": {
+      "type": "string",
+      "description": "Email or user ID that attempted access"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "User ID from auth system if known"
+    },
+    "origin_path": {
+      "type": "string",
+      "description": "App route from which the event originated"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for denial or context of operation"
+    },
+    "metadata_json": {
+      "type": "object",
+      "description": "Additional context: attempted action, entity info, etc."
+    },
+    "company_id": {
+      "type": "string",
+      "default": "rc-art"
+    }
+  },
+  "required": [
+    "event_type",
+    "success",
+    "user_identifier"
+  ]
+}

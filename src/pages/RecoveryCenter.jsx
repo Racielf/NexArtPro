@@ -16,6 +16,12 @@ import PermanentDeleteModal from '@/components/shared/PermanentDeleteModal';
 import RecoveryPreviewModal from '@/components/settings/RecoveryPreviewModal';
 import { RECOVERY_REGISTRY } from '@/lib/recoveryRegistry';
 import { groupByTimeline, filterByDateRange, formatDeletedAt } from '@/lib/recoveryTimeline';
+import RecoveryAccessModal from '@/components/settings/RecoveryAccessModal';
+import {
+  logSecurityEvent,
+  hasValidRecoveryAccessSession,
+  clearRecoveryAccessSession,
+} from '@/lib/securityMonitor';
 
 export default function RecoveryCenter() {
   const navigate = useNavigate();
@@ -34,11 +40,24 @@ export default function RecoveryCenter() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [viewMode, setViewMode] = useState('timeline');
+  const [showAccessGate, setShowAccessGate] = useState(false);
+  const [recoverySessionValid, setRecoverySessionValid] = useState(false);
 
   const adminCheck = isAdmin() || user?.role === 'admin';
 
   useEffect(() => {
-    if (adminCheck) loadAllDeleted();
+    if (adminCheck) {
+      // Check if recovery session already valid
+      const hasSession = hasValidRecoveryAccessSession();
+      setRecoverySessionValid(hasSession);
+      
+      if (hasSession) {
+        loadAllDeleted();
+      } else {
+        // Prompt for access gate
+        setShowAccessGate(true);
+      }
+    }
   }, [adminCheck]);
 
   const deletedByOptions = useMemo(() => {
@@ -101,6 +120,35 @@ export default function RecoveryCenter() {
     );
   }
 
+  // Recovery Access Gate
+  if (showAccessGate) {
+    return (
+      <>
+        <RecoveryAccessModal
+          open={true}
+          user={user}
+          onSuccess={() => {
+            setShowAccessGate(false);
+            setRecoverySessionValid(true);
+            loadAllDeleted();
+          }}
+          onCancel={() => navigate('/settings')}
+        />
+      </>
+    );
+  }
+
+  if (!recoverySessionValid) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center gap-3 text-center px-4">
+        <ShieldAlert className="w-10 h-10 text-amber-500" />
+        <p className="font-semibold text-slate-700">Session expired</p>
+        <p className="text-sm text-slate-400">Your recovery access session has expired. Please navigate to Recovery Center again.</p>
+        <Button size="sm" variant="outline" onClick={() => navigate('/settings')}>Back to Settings</Button>
+      </div>
+    );
+  }
+
   const loadAllDeleted = async () => {
     setLoading(true);
     setAllRecords([]);
@@ -142,8 +190,30 @@ export default function RecoveryCenter() {
   };
 
   const handleRestore = async (record) => {
+    // Verify recovery session is still valid
+    if (!hasValidRecoveryAccessSession()) {
+      setShowAccessGate(true);
+      await logSecurityEvent({
+        event_type: 'recovery_session_expired',
+        success: false,
+        user_identifier: user?.email || 'admin',
+        reason: 'Recovery session expired during restore attempt',
+      });
+      toast.error('Recovery session expired. Please verify again.');
+      return;
+    }
+
     setRestoring(record.id);
     setPreviewVault(null);
+    
+    await logSecurityEvent({
+      event_type: 'recovery_restore_attempt',
+      success: true,
+      user_identifier: user?.email || 'admin',
+      reason: `Restoring ${record._entityName}`,
+      metadata_json: { entity_id: record.id, entity_type: record._entityName },
+    });
+
     await restoreEntity(base44.entities[record._apiKey], record.id, user?.email || 'admin');
     await logAuditEvent('restore', record._entityName, record.id, user?.email, {});
     toast.success(`${record._entityName} restored`);
@@ -154,6 +224,28 @@ export default function RecoveryCenter() {
 
   const handlePurge = async () => {
     if (!purgeTarget) return;
+
+    // Verify recovery session is still valid
+    if (!hasValidRecoveryAccessSession()) {
+      setShowAccessGate(true);
+      await logSecurityEvent({
+        event_type: 'recovery_session_expired',
+        success: false,
+        user_identifier: user?.email || 'admin',
+        reason: 'Recovery session expired during purge attempt',
+      });
+      toast.error('Recovery session expired. Please verify again.');
+      return;
+    }
+
+    await logSecurityEvent({
+      event_type: 'recovery_purge_attempt',
+      success: true,
+      user_identifier: user?.email || 'admin',
+      reason: `Permanently deleting ${purgeTarget._entityName}`,
+      metadata_json: { entity_id: purgeTarget.id, entity_type: purgeTarget._entityName },
+    });
+
     await base44.entities[purgeTarget._apiKey].delete(purgeTarget.id);
     await logAuditEvent('purge', purgeTarget._entityName, purgeTarget.id, user?.email, { reason: purgeTarget.delete_reason || null });
     await markVaultPurged(purgeTarget.id, user?.email || 'admin');
