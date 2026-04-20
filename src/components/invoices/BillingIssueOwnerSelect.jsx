@@ -1,25 +1,31 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { User, ChevronDown, X } from 'lucide-react';
+import { normalizeBillingOwner, formatBillingOwnerDisplay, getRecentOwners } from '@/lib/billingOwnerNormalization';
 
 /**
  * BillingIssueOwnerSelect — Lightweight owner assignment for billing issues
- * Accepts free-form owner names (email or name)
+ * Normalizes owner values (names, emails) before storing
+ * Shows suggestions from recent normalized owners
  * Used in Invoices list + InvoiceDetail
  */
 export default function BillingIssueOwnerSelect({ 
   currentOwner, 
   onAssign, 
   disabled = false,
-  compact = false
+  compact = false,
+  recentOwners = []
 }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
 
   const handleAssign = (owner) => {
-    onAssign(owner);
-    setInput('');
-    setOpen(false);
+    const normalized = normalizeBillingOwner(owner);
+    if (normalized) {
+      onAssign(normalized);
+      setInput('');
+      setOpen(false);
+    }
   };
 
   const handleClear = (e) => {
@@ -39,7 +45,7 @@ export default function BillingIssueOwnerSelect({
         } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
       >
         <User className="w-3 h-3" />
-        {currentOwner || 'Assign'}
+        {formatBillingOwnerDisplay(currentOwner) || 'Assign'}
         {currentOwner && (
           <X className="w-3 h-3 ml-auto hover:opacity-70" onClick={handleClear} />
         )}
@@ -72,9 +78,27 @@ export default function BillingIssueOwnerSelect({
                 Assign to "{input.trim()}"
               </button>
             ) : (
-              <p className="px-3 py-2 text-[11px] text-slate-400">
-                Type to create owner
-              </p>
+              <>
+                {recentOwners.length > 0 && (
+                  <>
+                    <p className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Recent</p>
+                    {recentOwners.map(owner => (
+                      <button
+                        key={owner}
+                        onClick={() => handleAssign(owner)}
+                        className="w-full text-left px-3 py-2 rounded-md text-xs hover:bg-slate-100 text-slate-700"
+                      >
+                        {formatBillingOwnerDisplay(owner)}
+                      </button>
+                    ))}
+                  </>
+                )}
+                {recentOwners.length === 0 && (
+                  <p className="px-3 py-2 text-[11px] text-slate-400">
+                    Type to create owner
+                  </p>
+                )}
+              </>
             )}
           </div>
           <button

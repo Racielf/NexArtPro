@@ -26,6 +26,7 @@ import { useAuth } from '@/lib/AuthContext';
 import CollectionCapacityPanel from '@/components/invoices/CollectionCapacityPanel';
 import BillingIssueOwnerSelect from '@/components/invoices/BillingIssueOwnerSelect';
 import { getInvoiceWorkloadCategory } from '@/lib/invoiceCollectionWorkload';
+import { normalizeBillingOwner, getRecentOwners } from '@/lib/billingOwnerNormalization';
 
 const ESCALATION_BADGE = {
   urgent:   { cls: 'bg-red-100 text-red-700 font-bold border border-red-200', label: (d) => `Final Notice · ${d}d overdue` },
@@ -228,6 +229,7 @@ export default function Invoices() {
 
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
   const totalPending = invoices.filter(i => i.status === 'sent').reduce((s, i) => s + (i.total || 0), 0);
+  const recentOwners = getRecentOwners(invoices, 5);
 
   return (
     <div className="flex flex-col h-full">
@@ -329,9 +331,13 @@ export default function Invoices() {
                            <BillingIssueOwnerSelect
                              currentOwner={inv.billing_issue_owner}
                              compact
+                             recentOwners={recentOwners}
                              onAssign={async (owner) => {
-                               await base44.entities.Invoice.update(inv.id, { billing_issue_owner: owner });
-                               loadData();
+                               const normalized = normalizeBillingOwner(owner);
+                               if (normalized) {
+                                 await base44.entities.Invoice.update(inv.id, { billing_issue_owner: normalized });
+                                 loadData();
+                               }
                              }}
                            />
                          </div>

@@ -24,6 +24,7 @@ import ExecutionSummaryBlock from '@/components/invoices/ExecutionSummaryBlock';
 import ClientResponseSummary from '@/components/invoices/ClientResponseSummary';
 import QuickContactActions from '@/components/invoices/QuickContactActions';
 import BillingIssueOwnerSelect from '@/components/invoices/BillingIssueOwnerSelect';
+import { normalizeBillingOwner, getRecentOwners } from '@/lib/billingOwnerNormalization';
 
 export default function InvoiceDetail() {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ export default function InvoiceDetail() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [workOrder, setWorkOrder] = useState(null);
   const [evidenceEval, setEvidenceEval] = useState(null);
+  const [recentOwners, setRecentOwners] = useState([]);
 
   useEffect(() => { loadInvoice(); }, []);
 
@@ -50,6 +52,9 @@ export default function InvoiceDetail() {
       setInvoice(inv);
       setNotes(inv.notes || '');
       setDueDate(inv.due_date || '');
+      // Load recent owners for suggestions
+      const allInvoices = await base44.entities.Invoice.list('-created_date');
+      setRecentOwners(getRecentOwners(allInvoices, 5));
       if (inv.work_order_id) {
         try {
           const woList = await base44.entities.WorkOrder.filter({ id: inv.work_order_id });
@@ -321,12 +326,16 @@ export default function InvoiceDetail() {
                   {invoice.billing_issue_status === 'open' && (
                     <BillingIssueOwnerSelect
                       currentOwner={invoice.billing_issue_owner}
+                      recentOwners={recentOwners}
                       onAssign={async (owner) => {
-                        setSaving(true);
-                        await base44.entities.Invoice.update(invoiceId, { billing_issue_owner: owner });
-                        setInvoice(i => ({ ...i, billing_issue_owner: owner }));
-                        setSaving(false);
-                        toast.success(owner ? `Assigned to ${owner}` : 'Assignment cleared');
+                        const normalized = normalizeBillingOwner(owner);
+                        if (normalized) {
+                          setSaving(true);
+                          await base44.entities.Invoice.update(invoiceId, { billing_issue_owner: normalized });
+                          setInvoice(i => ({ ...i, billing_issue_owner: normalized }));
+                          setSaving(false);
+                          toast.success(`Assigned to ${normalized}`);
+                        }
                       }}
                     />
                   )}

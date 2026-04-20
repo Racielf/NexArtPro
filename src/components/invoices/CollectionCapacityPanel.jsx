@@ -5,6 +5,7 @@ import { buildCollectionCapacityByOwner, getSortedOwners, getUnassignedWorkloadS
 import { getInvoiceWorkloadCategory } from '@/lib/invoiceCollectionWorkload';
 import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 import { isOwnerOverloaded, getOverloadStatus } from '@/lib/invoiceCollectionThresholds';
+import { formatBillingOwnerDisplay, getRecentOwners } from '@/lib/billingOwnerNormalization';
 import BillingIssueOwnerSelect from './BillingIssueOwnerSelect';
 
 /**
@@ -15,6 +16,7 @@ export default function CollectionCapacityPanel({ invoices, onAssignmentChange, 
   const capacityData = buildCollectionCapacityByOwner(invoices);
   const sorted = getSortedOwners(capacityData);
   const unassigned = getUnassignedWorkloadSummary(capacityData);
+  const recentOwners = getRecentOwners(invoices, 5);
   const [expandedUnassigned, setExpandedUnassigned] = useState(false);
   const [expandedOwner, setExpandedOwner] = useState(null);
 
@@ -55,19 +57,20 @@ export default function CollectionCapacityPanel({ invoices, onAssignmentChange, 
               {/* Expandable list + bulk action for urgent unassigned */}
               {expandedUnassigned && unassignedUrgent.length > 0 && (
                 <div className="mt-2.5 space-y-2.5 border-t border-red-200 pt-2.5">
-                  {unassignedUrgent.slice(0, 5).map(inv => (
-                    <div key={inv.id} className="flex items-center justify-between gap-2 text-[11px]">
-                      <span className="font-medium text-red-700">INV#{inv.invoice_number} — {inv.client_name}</span>
-                      <BillingIssueOwnerSelect
-                        currentOwner={inv.billing_issue_owner}
-                        compact
-                        onAssign={async (owner) => {
-                          await base44.entities.Invoice.update(inv.id, { billing_issue_owner: owner });
-                          onAssignmentChange?.();
-                        }}
-                      />
-                    </div>
-                  ))}
+                {unassignedUrgent.slice(0, 5).map(inv => (
+                <div key={inv.id} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="font-medium text-red-700">INV#{inv.invoice_number} — {inv.client_name}</span>
+                  <BillingIssueOwnerSelect
+                    currentOwner={inv.billing_issue_owner}
+                    compact
+                    recentOwners={recentOwners}
+                    onAssign={async (owner) => {
+                      await base44.entities.Invoice.update(inv.id, { billing_issue_owner: owner });
+                      onAssignmentChange?.();
+                    }}
+                  />
+                </div>
+                ))}
                   {unassignedUrgent.length > 5 && (
                     <button
                       onClick={() => onFilterChange?.({ category: 'unassigned_urgent' })}
@@ -105,7 +108,7 @@ export default function CollectionCapacityPanel({ invoices, onAssignmentChange, 
                       }`}>
                         <User className={`w-3 h-3 ${overloadStatus ? '' : 'text-slate-500'}`} />
                       </div>
-                      <span className="font-semibold text-slate-800 text-sm truncate">{owner.owner}</span>
+                      <span className="font-semibold text-slate-800 text-sm truncate">{formatBillingOwnerDisplay(owner.owner)}</span>
                       {overloadStatus && (
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${overloadStatus.color}`}>
                           ⚠ {overloadStatus.label}
