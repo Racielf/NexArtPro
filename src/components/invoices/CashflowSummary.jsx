@@ -4,6 +4,7 @@ import { CheckCircle, DollarSign, Clock, AlertTriangle, Zap } from 'lucide-react
 import { base44 } from '@/api/base44Client';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { getInvoiceDashboardMetrics } from '@/lib/invoiceDashboardMetrics';
+import { filterActiveRecords } from '@/lib/softDelete';
 
 export default function CashflowSummary() {
   const [invoices, setInvoices] = useState([]);
@@ -12,7 +13,7 @@ export default function CashflowSummary() {
   useEffect(() => {
     const loadInvoices = async () => {
       const data = await base44.entities.Invoice.list('-created_date');
-      setInvoices(data);
+      setInvoices(filterActiveRecords(data));
       setLoading(false);
     };
     loadInvoices();

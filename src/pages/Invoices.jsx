@@ -20,6 +20,8 @@ import { getEscalationBand, getOverdueDays } from '@/lib/invoiceMessageTemplates
 import { Zap } from 'lucide-react';
 import { softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
+import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
+import { useAuth } from '@/lib/AuthContext';
 
 const ESCALATION_BADGE = {
   urgent:   { cls: 'bg-red-200 text-red-800 font-bold', label: (d) => `Final Notice · ${d}d overdue` },
@@ -36,6 +38,9 @@ export default function Invoices() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [evidenceCache, setEvidenceCache] = useState({});
   const [followingUp, setFollowingUp] = useState(null);
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
+  const [archiveBulkModal, setArchiveBulkModal] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -174,10 +179,15 @@ export default function Invoices() {
     }
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
+    setArchiveBulkModal(true);
+  };
+
+  const handleConfirmBulkArchive = async (reason) => {
+    setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.Invoice, idsArray, 'admin');
-    await Promise.all(idsArray.map(id => logAuditEvent('delete', 'Invoice', id, 'admin')));
+    await softDeleteMany(base44.entities.Invoice, idsArray, actor, reason);
+    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Invoice', id, actor, { reason })));
     setSelectedIds(new Set());
     setInvoices(invoices.filter(i => !selectedIds.has(i.id)));
     toast.success(`${idsArray.length} invoice(s) archived`);
@@ -197,6 +207,13 @@ export default function Invoices() {
 
   return (
     <div className="flex flex-col h-full">
+      <ArchiveReasonModal
+        open={archiveBulkModal}
+        onCancel={() => setArchiveBulkModal(false)}
+        onConfirm={handleConfirmBulkArchive}
+        count={selectedIds.size}
+        entityLabel="Invoice"
+      />
       <PageHeader title="Invoices" subtitle={`${invoices.length} total`} />
 
       <PageShell>
@@ -252,7 +269,7 @@ export default function Invoices() {
               <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
                 <span className="text-sm font-semibold text-primary">{selectedIds.size} selected</span>
                 <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => {
-                  if (confirm(`Delete ${selectedIds.size} invoice(s)?`)) handleDeleteSelected();
+                  handleDeleteSelected();
                 }}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete Selected
                 </Button>

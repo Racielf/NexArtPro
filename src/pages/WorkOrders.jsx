@@ -14,9 +14,13 @@ import { ClipboardList, Search, Pencil, Trash2, User, MapPin, DollarSign } from 
 import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { useNavigate } from 'react-router-dom';
+import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function WorkOrders() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -24,6 +28,8 @@ export default function WorkOrders() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({});
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [archiveModal, setArchiveModal] = useState({ open: false, id: null, label: '' });
+  const [archiveBulkModal, setArchiveBulkModal] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -43,10 +49,15 @@ export default function WorkOrders() {
     loadData();
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Archive this work order?')) return;
-    await softDeleteEntity(base44.entities.WorkOrder, id, 'admin');
-    await logAuditEvent('delete', 'WorkOrder', id, 'admin');
+  const handleDelete = (wo) => {
+    setArchiveModal({ open: true, id: wo.id, label: `WO#${wo.work_order_number}` });
+  };
+
+  const handleConfirmArchive = async (reason) => {
+    const { id } = archiveModal;
+    setArchiveModal({ open: false, id: null, label: '' });
+    await softDeleteEntity(base44.entities.WorkOrder, id, actor, reason);
+    await logAuditEvent('archive', 'WorkOrder', id, actor, { reason });
     toast.success('Work order archived');
     loadData();
   };
@@ -71,10 +82,15 @@ export default function WorkOrders() {
     }
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
+    setArchiveBulkModal(true);
+  };
+
+  const handleConfirmBulkArchive = async (reason) => {
+    setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.WorkOrder, idsArray, 'admin');
-    await Promise.all(idsArray.map(id => logAuditEvent('delete', 'WorkOrder', id, 'admin')));
+    await softDeleteMany(base44.entities.WorkOrder, idsArray, actor, reason);
+    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'WorkOrder', id, actor, { reason })));
     setWorkOrders(prev => prev.filter(w => !selectedIds.has(w.id)));
     setSelectedIds(new Set());
     toast.success(`${idsArray.length} work order${idsArray.length === 1 ? '' : 's'} archived`);
@@ -82,6 +98,19 @@ export default function WorkOrders() {
 
   return (
     <div className="flex flex-col h-full">
+      <ArchiveReasonModal
+        open={archiveModal.open}
+        onCancel={() => setArchiveModal({ open: false, id: null, label: '' })}
+        onConfirm={handleConfirmArchive}
+        entityLabel={archiveModal.label || 'Work Order'}
+      />
+      <ArchiveReasonModal
+        open={archiveBulkModal}
+        onCancel={() => setArchiveBulkModal(false)}
+        onConfirm={handleConfirmBulkArchive}
+        count={selectedIds.size}
+        entityLabel="Work Order"
+      />
       <PageHeader title="Work Orders" subtitle={`${workOrders.length} total`} />
 
       <PageShell>
@@ -131,7 +160,7 @@ export default function WorkOrders() {
               <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
                 <span className="text-sm font-semibold text-primary">{selectedIds.size} selected</span>
                 <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => {
-                  if (confirm(`Delete ${selectedIds.size} work order${selectedIds.size === 1 ? '' : 's'}?`)) handleDeleteSelected();
+                  handleDeleteSelected();
                 }}>
                   <Trash2 className="w-3.5 h-3.5" /> Delete Selected
                 </Button>

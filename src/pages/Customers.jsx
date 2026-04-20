@@ -10,6 +10,8 @@ import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/sof
 import { logAuditEvent } from '@/lib/auditLog';
 import { useNavigate } from 'react-router-dom';
 import CustomerFormModal from '@/components/customers/CustomerFormModal';
+import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
+import { useAuth } from '@/lib/AuthContext';
 
 const CUSTOMER_TYPES = [
   { value: 'residential', label: 'Residential', icon: Home, color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -19,6 +21,8 @@ const CUSTOMER_TYPES = [
 
 export default function Customers() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -26,6 +30,8 @@ export default function Customers() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [archiveModal, setArchiveModal] = useState({ open: false, id: null, label: '' });
+  const [archiveBulkModal, setArchiveBulkModal] = useState(false);
 
   useEffect(() => { loadCustomers(); }, []);
 
@@ -39,10 +45,15 @@ export default function Customers() {
   const openCreate = () => { setEditing(null); setShowForm(true); };
   const openEdit = (c) => { setEditing(c); setShowForm(true); };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this customer?')) return;
-    await softDeleteEntity(base44.entities.Customer, id, 'admin');
-    await logAuditEvent('delete', 'Customer', id, 'admin');
+  const handleDelete = (id, label) => {
+    setArchiveModal({ open: true, id, label });
+  };
+
+  const handleConfirmArchive = async (reason) => {
+    const { id } = archiveModal;
+    setArchiveModal({ open: false, id: null, label: '' });
+    await softDeleteEntity(base44.entities.Customer, id, actor, reason);
+    await logAuditEvent('archive', 'Customer', id, actor, { reason });
     toast.success('Customer archived');
     loadCustomers();
   };
@@ -62,10 +73,15 @@ export default function Customers() {
     }
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
+    setArchiveBulkModal(true);
+  };
+
+  const handleConfirmBulkArchive = async (reason) => {
+    setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.Customer, idsArray, 'admin');
-    await Promise.all(idsArray.map(id => logAuditEvent('delete', 'Customer', id, 'admin')));
+    await softDeleteMany(base44.entities.Customer, idsArray, actor, reason);
+    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Customer', id, actor, { reason })));
     setSelectedIds(new Set());
     toast.success(`${idsArray.length} customer(s) archived`);
     loadCustomers();
@@ -83,6 +99,20 @@ export default function Customers() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
+
+      <ArchiveReasonModal
+        open={archiveModal.open}
+        onCancel={() => setArchiveModal({ open: false, id: null, label: '' })}
+        onConfirm={handleConfirmArchive}
+        entityLabel={archiveModal.label || 'Customer'}
+      />
+      <ArchiveReasonModal
+        open={archiveBulkModal}
+        onCancel={() => setArchiveBulkModal(false)}
+        onConfirm={handleConfirmBulkArchive}
+        count={selectedIds.size}
+        entityLabel="Customer"
+      />
 
       {/* ── Header — firma visual consistente con Leads ── */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
@@ -131,7 +161,7 @@ export default function Customers() {
             <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
               <span className="text-sm font-semibold text-red-700">{selectedIds.size} selected</span>
               <Button size="sm" variant="destructive" className="gap-1.5 h-7 text-xs"
-                onClick={() => { if (confirm(`Delete ${selectedIds.size} customer(s)?`)) handleDeleteSelected(); }}>
+                onClick={handleDeleteSelected}>
                 Delete
               </Button>
             </div>

@@ -10,9 +10,13 @@ import { FileText, Plus, Pencil, Search, X, Trash2 } from 'lucide-react';
 import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
+import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Estimates() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const actor = user?.email || user?.id || 'unknown';
   const [estimates, setEstimates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -20,6 +24,8 @@ export default function Estimates() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ open: false, estimate: null, canDelete: false });
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [archiveModal, setArchiveModal] = useState({ open: false, estimate: null });
+  const [archiveBulkModal, setArchiveBulkModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -73,14 +79,21 @@ export default function Estimates() {
     setDeleteModal({ open: true, estimate: est, canDelete: can });
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     const est = deleteModal.estimate;
     if (!est) return;
-    await softDeleteEntity(base44.entities.Estimate, est.id, 'admin');
-    await logAuditEvent('delete', 'Estimate', est.id, 'admin');
+    setDeleteModal({ open: false, estimate: null, canDelete: false });
+    setArchiveModal({ open: true, estimate: est });
+  };
+
+  const handleConfirmArchive = async (reason) => {
+    const { estimate: est } = archiveModal;
+    setArchiveModal({ open: false, estimate: null });
+    if (!est) return;
+    await softDeleteEntity(base44.entities.Estimate, est.id, actor, reason);
+    await logAuditEvent('archive', 'Estimate', est.id, actor, { reason });
     setEstimates(estimates.filter(e => e.id !== est.id));
     setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
-    setDeleteModal({ open: false, estimate: null, canDelete: false });
     toast.success(`Estimate #${est.estimate_number} archived`);
   };
 
@@ -99,18 +112,37 @@ export default function Estimates() {
     }
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
+    setDeleteModal({ open: false, estimate: null, canDelete: false });
+    setArchiveBulkModal(true);
+  };
+
+  const handleConfirmBulkArchive = async (reason) => {
+    setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.Estimate, idsArray, 'admin');
-    await Promise.all(idsArray.map(id => logAuditEvent('delete', 'Estimate', id, 'admin')));
+    await softDeleteMany(base44.entities.Estimate, idsArray, actor, reason);
+    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Estimate', id, actor, { reason })));
     setEstimates(estimates.filter(e => !selectedIds.has(e.id)));
     setSelectedIds(new Set());
-    setDeleteModal({ open: false, estimate: null, canDelete: false });
     toast.success(`${idsArray.length} estimate(s) archived`);
   };
 
   return (
     <div className="flex flex-col h-full">
+
+      <ArchiveReasonModal
+        open={archiveModal.open}
+        onCancel={() => setArchiveModal({ open: false, estimate: null })}
+        onConfirm={handleConfirmArchive}
+        entityLabel={archiveModal.estimate ? `Estimate #${archiveModal.estimate.estimate_number}` : 'Estimate'}
+      />
+      <ArchiveReasonModal
+        open={archiveBulkModal}
+        onCancel={() => setArchiveBulkModal(false)}
+        onConfirm={handleConfirmBulkArchive}
+        count={selectedIds.size}
+        entityLabel="Estimate"
+      />
 
       {/* Delete Estimate Modal */}
       {deleteModal.open && (

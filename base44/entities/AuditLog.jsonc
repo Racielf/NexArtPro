@@ -1,0 +1,46 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "archive",
+        "restore"
+      ],
+      "description": "Type of action performed"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "Entity type affected (Customer, Estimate, WorkOrder, Invoice)"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "ID of the affected record"
+    },
+    "performed_by": {
+      "type": "string",
+      "description": "Email or ID of the actor"
+    },
+    "performed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the action"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Optional reason provided by the actor"
+    },
+    "company_id": {
+      "type": "string",
+      "default": "rc-art"
+    }
+  },
+  "required": [
+    "action",
+    "entity_type",
+    "entity_id",
+    "performed_by",
+    "performed_at"
+  ]
+}
