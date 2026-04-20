@@ -3,7 +3,6 @@ import { Check, HelpCircle, Clock, AlertTriangle, CheckCircle2, User } from 'luc
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { buildTimelineEvent, appendCollectionTimelineEvent } from '@/lib/invoiceCollectionTimeline';
-import { useState } from 'react';
 
 /**
  * ClientResponseSummary — Shows client response + promise-to-pay + billing issue status in InvoiceDetail.
