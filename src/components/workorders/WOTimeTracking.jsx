@@ -67,23 +67,39 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
 
   // Add a new WorkOrderTimeEntry session
   const handleAddSession = async () => {
+    // GUARDRAIL A: worker required for detailed sessions
+    if (!workOrder?.assigned_worker_id) {
+      toast.error('Assign a worker before tracking detailed time');
+      return;
+    }
+
+    // GUARDRAIL B: start time required
     if (!newStart) {
       toast.error('Start time is required');
       return;
     }
 
+    // GUARDRAIL B: end_time must be after start_time if provided
+    if (newEnd) {
+      const dur = calcDecimalHours(newStart, newEnd);
+      if (dur === null || dur <= 0) {
+        toast.error('Overnight sessions are not yet supported. End time must be after start time.');
+        return;
+      }
+    }
+
     const today = todayISO();
 
-    // Guard: check for open entry (same work_order + no end_time) for today
-    const openEntry = sessions.find(s => s.work_date === today && !s.end_time);
-    if (openEntry && !newEnd) {
-      toast.error('There is already an open session for today. Add an end time or close it first.');
+    // GUARDRAIL C: only one open session per work_order + worker at a time
+    const workerId = workOrder.assigned_worker_id;
+    const openEntry = sessions.find(s => !s.end_time && s.worker_id === workerId);
+    if (openEntry) {
+      toast.error('There is already an open session for this worker. Close it before adding a new one.');
       return;
     }
 
     setAddingSession(true);
 
-    const workerId = workOrder?.assigned_worker_id || null;
     const workerName = workOrder?.assigned_worker_name || null;
     const duration = newEnd ? calcDecimalHours(newStart, newEnd) : null;
 
@@ -124,7 +140,12 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
       toast.error('Set an end time first');
       return;
     }
+    // GUARDRAIL B: prevent invalid or overnight close
     const duration = calcDecimalHours(session.start_time, newEnd);
+    if (duration === null || duration <= 0) {
+      toast.error('Overnight sessions are not yet supported. End time must be after start time.');
+      return;
+    }
     await base44.entities.WorkOrderTimeEntry.update(session.id, {
       end_time: newEnd,
       duration_hours: duration,
@@ -193,7 +214,15 @@ export default function WOTimeTracking({ workOrderId, workOrder, initialArrival,
 
         {/* Session entries */}
         <div>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-3">Detailed Sessions (WorkOrderTimeEntry)</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Detailed Sessions (WorkOrderTimeEntry)</p>
+            <span className="text-[10px] text-slate-400 italic">Sessions are recorded for today only</span>
+          </div>
+          {!workOrder?.assigned_worker_id && (
+            <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs text-amber-700 font-medium">Assign a worker to this work order to enable detailed time tracking.</p>
+            </div>
+          )}
 
           {/* Open session warning */}
           {openSession && (
