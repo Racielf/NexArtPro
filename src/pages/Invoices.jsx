@@ -19,6 +19,7 @@ import { executeOneClickFollowUp } from '@/lib/invoiceActionHelpers';
 import { getEscalationBand, getOverdueDays } from '@/lib/invoiceMessageTemplates';
 import { Zap } from 'lucide-react';
 import { buildOperatorQueue, QUEUE_LABELS } from '@/lib/invoiceOperatorQueue';
+import { detectSLABreaches } from '@/lib/invoiceSLA';
 import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
