@@ -31,6 +31,32 @@ export default function RecoveryCenter() {
     if (adminCheck) loadAllDeleted();
   }, [adminCheck]);
 
+  const deletedByOptions = useMemo(() => {
+    const set = new Set(allRecords.map(r => r.deleted_by).filter(Boolean));
+    return Array.from(set).sort();
+  }, [allRecords]);
+
+  const filtered = useMemo(() => {
+    let list = allRecords;
+    if (activeKey !== 'all') list = list.filter(r => r._entityKey === activeKey);
+    if (filterBy) list = list.filter(r => r.deleted_by === filterBy);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(r => {
+        const label = r._labelField(r) || '';
+        const num = r._numField ? r._numField(r) : '';
+        return label.toLowerCase().includes(q) || num.toLowerCase().includes(q) || (r.delete_reason || '').toLowerCase().includes(q);
+      });
+    }
+    return list;
+  }, [allRecords, activeKey, filterBy, search]);
+
+  const countByKey = useMemo(() => {
+    const counts = { all: allRecords.length };
+    RECOVERY_REGISTRY.forEach(e => { counts[e.key] = allRecords.filter(r => r._entityKey === e.key).length; });
+    return counts;
+  }, [allRecords]);
+
   if (!adminCheck) {
     return (
       <div className="flex flex-col h-full items-center justify-center gap-3 text-center px-4">
@@ -89,32 +115,6 @@ export default function RecoveryCenter() {
     setAllRecords(prev => prev.filter(r => r.id !== purgeTarget.id));
     setPurgeTarget(null);
   };
-
-  const deletedByOptions = useMemo(() => {
-    const set = new Set(allRecords.map(r => r.deleted_by).filter(Boolean));
-    return Array.from(set).sort();
-  }, [allRecords]);
-
-  const filtered = useMemo(() => {
-    let list = allRecords;
-    if (activeKey !== 'all') list = list.filter(r => r._entityKey === activeKey);
-    if (filterBy) list = list.filter(r => r.deleted_by === filterBy);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(r => {
-        const label = r._labelField(r) || '';
-        const num = r._numField ? r._numField(r) : '';
-        return label.toLowerCase().includes(q) || num.toLowerCase().includes(q) || (r.delete_reason || '').toLowerCase().includes(q);
-      });
-    }
-    return list;
-  }, [allRecords, activeKey, filterBy, search]);
-
-  const countByKey = useMemo(() => {
-    const counts = { all: allRecords.length };
-    RECOVERY_REGISTRY.forEach(e => { counts[e.key] = allRecords.filter(r => r._entityKey === e.key).length; });
-    return counts;
-  }, [allRecords]);
 
   const purgeLabel = purgeTarget
     ? [purgeTarget._numField ? purgeTarget._numField(purgeTarget) : null, purgeTarget._labelField(purgeTarget)].filter(Boolean).join(' — ')
