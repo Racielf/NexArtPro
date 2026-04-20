@@ -24,9 +24,9 @@ import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
 import { useAuth } from '@/lib/AuthContext';
 
 const ESCALATION_BADGE = {
-  urgent:   { cls: 'bg-red-200 text-red-800 font-bold', label: (d) => `Final Notice · ${d}d overdue` },
-  firm:     { cls: 'bg-red-100 text-red-700 font-semibold', label: (d) => `Urgent · ${d}d overdue` },
-  standard: { cls: 'bg-orange-100 text-orange-700', label: (d) => `Overdue · ${d}d` },
+  urgent:   { cls: 'bg-red-100 text-red-700 font-bold border border-red-200', label: (d) => `Final Notice · ${d}d overdue` },
+  firm:     { cls: 'bg-red-50 text-red-600 font-semibold border border-red-200', label: (d) => `Urgent · ${d}d overdue` },
+  standard: { cls: 'bg-orange-50 text-orange-600 border border-orange-200', label: (d) => `Overdue · ${d}d` },
 };
 
 export default function Invoices() {
@@ -324,22 +324,22 @@ export default function Invoices() {
                           const cfg = ESCALATION_BADGE[band] || ESCALATION_BADGE.standard;
                           const days = getOverdueDays(inv);
                           return (
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 ${cfg.cls}`}>
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 ${cfg.cls}`}>
                               <AlertTriangle className="w-2.5 h-2.5" />{cfg.label(days)}
                             </span>
                           );
                         })()}
                         {followUpTiming && (
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 ${
-                            followUpTiming.urgency === 'high' ? 'bg-red-100 text-red-700' :
-                            followUpTiming.urgency === 'medium' ? 'bg-amber-100 text-amber-700' :
-                            'bg-blue-50 text-blue-600'
+                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium flex items-center gap-1 border ${
+                            followUpTiming.urgency === 'high' ? 'bg-red-50 text-red-600 border-red-200' :
+                            followUpTiming.urgency === 'medium' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                            'bg-blue-50 text-blue-600 border-blue-200'
                           }`}>
                             <Clock className="w-2.5 h-2.5" />{followUpTiming.label}
                           </span>
                         )}
                         {evidence && !evidence.isComplete && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200 flex items-center gap-1">
                             <AlertTriangle className="w-2.5 h-2.5" />Evidencia incompleta
                           </span>
                         )}
@@ -370,7 +370,7 @@ export default function Invoices() {
                       {(nextAction || (followUpTiming && (followUpTiming.urgency === 'high' || followUpTiming.next_follow_up_in_days === 0 || isOverdue) && inv.status !== 'paid')) && (
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           {nextAction && (
-                            <span className={`px-2 py-0.5 rounded text-[10px] flex items-center gap-1 ${nextAction.bg}`}>
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] flex items-center gap-1 border ${nextAction.bg}`}>
                               <nextAction.icon className={`w-3 h-3 ${nextAction.color}`} />
                               <span className={nextAction.color}>{nextAction.label}</span>
                             </span>
@@ -379,7 +379,7 @@ export default function Invoices() {
                             <button
                               onClick={(e) => handleOneClickFollowUp(e, inv)}
                               disabled={followingUp === inv.id}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 hover:bg-black text-white transition-colors disabled:opacity-60"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors disabled:opacity-60"
                             >
                               <Zap className="w-2.5 h-2.5" />
                               {followingUp === inv.id ? 'Copiando...' : '1-Click Follow-Up'}

@@ -78,7 +78,7 @@ export default function CashflowSummary() {
           <div
             key={label}
             className={`bg-white border rounded-xl px-4 py-3.5 flex items-center gap-3 ${
-              highlight ? 'border-red-200 bg-red-50/40' : 'border-border'
+              highlight ? 'border-red-200 bg-red-50/40' : 'border-slate-200'
             }`}
           >
             <div className={`w-9 h-9 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0`}>
@@ -101,10 +101,10 @@ export default function CashflowSummary() {
 
       {/* Compact insight strip — forecast + A/R */}
       {metrics.total_outstanding > 0 && (
-        <div className="bg-white border border-border rounded-xl px-5 py-3 flex flex-wrap gap-x-8 gap-y-2 items-start">
+        <div className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 flex flex-wrap gap-x-8 gap-y-2 items-start">
           {/* Forecast */}
           <div className="flex flex-col gap-1 min-w-[180px]">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Flujo esperado</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Flujo esperado</p>
             {forecastRows.map(({ label, value, dot, color }) => (
               <div key={label} className="flex items-center gap-2">
                 <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
@@ -119,7 +119,7 @@ export default function CashflowSummary() {
 
           {/* A/R Classification */}
           <div className="flex flex-col gap-1 min-w-[180px]">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Clasificación A/R</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Clasificación A/R</p>
             {arRows.map(({ label, value, dot, color }) => (
               <div key={label} className="flex items-center gap-2">
                 <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />

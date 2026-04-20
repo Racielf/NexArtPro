@@ -248,7 +248,7 @@ export default function InvoiceDetail() {
             <div className={`px-5 py-5 border-b border-slate-100 ${isPaid ? 'bg-emerald-50' : isOverdue ? 'bg-red-50' : 'bg-slate-50'}`}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Invoice</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Invoice</p>
                   <p className="text-3xl font-bold text-slate-900">${(invoice.total || 0).toFixed(2)}</p>
                 </div>
                 {isPaid && (
@@ -315,10 +315,10 @@ export default function InvoiceDetail() {
             {/* 2. COLLECTIONS / NEXT ACTION */}
             {(nextAction || isOverdue || followUpTiming) && !isPaid && (
               <div className="px-4 py-3.5 border-b border-slate-100 space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Collections</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Collections</p>
 
                 {nextAction && (
-                  <div className={`p-2.5 rounded-lg text-xs flex items-start gap-2 border ${nextAction.bg}`}>
+                  <div className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${nextAction.bg}`}>
                     <nextAction.icon className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${nextAction.color}`} />
                     <div>
                       <p className={`font-semibold ${nextAction.color}`}>{nextAction.label}</p>
@@ -328,7 +328,7 @@ export default function InvoiceDetail() {
                 )}
 
                 {isOverdue && (
-                  <div className="p-2.5 rounded-lg text-xs flex items-start gap-2 bg-red-50 border border-red-200">
+                  <div className="p-3 rounded-xl text-xs flex items-start gap-2 bg-red-50 border border-red-200">
                     <AlertTriangle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-semibold text-red-700">Overdue Payment</p>
@@ -338,7 +338,7 @@ export default function InvoiceDetail() {
                 )}
 
                 {followUpTiming && (
-                  <div className={`p-2.5 rounded-lg text-xs flex items-start gap-2 border ${
+                  <div className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${
                     followUpTiming.urgency === 'high' ? 'bg-red-50 border-red-200' :
                     followUpTiming.urgency === 'medium' ? 'bg-amber-50 border-amber-200' :
                     'bg-blue-50 border-blue-200'
@@ -365,7 +365,7 @@ export default function InvoiceDetail() {
             {/* 3. CLIENT RESPONSE / PROMISE / BILLING ISSUE */}
             {invoice.client_response_at && invoice.client_response_status !== 'no_response' && (
               <div className="px-4 py-3.5 border-b border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Client Response</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Client Response</p>
                 <ClientResponseSummary
                   invoice={invoice}
                   onIssueResolved={(updates) => setInvoice(i => ({ ...i, ...updates }))}
@@ -378,7 +378,7 @@ export default function InvoiceDetail() {
 
             {/* 5. CLIENT INFO */}
             <div className="px-4 py-3.5 border-b border-slate-100">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bill To</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Bill To</p>
               <p className="font-semibold text-slate-800 text-sm">{invoice.client_name}</p>
               {invoice.client_address && (
                 <div className="flex items-start gap-1.5 text-xs text-slate-500 mt-1.5">
@@ -391,9 +391,9 @@ export default function InvoiceDetail() {
 
             {/* 6. DATES + TIMELINE */}
             <div className="px-4 py-3.5 border-b border-slate-100 space-y-2.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Timeline</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Timeline</p>
               <div>
-                <label className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Due Date</label>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Due Date</label>
                 <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="h-8 text-sm mt-1 border-slate-200" />
               </div>
               <div className="space-y-1.5">
@@ -426,7 +426,7 @@ export default function InvoiceDetail() {
             {/* 7. LINKED RECORDS + EVIDENCE */}
             {(invoice.estimate_id || invoice.work_order_id || evidenceEval) && (
               <div className="px-4 py-3.5 border-b border-slate-100 space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Linked Records</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Linked Records</p>
                 {invoice.estimate_id && (
                   <button onClick={() => navigate(`/estimate-editor?id=${invoice.estimate_id}`)}
                     className="flex items-center gap-1.5 text-xs text-primary hover:underline">
@@ -457,7 +457,7 @@ export default function InvoiceDetail() {
             {/* 8. EXECUTION EVIDENCE BLOCK */}
             {workOrder && (
               <div className="px-4 py-3.5 border-b border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Execution</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Execution</p>
                 <ExecutionSummaryBlock workOrder={workOrder} compact={true} />
               </div>
             )}
@@ -469,7 +469,7 @@ export default function InvoiceDetail() {
             {/* Payment history (if any) */}
             {invoice.payments?.length > 0 && (
               <div className="bg-white border border-slate-200 rounded-xl px-5 py-4">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Payment History</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Payment History</p>
                 <PaymentHistory invoice={invoice} onPaymentRemoved={(updates) => setInvoice(i => ({ ...i, ...updates }))} />
               </div>
             )}
@@ -477,7 +477,7 @@ export default function InvoiceDetail() {
             {/* Line items */}
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Services</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Services</p>
                 <span className="text-xs text-slate-400">{allItems.length} item{allItems.length !== 1 ? 's' : ''}</span>
               </div>
 
@@ -543,7 +543,7 @@ export default function InvoiceDetail() {
 
             {/* Notes */}
             <div className="bg-white border border-slate-200 rounded-xl px-5 py-4 space-y-3">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Notes</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Notes</p>
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
@@ -561,7 +561,7 @@ export default function InvoiceDetail() {
             {/* Payment terms */}
             {invoice.payment_terms && (
               <div className="bg-white border border-slate-200 rounded-xl px-5 py-4">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Payment Terms</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Payment Terms</p>
                 <p className="text-sm text-slate-600">{invoice.payment_terms}</p>
               </div>
             )}

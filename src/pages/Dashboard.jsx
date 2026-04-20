@@ -125,13 +125,13 @@ function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loadin
         <div className="grid grid-cols-2 gap-4 flex-1">
           {/* Este mes — hero metric */}
           <div className="flex flex-col gap-1.5 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500">Este mes</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Este mes</span>
             <span className={`text-3xl font-black tabular-nums text-emerald-700 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(monthRevenue)}</span>
             <span className="text-[10px] text-emerald-400 mt-0.5">ingresos cobrados</span>
           </div>
           {/* Por cobrar */}
           <div className="flex flex-col gap-1.5 p-4 rounded-xl bg-blue-50 border border-blue-100">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-blue-500">Por cobrar</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500">Por cobrar</span>
             <span className={`text-3xl font-black tabular-nums text-blue-700 leading-none ${loading ? 'opacity-30' : ''}`}>{loading ? '—' : fmt(outstanding)}</span>
             <span className="text-[10px] text-blue-400 mt-0.5">pendiente de cobro</span>
           </div>
@@ -336,7 +336,7 @@ function AlertsPanel({ estimates = [], invoices = [], workOrders = [], loading }
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={`text-[8px] font-bold px-1.5 py-px rounded-full border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
                     </div>
                     <p className="text-[12px] font-semibold text-slate-700 leading-tight truncate">{a.title}</p>
                   </div>
@@ -437,7 +437,7 @@ function NextBestAction({ estimates = [], invoices = [], workOrders = [], loadin
                       <Icon className={`w-3 h-3 flex-shrink-0 ${a.color}`} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[7px] font-bold px-1 py-px rounded border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
                           <p className={`text-[11px] font-semibold leading-tight ${a.color}`}>{a.label}</p>
                         </div>
                         <p className="text-[9px] text-slate-400 leading-none mt-0.5">{a.sub}</p>
@@ -600,7 +600,7 @@ export default function Dashboard() {
                                    <div className="flex items-center gap-1.5 mb-1">
                                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${groupCfg.dot}`} />
                                      <span className={`text-[9px] font-semibold uppercase tracking-wide ${groupCfg.color} opacity-80`}>{a.group}</span>
-                                     <span className={`text-[8px] font-bold px-1.5 py-px rounded-full border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
+                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${pcfg.cls} leading-none`}>{pcfg.label}</span>
                                    </div>
                                    <p className="text-[13px] font-semibold text-slate-700 truncate leading-tight">{a.label}</p>
                                    <p className="text-[10px] text-slate-400 truncate mt-0.5">{a.sub}</p>
