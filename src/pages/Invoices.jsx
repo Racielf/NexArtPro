@@ -15,6 +15,8 @@ import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
 import { filterInvoicesByAction, sortInvoicesByUrgency } from '@/lib/invoiceActionFilter';
+import { executeOneClickFollowUp } from '@/lib/invoiceActionHelpers';
+import { Zap } from 'lucide-react';
 
 export default function Invoices() {
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ export default function Invoices() {
   const [actionFilter, setActionFilter] = useState('all'); // 'all' | 'today' | 'overdue' | 'high'
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [evidenceCache, setEvidenceCache] = useState({});
+  const [followingUp, setFollowingUp] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -170,6 +173,15 @@ export default function Invoices() {
     toast.success(`${idsArray.length} invoice(s) deleted`);
   };
 
+  const handleOneClickFollowUp = async (e, inv) => {
+    e.stopPropagation();
+    setFollowingUp(inv.id);
+    await executeOneClickFollowUp(inv, base44);
+    toast.success('Message copied and contact logged');
+    setFollowingUp(null);
+    loadData();
+  };
+
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
   const totalPending = invoices.filter(i => i.status === 'sent').reduce((s, i) => s + (i.total || 0), 0);
 
@@ -311,6 +323,16 @@ export default function Invoices() {
                             <nextAction.icon className={`w-3.5 h-3.5 ${nextAction.color}`} />
                             <span className={nextAction.color}>{nextAction.label}</span>
                           </div>
+                        )}
+                        {followUpTiming && (followUpTiming.urgency === 'high' || followUpTiming.next_follow_up_in_days === 0 || isOverdue) && inv.status !== 'paid' && (
+                          <button
+                            onClick={(e) => handleOneClickFollowUp(e, inv)}
+                            disabled={followingUp === inv.id}
+                            className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-slate-900 hover:bg-black text-white transition-colors disabled:opacity-60"
+                          >
+                            <Zap className="w-3 h-3" />
+                            {followingUp === inv.id ? 'Copying...' : '1-Click Follow-Up'}
+                          </button>
                         )}
                        </div>
                        </div>
