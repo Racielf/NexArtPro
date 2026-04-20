@@ -7,7 +7,7 @@ import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { FileText, Plus, Pencil, Search, X, Trash2 } from 'lucide-react';
-import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
 import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
@@ -90,8 +90,7 @@ export default function Estimates() {
     const { estimate: est } = archiveModal;
     setArchiveModal({ open: false, estimate: null });
     if (!est) return;
-    await softDeleteEntity(base44.entities.Estimate, est.id, actor, reason);
-    await logAuditEvent('archive', 'Estimate', est.id, actor, { reason });
+    await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', est.id, actor, reason);
     setEstimates(estimates.filter(e => e.id !== est.id));
     setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
     toast.success(`Estimate #${est.estimate_number} archived`);
@@ -120,8 +119,7 @@ export default function Estimates() {
   const handleConfirmBulkArchive = async (reason) => {
     setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.Estimate, idsArray, actor, reason);
-    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Estimate', id, actor, { reason })));
+    await archiveManyWithSnapshot(base44.entities.Estimate, 'Estimate', idsArray, actor, reason);
     setEstimates(estimates.filter(e => !selectedIds.has(e.id)));
     setSelectedIds(new Set());
     toast.success(`${idsArray.length} estimate(s) archived`);

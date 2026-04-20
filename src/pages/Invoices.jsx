@@ -18,7 +18,7 @@ import { filterInvoicesByAction, sortInvoicesByUrgency } from '@/lib/invoiceActi
 import { executeOneClickFollowUp } from '@/lib/invoiceActionHelpers';
 import { getEscalationBand, getOverdueDays } from '@/lib/invoiceMessageTemplates';
 import { Zap } from 'lucide-react';
-import { softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
 import { useAuth } from '@/lib/AuthContext';
@@ -186,8 +186,7 @@ export default function Invoices() {
   const handleConfirmBulkArchive = async (reason) => {
     setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.Invoice, idsArray, actor, reason);
-    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Invoice', id, actor, { reason })));
+    await archiveManyWithSnapshot(base44.entities.Invoice, 'Invoice', idsArray, actor, reason);
     setSelectedIds(new Set());
     setInvoices(invoices.filter(i => !selectedIds.has(i.id)));
     toast.success(`${idsArray.length} invoice(s) archived`);

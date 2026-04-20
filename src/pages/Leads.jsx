@@ -5,7 +5,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { Search, Phone, Mail, Calendar, ChevronRight, Trash2, Users, UserPlus, PhoneCall, CheckCircle2 } from 'lucide-react';
-import { softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -78,8 +78,7 @@ export default function Leads() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.Lead, idsArray, actor);
-    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Lead', id, actor)));
+    await archiveManyWithSnapshot(base44.entities.Lead, 'Lead', idsArray, actor);
     setSelectedIds(new Set());
     setLeads(leads.filter(l => !selectedIds.has(l.id)));
   };

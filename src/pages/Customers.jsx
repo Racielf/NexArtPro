@@ -6,7 +6,7 @@ import {
   Search, User, Phone, Mail, MapPin, Pencil,
   Plus, Building2, Home, HardHat
 } from 'lucide-react';
-import { softDeleteEntity, softDeleteMany, filterActiveRecords } from '@/lib/softDelete';
+import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { useNavigate } from 'react-router-dom';
 import CustomerFormModal from '@/components/customers/CustomerFormModal';
@@ -52,8 +52,7 @@ export default function Customers() {
   const handleConfirmArchive = async (reason) => {
     const { id } = archiveModal;
     setArchiveModal({ open: false, id: null, label: '' });
-    await softDeleteEntity(base44.entities.Customer, id, actor, reason);
-    await logAuditEvent('archive', 'Customer', id, actor, { reason });
+    await archiveWithSnapshot(base44.entities.Customer, 'Customer', id, actor, reason);
     toast.success('Customer archived');
     loadCustomers();
   };
@@ -80,8 +79,7 @@ export default function Customers() {
   const handleConfirmBulkArchive = async (reason) => {
     setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
-    await softDeleteMany(base44.entities.Customer, idsArray, actor, reason);
-    await Promise.all(idsArray.map(id => logAuditEvent('archive', 'Customer', id, actor, { reason })));
+    await archiveManyWithSnapshot(base44.entities.Customer, 'Customer', idsArray, actor, reason);
     setSelectedIds(new Set());
     toast.success(`${idsArray.length} customer(s) archived`);
     loadCustomers();
