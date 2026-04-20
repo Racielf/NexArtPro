@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { useAuth } from '@/lib/AuthContext';
 import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import PermanentDeleteModal from '@/components/shared/PermanentDeleteModal';
-import VaultPreviewDrawer from '@/components/settings/VaultPreviewDrawer';
+import RecoveryPreviewModal from '@/components/settings/RecoveryPreviewModal';
 import { RECOVERY_REGISTRY } from '@/lib/recoveryRegistry';
 
 export default function RecoveryCenter() {
@@ -28,6 +28,7 @@ export default function RecoveryCenter() {
   const [previewVault, setPreviewVault] = useState(null);
   const [search, setSearch] = useState('');
   const [filterBy, setFilterBy] = useState('');
+  const [searchDebounce, setSearchDebounce] = useState(null);
 
   const adminCheck = isAdmin() || user?.role === 'admin';
 
@@ -40,26 +41,39 @@ export default function RecoveryCenter() {
     return Array.from(set).sort();
   }, [allRecords]);
 
+  // Debounced search for performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounce(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const filtered = useMemo(() => {
     let list = allRecords;
     if (activeKey !== 'all') list = list.filter(r => r._entityKey === activeKey);
     if (filterBy) list = list.filter(r => r.deleted_by === filterBy);
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    if (searchDebounce?.trim()) {
+      const q = searchDebounce.toLowerCase();
       list = list.filter(r => {
         const label = r._labelField(r) || '';
         const num = r._numField ? r._numField(r) : '';
         const vault = vaultMap[r.id];
+        const entityType = r._entityLabel || '';
+        
+        // Deep search across multiple fields
         return (
           label.toLowerCase().includes(q) ||
           num.toLowerCase().includes(q) ||
           (r.delete_reason || '').toLowerCase().includes(q) ||
-          (vault?.search_text || '').includes(q)
+          (vault?.search_text || '').toLowerCase().includes(q) ||
+          entityType.toLowerCase().includes(q) ||
+          (r.deleted_by || '').toLowerCase().includes(q)
         );
       });
     }
     return list;
-  }, [allRecords, activeKey, filterBy, search, vaultMap]);
+  }, [allRecords, activeKey, filterBy, searchDebounce, vaultMap]);
 
   const countByKey = useMemo(() => {
     const counts = { all: allRecords.length };
@@ -147,17 +161,19 @@ export default function RecoveryCenter() {
   return (
     <div className="flex flex-col h-full">
       <PermanentDeleteModal open={!!purgeTarget} entityLabel={purgeLabel} onCancel={() => setPurgeTarget(null)} onConfirm={handlePurge} />
-      {previewVault && (
-        <VaultPreviewDrawer
-          vaultEntry={previewVault}
-          onClose={() => setPreviewVault(null)}
-          onRestore={() => {
-            const record = allRecords.find(r => r.id === previewVault.entity_id);
-            if (record) handleRestore(record);
-            else setPreviewVault(null);
-          }}
-        />
-      )}
+      <RecoveryPreviewModal
+        open={!!previewVault}
+        vaultEntry={previewVault}
+        onClose={() => setPreviewVault(null)}
+        onRestore={async () => {
+          const record = allRecords.find(r => r.id === previewVault.entity_id);
+          if (record) {
+            await handleRestore(record);
+            setPreviewVault(null);
+          }
+        }}
+        restoring={restoring === previewVault?.entity_id}
+      />
       <PageHeader eyebrow="ADMIN" title="Recovery Center" subtitle="Restore soft-deleted records" />
       <PageShell>
 

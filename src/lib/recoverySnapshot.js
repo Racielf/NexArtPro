@@ -39,14 +39,27 @@ export function buildSnapshotPayload(entityName, record, deletedBy, reason = '')
   };
 
   // Build denormalized search text for Recovery Center search
+  // Includes all searchable fields to enable deep discovery
   const searchParts = [
     recordLabel,
     referenceNumber,
     record.email || record.client_email || '',
     record.phone || record.client_phone || '',
-    reason || '',
+    record.full_name || record.display_name || '',
+    record.company_name || '',
     record.title || '',
-  ].filter(Boolean).map(s => s.toLowerCase());
+    record.service_type || '',
+    reason || '',
+    // Invoice-specific
+    record.client_name || '',
+    record.client_address || '',
+    // Estimate/Proposal-specific
+    record.project_start_date || '',
+    record.project_end_date || '',
+    // Customer/Client-specific
+    record.city || '',
+    record.state || '',
+  ].filter(Boolean).map(s => String(s).toLowerCase());
   const searchText = [...new Set(searchParts)].join(' ');
 
   // Safe snapshot — strip internal soft delete fields to keep snapshot clean
