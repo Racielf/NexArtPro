@@ -17,6 +17,7 @@ import WOReceipts from '@/components/workorders/WOReceipts';
 import WOFieldExecution from '@/components/workorders/WOFieldExecution';
 import WOCompletionEvidence from '@/components/workorders/WOCompletionEvidence';
 import WorkOrderPreviewModal from '@/components/workorders/WorkOrderPreviewModal';
+import JobProfitSummary from '@/components/workorders/JobProfitSummary';
 
 export default function WorkOrderDetail() {
   const navigate = useNavigate();
@@ -259,6 +260,8 @@ export default function WorkOrderDetail() {
               </div>
             </div>
           )}
+
+          <JobProfitSummary workOrderId={id} />
         </div>
 
         <div className="flex-1 min-w-0 space-y-5">
