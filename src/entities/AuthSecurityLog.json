@@ -12,7 +12,11 @@
         "recovery_purge_attempt",
         "recovery_session_expired",
         "suspicious_activity_detected",
-        "invalid_operation_blocked"
+        "invalid_operation_blocked",
+        "privileged_action_requested",
+        "privileged_action_granted",
+        "privileged_action_denied",
+        "privileged_action_expired"
       ],
       "description": "Type of security event"
     },
@@ -38,7 +42,7 @@
     },
     "metadata_json": {
       "type": "object",
-      "description": "Additional context: attempted action, entity info, etc."
+      "description": "Additional context: attempted action, entity info, alert delivery status, etc."
     },
     "company_id": {
       "type": "string",

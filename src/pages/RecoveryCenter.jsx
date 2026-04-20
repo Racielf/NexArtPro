@@ -10,6 +10,10 @@ import { markVaultPurged } from '@/lib/recoverySnapshot';
 import { logAuditEvent } from '@/lib/auditLog';
 import { isAdmin } from '@/lib/roleUtils';
 import { useAuth } from '@/lib/AuthContext';
+import {
+  validatePrivilegedActionExecution,
+  logPrivilegedActionDenied,
+} from '@/lib/privilegedActionGuard';
 import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import PermanentDeleteModal from '@/components/shared/PermanentDeleteModal';
@@ -192,16 +196,15 @@ export default function RecoveryCenter() {
   };
 
   const handleRestore = async (record) => {
-    // Verify recovery session is still valid
-    if (!hasValidRecoveryAccessSession()) {
+    // Verify privileged action is allowed
+    const actionCheck = await validatePrivilegedActionExecution(
+      'RESTORE_RECORD',
+      user?.email || 'admin'
+    );
+
+    if (!actionCheck.allowed) {
       setShowAccessGate(true);
-      await logSecurityEvent({
-        event_type: 'recovery_session_expired',
-        success: false,
-        user_identifier: user?.email || 'admin',
-        reason: 'Recovery session expired during restore attempt',
-      });
-      toast.error('Recovery session expired. Please verify again.');
+      toast.error(actionCheck.reason);
       return;
     }
 
@@ -227,16 +230,15 @@ export default function RecoveryCenter() {
   const handlePurge = async () => {
     if (!purgeTarget) return;
 
-    // Verify recovery session is still valid
-    if (!hasValidRecoveryAccessSession()) {
+    // Verify privileged action is allowed (shorter expiry for destructive)
+    const actionCheck = await validatePrivilegedActionExecution(
+      'PURGE_RECORD',
+      user?.email || 'admin'
+    );
+
+    if (!actionCheck.allowed) {
       setShowAccessGate(true);
-      await logSecurityEvent({
-        event_type: 'recovery_session_expired',
-        success: false,
-        user_identifier: user?.email || 'admin',
-        reason: 'Recovery session expired during purge attempt',
-      });
-      toast.error('Recovery session expired. Please verify again.');
+      toast.error(actionCheck.reason);
       return;
     }
 

@@ -8,6 +8,7 @@ import { AlertTriangle, Activity, Shield, Lock, Search, Calendar, Filter, Clock 
 import { isAdmin } from '@/lib/roleUtils';
 import SecurityAlertsWidget from '@/components/settings/SecurityAlertsWidget';
 import RecentSecurityAlertsWidget from '@/components/settings/RecentSecurityAlertsWidget';
+import { isPrivilegedSessionValid, getPrivilegedSessionTimeRemaining } from '@/lib/privilegedActionGuard';
 
 const EVENT_LABELS = {
   recovery_access_attempt: 'Recovery Access Attempt',
@@ -92,13 +93,27 @@ export default function SecurityLogPanel() {
   const [eventFilter, setEventFilter] = useState('all');
   const [successFilter, setSuccessFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [privilegedSessionActive, setPrivilegedSessionActive] = useState(false);
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0);
 
   const isAdmin_ = isAdmin();
 
   useEffect(() => {
     if (!isAdmin_) return;
     loadLogs();
+    checkPrivilegedSession();
+    const timer = setInterval(checkPrivilegedSession, 5000); // Check every 5s
+    return () => clearInterval(timer);
   }, [isAdmin_]);
+
+  const checkPrivilegedSession = () => {
+    const active = isPrivilegedSessionValid();
+    setPrivilegedSessionActive(active);
+    if (active) {
+      const remaining = getPrivilegedSessionTimeRemaining();
+      setSessionTimeRemaining(remaining);
+    }
+  };
 
   const loadLogs = async () => {
     setLoading(true);
@@ -168,6 +183,21 @@ export default function SecurityLogPanel() {
 
   return (
     <SettingsSection title="Security & Monitoring" description="Real-time security event logs and suspicious activity tracking.">
+      {/* Privileged session status */}
+      {privilegedSessionActive && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-semibold text-green-700">
+              Privileged session active
+            </span>
+          </div>
+          <span className="text-xs text-green-600 font-mono">
+            {sessionTimeRemaining}s remaining
+          </span>
+        </div>
+      )}
+
       {/* Critical alerts banner */}
       <SecurityAlertsWidget />
 

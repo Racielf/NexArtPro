@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
+import { useState } from 'react';
 import { ShieldAlert, Eye, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { checkSuspiciousAttempts } from '@/lib/securityMonitor';
 import {
-  logSecurityEvent,
-  checkSuspiciousAttempts,
-  grantRecoveryAccessSession,
-} from '@/lib/securityMonitor';
+  confirmPrivilegedAction,
+  PRIVILEGED_ACTIONS,
+} from '@/lib/privilegedActionGuard';
 
 /**
  * RecoveryAccessModal
@@ -26,46 +27,34 @@ export default function RecoveryAccessModal({ open, onSuccess, onCancel, user })
     setLoading(true);
 
     const userEmail = user?.email || 'unknown';
-    const expectedText = 'I understand the risks';
 
-    // Validation
-    if (confirmText.trim() !== expectedText) {
+    // Use centralized privileged action guard
+    const result = await confirmPrivilegedAction(
+      'RECOVERY_ACCESS',
+      confirmText,
+      userEmail,
+      { origin: 'recovery_access_modal' }
+    );
+
+    if (result.success) {
+      // Session already granted by guard
+      setConfirmText('');
       setLoading(false);
-      setError('Confirmation text does not match. Try again.');
+      onSuccess();
+    } else {
+      setLoading(false);
+      setError(result.message || 'Confirmation failed');
 
-      // Log failed attempt (will trigger alert dispatch if threshold crossed)
-      await logSecurityEvent({
-        event_type: 'recovery_access_attempt',
-        success: false,
-        user_identifier: userEmail,
-        reason: 'Incorrect confirmation text',
-      });
-
-      // Check for suspicious activity
+      // Check for suspicious activity pattern
       const isSuspicious = await checkSuspiciousAttempts({
-        event_type: 'recovery_access_attempt',
+        event_type: 'privileged_action_denied',
         user_identifier: userEmail,
       });
 
       if (isSuspicious) {
         setError('Too many failed attempts. Access denied temporarily.');
       }
-
-      return;
     }
-
-    // Success (no alert needed for successful access)
-    await logSecurityEvent({
-      event_type: 'recovery_access_granted',
-      success: true,
-      user_identifier: userEmail,
-      reason: 'Admin confirmed privileged recovery access',
-    });
-
-    grantRecoveryAccessSession();
-    setConfirmText('');
-    setLoading(false);
-    onSuccess();
   };
 
   const handleCancel = () => {
@@ -111,7 +100,7 @@ export default function RecoveryAccessModal({ open, onSuccess, onCancel, user })
             Type this to continue:
           </label>
           <code className="bg-slate-100 px-2 py-1 rounded text-xs font-mono text-slate-700 block mb-2">
-            I understand the risks
+            {PRIVILEGED_ACTIONS.RECOVERY_ACCESS.confirmation_text}
           </code>
           <Input
             type="text"
@@ -155,7 +144,7 @@ export default function RecoveryAccessModal({ open, onSuccess, onCancel, user })
             size="sm"
             className="bg-red-600 hover:bg-red-700 text-white px-4 gap-1.5"
             onClick={handleConfirm}
-            disabled={loading || confirmText.trim() !== 'I understand the risks'}
+            disabled={loading || confirmText.trim() !== PRIVILEGED_ACTIONS.RECOVERY_ACCESS.confirmation_text}
           >
             <Lock className="w-3.5 h-3.5" />
             {loading ? 'Verifying...' : 'Grant Access'}
