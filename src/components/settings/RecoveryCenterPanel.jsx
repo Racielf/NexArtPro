@@ -7,7 +7,8 @@ import { RotateCcw, Trash2, ShieldAlert, Search, Filter, Eye, Archive } from 'lu
 import { filterDeletedRecords, restoreEntity } from '@/lib/softDelete';
 import { markVaultPurged } from '@/lib/recoverySnapshot';
 import { logAuditEvent } from '@/lib/auditLog';
-import { isAdmin } from '@/lib/roleUtils';
+// isAdmin from roleUtils intentionally removed — RecoveryCenterPanel now uses
+// user?.role from AuthContext exclusively to avoid sessionStorage race conditions.
 import { useAuth } from '@/lib/AuthContext';
 import PermanentDeleteModal from '@/components/shared/PermanentDeleteModal';
 import SettingsSection from '@/components/settings/SettingsSection';
@@ -26,7 +27,9 @@ export default function RecoveryCenterPanel() {
   const [search, setSearch] = useState('');
   const [filterBy, setFilterBy] = useState('');
 
-  const adminCheck = isAdmin() || user?.role === 'admin';
+  // Use base44 AuthContext as single source of truth — avoids sessionStorage race condition
+  // isAdmin() from roleUtils reads sessionStorage which may not be populated yet on first render
+  const adminCheck = user?.role === 'admin';
 
   useEffect(() => {
     if (adminCheck) loadAllDeleted();

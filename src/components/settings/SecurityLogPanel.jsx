@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import SettingsSection from '@/components/settings/SettingsSection';
 import SettingsCard from '@/components/settings/SettingsCard';
 import { AlertTriangle, Activity, Shield, Lock, Search, Calendar, Filter, Clock } from 'lucide-react';
+// SecurityLogPanel is read-only monitoring — no writes to business entities.
+// isAdmin check below uses isAdmin() from roleUtils (sessionStorage-based).
+// This is acceptable here because Settings.jsx already sets sessionStorage BEFORE
+// this panel renders (via the useEffect → setUserRole flow).
 import { isAdmin } from '@/lib/roleUtils';
 import SecurityAlertsWidget from '@/components/settings/SecurityAlertsWidget';
 import RecentSecurityAlertsWidget from '@/components/settings/RecentSecurityAlertsWidget';

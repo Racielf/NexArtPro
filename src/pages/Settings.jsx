@@ -307,11 +307,18 @@ function TeamAccessPanel({ userRole }) {
 
 export default function Settings() {
   const [activeSection, setActiveSection] = useState('company');
+  // Single source of truth for role: resolved async from base44.auth.me()
+  // sessionStorage fallback only until async resolves — then overwritten
   const [userRole, setUserRole] = useState(() => sessionStorage.getItem('user_role') || 'user');
 
   useEffect(() => {
     base44.auth.me()
-      .then(u => setUserRole(normalizeUserRole(u?.role)))
+      .then(u => {
+        const role = normalizeUserRole(u?.role);
+        // Keep sessionStorage in sync so isAdmin() in child components agrees
+        sessionStorage.setItem('user_role', role);
+        setUserRole(role);
+      })
       .catch(() => {});
   }, []);
 
@@ -348,7 +355,8 @@ export default function Settings() {
       <div className="flex flex-1 min-h-0">
         {/* Sidebar — static, own scroll */}
         <div className="w-64 flex-shrink-0 bg-white border-r border-slate-100 p-4 overflow-y-auto">
-          <SettingsSidebar active={activeSection} onChange={setActiveSection} />
+          {/* Pass resolved userRole so sidebar uses same source of truth as this page */}
+        <SettingsSidebar active={activeSection} onChange={setActiveSection} userRole={userRole} />
         </div>
 
         {/* Main Panel — own scroll */}
