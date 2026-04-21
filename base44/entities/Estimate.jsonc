@@ -8,11 +8,12 @@
     "document_type": {
       "type": "string",
       "enum": [
+        "ESTIMATE",
         "BID",
         "PROPOSAL"
       ],
-      "default": "PROPOSAL",
-      "description": "Document type: BID (technical/commercial) or PROPOSAL (client-friendly)"
+      "default": "ESTIMATE",
+      "description": "Document type: ESTIMATE (standard estimate), BID (technical/commercial) or PROPOSAL (client-friendly)"
     },
     "document_language": {
       "type": "string",
@@ -70,10 +71,16 @@
       "type": "string",
       "enum": [
         "draft",
+        "scheduled",
+        "on_my_way",
+        "visit_completed",
         "sent",
         "viewed",
+        "changes_requested",
         "approved",
-        "declined"
+        "signed",
+        "declined",
+        "converted"
       ],
       "default": "draft"
     },
@@ -96,6 +103,26 @@
     "accepted_by": {
       "type": "string",
       "description": "Name of person who approved estimate"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "Email or ID of internal approver"
+    },
+    "approval_note": {
+      "type": "string",
+      "description": "Optional approval note"
+    },
+    "signed_at": {
+      "type": "string",
+      "description": "Timestamp when estimate was signed"
+    },
+    "signer_name": {
+      "type": "string",
+      "description": "Name of signer"
+    },
+    "changes_requested_at": {
+      "type": "string",
+      "description": "Timestamp when client requested changes"
     },
     "last_contacted_at": {
       "type": "string",
@@ -378,7 +405,7 @@
     },
     "included_scope_bullets": {
       "type": "string",
-      "description": "Newline-separated list of what is included in this estimate \u2014 each line renders as one bullet in the document"
+      "description": "Newline-separated list of what is included in this estimate — each line renders as one bullet in the document"
     },
     "contingency_type": {
       "type": "string",
@@ -470,6 +497,28 @@
           }
         }
       }
+    },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of soft delete (null if active)"
+    },
+    "deleted_by": {
+      "type": "string",
+      "description": "User email who deleted the record"
+    },
+    "delete_reason": {
+      "type": "string",
+      "description": "Reason provided for deletion"
+    },
+    "restored_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of restoration (null if not restored)"
+    },
+    "restored_by": {
+      "type": "string",
+      "description": "User email who restored the record"
     },
     "company_id": {
       "type": "string",
