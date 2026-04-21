@@ -34,7 +34,7 @@ export async function createNewVersionFromEstimate(estimate, base44) {
     client_address: estimate.client_address,
     
     // Document type + language
-    document_type: estimate.document_type || 'PROPOSAL',
+    document_type: estimate.document_type || 'ESTIMATE',
     document_language: estimate.document_language || 'en',
     
     // Content
