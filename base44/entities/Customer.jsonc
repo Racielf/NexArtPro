@@ -57,6 +57,28 @@
       "default": "en",
       "description": "Customer preferred document language"
     },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of soft delete (null if active)"
+    },
+    "deleted_by": {
+      "type": "string",
+      "description": "User email who deleted the record"
+    },
+    "delete_reason": {
+      "type": "string",
+      "description": "Reason provided for deletion"
+    },
+    "restored_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of restoration (null if not restored)"
+    },
+    "restored_by": {
+      "type": "string",
+      "description": "User email who restored the record"
+    },
     "company_id": {
       "type": "string",
       "description": "Company identifier for multi-tenant support",
