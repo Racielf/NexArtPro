@@ -45,17 +45,23 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
   }, [clientProp]);
 
   // Load linked Client entity when client_id changes
-  // Guard: ignore soft-deleted clients (deleted_at set) — prevents ghost reappearance
+  // Guard: if client is soft-deleted, clear the logical link on the estimate (client_id → null)
+  // Snapshot fields (client_name, client_email, etc.) are intentionally preserved for historical context
   useEffect(() => {
-    if (estimate?.client_id) {
-      base44.entities.Client.filter({ id: estimate.client_id }).then(res => {
-        const active = res[0] && !res[0].deleted_at ? res[0] : null;
-        setLinkedClient(active);
-      }).catch(() => {});
-    } else {
-      setLinkedClient(null);
-    }
-  }, [estimate?.client_id]);
+    if (!estimate?.client_id) { setLinkedClient(null); return; }
+    base44.entities.Client.filter({ id: estimate.client_id }).then(res => {
+      const found = res[0];
+      if (!found || found.deleted_at) {
+        // Client is gone — sever the link on the estimate record so it won't reappear
+        setLinkedClient(null);
+        if (found?.deleted_at && estimate?.id) {
+          base44.entities.Estimate.update(estimate.id, { client_id: null }).catch(() => {});
+        }
+      } else {
+        setLinkedClient(found);
+      }
+    }).catch(() => {});
+  }, [estimate?.client_id, estimate?.id]);
 
   // Sync form when estimate changes externally
   useEffect(() => {
