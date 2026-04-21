@@ -5,11 +5,13 @@
 
 /**
  * Check if estimate is locked for editing
- * Locked if status is: sent, viewed, approved, declined
+ * Locked if status is: sent, viewed, approved, signed, declined
+ * NOTE: 'changes_requested' and 'visit_completed' are intentionally NOT locked
+ *       so operators can update after visit without creating a new version.
  */
 export function isEstimateLocked(estimate) {
   if (!estimate) return false;
-  const lockedStatuses = ['sent', 'viewed', 'approved', 'declined'];
+  const lockedStatuses = ['sent', 'viewed', 'approved', 'signed', 'declined'];
   return lockedStatuses.includes(estimate.status);
 }
 
@@ -20,8 +22,14 @@ export function isEstimateLocked(estimate) {
 export async function createNewVersionFromEstimate(estimate, base44) {
   if (!estimate || !base44) return null;
 
+  // Guard: log if parent has no estimate_number — helps catch numbering gaps
+  if (!estimate.estimate_number) {
+    console.warn('[createNewVersionFromEstimate] Parent estimate has no estimate_number. Version will inherit null.', { id: estimate.id });
+  }
+
   const newVersion = {
     // Metadata
+    estimate_number: estimate.estimate_number, // inherit same number — version_number differentiates
     version_number: (estimate.version_number || 1) + 1,
     parent_estimate_id: estimate.id,
     status: 'draft',

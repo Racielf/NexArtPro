@@ -24,6 +24,7 @@ import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
 import { isEstimateLocked, createNewVersionFromEstimate, updateEstimateWithVersionGuard } from '@/lib/estimateVersioning';
+import { archiveWithSnapshot } from '@/lib/softDelete';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -228,7 +229,9 @@ export default function EstimateEditor() {
 
   const handleDiscard = async () => {
     if (estimateId) {
-      await base44.entities.Estimate.delete(estimateId);
+      // GUARD: Always route through soft-delete/recovery, never direct delete
+      const actor = currentUser?.email || currentUser?.id || 'system';
+      await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', estimateId, actor, 'Discarded from editor — new estimate was never saved');
     }
     navigate('/estimates');
   };
@@ -251,18 +254,22 @@ export default function EstimateEditor() {
   const hasClient = !!estimate.client_name;
   const isLocked = isEstimateLocked(estimate);
 
+  // STATUS_BADGE must stay aligned with Estimate entity schema enum values
+  // Schema statuses: draft | sent | viewed | approved | declined
+  // Extended operational statuses handled here for display only
   const STATUS_BADGE = {
-    draft:             { label: 'Draft',        cls: 'bg-slate-100 text-slate-600' },
-    scheduled:         { label: 'Scheduled',    cls: 'bg-blue-100 text-blue-700' },
-    sent:              { label: 'Sent',         cls: 'bg-indigo-100 text-indigo-700' },
-    viewed:            { label: 'Viewed',       cls: 'bg-violet-100 text-violet-700' },
-    approved:          { label: 'Approved',     cls: 'bg-emerald-100 text-emerald-800' },
-    signed:            { label: 'Signed',       cls: 'bg-green-100 text-green-800' },
-    converted:         { label: 'Converted',    cls: 'bg-teal-700 text-white' },
-    declined:          { label: 'Declined',     cls: 'bg-red-100 text-red-700' },
-    changes_requested: { label: 'Changes Req.', cls: 'bg-amber-100 text-amber-800' },
-    visit_completed:   { label: 'Visited',      cls: 'bg-cyan-100 text-cyan-700' },
-    on_my_way:         { label: 'On My Way',    cls: 'bg-sky-100 text-sky-700' },
+    draft:             { label: 'Draft',           cls: 'bg-slate-100 text-slate-600' },
+    sent:              { label: 'Sent',            cls: 'bg-indigo-100 text-indigo-700' },
+    viewed:            { label: 'Viewed',          cls: 'bg-violet-100 text-violet-700' },
+    approved:          { label: 'Approved',        cls: 'bg-emerald-100 text-emerald-800' },
+    signed:            { label: 'Signed',          cls: 'bg-green-100 text-green-800' },
+    declined:          { label: 'Declined',        cls: 'bg-red-100 text-red-700' },
+    changes_requested: { label: 'Changes Req.',    cls: 'bg-amber-100 text-amber-800' },
+    // Operational statuses (not in base schema enum but used in field workflow)
+    scheduled:         { label: 'Scheduled',       cls: 'bg-blue-100 text-blue-700' },
+    visit_completed:   { label: 'Visited',         cls: 'bg-cyan-100 text-cyan-700' },
+    on_my_way:         { label: 'On My Way',       cls: 'bg-sky-100 text-sky-700' },
+    converted:         { label: 'Converted',       cls: 'bg-teal-700 text-white' },
   };
   const statusBadge = STATUS_BADGE[estimate.status] || STATUS_BADGE.draft;
   const totalFmt = estimate.total != null
