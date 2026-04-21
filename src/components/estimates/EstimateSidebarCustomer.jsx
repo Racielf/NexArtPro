@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ClientFormModal from '@/components/proposals/ClientFormModal';
+import { filterActiveRecords } from '@/lib/softDelete';
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import CommTimeline from '@/components/shared/CommTimeline';
 
@@ -33,7 +34,9 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
   const [mapExpanded, setMapExpanded] = useState(false);
 
   useEffect(() => {
-    base44.entities.Client.list('-created_date', 50).then(setClients).catch(() => {});
+    base44.entities.Client.list('-created_date', 50)
+      .then(data => setClients(filterActiveRecords(data)))
+      .catch(() => {});
   }, []);
 
   // Sync linkedClient when parent loads the client entity
@@ -42,10 +45,12 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
   }, [clientProp]);
 
   // Load linked Client entity when client_id changes
+  // Guard: ignore soft-deleted clients (deleted_at set) — prevents ghost reappearance
   useEffect(() => {
     if (estimate?.client_id) {
       base44.entities.Client.filter({ id: estimate.client_id }).then(res => {
-        if (res[0]) setLinkedClient(res[0]);
+        const active = res[0] && !res[0].deleted_at ? res[0] : null;
+        setLinkedClient(active);
       }).catch(() => {});
     } else {
       setLinkedClient(null);

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Search, Plus, User, ChevronRight, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { filterActiveRecords } from '@/lib/softDelete';
 
 export default function NewProposalCustomerModal({ open, onOpenChange, onCustomerSelected }) {
   const [tab, setTab] = useState('select'); // 'select' | 'create'
@@ -22,7 +23,7 @@ export default function NewProposalCustomerModal({ open, onOpenChange, onCustome
       setForm({ full_name: '', phone: '', email: '', address: '', city: '', state: '', zip: '' });
       setLoading(true);
       base44.entities.Customer.list('-created_date', 100)
-        .then(setClients)
+        .then(data => setClients(filterActiveRecords(data)))
         .finally(() => setLoading(false));
     }
   }, [open]);
