@@ -2,69 +2,23 @@
   "name": "Lead",
   "type": "object",
   "properties": {
-    "name": {
-      "type": "string",
-      "description": "Full name of the lead"
-    },
-    "phone": {
-      "type": "string",
-      "description": "Phone number"
-    },
-    "email": {
-      "type": "string",
-      "description": "Email address"
-    },
-    "address": {
-      "type": "string",
-      "description": "Project address"
-    },
-    "service": {
-      "type": "string",
-      "enum": [
-        "Kitchen Remodeling",
-        "Bathroom Remodeling",
-        "Interior Painting",
-        "Exterior Painting",
-        "Flooring Installation",
-        "Drywall Repair",
-        "Roof Repair / Replacement",
-        "General Home Renovation",
-        "Plumbing",
-        "Electrical Work",
-        "Carpentry",
-        "Door & Window Installation",
-        "Home Additions",
-        "Basement Finishing",
-        "Deck & Patio Construction"
-      ],
-      "description": "Service type"
-    },
-    "details": {
-      "type": "string",
-      "description": "Project details"
-    },
+    "name": { "type": "string" },
+    "phone": { "type": "string" },
+    "email": { "type": "string" },
+    "address": { "type": "string" },
+    "service": { "type": "string" },
+    "details": { "type": "string" },
     "status": {
       "type": "string",
-      "enum": [
-        "new",
-        "contacted",
-        "converted",
-        "declined"
-      ],
-      "default": "new",
-      "description": "Lead status"
+      "enum": ["new","contacted","converted","declined"],
+      "default": "new"
     },
-    "source": {
-      "type": "string",
-      "default": "website",
-      "description": "Lead source (website)"
-    }
+    "source": { "type": "string", "default": "website" },
+    "deleted_at": { "type": "string", "format": "date-time" },
+    "deleted_by": { "type": "string" },
+    "delete_reason": { "type": "string" },
+    "restored_at": { "type": "string", "format": "date-time" },
+    "restored_by": { "type": "string" }
   },
-  "required": [
-    "name",
-    "phone",
-    "email",
-    "address",
-    "service"
-  ]
+  "required": ["name","phone","email","address","service"]
 }
