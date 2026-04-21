@@ -75,9 +75,56 @@ export default function EstimateScheduler() {
 
   const handleSave = async () => {
     if (!estimate) return;
-    // Parse start date/time and create appointment
-    toast.success('Appointment scheduled!');
-    navigate('/appointments');
+
+    // Parse startDate (MM/DD/YY or MM/DD/YYYY) → YYYY-MM-DD
+    let scheduledDateISO;
+    try {
+      const parts = startDate.split('/');
+      if (parts.length !== 3) throw new Error('Invalid format');
+      let [mm, dd, yy] = parts;
+      // Handle 2-digit year
+      const yyyy = yy.length === 2 ? `20${yy}` : yy;
+      const parsed = new Date(`${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`);
+      if (isNaN(parsed.getTime())) throw new Error('Invalid date');
+      scheduledDateISO = format(parsed, 'yyyy-MM-dd');
+    } catch {
+      toast.error('Invalid start date. Use MM/DD/YY format.');
+      return;
+    }
+
+    try {
+      // 1. Create the Appointment
+      const newAppt = await base44.entities.Appointment.create({
+        estimate_id: estimate.id,
+        customer_id: estimate.client_id || null,
+        customer_display_name: estimate.client_name,
+        customer_email: estimate.client_email || '',
+        customer_phone: estimate.client_phone || '',
+        title: estimate.title || `Estimate #${estimate.estimate_number}`,
+        appointment_date: scheduledDateISO,
+        scheduled_date: scheduledDateISO,
+        start_time: startTime,
+        end_time: endTime,
+        arrival_window: arrivalWindow !== 'none' ? arrivalWindow : null,
+        assigned_to: estimate.assigned_to || null,
+        service_address: estimate.client_address || '',
+        status: 'scheduled',
+      });
+
+      // 2. Update the Estimate with appointment_id
+      await base44.entities.Estimate.update(estimate.id, {
+        appointment_id: newAppt.id,
+        status: 'scheduled',
+        scheduled_date: scheduledDateISO,
+        scheduled_time: startTime,
+      });
+
+      toast.success('Appointment scheduled!');
+      navigate('/appointments');
+    } catch (err) {
+      toast.error('Failed to schedule appointment. Please try again.');
+      console.error('[handleSave]', err);
+    }
   };
 
   const handleNotify = async () => {
