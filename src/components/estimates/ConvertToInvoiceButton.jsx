@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
 /**
- * Shows only when estimate is approved or signed.
+ * Only enabled when estimate.status === 'approved'.
  * Converts estimate → Invoice and navigates to the invoice detail page.
  */
 export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdownItem = false }) {
@@ -18,7 +18,13 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
 
   if (!estimate) return null;
 
+  const isApproved = estimate.status === 'approved';
+
   const handleConvert = async () => {
+    if (!isApproved) {
+      toast.error('Estimate must be approved before converting to an invoice.');
+      return;
+    }
     setLoading(true);
     try {
       // Check if invoice(s) already exist for this estimate
@@ -82,7 +88,7 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
     }
   };
 
-  const enabled = !!estimate.client_name && !loading;
+  const enabled = !!estimate.client_name && !loading && isApproved;
 
   if (asDropdownItem) {
     return (
@@ -104,7 +110,7 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
       variant="outline"
       size="sm"
       className="gap-1.5"
-      title={!estimate.client_name ? 'Customer required' : 'Convert to Invoice'}
+      title={!isApproved ? 'Estimate must be approved first' : !estimate.client_name ? 'Customer required' : 'Convert to Invoice'}
     >
       {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
       Convert to Invoice
