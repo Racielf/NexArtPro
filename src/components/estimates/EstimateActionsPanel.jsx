@@ -19,6 +19,7 @@ import { canSendDocument } from '@/lib/pricingPermissions';
 import { logZeroProfitConfirmation } from '@/lib/pricingAuditService';
 import { validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { normalizeUserRole } from '@/lib/utils';
+import { archiveWithSnapshot } from '@/lib/softDelete';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function fmt(isoStr) {
@@ -455,7 +456,8 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const handleConfirmDelete = async () => {
     setDeleteModal(prev => ({ ...prev, loading: true, error: null }));
     try {
-      await base44.entities.Estimate.delete(estimate.id);
+      const actor = currentUser?.email || currentUser?.id || 'unknown';
+      await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', estimate.id, actor, 'Deleted from Estimate Editor');
       toast.success(`Estimate #${estimate.estimate_number} deleted`);
       setTimeout(() => { window.location.href = '/estimates'; }, 500);
     } catch (err) {
