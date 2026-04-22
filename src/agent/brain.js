@@ -3,10 +3,9 @@
  * Analysis layer: runs business rules first, then escalates to LLM if clean.
  */
 
-import { SAFE_ENGINEERING_RULES, SAFE_BUSINESS_RULES, DIFF_RULES } from './config.js';
+import { SAFE_ENGINEERING_RULES, SAFE_BUSINESS_RULES, DIFF_RULES, BUSINESS_RULES, ESTIMATE_AGENT_CONTEXT } from './config.js';
 import { base44 } from '@/api/base44Client';
 
-// Build SYSTEM_PROMPT dynamically from safe engineering rules
 const SYSTEM_PROMPT = [
   'You are a senior software engineering reviewer.',
   'Analyze the provided code diff and detect issues.',
@@ -18,14 +17,8 @@ const SYSTEM_PROMPT = [
   '{ "type": "patch" | "warn" | "none", "message": "...", "suggestion": "..." }',
   '',
   'IMPORTANT: "suggestion" must always be a concrete, actionable fix — never empty or vague.',
-  'Example: "Replace base44.entities.Client with base44.entities.Customer and update client_id references to customer_id."',
 ].join('\n');
 
-/**
- * runBusinessRules(data)
- * Executes all BUSINESS_RULES.validate() that accept a single argument against `data`.
- * Returns array of violation reason strings. Empty = no violations.
- */
 function runBusinessRules(data) {
   const violations = [];
   for (const rule of SAFE_BUSINESS_RULES) {
@@ -34,19 +27,11 @@ function runBusinessRules(data) {
       if (result && !result.valid && result.reason) {
         violations.push(`[${rule.id}] ${result.reason}`);
       }
-    } catch {
-      // Rule requires multiple args (e.g. no_duplicate_client_data) — skip in generic pass
-    }
+    } catch {}
   }
   return violations;
 }
 
-/**
- * runDiffRules({ filePath, diff })
- * Executes all DIFF_RULES against the raw filePath + diff string.
- * Returns the first violation found, or null if all pass.
- * @returns {{ type: string, message: string, suggestion: string } | null}
- */
 function runDiffRules({ filePath, diff }) {
   for (const rule of DIFF_RULES) {
     try {
@@ -55,39 +40,83 @@ function runDiffRules({ filePath, diff }) {
         return {
           type: result.type || 'warn',
           message: result.message || `Rule "${rule.id}" violated`,
-          // rule.suggestion (top-level) is the canonical fix — always present
           suggestion: rule.suggestion || result.suggestion || `Fix violation of rule "${rule.id}".`,
         };
       }
-    } catch {
-      // Malformed rule — skip silently
-    }
+    } catch {}
   }
   return null;
 }
 
 /**
- * analyzeChange({ filePath, diff, data? })
- * 1. Runs local business rules against `data` (if provided).
- * 2. If violations found, returns warn immediately (no LLM cost).
- * 3. Otherwise, sends diff to LLM with full system prompt.
- *
- * @param {{ filePath: string, diff: string, data?: object }} input
+ * analyzeEstimateContext — NEW (READ-ONLY)
+ * Performs contextual audit for Estimate module (no writes, no fixes)
  */
+export function analyzeEstimateContext({ filePath = '', content = '', data = null } = {}) {
+  const inEstimate = ESTIMATE_AGENT_CONTEXT.PATHS.some(re => re.test(filePath));
+  if (!inEstimate) {
+    return { type: 'warn', message: 'Not an Estimate module path', suggestion: '' };
+  }
+
+  const issues = [];
+
+  // 1. Detect direct Client usage in Estimate module
+  if (content && /\bClient\.(list|filter|create|update|delete|get)\b/.test(content) && !/EstimateSidebarCustomer/i.test(filePath)) {
+    issues.push('Direct Client entity usage detected in Estimate module');
+  }
+
+  // 2. Detect mixed client_id / customer_id in content
+  if (content && /client_id\s*[:=]/.test(content) && /customer_id\s*[:=]/.test(content)) {
+    issues.push('Mixed client_id and customer_id detected in same file');
+  }
+
+  // 3. Detect legacy UI labels
+  if (content) {
+    const foundLabels = ESTIMATE_AGENT_CONTEXT.LEGACY_LABELS.filter(l => content.includes(l));
+    if (foundLabels.length > 0) {
+      issues.push(`Legacy UI labels detected: ${foundLabels.join(', ')}`);
+    }
+  }
+
+  // 4. Detect suspicious status strings
+  if (content) {
+    const foundStatuses = ESTIMATE_AGENT_CONTEXT.SUSPICIOUS_STATUS_STRINGS.filter(s => content.includes(`'${s}'`) || content.includes(`"${s}"`));
+    if (foundStatuses.length > 0) {
+      issues.push(`Non-standard estimate status strings present: ${foundStatuses.join(', ')}`);
+    }
+  }
+
+  // 5. Validate runtime data if provided
+  if (data) {
+    const statusRule = BUSINESS_RULES.valid_estimate_status.validate(data);
+    if (!statusRule.valid) issues.push(statusRule.reason);
+
+    const mixRule = BUSINESS_RULES.no_mixed_client_customer.validate(data);
+    if (!mixRule.valid) issues.push(mixRule.reason);
+  }
+
+  if (issues.length === 0) {
+    return { type: 'none', message: 'Estimate context clean', suggestion: '' };
+  }
+
+  return {
+    type: 'warn',
+    message: 'Estimate context issues detected',
+    suggestion: issues.join(' | '),
+  };
+}
+
 export async function analyzeChange({ filePath, diff, data = null } = {}) {
-  // Guard: invalid inputs — skip LLM call
   if (typeof filePath !== 'string' || filePath.trim() === '') {
     return { type: 'warn', message: 'analyzeChange: filePath is required', suggestion: '' };
   }
   if (typeof diff !== 'string') {
     return { type: 'warn', message: 'analyzeChange: diff must be a string', suggestion: '' };
   }
-  // Step 1a: diff/file pattern rules — CRM-specific, no LLM needed
-  // Returns type "patch" or "warn" directly — LLM is skipped on any match
+
   const diffViolation = runDiffRules({ filePath, diff });
   if (diffViolation) return diffViolation;
 
-  // Step 1b: local business rules against structured data (fast, no API call)
   if (data) {
     const violations = runBusinessRules(data);
     if (violations.length > 0) {
@@ -99,15 +128,14 @@ export async function analyzeChange({ filePath, diff, data = null } = {}) {
     }
   }
 
-  // Step 2: LLM analysis with full context (fallback only)
   try {
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: `${SYSTEM_PROMPT}\n\nFile: ${filePath}\n\nDiff:\n${diff}`,
       response_json_schema: {
         type: 'object',
         properties: {
-          type:       { type: 'string', enum: ['patch', 'warn', 'none'] },
-          message:    { type: 'string' },
+          type: { type: 'string', enum: ['patch', 'warn', 'none'] },
+          message: { type: 'string' },
           suggestion: { type: 'string' },
         },
         required: ['type', 'message', 'suggestion'],
@@ -121,4 +149,4 @@ export async function analyzeChange({ filePath, diff, data = null } = {}) {
   }
 }
 
-export default { analyzeChange };
+export default { analyzeChange, analyzeEstimateContext };
