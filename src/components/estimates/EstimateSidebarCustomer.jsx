@@ -22,6 +22,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [linkedClient, setLinkedClient] = useState(clientProp || null);
   const [clientNotFound, setClientNotFound] = useState(false);
+  const [resolvedSource, setResolvedSource] = useState('client'); // 'client' | 'customer' | 'snapshot'
   const [form, setForm] = useState({
     client_name: estimate?.client_name || '',
     client_email: estimate?.client_email || '',
@@ -45,28 +46,63 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
     if (clientProp) setLinkedClient(clientProp);
   }, [clientProp]);
 
-  // Load linked Client entity when client_id changes
-  // Guard: if client is soft-deleted or missing, mark as not found (FK broken).
-  // Snapshot fields (client_name, client_email, etc.) are intentionally preserved for historical context.
+  // Dual lookup: Client first, then Customer fallback, then snapshot.
+  // NEVER writes to DB. NEVER nulls client_id. NEVER touches snapshot fields.
   useEffect(() => {
     if (!estimate?.client_id) {
       setLinkedClient(null);
       setClientNotFound(false);
+      setResolvedSource('snapshot');
       return;
     }
-    base44.entities.Client.filter({ id: estimate.client_id }).then(res => {
+
+    const clientId = estimate.client_id;
+
+    base44.entities.Client.filter({ id: clientId }).then(res => {
       const found = res[0];
-      if (!found || found.deleted_at) {
-        // Client is gone — sever the FK link but preserve snapshot fields
-        setLinkedClient(null);
-        setClientNotFound(true);
-        base44.entities.Estimate.update(estimate.id, { client_id: null }).catch(() => {});
-      } else {
+      if (found && !found.deleted_at) {
+        // ✅ Found active Client
         setLinkedClient(found);
         setClientNotFound(false);
+        setResolvedSource('client');
+        return;
       }
-    }).catch(() => {});
-  }, [estimate?.client_id, estimate?.id]);
+
+      // Client not found or deleted — try Customer table
+      base44.entities.Customer.filter({ id: clientId }).then(custRes => {
+        const cust = custRes[0];
+        if (cust && !cust.deleted_at) {
+          // ✅ Found active Customer — map to Client-compatible shape
+          const mapped = {
+            id: cust.id,
+            full_name: cust.display_name || `${cust.first_name || ''} ${cust.last_name || ''}`.trim(),
+            email: cust.email || '',
+            phone: cust.phone || '',
+            address: cust.service_address || '',
+            city: cust.city || '',
+            state: cust.state || '',
+            zip: cust.zip || '',
+          };
+          setLinkedClient(mapped);
+          setClientNotFound(false);
+          setResolvedSource('customer');
+        } else {
+          // Neither table has a live record — fall back to snapshot fields only
+          setLinkedClient(null);
+          setClientNotFound(true);
+          setResolvedSource('snapshot');
+        }
+      }).catch(() => {
+        setLinkedClient(null);
+        setClientNotFound(true);
+        setResolvedSource('snapshot');
+      });
+    }).catch(() => {
+      setLinkedClient(null);
+      setClientNotFound(true);
+      setResolvedSource('snapshot');
+    });
+  }, [estimate?.client_id]);
 
   // Sync form when estimate changes externally
   useEffect(() => {
@@ -288,6 +324,14 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
               </div>
             </div>
 
+            {/* ── SOURCE BADGE ──────────────────────────────────────── */}
+            {resolvedSource === 'customer' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                <span className="text-[10px] font-semibold text-blue-700">Linked via Customer record</span>
+              </div>
+            )}
+
             <div className="h-px bg-slate-100" />
 
             {/* Contact rows */}
@@ -440,8 +484,8 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
         </>
       )}
 
-      {/* ── HISTORICAL / BROKEN FK BANNER ────────────────────────────────── */}
-      {clientNotFound && (
+      {/* ── HISTORICAL / BROKEN FK BANNER (snapshot fallback) ───────────── */}
+      {resolvedSource === 'snapshot' && clientNotFound && (
         <div className="mx-4 mt-4 mb-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex-shrink-0">
           <p className="text-[11px] font-bold text-amber-800 mb-0.5">Client no longer active</p>
           <p className="text-[11px] text-amber-700 leading-snug mb-1">
@@ -452,7 +496,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
           )}
           <button
             type="button"
-            onClick={() => { setClientNotFound(false); setEditing(false); setShowSearch(true); }}
+            onClick={() => { setClientNotFound(false); setResolvedSource('client'); setEditing(false); setShowSearch(true); }}
             className="text-[11px] font-semibold text-amber-800 underline hover:text-amber-900 transition-colors"
           >
             Relink a customer →
