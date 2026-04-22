@@ -8,12 +8,11 @@
     "document_type": {
       "type": "string",
       "enum": [
-        "ESTIMATE",
         "BID",
         "PROPOSAL"
       ],
-      "default": "ESTIMATE",
-      "description": "Document type: ESTIMATE (standard estimate), BID (technical/commercial) or PROPOSAL (client-friendly)"
+      "default": "PROPOSAL",
+      "description": "Document type: BID (technical/commercial) or PROPOSAL (client-friendly)"
     },
     "document_language": {
       "type": "string",
@@ -27,24 +26,19 @@
     },
     "version_number": {
       "type": "number",
-      "default": 1,
-      "description": "Version tracking for estimate iterations"
+      "default": 1
     },
     "parent_estimate_id": {
-      "type": "string",
-      "description": "ID of previous estimate version when creating new version"
+      "type": "string"
     },
     "job_number": {
-      "type": "string",
-      "description": "Job or project number reference (required for BID type)"
+      "type": "string"
     },
     "plan_reference": {
-      "type": "string",
-      "description": "Plan set or specification reference (required for BID type if no job_number)"
+      "type": "string"
     },
     "source_proposal_id": {
-      "type": "string",
-      "description": "Reference to source Proposal if created as adjustment"
+      "type": "string"
     },
     "client_id": {
       "type": "string"
@@ -71,71 +65,37 @@
       "type": "string",
       "enum": [
         "draft",
-        "scheduled",
-        "on_my_way",
-        "visit_completed",
         "sent",
         "viewed",
-        "changes_requested",
         "approved",
-        "signed",
-        "declined",
-        "converted"
+        "declined"
       ],
       "default": "draft"
     },
     "viewed_at": {
-      "type": "string",
-      "description": "Timestamp when client first opened estimate"
+      "type": "string"
     },
     "approved_at": {
-      "type": "string",
-      "description": "Timestamp when client approved"
+      "type": "string"
     },
     "declined_at": {
-      "type": "string",
-      "description": "Timestamp when client declined"
+      "type": "string"
     },
     "declined_reason": {
-      "type": "string",
-      "description": "Reason provided by client when declining"
+      "type": "string"
     },
     "accepted_by": {
-      "type": "string",
-      "description": "Name of person who approved estimate"
-    },
-    "approved_by": {
-      "type": "string",
-      "description": "Email or ID of internal approver"
-    },
-    "approval_note": {
-      "type": "string",
-      "description": "Optional approval note"
-    },
-    "signed_at": {
-      "type": "string",
-      "description": "Timestamp when estimate was signed"
-    },
-    "signer_name": {
-      "type": "string",
-      "description": "Name of signer"
-    },
-    "changes_requested_at": {
-      "type": "string",
-      "description": "Timestamp when client requested changes"
+      "type": "string"
     },
     "last_contacted_at": {
-      "type": "string",
-      "description": "Timestamp of last send/contact event"
+      "type": "string"
     },
     "follow_up_count": {
       "type": "number",
-      "default": 0,
-      "description": "Total number of send/contact events"
+      "default": 0
     },
     "next_follow_up_date": {
-      "type": "string",
-      "description": "Suggested next follow-up date"
+      "type": "string"
     },
     "expiration_date": {
       "type": "string",
@@ -153,134 +113,43 @@
       "type": "string"
     },
     "created_by": {
-      "type": "string",
-      "description": "Email or name of user who created the estimate"
+      "type": "string"
     },
     "updated_by": {
-      "type": "string",
-      "description": "Email or name of user who last updated the estimate"
+      "type": "string"
     },
     "groups": {
       "type": "array",
       "description": "Work groups, each containing line items",
       "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "collapsed": {
-            "type": "boolean"
-          },
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "service_name": {
-                  "type": "string"
-                },
-                "description": {
-                  "type": "string"
-                },
-                "quantity": {
-                  "type": "number"
-                },
-                "unit": {
-                  "type": "string"
-                },
-                "unit_price": {
-                  "type": "number"
-                },
-                "unit_cost": {
-                  "type": "number"
-                },
-                "line_total": {
-                  "type": "number"
-                },
-                "taxable": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        }
+        "type": "object"
       }
     },
     "materials": {
       "type": "array",
       "description": "Optional structured materials items",
       "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "quantity": {
-            "type": "number"
-          },
-          "unit": {
-            "type": "string"
-          },
-          "unit_price": {
-            "type": "number"
-          },
-          "unit_cost": {
-            "type": "number"
-          },
-          "line_total": {
-            "type": "number"
-          }
-        }
+        "type": "object"
       }
     },
     "other_costs": {
       "type": "array",
       "description": "Job-level internal costs not in line items",
       "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "amount": {
-            "type": "number"
-          },
-          "note": {
-            "type": "string"
-          }
-        }
+        "type": "object"
       }
     },
     "other_costs_total": {
       "type": "number",
-      "default": 0,
-      "description": "Sum of other_costs amounts (internal)"
+      "default": 0
     },
     "net_profit": {
       "type": "number",
-      "default": 0,
-      "description": "gross_margin - other_costs_total (internal)"
+      "default": 0
     },
     "net_profit_pct": {
       "type": "number",
-      "default": 0,
-      "description": "net_profit / total * 100 (internal)"
+      "default": 0
     },
     "line_items": {
       "type": "array",
@@ -291,35 +160,9 @@
     },
     "attachments": {
       "type": "array",
-      "description": "File attachments with intent: internal_only or send_to_client",
+      "description": "File attachments",
       "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "file_url": {
-            "type": "string",
-            "description": "Public URL of uploaded file"
-          },
-          "file_name": {
-            "type": "string"
-          },
-          "intent": {
-            "type": "string",
-            "enum": [
-              "internal_only",
-              "send_to_client"
-            ],
-            "default": "internal_only"
-          },
-          "uploaded_by": {
-            "type": "string"
-          },
-          "uploaded_at": {
-            "type": "string"
-          }
-        }
+        "type": "object"
       }
     },
     "subtotal": {
@@ -370,8 +213,7 @@
     },
     "materials_subtotal": {
       "type": "number",
-      "default": 0,
-      "description": "Sum of materials line totals"
+      "default": 0
     },
     "notes": {
       "type": "string"
@@ -392,20 +234,16 @@
       "type": "string"
     },
     "scope_summary": {
-      "type": "string",
-      "description": "Client-visible summary of the overall scope of work"
+      "type": "string"
     },
     "assumptions": {
-      "type": "string",
-      "description": "Project assumptions and conditions agreed upon by both parties"
+      "type": "string"
     },
     "change_request_policy": {
-      "type": "string",
-      "description": "Policy for handling changes after estimate is approved"
+      "type": "string"
     },
     "included_scope_bullets": {
-      "type": "string",
-      "description": "Newline-separated list of what is included in this estimate — each line renders as one bullet in the document"
+      "type": "string"
     },
     "contingency_type": {
       "type": "string",
@@ -414,27 +252,22 @@
         "percent",
         "fixed"
       ],
-      "default": "none",
-      "description": "Type of contingency: none | percent of grand total | fixed dollar amount"
+      "default": "none"
     },
     "contingency_value": {
       "type": "number",
-      "default": 0,
-      "description": "Raw user-entered contingency value (percentage or dollar amount depending on contingency_type)"
+      "default": 0
     },
     "contingency_amount": {
       "type": "number",
-      "default": 0,
-      "description": "Computed contingency dollar amount (stored for persistence)"
+      "default": 0
     },
     "show_contingency_to_client": {
       "type": "boolean",
-      "default": false,
-      "description": "If true, contingency line is shown to client in document templates"
+      "default": false
     },
     "uncertainty_note": {
-      "type": "string",
-      "description": "Optional client-visible note about project uncertainties or scope assumptions"
+      "type": "string"
     },
     "sent_at": {
       "type": "string"
@@ -458,72 +291,33 @@
     },
     "document_config": {
       "type": "object",
-      "description": "Document rendering configuration (template + options)",
-      "properties": {
-        "template": {
-          "type": "string",
-          "description": "Template key",
-          "default": "professional"
-        },
-        "options": {
-          "type": "object",
-          "description": "Document visibility options",
-          "properties": {
-            "showPrices": {
-              "type": "boolean",
-              "default": true
-            },
-            "showBreakdown": {
-              "type": "boolean",
-              "default": true
-            },
-            "showTerms": {
-              "type": "boolean",
-              "default": true
-            },
-            "showSignatures": {
-              "type": "boolean",
-              "default": true
-            },
-            "hideInternalNotes": {
-              "type": "boolean",
-              "default": true,
-              "description": "CRITICAL: Always true to prevent internal notes from showing to client"
-            },
-            "showMaterials": {
-              "type": "boolean",
-              "default": true
-            }
-          }
-        }
-      }
+      "description": "Document rendering configuration (template + options)"
+    },
+    "company_id": {
+      "type": "string",
+      "default": "rc-art"
     },
     "deleted_at": {
       "type": "string",
       "format": "date-time",
-      "description": "Timestamp of soft delete (null if active)"
+      "description": "Soft delete timestamp \u2014 set when record is archived"
     },
     "deleted_by": {
       "type": "string",
-      "description": "User email who deleted the record"
+      "description": "Actor who soft-deleted this record"
     },
     "delete_reason": {
       "type": "string",
-      "description": "Reason provided for deletion"
+      "description": "Reason provided when soft-deleting"
     },
     "restored_at": {
       "type": "string",
       "format": "date-time",
-      "description": "Timestamp of restoration (null if not restored)"
+      "description": "Timestamp when record was restored from archive"
     },
     "restored_by": {
       "type": "string",
-      "description": "User email who restored the record"
-    },
-    "company_id": {
-      "type": "string",
-      "description": "Company identifier for multi-tenant support",
-      "default": "rc-art"
+      "description": "Actor who restored this record"
     }
   },
   "required": [
