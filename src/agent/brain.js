@@ -3,16 +3,16 @@
  * Analysis layer: runs business rules first, then escalates to LLM if clean.
  */
 
-import { ENGINEERING_RULES, SAFE_BUSINESS_RULES } from './config.js';
+import { SAFE_ENGINEERING_RULES, SAFE_BUSINESS_RULES } from './config.js';
 import { base44 } from '@/api/base44Client';
 
-// Build SYSTEM_PROMPT dynamically from real engineering rules
+// Build SYSTEM_PROMPT dynamically from safe engineering rules
 const SYSTEM_PROMPT = [
   'You are a senior software engineering reviewer.',
   'Analyze the provided code diff and detect issues.',
   '',
   'Rules to enforce:',
-  ...Object.values(ENGINEERING_RULES).map(r => `- [${r.severity.toUpperCase()}] ${r.description}`),
+  ...SAFE_ENGINEERING_RULES.map(r => `- [${(r.severity || 'info').toUpperCase()}] ${r.description || r.id}`),
   '',
   'Respond ONLY with valid JSON:',
   '{ "type": "patch" | "warn" | "none", "message": "...", "suggestion": "..." }',
