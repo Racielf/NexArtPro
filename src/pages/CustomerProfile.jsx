@@ -12,6 +12,7 @@ import {
   ChevronRight, Clock, DollarSign, User, StickyNote, AlertTriangle
 } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
+import CustomerRevenueHistory from '@/components/customers/CustomerRevenueHistory';
 import { format } from 'date-fns';
 
 const TYPE_ICONS = { residential: Home, commercial: Building2, contractor: HardHat };
@@ -113,6 +114,7 @@ export default function CustomerProfile() {
 
   const TABS = [
     { id: 'overview', label: 'Overview' },
+    { id: 'revenue', label: 'Revenue History' },
     { id: 'appointments', label: `Appointments (${appointments.length})` },
     { id: 'estimates', label: `Estimates (${estimates.length})` },
     { id: 'work_orders', label: `Work Orders (${workOrders.length})` },
@@ -220,10 +222,22 @@ export default function CustomerProfile() {
                   <span className="font-semibold text-orange-600">${pendingRevenue.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Overdue</span>
+                  <span className="font-semibold text-red-600">
+                    ${invoices.filter(i => i.status === 'overdue').reduce((s, i) => s + (i.total || 0), 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">Total Jobs</span>
                   <span className="font-semibold text-slate-700">{workOrders.length}</span>
                 </div>
               </div>
+              <button
+                onClick={() => setActiveTab('revenue')}
+                className="mt-2 text-[11px] text-primary hover:underline font-medium"
+              >
+                View full revenue history →
+              </button>
             </div>
 
             {/* Quick notes */}
@@ -353,6 +367,11 @@ export default function CustomerProfile() {
                     )}
                   </div>
                 </>
+              )}
+
+              {/* REVENUE HISTORY */}
+              {activeTab === 'revenue' && (
+                <CustomerRevenueHistory estimates={estimates} invoices={invoices} />
               )}
 
               {/* APPOINTMENTS */}

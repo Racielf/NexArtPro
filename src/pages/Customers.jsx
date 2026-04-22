@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
   Search, User, Phone, Mail, MapPin, Pencil,
-  Plus, Building2, Home, HardHat
+  Plus, Building2, Home, HardHat, DollarSign
 } from 'lucide-react';
 import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
@@ -24,6 +24,7 @@ export default function Customers() {
   const { user } = useAuth();
   const actor = user?.email || user?.id || 'unknown';
   const [customers, setCustomers] = useState([]);
+  const [revenueMap, setRevenueMap] = useState({});
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -37,8 +38,19 @@ export default function Customers() {
 
   const loadCustomers = async () => {
     setLoading(true);
-    const data = await base44.entities.Customer.list('-created_date');
+    const [data, invData] = await Promise.all([
+      base44.entities.Customer.list('-created_date'),
+      base44.entities.Invoice.list('-created_date', 500),
+    ]);
     setCustomers(filterActiveRecords(data));
+    // Build per-customer revenue map (paid invoices only)
+    const map = {};
+    for (const inv of invData) {
+      if (inv.status === 'paid' && inv.client_id) {
+        map[inv.client_id] = (map[inv.client_id] || 0) + (inv.total || 0);
+      }
+    }
+    setRevenueMap(map);
     setLoading(false);
   };
 
@@ -186,7 +198,7 @@ export default function Customers() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             {/* Table header */}
             <div className="grid items-center gap-4 px-4 py-3 border-b border-slate-100 bg-slate-50/80"
-              style={{ gridTemplateColumns: '20px 40px 1fr 120px 28px' }}>
+              style={{ gridTemplateColumns: '20px 40px 1fr 120px 100px 28px' }}>
               <input
                 type="checkbox"
                 checked={selectedIds.size === filtered.length && filtered.length > 0}
@@ -196,6 +208,7 @@ export default function Customers() {
               <div />
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Customer</span>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Type</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Revenue</span>
               <div />
             </div>
 
@@ -213,7 +226,7 @@ export default function Customers() {
                     key={customer.id}
                     className="grid items-center gap-4 px-4 py-3.5 transition-colors duration-100 group cursor-pointer"
                     style={{
-                      gridTemplateColumns: '20px 40px 1fr 120px 28px',
+                      gridTemplateColumns: '20px 40px 1fr 120px 100px 28px',
                       background: isSelected ? '#eff6ff' : undefined,
                     }}
                     onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
@@ -268,11 +281,22 @@ export default function Customers() {
                       </span>
                     </div>
 
+                    {/* Revenue */}
+                    <div>
+                     {revenueMap[customer.id] ? (
+                       <span className="text-[12px] font-bold text-green-600">
+                         ${revenueMap[customer.id].toLocaleString()}
+                       </span>
+                     ) : (
+                       <span className="text-[11px] text-slate-300">—</span>
+                     )}
+                    </div>
+
                     {/* Actions — reveal on hover */}
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => openEdit(customer)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition-colors" title="Edit">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                     <button onClick={() => openEdit(customer)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition-colors" title="Edit">
+                       <Pencil className="w-3.5 h-3.5" />
+                     </button>
                     </div>
                   </div>
                 );
