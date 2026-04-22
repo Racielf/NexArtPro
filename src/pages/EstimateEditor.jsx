@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Trash2, Send, ChevronRight, ChevronDown, ClipboardList, FileText } from 'lucide-react';
+import { X, Eye, Trash2, Send, ChevronRight, ChevronDown, ClipboardList, FileText, ShieldCheck } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import SaveStateIndicator from '@/components/shared/SaveStateIndicator';
@@ -40,6 +40,8 @@ export default function EstimateEditor() {
   const [saveError, setSaveError] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthResult, setHealthResult] = useState(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
@@ -185,6 +187,28 @@ export default function EstimateEditor() {
     navigate('/estimates');
   };
 
+  const handleRunHealthCheck = async () => {
+    if (!estimate) return;
+    try {
+      setHealthLoading(true);
+      const { runEstimateHealthCheck } = await import('@/agent/agent.js');
+      const result = await runEstimateHealthCheck(estimate);
+      setHealthResult(result);
+      if (result.level === 'healthy') {
+        toast.success(`Estimate Health: ${result.score}`);
+      } else if (result.level === 'warning') {
+        toast.warning(`Estimate Health: ${result.score}`);
+      } else {
+        toast.error(`Estimate Health: ${result.score}`);
+      }
+    } catch (err) {
+      console.error('[Estimate Health] failed:', err);
+      toast.error('Estimate health check failed');
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
   if (loading) return (
     <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
       <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
@@ -260,6 +284,17 @@ export default function EstimateEditor() {
             <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
 
             <div className="w-px h-5 bg-slate-200" />
+
+            {import.meta.env.DEV && (
+              <button
+                onClick={handleRunHealthCheck}
+                disabled={healthLoading}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                {healthLoading ? 'Checking...' : 'Health Check'}
+              </button>
+            )}
 
             <button
               onClick={() => setShowPreviewModal(true)}
@@ -368,6 +403,44 @@ export default function EstimateEditor() {
               <div>
                 <p className="text-sm font-semibold text-slate-800">Link a customer to get started</p>
                 <p className="text-xs text-slate-400 mt-0.5">Add a customer in the left panel to unlock the full estimate workflow.</p>
+              </div>
+            </div>
+          )}
+
+          {import.meta.env.DEV && healthResult && (
+            <div className={`mb-5 rounded-xl border px-5 py-4 ${
+              healthResult.level === 'healthy'
+                ? 'border-emerald-200 bg-emerald-50'
+                : healthResult.level === 'warning'
+                  ? 'border-amber-200 bg-amber-50'
+                  : 'border-red-200 bg-red-50'
+            }`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Estimate Health</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{healthResult.summary}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-slate-900">{healthResult.score}</p>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">{healthResult.level}</p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-slate-700">Next action</p>
+                <p className="text-sm text-slate-600 mt-1">{healthResult.nextAction}</p>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {healthResult.checks.map(check => (
+                  <div key={check.id} className="flex items-start gap-2 text-xs">
+                    <span className={`mt-0.5 inline-block w-2 h-2 rounded-full ${
+                      check.status === 'pass' ? 'bg-emerald-500' : check.status === 'warn' ? 'bg-amber-500' : 'bg-red-500'
+                    }`} />
+                    <div>
+                      <span className="font-semibold text-slate-700">{check.label}</span>
+                      <span className="text-slate-500"> — {check.message}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
