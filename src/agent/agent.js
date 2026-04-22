@@ -56,3 +56,38 @@ export async function runAgent(input = null) {
 }
 
 export default { runAgent };
+
+// ── MANUAL TEST PAYLOADS ──────────────────────────────────────────────────────
+// Usage: import { manualTestOk, manualTestWarn, manualTestPatch } from './agent.js';
+//        then call runAgent(manualTestOk) etc. from any test harness or browser console.
+
+/** OK — neutral diff, no rules triggered */
+export const manualTestOk = {
+  filePath: 'src/components/estimates/EstimateSidebarCustomer.jsx',
+  diff: `
+-  const displayName = customer.display_name;
++  const displayName = customer.display_name || 'Unknown';
+  `,
+};
+
+/** WARN — assigns both client_id and customer_id on the same object */
+export const manualTestWarn = {
+  filePath: 'src/components/estimates/EstimateNewForm.jsx',
+  diff: `
++  const record = {
++    client_id: selectedClient.id,
++    customer_id: selectedCustomer.id,
++    title: form.title,
++  };
++  await base44.entities.Estimate.create(record);
+  `,
+};
+
+/** PATCH — UI label "Back to Clients" detected in a non-exempt module */
+export const manualTestPatch = {
+  filePath: 'src/components/estimates/EstimateHeader.jsx',
+  diff: `
+-  <button>Back to Estimates</button>
++  <button>Back to Clients</button>
+  `,
+};
