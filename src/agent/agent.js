@@ -53,9 +53,9 @@ function reportResult({ filePath, result }) {
 }
 
 /**
- * runAgent({ filePath, diff })
+ * runAgent({ filePath, diff, type? })
  * Main entry point. Analyzes a change and reports the review result.
- * @param {{ filePath: string, diff: string }} input
+ * @param {{ filePath: string, diff: string, type?: string }} input
  */
 export async function runAgent(input = null) {
   if (!AGENT_CONFIG.enabled) {
@@ -63,15 +63,24 @@ export async function runAgent(input = null) {
     return;
   }
 
-  console.log(`[agent] starting — ${AGENT_CONFIG.name} v${AGENT_CONFIG.version}`);
-
   if (!input?.filePath || !input?.diff) {
     console.warn('[agent] runAgent requires { filePath, diff }');
     return;
   }
 
-  const result = await analyzeChange(input);
-  reportResult({ filePath: input.filePath, result });
+  console.log(`[AGENT] analyzing: ${input.filePath}`);
+
+  const result = await analyzeChange({ filePath: input.filePath, diff: input.diff });
+
+  if (result.type === 'warn') {
+    console.warn('[AGENT WARNING]', result.message);
+    if (result.suggestion) console.warn('[AGENT WARNING] detail:', result.suggestion);
+  } else if (result.type === 'patch') {
+    console.log('[AGENT SUGGESTION]', result.suggestion);
+  } else {
+    console.log('[AGENT OK]', input.filePath);
+  }
+
   return result;
 }
 
