@@ -23,7 +23,7 @@ import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHis
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
-import { isEstimateLocked, createNewVersionFromEstimate, updateEstimateWithVersionGuard } from '@/lib/estimateVersioning';
+import { isEstimateLocked, updateEstimateWithVersionGuard } from '@/lib/estimateVersioning';
 import { archiveWithSnapshot } from '@/lib/softDelete';
 
 export default function EstimateEditor() {
@@ -76,28 +76,8 @@ export default function EstimateEditor() {
   };
 
   const handleSave = async (updatedEstimate) => {
-    // Check edit lock BEFORE saving
-    if (isEstimateLocked(estimate)) {
-      // Create new version instead
-      setSaving(true);
-      try {
-        const newEst = await createNewVersionFromEstimate(estimate, base44);
-        if (newEst) {
-          setSaving(false);
-          toast.success(`Sent estimate locked. Created Version ${newEst.version_number}`);
-          navigate(`/estimate-editor?id=${newEst.id}`);
-        } else {
-          setSaving(false);
-          toast.error('Could not create new version');
-        }
-      } catch (err) {
-        setSaving(false);
-        console.error('[handleSave] version creation failed:', err);
-        toast.error('Failed to create new version');
-      }
-      return;
-    }
-
+    // NOTE: Lock status is shown visually but does NOT block in-place edits.
+    // Versioning is a manual/explicit action only — never triggered automatically on save.
     setSaving(true);
     setSaveError(false);
     setDirty(false);
