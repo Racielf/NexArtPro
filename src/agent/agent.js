@@ -64,7 +64,6 @@ export async function runAgent(input = null) {
   }
 
   console.log(`[agent] starting — ${AGENT_CONFIG.name} v${AGENT_CONFIG.version}`);
-  watcher.start();
 
   if (!input?.filePath || !input?.diff) {
     console.warn('[agent] runAgent requires { filePath, diff }');

@@ -1,43 +1,69 @@
 /**
  * agent/brain.js
- * Analysis layer for the internal agent.
- * Receives structured input and applies configured rules.
+ * Analysis layer: runs business rules first, then escalates to LLM if clean.
  */
 
-import { AGENT_RULES } from './config.js';
+import { ENGINEERING_RULES, BUSINESS_RULES } from './config.js';
 import { base44 } from '@/api/base44Client';
 
-const SYSTEM_PROMPT = `You are a senior software engineering reviewer.
-Your job is to analyze code diffs and detect potential issues.
-Rules you must enforce:
-- Never break existing backend API contracts
-- Apply the minimum change needed (surgical changes only)
-- Avoid duplicating logic that already exists
-
-Respond ONLY with valid JSON in this exact shape:
-{
-  "type": "patch" | "warn" | "none",
-  "message": "short description of the issue",
-  "suggestion": "what to do instead"
-}`;
+// Build SYSTEM_PROMPT dynamically from real engineering rules
+const SYSTEM_PROMPT = [
+  'You are a senior software engineering reviewer.',
+  'Analyze the provided code diff and detect issues.',
+  '',
+  'Rules to enforce:',
+  ...Object.values(ENGINEERING_RULES).map(r => `- [${r.severity.toUpperCase()}] ${r.description}`),
+  '',
+  'Respond ONLY with valid JSON:',
+  '{ "type": "patch" | "warn" | "none", "message": "...", "suggestion": "..." }',
+].join('\n');
 
 /**
- * analyze(input) — legacy sync stub, kept for compatibility
+ * runBusinessRules(data)
+ * Executes all BUSINESS_RULES.validate() that accept a single argument against `data`.
+ * Returns array of violation reason strings. Empty = no violations.
  */
-export function analyze(input) {
-  console.log('[agent:brain] analyze called with:', input);
-  return { input, violations: [], passed: true };
+function runBusinessRules(data) {
+  const violations = [];
+  for (const rule of Object.values(BUSINESS_RULES)) {
+    if (typeof rule.validate !== 'function') continue;
+    try {
+      const result = rule.validate(data);
+      if (result && !result.valid && result.reason) {
+        violations.push(`[${rule.id}] ${result.reason}`);
+      }
+    } catch {
+      // Rule requires multiple args (e.g. no_duplicate_client_data) — skip in generic pass
+    }
+  }
+  return violations;
 }
 
 /**
- * analyzeChange({ filePath, diff })
- * Sends a file diff to the LLM and returns a structured review decision.
- * Does NOT apply any changes — analysis only.
+ * analyzeChange({ filePath, diff, data? })
+ * 1. Runs local business rules against `data` (if provided).
+ * 2. If violations found, returns warn immediately (no LLM cost).
+ * 3. Otherwise, sends diff to LLM with full system prompt.
+ *
+ * @param {{ filePath: string, diff: string, data?: object }} input
  */
-export async function analyzeChange({ filePath, diff }) {
+export async function analyzeChange({ filePath, diff, data = null }) {
+  // Step 1: local business rules (fast, no API call)
+  if (data) {
+    const violations = runBusinessRules(data);
+    if (violations.length > 0) {
+      return {
+        type: 'warn',
+        message: 'Business rule violation',
+        suggestion: JSON.stringify(violations),
+      };
+    }
+  }
+
+  // Step 2: LLM analysis with full context
   try {
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `File: ${filePath}\n\nDiff:\n${diff}`,
+      prompt: `${SYSTEM_PROMPT}\n\nFile: ${filePath}\n\nDiff:\n${diff}`,
       response_json_schema: {
         type: 'object',
         properties: {
@@ -47,8 +73,6 @@ export async function analyzeChange({ filePath, diff }) {
         },
         required: ['type', 'message', 'suggestion'],
       },
-      // Prepend system rules as context via the prompt itself
-      // (system role is embedded in the user prompt for InvokeLLM)
     });
 
     return result;
@@ -58,4 +82,4 @@ export async function analyzeChange({ filePath, diff }) {
   }
 }
 
-export default { analyze, analyzeChange };
+export default { analyzeChange };
