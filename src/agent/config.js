@@ -23,6 +23,14 @@ export const ENGINEERING_RULES = {
   },
 };
 
+// ── ESTIMATE AGENT CONTEXT ───────────────────────────────────────────────────
+
+export const ESTIMATE_AGENT_CONTEXT = {
+  PATHS: [/src\/pages\/EstimateEditor\.jsx?$/i, /src\/components\/estimates\//i],
+  LEGACY_LABELS: ['Client Profile', 'Back to Clients', 'View Client'],
+  SUSPICIOUS_STATUS_STRINGS: ['signed', 'changes_requested', 'scheduled', 'visit_completed', 'on_my_way', 'converted'],
+};
+
 // ── DIFF / FILE PATTERN RULES ────────────────────────────────────────────────
 // These rules receive { filePath, diff } and return { type, message, suggestion }
 
@@ -71,7 +79,6 @@ export const DIFF_RULES = [
     validate({ filePath, diff }) {
       const inEstimate = /estimate/i.test(filePath);
       if (!inEstimate) return { valid: true };
-      // Allow EstimateSidebarCustomer which has a documented dual-lookup
       if (/EstimateSidebarCustomer/i.test(filePath)) return { valid: true };
       const hasClientRef = /\bClient\.(list|filter|create|update|delete|get)\b/.test(diff);
       if (!hasClientRef) return { valid: true };
@@ -88,7 +95,7 @@ export const DIFF_RULES = [
     severity: 'high',
     suggestion: "Remove customer_id from the record and resolve all lookups from Customer entity using customer_id as the canonical key. Keep client_id only in legacy estimate snapshot fields — never assign both on the same write.",
     validate({ filePath, diff }) {
-      const hasClientId   = /client_id\s*[:=]/.test(diff);
+      const hasClientId = /client_id\s*[:=]/.test(diff);
       const hasCustomerId = /customer_id\s*[:=]/.test(diff);
       if (!(hasClientId && hasCustomerId)) return { valid: true };
       return {
@@ -103,7 +110,6 @@ export const DIFF_RULES = [
     description: 'New modules should not contain legacy "Client"-branded UI strings.',
     severity: 'medium',
     suggestion: 'Replace the detected label(s) with their canonical equivalents: "Client Profile" → "Customer Profile", "Back to Clients" → "Back to Customers", "View Client" → "View Customer". This aligns the UI with the unified Customer entity.',
-    // Exempted paths that intentionally keep "Client" terminology
     EXEMPT: [/Clients\.jsx?$/, /ClientPortal/, /ClientEstimateView/, /ClientFormModal/, /ClientDocuments/, /ClientCRM/],
     validate({ filePath, diff }) {
       if (this.EXEMPT.some(re => re.test(filePath))) return { valid: true };
@@ -129,16 +135,10 @@ export const DIFF_RULES = [
 // ── BUSINESS DOMAIN RULES ────────────────────────────────────────────────────
 
 export const BUSINESS_RULES = {
-
-  // Estimate lifecycle
   no_invoice_without_approval: {
     id: 'no_invoice_without_approval',
     description: 'ConvertToInvoice must only be allowed when estimate.status === "approved".',
     severity: 'critical',
-    /**
-     * @param {{ status: string }} estimate
-     * @returns {{ valid: boolean, reason?: string }}
-     */
     validate(estimate) {
       const valid = estimate?.status === 'approved';
       return { valid, reason: valid ? null : `Cannot convert to invoice: status is "${estimate?.status}", must be "approved".` };
@@ -150,9 +150,6 @@ export const BUSINESS_RULES = {
     description: 'Estimate status must be one of the allowed enum values.',
     severity: 'high',
     ALLOWED: ['draft', 'sent', 'viewed', 'approved', 'declined'],
-    /**
-     * @param {{ status: string }} estimate
-     */
     validate(estimate) {
       const valid = this.ALLOWED.includes(estimate?.status);
       return {
@@ -162,14 +159,10 @@ export const BUSINESS_RULES = {
     },
   },
 
-  // Customer / Client consistency
   no_mixed_client_customer: {
     id: 'no_mixed_client_customer',
     description: 'An estimate should not reference both client_id (Client entity) and customer_id (Customer entity) simultaneously.',
     severity: 'high',
-    /**
-     * @param {{ client_id?: string, customer_id?: string }} record
-     */
     validate(record) {
       const hasBoth = !!(record?.client_id && record?.customer_id);
       return {
@@ -183,10 +176,6 @@ export const BUSINESS_RULES = {
     id: 'no_duplicate_client_data',
     description: 'Snapshot fields (client_name, client_email) should not diverge from the linked Client/Customer record.',
     severity: 'medium',
-    /**
-     * @param {{ client_name?: string, client_email?: string }} snapshot
-     * @param {{ full_name?: string, email?: string }} linked
-     */
     validate(snapshot, linked) {
       if (!linked) return { valid: true };
       const nameMismatch = snapshot?.client_name && linked?.full_name && snapshot.client_name !== linked.full_name;
@@ -199,16 +188,12 @@ export const BUSINESS_RULES = {
     },
   },
 
-  // Pricing guards
   price_out_of_range: {
     id: 'price_out_of_range',
     description: 'Line item unit_price should be within an acceptable range (placeholder thresholds).',
     severity: 'medium',
     MIN: 0,
-    MAX: 999999, // placeholder — replace with real catalog bounds
-    /**
-     * @param {{ unit_price: number, service_name?: string }} item
-     */
+    MAX: 999999,
     validate(item) {
       const price = item?.unit_price ?? 0;
       const valid = price >= this.MIN && price <= this.MAX;
@@ -220,20 +205,12 @@ export const BUSINESS_RULES = {
   },
 };
 
-// ── COMBINED CONFIG ───────────────────────────────────────────────────────────
-
-// Safe array exports — filter out any rule missing validate() to prevent runtime crashes
-export const SAFE_BUSINESS_RULES = Object.values(BUSINESS_RULES).filter(
-  r => r && typeof r.validate === 'function'
-);
-
-export const SAFE_ENGINEERING_RULES = Object.values(ENGINEERING_RULES).filter(
-  r => r && typeof r.id === 'string'
-);
+export const SAFE_BUSINESS_RULES = Object.values(BUSINESS_RULES).filter(r => r && typeof r.validate === 'function');
+export const SAFE_ENGINEERING_RULES = Object.values(ENGINEERING_RULES).filter(r => r && typeof r.id === 'string');
 
 export const AGENT_CONFIG = {
   name: 'rc-art-agent',
-  version: '0.2.0',
+  version: '0.3.0',
   enabled: true,
   engineeringRules: SAFE_ENGINEERING_RULES,
   businessRules: SAFE_BUSINESS_RULES,
