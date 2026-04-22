@@ -23,7 +23,7 @@ import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHis
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
-import { isEstimateLocked, updateEstimateWithVersionGuard } from '@/lib/estimateVersioning';
+// estimateVersioning intentionally not imported — internal editor is always in-place editable.
 import { archiveWithSnapshot } from '@/lib/softDelete';
 
 export default function EstimateEditor() {
@@ -137,21 +137,11 @@ export default function EstimateEditor() {
         }
       }
 
-      // Use guarded path for locked estimates
-      const result = await updateEstimateWithVersionGuard(estimate, finalData, base44, (newEstimateId) => {
-        if (isEstimateLocked(estimate)) {
-          toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
-          navigate(`/estimate-editor?id=${newEstimateId}`);
-        }
-      });
-
-      if (result) {
-        setEstimate(result);
-        if (clientRecord) setClient(clientRecord);
-        if (customerData.client_name && !isEstimateLocked(estimate)) toast.success('Customer saved');
-      } else {
-        toast.error('Failed to save customer');
-      }
+      await base44.entities.Estimate.update(estimate.id, { ...finalData, updated_by: 'Admin' });
+      const updated = { ...estimate, ...finalData };
+      setEstimate(updated);
+      if (clientRecord) setClient(clientRecord);
+      if (customerData.client_name) toast.success('Customer saved');
     } catch (err) {
       console.error('[EstimateEditor.handleCustomerChange] Save failed:', err);
       toast.error(err?.message || 'Failed to save customer');
@@ -162,40 +152,19 @@ export default function EstimateEditor() {
 
   const handleTemplateChange = async (templateKey) => {
     const updatedConfig = { ...(estimate.document_config || {}), template: templateKey };
-    const result = await updateEstimateWithVersionGuard(estimate, { document_config: updatedConfig }, base44, (newEstimateId) => {
-      if (isEstimateLocked(estimate)) {
-        toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
-        navigate(`/estimate-editor?id=${newEstimateId}`);
-      }
-    });
-    if (result) {
-      setEstimate(result);
-    }
+    await base44.entities.Estimate.update(estimate.id, { document_config: updatedConfig, updated_by: 'Admin' });
+    setEstimate(e => ({ ...e, document_config: updatedConfig }));
   };
 
   const handleDocumentOptionsSave = async (newOptions) => {
     const updatedConfig = { ...(estimate.document_config || {}), options: newOptions };
-    const result = await updateEstimateWithVersionGuard(estimate, { document_config: updatedConfig }, base44, (newEstimateId) => {
-      if (isEstimateLocked(estimate)) {
-        toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
-        navigate(`/estimate-editor?id=${newEstimateId}`);
-      }
-    });
-    if (result) {
-      setEstimate(result);
-    }
+    await base44.entities.Estimate.update(estimate.id, { document_config: updatedConfig, updated_by: 'Admin' });
+    setEstimate(e => ({ ...e, document_config: updatedConfig }));
   };
 
   const handleLanguageChange = async (lang) => {
-    const result = await updateEstimateWithVersionGuard(estimate, { document_language: lang }, base44, (newEstimateId) => {
-      if (isEstimateLocked(estimate)) {
-        toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
-        navigate(`/estimate-editor?id=${newEstimateId}`);
-      }
-    });
-    if (result) {
-      setEstimate(result);
-    }
+    await base44.entities.Estimate.update(estimate.id, { document_language: lang, updated_by: 'Admin' });
+    setEstimate(e => ({ ...e, document_language: lang }));
   };
 
   const handleCancel = () => {
@@ -232,7 +201,6 @@ export default function EstimateEditor() {
   );
 
   const hasClient = !!estimate.client_name;
-  const isLocked = isEstimateLocked(estimate);
 
   // STATUS_BADGE must stay aligned with Estimate entity schema enum values
   // Schema statuses: draft | sent | viewed | approved | declined
@@ -273,15 +241,10 @@ export default function EstimateEditor() {
                  {statusBadge.label}
                </span>
                {estimate.version_number && estimate.version_number > 1 && (
-                 <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
-                   V{estimate.version_number}
-                 </span>
-               )}
-               {isLocked && (
-                 <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                   🔒 Locked
-                 </span>
-               )}
+                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
+                    V{estimate.version_number}
+                  </span>
+                )}
              </div>
             <div className="hidden md:block">
               <EstimateTemplateSelector
@@ -373,15 +336,8 @@ export default function EstimateEditor() {
                 client={client}
                 onCustomerChange={handleCustomerChange}
                 onAttachmentsUpdate={async (newAttachments) => {
-                  const result = await updateEstimateWithVersionGuard(estimate, { attachments: newAttachments }, base44, (newEstimateId) => {
-                    if (isEstimateLocked(estimate)) {
-                      toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
-                      navigate(`/estimate-editor?id=${newEstimateId}`);
-                    }
-                  });
-                  if (result) {
-                    setEstimate(result);
-                  }
+                  await base44.entities.Estimate.update(estimate.id, { attachments: newAttachments, updated_by: 'Admin' });
+                  setEstimate(e => ({ ...e, attachments: newAttachments }));
                 }}
               />
             </>
@@ -402,19 +358,6 @@ export default function EstimateEditor() {
 
         {/* RIGHT CANVAS — Document workspace */}
         <div className="flex-1 overflow-auto bg-white rounded-xl border border-slate-100 px-8 py-6" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
-
-         {/* Locked estimate banner */}
-         {isLocked && (
-           <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
-             <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-               <span className="text-amber-600 font-bold">🔒</span>
-             </div>
-             <div>
-               <p className="text-sm font-semibold text-amber-900">This estimate is locked</p>
-               <p className="text-xs text-amber-700 mt-0.5">Changes will create a new version. Version {estimate.version_number || 1}</p>
-             </div>
-           </div>
-         )}
 
          {/* No-client tip banner */}
          {!hasClient && (
@@ -438,14 +381,9 @@ export default function EstimateEditor() {
                    value={jobNumber}
                    onChange={e => setJobNumber(e.target.value)}
                    onBlur={() => {
-                     updateEstimateWithVersionGuard(estimate, { job_number: jobNumber }, base44, (newEstimateId) => {
-                       if (isEstimateLocked(estimate)) {
-                         toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
-                         navigate(`/estimate-editor?id=${newEstimateId}`);
-                       }
-                     }).then(result => {
-                       if (result) setEstimate(result);
-                     }).catch(err => console.error('[jobNumber onBlur] failed:', err));
+                     base44.entities.Estimate.update(estimate.id, { job_number: jobNumber, updated_by: 'Admin' })
+                       .then(() => setEstimate(e => ({ ...e, job_number: jobNumber })))
+                       .catch(err => console.error('[jobNumber onBlur] failed:', err));
                    }}
                    placeholder="Job #"
                    className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
@@ -455,14 +393,9 @@ export default function EstimateEditor() {
                    value={planReference}
                    onChange={e => setPlanReference(e.target.value)}
                    onBlur={() => {
-                     updateEstimateWithVersionGuard(estimate, { plan_reference: planReference }, base44, (newEstimateId) => {
-                       if (isEstimateLocked(estimate)) {
-                         toast.success(`Locked estimate. Created Version ${estimate.version_number + 1}`);
-                         navigate(`/estimate-editor?id=${newEstimateId}`);
-                       }
-                     }).then(result => {
-                       if (result) setEstimate(result);
-                     }).catch(err => console.error('[planReference onBlur] failed:', err));
+                     base44.entities.Estimate.update(estimate.id, { plan_reference: planReference, updated_by: 'Admin' })
+                       .then(() => setEstimate(e => ({ ...e, plan_reference: planReference })))
+                       .catch(err => console.error('[planReference onBlur] failed:', err));
                    }}
                    placeholder="Plan Ref"
                    className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
