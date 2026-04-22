@@ -3,6 +3,7 @@
  */
 
 import { analyzeChange, analyzeEstimateContext } from './brain.js';
+import { analyzeEstimateHealth } from './estimateHealth.js';
 import AGENT_CONFIG from './config.js';
 
 export async function runAgent(input = null) {
@@ -23,7 +24,6 @@ export async function runAgent(input = null) {
   };
 }
 
-/** NEW — Estimate context audit (read-only) */
 export async function runEstimateContextAudit(input = {}) {
   if (!AGENT_CONFIG.enabled) {
     return { type: 'warn', message: 'Agent disabled', suggestion: '' };
@@ -40,9 +40,20 @@ export async function runEstimateContextAudit(input = {}) {
   return result;
 }
 
-export default { runAgent, runEstimateContextAudit };
+/** NEW — Estimate Health System */
+export async function runEstimateHealthCheck(estimate) {
+  if (!AGENT_CONFIG.enabled) {
+    return { score: 0, level: 'disabled', nextAction: 'Agent disabled', checks: [] };
+  }
 
-// ── MANUAL TEST PAYLOAD ──────────────────────────────────────────────
+  const result = analyzeEstimateHealth(estimate);
+
+  console.log('[ESTIMATE HEALTH]', result);
+
+  return result;
+}
+
+export default { runAgent, runEstimateContextAudit, runEstimateHealthCheck };
 
 export const manualEstimateContextTest = {
   filePath: 'src/components/estimates/EstimateHeader.jsx',
