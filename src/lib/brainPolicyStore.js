@@ -2,11 +2,12 @@ const STORAGE_KEY = 'central_brain_policy_v1';
 
 export const DEFAULT_BRAIN_POLICY = {
   enabled: true,
-  operationMode: 'advisory', // advisory | guarded | strict | experimental
+  operationMode: 'advisory',
   aiReadiness: false,
   openaiConnected: false,
   businessPriority: 'revenue_and_operations',
   ownerInstructions: '',
+
   modules: {
     estimate: true,
     proposal: true,
@@ -17,23 +18,31 @@ export const DEFAULT_BRAIN_POLICY = {
     settings: true,
     timeTracking: true,
     recovery: true,
-    lead: false,
-    appointment: false,
-    worker: false,
-    assignment: false,
-    payment: false,
-    incomeExpense: false,
-    dashboard: false,
   },
+
   actionGuards: {
     sendEstimate: true,
     sendInvoice: true,
     convertToJob: true,
     convertToInvoice: true,
     runPayroll: true,
-    archiveRecord: false,
-    restoreRecord: false,
   },
+
+  catalogIntelligence: {
+    analyze: true,
+    suggest: true,
+    allowWrite: false,
+    allowCreate: false,
+    allowDeactivate: false,
+    approvalMode: 'require_owner'
+  },
+
+  ownerAccess: {
+    enabled: true,
+    unlocked: false,
+    lastUnlockedAt: null
+  },
+
   updatedAt: null,
 };
 
@@ -47,6 +56,8 @@ export function getBrainPolicy() {
       ...parsed,
       modules: { ...DEFAULT_BRAIN_POLICY.modules, ...(parsed.modules || {}) },
       actionGuards: { ...DEFAULT_BRAIN_POLICY.actionGuards, ...(parsed.actionGuards || {}) },
+      catalogIntelligence: { ...DEFAULT_BRAIN_POLICY.catalogIntelligence, ...(parsed.catalogIntelligence || {}) },
+      ownerAccess: { ...DEFAULT_BRAIN_POLICY.ownerAccess, ...(parsed.ownerAccess || {}) },
     };
   } catch {
     return { ...DEFAULT_BRAIN_POLICY };
