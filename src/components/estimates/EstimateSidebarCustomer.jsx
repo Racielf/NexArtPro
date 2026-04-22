@@ -21,6 +21,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
   const [editing, setEditing] = useState(!estimate?.client_name);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [linkedClient, setLinkedClient] = useState(clientProp || null);
+  const [clientNotFound, setClientNotFound] = useState(false);
   const [form, setForm] = useState({
     client_name: estimate?.client_name || '',
     client_email: estimate?.client_email || '',
@@ -45,20 +46,24 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
   }, [clientProp]);
 
   // Load linked Client entity when client_id changes
-  // Guard: if client is soft-deleted, clear the logical link on the estimate (client_id → null)
-  // Snapshot fields (client_name, client_email, etc.) are intentionally preserved for historical context
+  // Guard: if client is soft-deleted or missing, mark as not found (FK broken).
+  // Snapshot fields (client_name, client_email, etc.) are intentionally preserved for historical context.
   useEffect(() => {
-    if (!estimate?.client_id) { setLinkedClient(null); return; }
+    if (!estimate?.client_id) {
+      setLinkedClient(null);
+      setClientNotFound(false);
+      return;
+    }
     base44.entities.Client.filter({ id: estimate.client_id }).then(res => {
       const found = res[0];
       if (!found || found.deleted_at) {
-        // Client is gone — sever the link on the estimate record so it won't reappear
+        // Client is gone — sever the FK link but preserve snapshot fields
         setLinkedClient(null);
-        if (found?.deleted_at && estimate?.id) {
-          base44.entities.Estimate.update(estimate.id, { client_id: null }).catch(() => {});
-        }
+        setClientNotFound(true);
+        base44.entities.Estimate.update(estimate.id, { client_id: null }).catch(() => {});
       } else {
         setLinkedClient(found);
+        setClientNotFound(false);
       }
     }).catch(() => {});
   }, [estimate?.client_id, estimate?.id]);
@@ -113,7 +118,9 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
     return form.client_address || '';
   })();
 
-  const hasDisplay = !!(estimate?.client_id || estimate?.client_name || displayName);
+  // Only show the full card if there is a live linked client OR no broken FK.
+  // If clientNotFound is true, show the historical banner instead.
+  const hasDisplay = !clientNotFound && !!(linkedClient || estimate?.client_name || displayName);
 
   const encodedAddress = encodeURIComponent(displayAddress);
   const mapSrc = mapTab === 'map'
@@ -433,8 +440,28 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
         </>
       )}
 
+      {/* ── HISTORICAL / BROKEN FK BANNER ────────────────────────────────── */}
+      {clientNotFound && (
+        <div className="mx-4 mt-4 mb-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex-shrink-0">
+          <p className="text-[11px] font-bold text-amber-800 mb-0.5">Client no longer active</p>
+          <p className="text-[11px] text-amber-700 leading-snug mb-1">
+            Historical record: <span className="font-semibold">{estimate?.client_name || '—'}</span>
+          </p>
+          {estimate?.client_email && (
+            <p className="text-[11px] text-amber-600 mb-2">{estimate.client_email}</p>
+          )}
+          <button
+            type="button"
+            onClick={() => { setClientNotFound(false); setEditing(false); setShowSearch(true); }}
+            className="text-[11px] font-semibold text-amber-800 underline hover:text-amber-900 transition-colors"
+          >
+            Relink a customer →
+          </button>
+        </div>
+      )}
+
       {/* ── EMPTY STATE ──────────────────────────────────────────────────── */}
-      {!editing && !hasDisplay && (
+      {!editing && !hasDisplay && !clientNotFound && (
         <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
             <UserPlus className="w-5 h-5 text-slate-400" />
