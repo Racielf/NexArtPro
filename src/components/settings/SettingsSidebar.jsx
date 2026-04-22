@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Building2, FileText, Wrench, BookOpen,
-  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw, Activity
+  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw, Activity, FlaskConical
 } from 'lucide-react';
 
 // Base sections — always visible
@@ -20,8 +20,9 @@ const BASE_SECTIONS = [
 
 // Admin-only sections — injected only when userRole === 'admin'
 const ADMIN_SECTIONS = [
-  { id: 'recovery', label: 'Recovery Center', icon: RotateCcw, adminOnly: true },
-  { id: 'security', label: 'Security Log',    icon: Activity,  adminOnly: true },
+  { id: 'recovery',    label: 'Recovery Center',    icon: RotateCcw,     adminOnly: true },
+  { id: 'security',    label: 'Security Log',       icon: Activity,      adminOnly: true },
+  { id: 'agent_tests', label: 'Agent Test Runner',  icon: FlaskConical,  adminOnly: true },
 ];
 
 // Single source of truth: userRole prop passed from Settings.jsx (resolved via base44.auth.me())
