@@ -2,7 +2,7 @@
  * brain/core/brainAggregator.js
  */
 
-import { BrainLevel } from './brainTypes';
+import { BrainLevel, DecisionPriority } from './brainTypes';
 
 export function deriveScore(checks = []) {
   let score = 100;
@@ -26,22 +26,47 @@ export function deriveLevel(score) {
   return BrainLevel.CRITICAL;
 }
 
+export function buildReadinessMap(checks = []) {
+  const readiness = {};
+
+  for (const c of checks) {
+    if (!c.blockingActions) continue;
+
+    for (const action of c.blockingActions) {
+      readiness[action] = {
+        allowed: c.status !== 'fail',
+        reason: c.status === 'fail' ? c.message : '',
+      };
+    }
+  }
+
+  return readiness;
+}
+
 export function aggregateBrainResults(results = [], meta = {}) {
   const checks = results.flatMap(r => r?.checks || []);
 
   const score = deriveScore(checks);
   const level = deriveLevel(score);
 
+  const blockers = checks.filter(c => c.status === 'fail' && (c.blockingActions?.length || c.type === 'guard'));
+  const warnings = checks.filter(c => c.status === 'warn');
   const risks = checks.filter(c => c.status !== 'pass');
 
   const nextAction =
-    risks.find(r => r.status === 'fail')?.message ||
-    risks.find(r => r.status === 'warn')?.message ||
+    blockers[0]?.message ||
+    warnings[0]?.message ||
     'System operating normally';
 
-  const suggestedActions = risks
-    .map(r => r.action)
-    .filter(Boolean);
+  const priority = blockers.length
+    ? DecisionPriority.CRITICAL
+    : warnings.length
+      ? DecisionPriority.HIGH
+      : DecisionPriority.LOW;
+
+  const suggestedActions = risks.map(r => r.action).filter(Boolean);
+
+  const readiness = buildReadinessMap(checks);
 
   return {
     ...meta,
@@ -49,7 +74,16 @@ export function aggregateBrainResults(results = [], meta = {}) {
     level,
     checks,
     risks,
-    nextAction,
-    suggestedActions,
+    blockers: blockers.map(b => b.id),
+    warnings: warnings.map(w => w.id),
+    readiness,
+    decision: {
+      priority,
+      nextAction,
+      summary: nextAction,
+      blockers: blockers.map(b => b.id),
+      warnings: warnings.map(w => w.id),
+      suggestedActions,
+    },
   };
 }
