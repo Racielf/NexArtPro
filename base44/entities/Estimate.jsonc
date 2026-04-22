@@ -2,325 +2,47 @@
   "name": "Estimate",
   "type": "object",
   "properties": {
-    "estimate_number": {
-      "type": "number"
-    },
+    "estimate_number": { "type": "number" },
     "document_type": {
       "type": "string",
-      "enum": [
-        "BID",
-        "PROPOSAL"
-      ],
-      "default": "PROPOSAL",
-      "description": "Document type: BID (technical/commercial) or PROPOSAL (client-friendly)"
+      "enum": ["ESTIMATE", "BID", "PROPOSAL"],
+      "default": "ESTIMATE",
+      "description": "Document type aligned with editor behavior"
     },
     "document_language": {
       "type": "string",
-      "enum": [
-        "en",
-        "es",
-        "bilingual"
-      ],
-      "default": "en",
-      "description": "Document language: en (English), es (Spanish), bilingual (both)"
+      "enum": ["en", "es", "bilingual"],
+      "default": "en"
     },
-    "version_number": {
-      "type": "number",
-      "default": 1
-    },
-    "parent_estimate_id": {
-      "type": "string"
-    },
-    "job_number": {
-      "type": "string"
-    },
-    "plan_reference": {
-      "type": "string"
-    },
-    "source_proposal_id": {
-      "type": "string"
-    },
-    "client_id": {
-      "type": "string"
-    },
-    "client_name": {
-      "type": "string"
-    },
-    "client_email": {
-      "type": "string"
-    },
-    "client_phone": {
-      "type": "string"
-    },
-    "client_address": {
-      "type": "string"
-    },
-    "appointment_id": {
-      "type": "string"
-    },
-    "title": {
-      "type": "string"
-    },
+    "version_number": { "type": "number", "default": 1 },
+    "parent_estimate_id": { "type": "string" },
+    "job_number": { "type": "string" },
+    "plan_reference": { "type": "string" },
+    "client_id": { "type": "string" },
+    "client_name": { "type": "string" },
+    "client_email": { "type": "string" },
+    "client_phone": { "type": "string" },
+    "client_address": { "type": "string" },
     "status": {
       "type": "string",
-      "enum": [
-        "draft",
-        "sent",
-        "viewed",
-        "approved",
-        "declined"
-      ],
+      "enum": ["draft", "sent", "viewed", "approved", "declined"],
       "default": "draft"
     },
-    "viewed_at": {
-      "type": "string"
-    },
-    "approved_at": {
-      "type": "string"
-    },
-    "declined_at": {
-      "type": "string"
-    },
-    "declined_reason": {
-      "type": "string"
-    },
-    "accepted_by": {
-      "type": "string"
-    },
-    "last_contacted_at": {
-      "type": "string"
-    },
-    "follow_up_count": {
-      "type": "number",
-      "default": 0
-    },
-    "next_follow_up_date": {
-      "type": "string"
-    },
-    "expiration_date": {
-      "type": "string",
-      "format": "date"
-    },
-    "project_start_date": {
-      "type": "string",
-      "format": "date"
-    },
-    "project_end_date": {
-      "type": "string",
-      "format": "date"
-    },
-    "assigned_to": {
-      "type": "string"
-    },
-    "created_by": {
-      "type": "string"
-    },
-    "updated_by": {
-      "type": "string"
-    },
-    "groups": {
-      "type": "array",
-      "description": "Work groups, each containing line items",
-      "items": {
-        "type": "object"
-      }
-    },
-    "materials": {
-      "type": "array",
-      "description": "Optional structured materials items",
-      "items": {
-        "type": "object"
-      }
-    },
-    "other_costs": {
-      "type": "array",
-      "description": "Job-level internal costs not in line items",
-      "items": {
-        "type": "object"
-      }
-    },
-    "other_costs_total": {
-      "type": "number",
-      "default": 0
-    },
-    "net_profit": {
-      "type": "number",
-      "default": 0
-    },
-    "net_profit_pct": {
-      "type": "number",
-      "default": 0
-    },
-    "line_items": {
-      "type": "array",
-      "description": "Legacy flat line items (kept for backward compat)",
-      "items": {
-        "type": "object"
-      }
-    },
-    "attachments": {
-      "type": "array",
-      "description": "File attachments",
-      "items": {
-        "type": "object"
-      }
-    },
-    "subtotal": {
-      "type": "number"
-    },
-    "discount_type": {
-      "type": "string",
-      "enum": [
-        "percent",
-        "fixed"
-      ],
-      "default": "percent"
-    },
-    "discount_value": {
-      "type": "number",
-      "default": 0
-    },
-    "discount_amount": {
-      "type": "number",
-      "default": 0
-    },
-    "deposit_percent": {
-      "type": "number",
-      "default": 0
-    },
-    "deposit_amount": {
-      "type": "number",
-      "default": 0
-    },
-    "tax_rate": {
-      "type": "number",
-      "default": 0
-    },
-    "tax_amount": {
-      "type": "number"
-    },
-    "total": {
-      "type": "number"
-    },
-    "total_cost": {
-      "type": "number"
-    },
-    "gross_margin": {
-      "type": "number"
-    },
-    "gross_margin_pct": {
-      "type": "number"
-    },
-    "materials_subtotal": {
-      "type": "number",
-      "default": 0
-    },
-    "notes": {
-      "type": "string"
-    },
-    "internal_notes": {
-      "type": "string"
-    },
-    "exclusions": {
-      "type": "string"
-    },
-    "warranty_terms": {
-      "type": "string"
-    },
-    "payment_terms": {
-      "type": "string"
-    },
-    "legal_terms": {
-      "type": "string"
-    },
-    "scope_summary": {
-      "type": "string"
-    },
-    "assumptions": {
-      "type": "string"
-    },
-    "change_request_policy": {
-      "type": "string"
-    },
-    "included_scope_bullets": {
-      "type": "string"
-    },
-    "contingency_type": {
-      "type": "string",
-      "enum": [
-        "none",
-        "percent",
-        "fixed"
-      ],
-      "default": "none"
-    },
-    "contingency_value": {
-      "type": "number",
-      "default": 0
-    },
-    "contingency_amount": {
-      "type": "number",
-      "default": 0
-    },
-    "show_contingency_to_client": {
-      "type": "boolean",
-      "default": false
-    },
-    "uncertainty_note": {
-      "type": "string"
-    },
-    "sent_at": {
-      "type": "string"
-    },
-    "scheduled_date": {
-      "type": "string",
-      "format": "date"
-    },
-    "scheduled_time": {
-      "type": "string"
-    },
-    "omw_start_time": {
-      "type": "string"
-    },
-    "completed_time": {
-      "type": "string"
-    },
-    "miles_traveled": {
-      "type": "number",
-      "default": 0
-    },
-    "document_config": {
-      "type": "object",
-      "description": "Document rendering configuration (template + options)"
-    },
-    "company_id": {
-      "type": "string",
-      "default": "rc-art"
-    },
-    "deleted_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Soft delete timestamp \u2014 set when record is archived"
-    },
-    "deleted_by": {
-      "type": "string",
-      "description": "Actor who soft-deleted this record"
-    },
-    "delete_reason": {
-      "type": "string",
-      "description": "Reason provided when soft-deleting"
-    },
-    "restored_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Timestamp when record was restored from archive"
-    },
-    "restored_by": {
-      "type": "string",
-      "description": "Actor who restored this record"
-    }
+    "groups": { "type": "array", "items": { "type": "object" } },
+    "materials": { "type": "array", "items": { "type": "object" } },
+    "line_items": { "type": "array", "items": { "type": "object" } },
+    "attachments": { "type": "array", "items": { "type": "object" } },
+    "subtotal": { "type": "number" },
+    "tax_rate": { "type": "number", "default": 0 },
+    "total": { "type": "number" },
+    "notes": { "type": "string" },
+    "internal_notes": { "type": "string" },
+    "document_config": { "type": "object" },
+    "deleted_at": { "type": "string", "format": "date-time" },
+    "deleted_by": { "type": "string" },
+    "delete_reason": { "type": "string" },
+    "restored_at": { "type": "string", "format": "date-time" },
+    "restored_by": { "type": "string" }
   },
-  "required": [
-    "client_name"
-  ]
+  "required": ["client_name"]
 }
