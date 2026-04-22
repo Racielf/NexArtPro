@@ -34,7 +34,20 @@ export default function Estimates() {
   const loadData = async () => {
     setLoading(true);
     const data = await base44.entities.Estimate.list('-created_date');
-    setEstimates(filterActiveRecords(data));
+    const active = filterActiveRecords(data);
+
+    // DEV SAFETY: warn on duplicate estimate_number in active records
+    const numCount = {};
+    active.forEach(e => {
+      if (e.estimate_number) {
+        numCount[e.estimate_number] = (numCount[e.estimate_number] || 0) + 1;
+      }
+    });
+    Object.entries(numCount).forEach(([num, count]) => {
+      if (count > 1) console.warn(`[Estimates] Duplicate estimate detected for number ${num} (${count} active records)`);
+    });
+
+    setEstimates(active);
     setLoading(false);
   };
 
