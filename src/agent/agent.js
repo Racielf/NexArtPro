@@ -4,6 +4,7 @@
 
 import { analyzeChange, analyzeEstimateContext } from './brain.js';
 import { analyzeEstimateHealth } from './estimateHealth.js';
+import priceBookBrain from '@/brain/modules/priceBookBrain';
 import AGENT_CONFIG from './config.js';
 
 export async function runAgent(input = null) {
@@ -40,7 +41,6 @@ export async function runEstimateContextAudit(input = {}) {
   return result;
 }
 
-/** NEW — Estimate Health System */
 export async function runEstimateHealthCheck(estimate) {
   if (!AGENT_CONFIG.enabled) {
     return { score: 0, level: 'disabled', nextAction: 'Agent disabled', checks: [] };
@@ -53,7 +53,24 @@ export async function runEstimateHealthCheck(estimate) {
   return result;
 }
 
-export default { runAgent, runEstimateContextAudit, runEstimateHealthCheck };
+// NEW — Price Book Intelligence
+export async function runPriceBookIntelligence(entries, services) {
+  if (!AGENT_CONFIG.enabled) {
+    return { score: 0, level: 'disabled', checks: [], suggestions: [] };
+  }
+
+  const result = await priceBookBrain({
+    entity: { entries },
+    related: { services },
+    context: { page: 'PriceBookSection' },
+  });
+
+  console.log('[PRICEBOOK BRAIN]', result);
+
+  return result;
+}
+
+export default { runAgent, runEstimateContextAudit, runEstimateHealthCheck, runPriceBookIntelligence };
 
 export const manualEstimateContextTest = {
   filePath: 'src/components/estimates/EstimateHeader.jsx',
