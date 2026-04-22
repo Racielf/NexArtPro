@@ -98,9 +98,33 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
         setResolvedSource('snapshot');
       });
     }).catch(() => {
-      setLinkedClient(null);
-      setClientNotFound(true);
-      setResolvedSource('snapshot');
+      // Client lookup failed (network/permissions) — still try Customer fallback
+      base44.entities.Customer.filter({ id: clientId }).then(custRes => {
+        const cust = custRes[0];
+        if (cust && !cust.deleted_at) {
+          const mapped = {
+            id: cust.id,
+            full_name: cust.display_name || `${cust.first_name || ''} ${cust.last_name || ''}`.trim(),
+            email: cust.email || '',
+            phone: cust.phone || '',
+            address: cust.service_address || '',
+            city: cust.city || '',
+            state: cust.state || '',
+            zip: cust.zip || '',
+          };
+          setLinkedClient(mapped);
+          setClientNotFound(false);
+          setResolvedSource('customer');
+        } else {
+          setLinkedClient(null);
+          setClientNotFound(true);
+          setResolvedSource('snapshot');
+        }
+      }).catch(() => {
+        setLinkedClient(null);
+        setClientNotFound(true);
+        setResolvedSource('snapshot');
+      });
     });
   }, [estimate?.client_id]);
 
