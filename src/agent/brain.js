@@ -83,6 +83,7 @@ export async function analyzeChange({ filePath, diff, data = null } = {}) {
     return { type: 'warn', message: 'analyzeChange: diff must be a string', suggestion: '' };
   }
   // Step 1a: diff/file pattern rules — CRM-specific, no LLM needed
+  // Returns type "patch" or "warn" directly — LLM is skipped on any match
   const diffViolation = runDiffRules({ filePath, diff });
   if (diffViolation) return diffViolation;
 

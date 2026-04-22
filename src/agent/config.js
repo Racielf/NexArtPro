@@ -27,6 +27,42 @@ export const ENGINEERING_RULES = {
 // These rules receive { filePath, diff } and return { type, message, suggestion }
 
 export const DIFF_RULES = [
+  // ── PATCH SUGGESTION RULES ──────────────────────────────────────────────────
+  {
+    id: 'patch_client_profile_label',
+    description: 'UI label "Client Profile" should be "Customer Profile".',
+    severity: 'low',
+    suggestion: 'Replace "Client Profile" with "Customer Profile" to align with the unified Customer entity.',
+    EXEMPT: [/Clients\.jsx?$/, /ClientPortal/, /ClientEstimateView/, /ClientFormModal/, /ClientDocuments/],
+    validate({ filePath, diff }) {
+      if (this.EXEMPT.some(re => re.test(filePath))) return { valid: true };
+      const found = diff.includes('"Client Profile"') || diff.includes("'Client Profile'");
+      if (!found) return { valid: true };
+      return {
+        valid: false,
+        type: 'patch',
+        message: `"${filePath}" uses the label "Client Profile" — should be "Customer Profile".`,
+      };
+    },
+  },
+  {
+    id: 'patch_back_to_clients_label',
+    description: 'UI label "Back to Clients" should be "Back to Customers".',
+    severity: 'low',
+    suggestion: 'Replace "Back to Clients" with "Back to Customers" to align with the unified Customer entity.',
+    EXEMPT: [/Clients\.jsx?$/, /ClientPortal/, /ClientEstimateView/, /ClientFormModal/, /ClientDocuments/],
+    validate({ filePath, diff }) {
+      if (this.EXEMPT.some(re => re.test(filePath))) return { valid: true };
+      const found = diff.includes('"Back to Clients"') || diff.includes("'Back to Clients'");
+      if (!found) return { valid: true };
+      return {
+        valid: false,
+        type: 'patch',
+        message: `"${filePath}" uses the label "Back to Clients" — should be "Back to Customers".`,
+      };
+    },
+  },
+  // ── WARN RULES ──────────────────────────────────────────────────────────────
   {
     id: 'client_ref_in_estimate_module',
     description: 'Estimate modules should reference Customer, not Client entity.',

@@ -38,9 +38,10 @@ export async function runAgent(input = null) {
 
   if (result.type === 'warn') {
     console.warn('[AGENT WARNING]', result.message);
-    if (result.suggestion) console.warn('[AGENT WARNING] detail:', result.suggestion);
+    if (result.suggestion) console.warn('[AGENT WARNING] suggestion:', result.suggestion);
   } else if (result.type === 'patch') {
-    console.log('[AGENT SUGGESTION]', result.suggestion);
+    console.info('[AGENT PATCH SUGGESTION]', result.message);
+    if (result.suggestion) console.info('[AGENT PATCH SUGGESTION] fix:', result.suggestion);
   } else {
     console.log('[AGENT OK]', input.filePath);
   }
