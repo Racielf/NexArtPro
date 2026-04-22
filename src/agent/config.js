@@ -119,12 +119,21 @@ export const BUSINESS_RULES = {
 
 // ── COMBINED CONFIG ───────────────────────────────────────────────────────────
 
+// Safe array exports — filter out any rule missing validate() to prevent runtime crashes
+export const SAFE_BUSINESS_RULES = Object.values(BUSINESS_RULES).filter(
+  r => r && typeof r.validate === 'function'
+);
+
+export const SAFE_ENGINEERING_RULES = Object.values(ENGINEERING_RULES).filter(
+  r => r && typeof r.id === 'string'
+);
+
 export const AGENT_CONFIG = {
   name: 'rc-art-agent',
   version: '0.2.0',
   enabled: true,
-  engineeringRules: Object.values(ENGINEERING_RULES),
-  businessRules: Object.values(BUSINESS_RULES),
+  engineeringRules: SAFE_ENGINEERING_RULES,
+  businessRules: SAFE_BUSINESS_RULES,
 };
 
 export default AGENT_CONFIG;

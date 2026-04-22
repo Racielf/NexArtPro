@@ -3,7 +3,7 @@
  * Analysis layer: runs business rules first, then escalates to LLM if clean.
  */
 
-import { ENGINEERING_RULES, BUSINESS_RULES } from './config.js';
+import { ENGINEERING_RULES, SAFE_BUSINESS_RULES } from './config.js';
 import { base44 } from '@/api/base44Client';
 
 // Build SYSTEM_PROMPT dynamically from real engineering rules
@@ -25,8 +25,7 @@ const SYSTEM_PROMPT = [
  */
 function runBusinessRules(data) {
   const violations = [];
-  for (const rule of Object.values(BUSINESS_RULES)) {
-    if (typeof rule.validate !== 'function') continue;
+  for (const rule of SAFE_BUSINESS_RULES) {
     try {
       const result = rule.validate(data);
       if (result && !result.valid && result.reason) {
@@ -47,7 +46,14 @@ function runBusinessRules(data) {
  *
  * @param {{ filePath: string, diff: string, data?: object }} input
  */
-export async function analyzeChange({ filePath, diff, data = null }) {
+export async function analyzeChange({ filePath, diff, data = null } = {}) {
+  // Guard: invalid inputs — skip LLM call
+  if (typeof filePath !== 'string' || filePath.trim() === '') {
+    return { type: 'warn', message: 'analyzeChange: filePath is required', suggestion: '' };
+  }
+  if (typeof diff !== 'string') {
+    return { type: 'warn', message: 'analyzeChange: diff must be a string', suggestion: '' };
+  }
   // Step 1: local business rules (fast, no API call)
   if (data) {
     const violations = runBusinessRules(data);
