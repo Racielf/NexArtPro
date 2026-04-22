@@ -1,10 +1,9 @@
 import React from 'react';
 import {
   Building2, FileText, Wrench, BookOpen,
-  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw, Activity, FlaskConical
+  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw, Activity, FlaskConical, Brain
 } from 'lucide-react';
 
-// Base sections — always visible
 const BASE_SECTIONS = [
   { id: 'company',   label: 'Company',              icon: Building2 },
   { id: 'documents', label: 'Documents',             icon: FileText },
@@ -16,17 +15,15 @@ const BASE_SECTIONS = [
   { id: 'team',      label: 'Team & Access',         icon: ShieldCheck },
   { id: 'general',   label: 'General',               icon: Settings },
   { id: 'manual',    label: 'Manual del Sistema',    icon: BookMarked },
+  { id: 'brain',     label: 'System Intelligence',   icon: Brain },
 ];
 
-// Admin-only sections — injected only when userRole === 'admin'
 const ADMIN_SECTIONS = [
   { id: 'recovery',    label: 'Recovery Center',    icon: RotateCcw,     adminOnly: true },
   { id: 'security',    label: 'Security Log',       icon: Activity,      adminOnly: true },
   { id: 'agent_tests', label: 'Agent Test Runner',  icon: FlaskConical,  adminOnly: true },
 ];
 
-// Single source of truth: userRole prop passed from Settings.jsx (resolved via base44.auth.me())
-// No longer reads sessionStorage directly here — avoids race condition with async auth
 export default function SettingsSidebar({ active, onChange, userRole }) {
   const sections = userRole === 'admin'
     ? [...BASE_SECTIONS, ...ADMIN_SECTIONS]
