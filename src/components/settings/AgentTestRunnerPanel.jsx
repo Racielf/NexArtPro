@@ -17,14 +17,19 @@ export default function AgentTestRunnerPanel() {
     setLoading(true);
     setResult(null);
     setError(null);
-    const res = await base44.functions.invoke('agentTestRunner', {});
-    const data = res?.data;
-    if (data?.error && !data?.results?.length) {
-      setError(data.error);
-    } else {
-      setResult(data);
+    try {
+      const res = await base44.functions.invoke('agentTestRunner', {});
+      const data = res?.data;
+      if (data?.error && !data?.results?.length) {
+        setError(data.error);
+      } else {
+        setResult(data);
+      }
+    } catch (err) {
+      setError(err?.message || 'Failed to run agent tests');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
