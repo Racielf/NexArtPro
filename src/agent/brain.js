@@ -16,6 +16,9 @@ const SYSTEM_PROMPT = [
   '',
   'Respond ONLY with valid JSON:',
   '{ "type": "patch" | "warn" | "none", "message": "...", "suggestion": "..." }',
+  '',
+  'IMPORTANT: "suggestion" must always be a concrete, actionable fix — never empty or vague.',
+  'Example: "Replace base44.entities.Client with base44.entities.Customer and update client_id references to customer_id."',
 ].join('\n');
 
 /**
@@ -52,7 +55,8 @@ function runDiffRules({ filePath, diff }) {
         return {
           type: result.type || 'warn',
           message: result.message || `Rule "${rule.id}" violated`,
-          suggestion: result.suggestion || '',
+          // rule.suggestion (top-level) is the canonical fix — always present
+          suggestion: rule.suggestion || result.suggestion || `Fix violation of rule "${rule.id}".`,
         };
       }
     } catch {
