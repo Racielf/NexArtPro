@@ -79,6 +79,14 @@ export default function EstimateEditor() {
     runPricingInsight();
   }, [estimate?.groups, isPreview]);
 
+  const pricingWarningsMap = React.useMemo(() => {
+    const map = {};
+    for (const item of pricingInsight?.flaggedItems || []) {
+      if (item?.itemId) map[item.itemId] = item;
+    }
+    return map;
+  }, [pricingInsight]);
+
   const loadEstimate = async () => {
     if (!estimateId) { setLoading(false); return; }
     const list = await base44.entities.Estimate.filter({ id: estimateId });
@@ -399,7 +407,7 @@ export default function EstimateEditor() {
             </button>
           </div>
 
-          <EstimateGroups estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview} currentUser={currentUser} onDirty={() => setDirty(true)} />
+          <EstimateGroups estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
 
           {!isPreview && estimate?.id && <div className="mt-3"><PricingAuditHistory documentId={estimate.id} /></div>}
         </div>
