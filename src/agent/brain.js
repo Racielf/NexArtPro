@@ -3,7 +3,7 @@
  * Analysis layer: runs business rules first, then escalates to LLM if clean.
  */
 
-import { SAFE_ENGINEERING_RULES, SAFE_BUSINESS_RULES } from './config.js';
+import { SAFE_ENGINEERING_RULES, SAFE_BUSINESS_RULES, DIFF_RULES } from './config.js';
 import { base44 } from '@/api/base44Client';
 
 // Build SYSTEM_PROMPT dynamically from safe engineering rules
@@ -39,6 +39,30 @@ function runBusinessRules(data) {
 }
 
 /**
+ * runDiffRules({ filePath, diff })
+ * Executes all DIFF_RULES against the raw filePath + diff string.
+ * Returns the first violation found, or null if all pass.
+ * @returns {{ type: string, message: string, suggestion: string } | null}
+ */
+function runDiffRules({ filePath, diff }) {
+  for (const rule of DIFF_RULES) {
+    try {
+      const result = rule.validate({ filePath, diff });
+      if (result && !result.valid) {
+        return {
+          type: result.type || 'warn',
+          message: result.message || `Rule "${rule.id}" violated`,
+          suggestion: result.suggestion || '',
+        };
+      }
+    } catch {
+      // Malformed rule — skip silently
+    }
+  }
+  return null;
+}
+
+/**
  * analyzeChange({ filePath, diff, data? })
  * 1. Runs local business rules against `data` (if provided).
  * 2. If violations found, returns warn immediately (no LLM cost).
@@ -54,7 +78,11 @@ export async function analyzeChange({ filePath, diff, data = null } = {}) {
   if (typeof diff !== 'string') {
     return { type: 'warn', message: 'analyzeChange: diff must be a string', suggestion: '' };
   }
-  // Step 1: local business rules (fast, no API call)
+  // Step 1a: diff/file pattern rules — CRM-specific, no LLM needed
+  const diffViolation = runDiffRules({ filePath, diff });
+  if (diffViolation) return diffViolation;
+
+  // Step 1b: local business rules against structured data (fast, no API call)
   if (data) {
     const violations = runBusinessRules(data);
     if (violations.length > 0) {
@@ -66,7 +94,7 @@ export async function analyzeChange({ filePath, diff, data = null } = {}) {
     }
   }
 
-  // Step 2: LLM analysis with full context
+  // Step 2: LLM analysis with full context (fallback only)
   try {
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: `${SYSTEM_PROMPT}\n\nFile: ${filePath}\n\nDiff:\n${diff}`,

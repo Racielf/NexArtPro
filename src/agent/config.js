@@ -23,6 +23,73 @@ export const ENGINEERING_RULES = {
   },
 };
 
+// ── DIFF / FILE PATTERN RULES ────────────────────────────────────────────────
+// These rules receive { filePath, diff } and return { type, message, suggestion }
+
+export const DIFF_RULES = [
+  {
+    id: 'client_ref_in_estimate_module',
+    description: 'Estimate modules should reference Customer, not Client entity.',
+    severity: 'high',
+    validate({ filePath, diff }) {
+      const inEstimate = /estimate/i.test(filePath);
+      if (!inEstimate) return { valid: true };
+      // Allow EstimateSidebarCustomer which has a documented dual-lookup
+      if (/EstimateSidebarCustomer/i.test(filePath)) return { valid: true };
+      const hasClientRef = /\bClient\.(list|filter|create|update|delete|get)\b/.test(diff);
+      if (!hasClientRef) return { valid: true };
+      return {
+        valid: false,
+        type: 'warn',
+        message: `Estimate module "${filePath}" is calling base44.entities.Client directly.`,
+        suggestion: 'Estimates should resolve customers via the Customer entity. Use the dual-lookup pattern in EstimateSidebarCustomer as reference.',
+      };
+    },
+  },
+  {
+    id: 'mixed_client_customer_ids',
+    description: 'A single file should not set both client_id and customer_id on the same record.',
+    severity: 'high',
+    validate({ filePath, diff }) {
+      const hasClientId   = /client_id\s*[:=]/.test(diff);
+      const hasCustomerId = /customer_id\s*[:=]/.test(diff);
+      if (!(hasClientId && hasCustomerId)) return { valid: true };
+      return {
+        valid: false,
+        type: 'warn',
+        message: `"${filePath}" assigns both client_id and customer_id on the same object.`,
+        suggestion: 'Resolve to one source of truth: use client_id for legacy Client entity, customer_id for the Customer entity — never both simultaneously.',
+      };
+    },
+  },
+  {
+    id: 'stale_client_ui_strings',
+    description: 'New modules should not contain legacy "Client"-branded UI strings.',
+    severity: 'medium',
+    // Exempted paths that intentionally keep "Client" terminology
+    EXEMPT: [/Clients\.jsx?$/, /ClientPortal/, /ClientEstimateView/, /ClientFormModal/, /ClientDocuments/, /ClientCRM/],
+    validate({ filePath, diff }) {
+      if (this.EXEMPT.some(re => re.test(filePath))) return { valid: true };
+      const staleStrings = [
+        '"Client Profile"',
+        "'Client Profile'",
+        '"Back to Clients"',
+        "'Back to Clients'",
+        '"View Client"',
+        "'View Client'",
+      ];
+      const found = staleStrings.filter(s => diff.includes(s));
+      if (found.length === 0) return { valid: true };
+      return {
+        valid: false,
+        type: 'warn',
+        message: `"${filePath}" contains legacy Client UI label(s): ${found.join(', ')}.`,
+        suggestion: 'Replace with "Customer Profile", "Back to Customers", "View Customer" to align with the unified Customer entity.',
+      };
+    },
+  },
+];
+
 // ── BUSINESS DOMAIN RULES ────────────────────────────────────────────────────
 
 export const BUSINESS_RULES = {
