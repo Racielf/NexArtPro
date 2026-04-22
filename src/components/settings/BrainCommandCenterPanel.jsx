@@ -14,37 +14,26 @@ export default function BrainCommandCenterPanel() {
     saveBrainPolicy(next);
   };
 
-  const toggleModule = (key) => {
-    const nextModules = { ...policy.modules, [key]: !policy.modules[key] };
-    update({ modules: nextModules });
-  };
-
-  const toggleGuard = (key) => {
-    const next = { ...policy.actionGuards, [key]: !policy.actionGuards[key] };
-    update({ actionGuards: next });
+  const updateNested = (key, field, value) => {
+    const next = {
+      ...policy,
+      [key]: {
+        ...policy[key],
+        [field]: value
+      }
+    };
+    setPolicy(next);
+    saveBrainPolicy(next);
   };
 
   return (
     <div className="space-y-6">
 
-      {/* Overview */}
       <div className="bg-white rounded-xl border p-5">
-        <h2 className="text-sm font-bold text-slate-900">Central Brain</h2>
-        <p className="text-xs text-slate-500 mt-1">Control system intelligence, behavior, and safety rules.</p>
-
-        <div className="mt-4 flex items-center gap-4">
-          <label className="text-sm">Enabled</label>
-          <input
-            type="checkbox"
-            checked={policy.enabled}
-            onChange={() => update({ enabled: !policy.enabled })}
-          />
-
-          <select
-            value={policy.operationMode}
-            onChange={(e) => update({ operationMode: e.target.value })}
-            className="border rounded px-2 py-1 text-sm"
-          >
+        <h2 className="text-sm font-bold">Central Brain</h2>
+        <div className="mt-3 flex gap-4 items-center">
+          <input type="checkbox" checked={policy.enabled} onChange={() => update({ enabled: !policy.enabled })} />
+          <select value={policy.operationMode} onChange={(e)=>update({operationMode:e.target.value})}>
             <option value="advisory">Advisory</option>
             <option value="guarded">Guarded</option>
             <option value="strict">Strict</option>
@@ -53,56 +42,33 @@ export default function BrainCommandCenterPanel() {
         </div>
       </div>
 
-      {/* Modules */}
       <div className="bg-white rounded-xl border p-5">
-        <h3 className="text-sm font-semibold">Modules</h3>
-        <div className="grid grid-cols-3 gap-2 mt-3">
-          {Object.keys(policy.modules).map(key => (
-            <label key={key} className="text-xs flex items-center gap-2">
-              <input type="checkbox" checked={policy.modules[key]} onChange={() => toggleModule(key)} />
-              {key}
-            </label>
-          ))}
+        <h3 className="text-sm font-semibold">Catalog & Pricing Intelligence</h3>
+        <div className="space-y-2 mt-3 text-xs">
+          <label><input type="checkbox" checked={policy.catalogIntelligence.analyze} onChange={()=>updateNested('catalogIntelligence','analyze',!policy.catalogIntelligence.analyze)} /> Analyze</label>
+          <label><input type="checkbox" checked={policy.catalogIntelligence.suggest} onChange={()=>updateNested('catalogIntelligence','suggest',!policy.catalogIntelligence.suggest)} /> Suggest</label>
+          <label><input type="checkbox" checked={policy.catalogIntelligence.allowWrite} onChange={()=>updateNested('catalogIntelligence','allowWrite',!policy.catalogIntelligence.allowWrite)} /> Allow Write</label>
+          <label><input type="checkbox" checked={policy.catalogIntelligence.allowCreate} onChange={()=>updateNested('catalogIntelligence','allowCreate',!policy.catalogIntelligence.allowCreate)} /> Create Services</label>
+          <label><input type="checkbox" checked={policy.catalogIntelligence.allowDeactivate} onChange={()=>updateNested('catalogIntelligence','allowDeactivate',!policy.catalogIntelligence.allowDeactivate)} /> Deactivate Services</label>
         </div>
       </div>
 
-      {/* Action Guards */}
       <div className="bg-white rounded-xl border p-5">
-        <h3 className="text-sm font-semibold">Action Guards</h3>
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          {Object.keys(policy.actionGuards).map(key => (
-            <label key={key} className="text-xs flex items-center gap-2">
-              <input type="checkbox" checked={policy.actionGuards[key]} onChange={() => toggleGuard(key)} />
-              {key}
-            </label>
-          ))}
+        <h3 className="text-sm font-semibold">Owner Access</h3>
+        <div className="mt-3 text-xs">
+          <button onClick={()=>updateNested('ownerAccess','unlocked',true)} className="px-2 py-1 border">Unlock</button>
+          <button onClick={()=>updateNested('ownerAccess','unlocked',false)} className="px-2 py-1 border ml-2">Lock</button>
+          <p className="mt-2">Status: {policy.ownerAccess.unlocked ? 'Unlocked' : 'Locked'}</p>
         </div>
       </div>
 
-      {/* Instructions */}
       <div className="bg-white rounded-xl border p-5">
-        <h3 className="text-sm font-semibold">Owner Instructions</h3>
-        <textarea
-          className="w-full mt-2 border rounded p-2 text-sm"
-          rows={4}
-          value={policy.ownerInstructions}
-          onChange={(e) => update({ ownerInstructions: e.target.value })}
-          placeholder="Tell the system how to behave..."
-        />
+        <h3 className="text-sm font-semibold">Brain Chat (coming)</h3>
+        <p className="text-xs text-gray-500">Next step: AI integration.</p>
       </div>
 
-      {/* Reset */}
-      <div>
-        <button
-          onClick={() => {
-            const reset = resetBrainPolicy();
-            setPolicy(reset);
-          }}
-          className="text-xs text-red-600"
-        >
-          Reset Brain Configuration
-        </button>
-      </div>
+      <button onClick={()=>{const r=resetBrainPolicy();setPolicy(r)}} className="text-red-600 text-xs">Reset</button>
+
     </div>
   );
 }
