@@ -17,14 +17,14 @@ import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
 import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrderButton';
 import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
-// documentTypeConfig used internally by EstimateActionsPanel
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
-// estimateVersioning intentionally not imported — internal editor is always in-place editable.
 import { archiveWithSnapshot } from '@/lib/softDelete';
+import { loadPriceBook, loadServices } from '@/lib/servicePersistence';
+import estimateCatalogPricingBrain from '@/brain/modules/estimateCatalogPricingBrain';
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -42,6 +42,7 @@ export default function EstimateEditor() {
   const [currentUser, setCurrentUser] = useState(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthResult, setHealthResult] = useState(null);
+  const [pricingInsight, setPricingInsight] = useState(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
@@ -57,12 +58,32 @@ export default function EstimateEditor() {
 
   useEffect(() => { loadEstimate(); }, []);
 
+  useEffect(() => {
+    const runPricingInsight = async () => {
+      if (!estimate?.groups || isPreview) {
+        setPricingInsight(null);
+        return;
+      }
+      try {
+        const [priceBookEntries, services] = await Promise.all([loadPriceBook(), loadServices()]);
+        const result = await estimateCatalogPricingBrain({
+          groups: estimate.groups,
+          priceBookEntries,
+          services,
+        });
+        setPricingInsight(result);
+      } catch (err) {
+        console.warn('[Estimate Pricing Insight] failed:', err?.message || err);
+      }
+    };
+    runPricingInsight();
+  }, [estimate?.groups, isPreview]);
+
   const loadEstimate = async () => {
     if (!estimateId) { setLoading(false); return; }
     const list = await base44.entities.Estimate.filter({ id: estimateId });
     if (list.length) {
       const est = list[0];
-      // CRITICAL: Ensure document_type is always 'ESTIMATE' for Estimates (fix data contamination)
       if (!est.document_type || est.document_type === 'PROPOSAL') {
         est.document_type = 'ESTIMATE';
       }
@@ -78,13 +99,9 @@ export default function EstimateEditor() {
   };
 
   const handleSave = async (updatedEstimate) => {
-    // NOTE: Lock status is shown visually but does NOT block in-place edits.
-    // Versioning is a manual/explicit action only — never triggered automatically on save.
     setSaving(true);
     setSaveError(false);
     setDirty(false);
-    
-    // Normalize all line items and materials before persisting
     const sanitized = { ...updatedEstimate };
     if (sanitized.groups && Array.isArray(sanitized.groups)) {
       sanitized.groups = sanitized.groups.map(group => ({
@@ -95,12 +112,9 @@ export default function EstimateEditor() {
     if (sanitized.materials && Array.isArray(sanitized.materials)) {
       sanitized.materials = normalizeMaterials(sanitized.materials).map(sanitizeMaterialForPersistence);
     }
-    
-    // CRITICAL: Enforce document_type='ESTIMATE' to prevent data contamination
     if (sanitized.document_type !== 'ESTIMATE') {
       sanitized.document_type = 'ESTIMATE';
     }
-    
     try {
       await base44.entities.Estimate.update(estimateId, { ...sanitized, updated_by: 'Admin' });
       setEstimate(sanitized);
@@ -130,15 +144,12 @@ export default function EstimateEditor() {
     setSaving(true);
     try {
       let finalData = { ...customerData };
-
-      // Auto-resolve document language from client preference (only if not already set)
       if (clientRecord) {
         const autoLang = getAutoLanguageForClient(estimate, clientRecord);
         if (autoLang) {
           finalData.document_language = autoLang;
         }
       }
-
       await base44.entities.Estimate.update(estimate.id, { ...finalData, updated_by: 'Admin' });
       const updated = { ...estimate, ...finalData };
       setEstimate(updated);
@@ -180,7 +191,6 @@ export default function EstimateEditor() {
 
   const handleDiscard = async () => {
     if (estimateId) {
-      // GUARD: Always route through soft-delete/recovery, never direct delete
       const actor = currentUser?.email || currentUser?.id || 'system';
       await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', estimateId, actor, 'Discarded from editor — new estimate was never saved');
     }
@@ -226,95 +236,53 @@ export default function EstimateEditor() {
 
   const hasClient = !!estimate.client_name;
 
-  // STATUS_BADGE must stay aligned with Estimate entity schema enum values
-  // Schema statuses: draft | sent | viewed | approved | declined
-  // Extended operational statuses handled here for display only
   const STATUS_BADGE = {
-    draft:             { label: 'Draft',           cls: 'bg-slate-100 text-slate-600' },
-    sent:              { label: 'Sent',            cls: 'bg-indigo-100 text-indigo-700' },
-    viewed:            { label: 'Viewed',          cls: 'bg-violet-100 text-violet-700' },
-    approved:          { label: 'Approved',        cls: 'bg-emerald-100 text-emerald-800' },
-    signed:            { label: 'Signed',          cls: 'bg-green-100 text-green-800' },
-    declined:          { label: 'Declined',        cls: 'bg-red-100 text-red-700' },
-    changes_requested: { label: 'Changes Req.',    cls: 'bg-amber-100 text-amber-800' },
-    // Operational statuses (not in base schema enum but used in field workflow)
-    scheduled:         { label: 'Scheduled',       cls: 'bg-blue-100 text-blue-700' },
-    visit_completed:   { label: 'Visited',         cls: 'bg-cyan-100 text-cyan-700' },
-    on_my_way:         { label: 'On My Way',       cls: 'bg-sky-100 text-sky-700' },
-    converted:         { label: 'Converted',       cls: 'bg-teal-700 text-white' },
+    draft:             { label: 'Draft', cls: 'bg-slate-100 text-slate-600' },
+    sent:              { label: 'Sent', cls: 'bg-indigo-100 text-indigo-700' },
+    viewed:            { label: 'Viewed', cls: 'bg-violet-100 text-violet-700' },
+    approved:          { label: 'Approved', cls: 'bg-emerald-100 text-emerald-800' },
+    signed:            { label: 'Signed', cls: 'bg-green-100 text-green-800' },
+    declined:          { label: 'Declined', cls: 'bg-red-100 text-red-700' },
+    changes_requested: { label: 'Changes Req.', cls: 'bg-amber-100 text-amber-800' },
+    scheduled:         { label: 'Scheduled', cls: 'bg-blue-100 text-blue-700' },
+    visit_completed:   { label: 'Visited', cls: 'bg-cyan-100 text-cyan-700' },
+    on_my_way:         { label: 'On My Way', cls: 'bg-sky-100 text-sky-700' },
+    converted:         { label: 'Converted', cls: 'bg-teal-700 text-white' },
   };
   const statusBadge = STATUS_BADGE[estimate.status] || STATUS_BADGE.draft;
-  const totalFmt = estimate.total != null
-    ? `$${parseFloat(estimate.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-    : '—';
 
   return (
     <div className="fixed inset-0 bg-slate-100 flex flex-col z-50 font-inter">
-
-      {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0" style={{ boxShadow: '0 1px 3px 0 rgba(0,0,0,0.06)' }}>
         <div className="flex items-center px-5 h-14 gap-4">
-
-          {/* Left: client name + status + version */}
-           <div className="flex items-center gap-6 min-w-0 flex-1">
-             <div className="flex items-center gap-2.5 min-w-0">
-               {hasClient && (
-                 <span className="text-base font-bold text-slate-900 truncate">{estimate.client_name}</span>
-               )}
-               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide flex-shrink-0 ${statusBadge.cls}`}>
-                 {statusBadge.label}
-               </span>
-               {estimate.version_number && estimate.version_number > 1 && (
-                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
-                    V{estimate.version_number}
-                  </span>
-                )}
-             </div>
+          <div className="flex items-center gap-6 min-w-0 flex-1">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {hasClient && <span className="text-base font-bold text-slate-900 truncate">{estimate.client_name}</span>}
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide flex-shrink-0 ${statusBadge.cls}`}>{statusBadge.label}</span>
+              {estimate.version_number && estimate.version_number > 1 && (
+                <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">V{estimate.version_number}</span>
+              )}
+            </div>
             <div className="hidden md:block">
-              <EstimateTemplateSelector
-                currentTemplate={estimate.document_config?.template || 'clean'}
-                onTemplateChange={handleTemplateChange}
-                onShowOptions={() => setShowDocumentOptions(true)}
-              />
+              <EstimateTemplateSelector currentTemplate={estimate.document_config?.template || 'clean'} onTemplateChange={handleTemplateChange} onShowOptions={() => setShowDocumentOptions(true)} />
             </div>
           </div>
 
-          {/* Right: actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
-
             <div className="w-px h-5 bg-slate-200" />
-
             {import.meta.env.DEV && (
-              <button
-                onClick={handleRunHealthCheck}
-                disabled={healthLoading}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
-              >
+              <button onClick={handleRunHealthCheck} disabled={healthLoading} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 {healthLoading ? 'Checking...' : 'Health Check'}
               </button>
             )}
-
-            <button
-              onClick={() => setShowPreviewModal(true)}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-            >
-              <Eye className="w-3.5 h-3.5 text-slate-400" />
-              Client View
+            <button onClick={() => setShowPreviewModal(true)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
+              <Eye className="w-3.5 h-3.5 text-slate-400" />Client View
             </button>
-
             <div className="flex items-center">
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
-                  setShowSendModal(true);
-                }}
-                className="rounded-r-none gap-1.5 h-8 px-3 text-xs font-semibold bg-slate-900 hover:bg-black text-white border-slate-900"
-              >
-                <Send className="w-3.5 h-3.5" />
-                Review & Send
+              <Button size="sm" onClick={() => { if (!estimate.client_email) { toast.error('Client email is required to send'); return; } setShowSendModal(true); }} className="rounded-r-none gap-1.5 h-8 px-3 text-xs font-semibold bg-slate-900 hover:bg-black text-white border-slate-900">
+                <Send className="w-3.5 h-3.5" />Review & Send
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -328,44 +296,25 @@ export default function EstimateEditor() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-
-            <button
-              onClick={handleCancel}
-              title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors"
-            >
+            <button onClick={handleCancel} title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── MAIN 3-PANEL LAYOUT ──────────────────────────────────────────── */}
       <div className="flex flex-1 gap-4 px-4 py-3 bg-slate-100 overflow-hidden">
-
-        {/* LEFT SIDEBAR — Customer context */}
         <div className="w-80 flex-shrink-0 overflow-y-auto flex flex-col min-h-0 bg-white rounded-xl border border-slate-100" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
           {isNew && !hasClient ? (
             <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
-                <FileText className="w-5 h-5 text-slate-400" />
-              </div>
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3"><FileText className="w-5 h-5 text-slate-400" /></div>
               <p className="text-sm font-semibold text-slate-600 mb-1">No customer yet</p>
               <p className="text-xs text-slate-400 mb-3">Link a customer to unlock the full estimate workflow</p>
-              <button
-                onClick={() => { setDismissedCustomerModal(false); setShowNewCustomerModal(true); }}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                + Select or Create Customer
-              </button>
+              <button onClick={() => { setDismissedCustomerModal(false); setShowNewCustomerModal(true); }} className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">+ Select or Create Customer</button>
             </div>
           ) : (
             <>
-              {estimate.id && (
-                <div className="px-4 py-3 border-b border-slate-100">
-                  <TransmissionPanel estimateId={estimate.id} />
-                </div>
-              )}
+              {estimate.id && <div className="px-4 py-3 border-b border-slate-100"><TransmissionPanel estimateId={estimate.id} /></div>}
               <EstimateSidebarCustomer
                 estimate={estimate}
                 client={client}
@@ -379,7 +328,6 @@ export default function EstimateEditor() {
           )}
         </div>
 
-        {/* ACTIONS PANEL */}
         {hasClient && (
           <EstimateActionsPanel
             estimate={estimate}
@@ -391,53 +339,47 @@ export default function EstimateEditor() {
           />
         )}
 
-        {/* RIGHT CANVAS — Document workspace */}
         <div className="flex-1 overflow-auto bg-white rounded-xl border border-slate-100 px-8 py-6" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
-
-         {/* No-client tip banner */}
-         {!hasClient && (
+          {!hasClient && (
             <div className="mb-5 bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                <ClipboardList className="w-4 h-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-800">Link a customer to get started</p>
-                <p className="text-xs text-slate-400 mt-0.5">Add a customer in the left panel to unlock the full estimate workflow.</p>
-              </div>
+              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><ClipboardList className="w-4 h-4 text-blue-500" /></div>
+              <div><p className="text-sm font-semibold text-slate-800">Link a customer to get started</p><p className="text-xs text-slate-400 mt-0.5">Add a customer in the left panel to unlock the full estimate workflow.</p></div>
             </div>
           )}
 
           {import.meta.env.DEV && healthResult && (
-            <div className={`mb-5 rounded-xl border px-5 py-4 ${
-              healthResult.level === 'healthy'
-                ? 'border-emerald-200 bg-emerald-50'
-                : healthResult.level === 'warning'
-                  ? 'border-amber-200 bg-amber-50'
-                  : 'border-red-200 bg-red-50'
-            }`}>
+            <div className={`mb-5 rounded-xl border px-5 py-4 ${healthResult.level === 'healthy' ? 'border-emerald-200 bg-emerald-50' : healthResult.level === 'warning' ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div><p className="text-sm font-bold text-slate-900">Estimate Health</p><p className="text-xs text-slate-500 mt-0.5">{healthResult.summary}</p></div>
+                <div className="text-right"><p className="text-2xl font-bold text-slate-900">{healthResult.score}</p><p className="text-[11px] uppercase tracking-wide text-slate-500">{healthResult.level}</p></div>
+              </div>
+              <div className="mt-3"><p className="text-xs font-semibold text-slate-700">Next action</p><p className="text-sm text-slate-600 mt-1">{healthResult.nextAction}</p></div>
+            </div>
+          )}
+
+          {!isPreview && pricingInsight?.flaggedItems?.length > 0 && (
+            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-bold text-slate-900">Estimate Health</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{healthResult.summary}</p>
+                  <p className="text-sm font-bold text-slate-900">Estimate Pricing Insight</p>
+                  <p className="text-xs text-slate-600 mt-0.5">{pricingInsight.summary}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-slate-900">{healthResult.score}</p>
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">{healthResult.level}</p>
+                  <p className="text-2xl font-bold text-slate-900">{pricingInsight.score}</p>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">{pricingInsight.level}</p>
                 </div>
               </div>
               <div className="mt-3">
                 <p className="text-xs font-semibold text-slate-700">Next action</p>
-                <p className="text-sm text-slate-600 mt-1">{healthResult.nextAction}</p>
+                <p className="text-sm text-slate-600 mt-1">{pricingInsight.nextAction}</p>
               </div>
               <div className="mt-3 grid gap-2">
-                {healthResult.checks.map(check => (
-                  <div key={check.id} className="flex items-start gap-2 text-xs">
-                    <span className={`mt-0.5 inline-block w-2 h-2 rounded-full ${
-                      check.status === 'pass' ? 'bg-emerald-500' : check.status === 'warn' ? 'bg-amber-500' : 'bg-red-500'
-                    }`} />
+                {pricingInsight.flaggedItems.map(item => (
+                  <div key={item.itemId} className="flex items-start gap-2 text-xs">
+                    <span className="mt-0.5 inline-block w-2 h-2 rounded-full bg-amber-500" />
                     <div>
-                      <span className="font-semibold text-slate-700">{check.label}</span>
-                      <span className="text-slate-500"> — {check.message}</span>
+                      <span className="font-semibold text-slate-700">{item.serviceName}</span>
+                      <span className="text-slate-500"> — ${item.currentEstimatePrice} vs suggested ${item.suggestedCatalogPrice} ({item.deltaPercent}% )</span>
                     </div>
                   </div>
                 ))}
@@ -445,133 +387,36 @@ export default function EstimateEditor() {
             </div>
           )}
 
-          {/* Canvas toolbar: BID fields + view mode toggle */}
           <div className="flex items-center gap-3 mb-5 flex-wrap">
             {estimate.document_type === 'BID' && (
               <div className="flex items-center gap-2">
-                <input
-                   type="text"
-                   value={jobNumber}
-                   onChange={e => setJobNumber(e.target.value)}
-                   onBlur={() => {
-                     base44.entities.Estimate.update(estimate.id, { job_number: jobNumber, updated_by: 'Admin' })
-                       .then(() => setEstimate(e => ({ ...e, job_number: jobNumber })))
-                       .catch(err => console.error('[jobNumber onBlur] failed:', err));
-                   }}
-                   placeholder="Job #"
-                   className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
-                 />
-                 <input
-                   type="text"
-                   value={planReference}
-                   onChange={e => setPlanReference(e.target.value)}
-                   onBlur={() => {
-                     base44.entities.Estimate.update(estimate.id, { plan_reference: planReference, updated_by: 'Admin' })
-                       .then(() => setEstimate(e => ({ ...e, plan_reference: planReference })))
-                       .catch(err => console.error('[planReference onBlur] failed:', err));
-                   }}
-                   placeholder="Plan Ref"
-                   className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
-                 />
+                <input type="text" value={jobNumber} onChange={e => setJobNumber(e.target.value)} onBlur={() => { base44.entities.Estimate.update(estimate.id, { job_number: jobNumber, updated_by: 'Admin' }).then(() => setEstimate(e => ({ ...e, job_number: jobNumber }))).catch(err => console.error('[jobNumber onBlur] failed:', err)); }} placeholder="Job #" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
+                <input type="text" value={planReference} onChange={e => setPlanReference(e.target.value)} onBlur={() => { base44.entities.Estimate.update(estimate.id, { plan_reference: planReference, updated_by: 'Admin' }).then(() => setEstimate(e => ({ ...e, plan_reference: planReference }))).catch(err => console.error('[planReference onBlur] failed:', err)); }} placeholder="Plan Ref" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
               </div>
             )}
-            <button
-              onClick={() => setIsPreview(!isPreview)}
-              className={`inline-flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-full border transition-colors ${
-                isPreview
-                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPreview ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-              {isPreview ? 'Preview Mode' : 'Editing'}
+            <button onClick={() => setIsPreview(!isPreview)} className={`inline-flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-full border transition-colors ${isPreview ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPreview ? 'bg-amber-500' : 'bg-emerald-500'}`} />{isPreview ? 'Preview Mode' : 'Editing'}
             </button>
           </div>
 
-          <EstimateGroups
-            estimate={estimate}
-            onSave={handleSave}
-            saving={saving}
-            isPreview={isPreview}
-            currentUser={currentUser}
-            onDirty={() => setDirty(true)}
-          />
+          <EstimateGroups estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview} currentUser={currentUser} onDirty={() => setDirty(true)} />
 
-          {/* Persisted pricing audit trail — internal only */}
-          {!isPreview && estimate?.id && (
-            <div className="mt-3">
-              <PricingAuditHistory documentId={estimate.id} />
-            </div>
-          )}
+          {!isPreview && estimate?.id && <div className="mt-3"><PricingAuditHistory documentId={estimate.id} /></div>}
         </div>
       </div>
 
-      {/* MODALS */}
-      <EstimatePreviewModal
-        estimate={estimate}
-        open={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        onSend={() => setShowSendModal(true)}
-      />
-
-      {showSendModal && (
-        <EstimateSendReview
-          estimate={estimate}
-          open={showSendModal}
-          onClose={() => setShowSendModal(false)}
-          onSent={() => { loadEstimate(); setShowSendModal(false); }}
-        />
-      )}
-
-      <EstimateDocumentOptions
-        open={showDocumentOptions}
-        onClose={() => setShowDocumentOptions(false)}
-        options={estimate.document_config?.options}
-        onSave={handleDocumentOptionsSave}
-        language={estimate.document_language || 'en'}
-        onLanguageChange={handleLanguageChange}
-      />
-
-      <NewProposalCustomerModal
-        open={showNewCustomerModal || (isNew && !hasClient && !dismissedCustomerModal)}
-        onOpenChange={(v) => {
-          setShowNewCustomerModal(v);
-          if (!v) setDismissedCustomerModal(true);
-        }}
-        onCustomerSelected={async (client) => {
-          const customerData = {
-            client_id: client.id || '',
-            client_name: client.full_name || '',
-            client_email: client.email || '',
-            client_phone: client.phone || '',
-            client_address: [client.address, client.city, client.state].filter(Boolean).join(', '),
-          };
-          await handleCustomerChange(customerData, client);
-          setShowNewCustomerModal(false);
-        }}
-      />
-
+      <EstimatePreviewModal estimate={estimate} open={showPreviewModal} onClose={() => setShowPreviewModal(false)} onSend={() => setShowSendModal(true)} />
+      {showSendModal && <EstimateSendReview estimate={estimate} open={showSendModal} onClose={() => setShowSendModal(false)} onSent={() => { loadEstimate(); setShowSendModal(false); }} />}
+      <EstimateDocumentOptions open={showDocumentOptions} onClose={() => setShowDocumentOptions(false)} options={estimate.document_config?.options} onSave={handleDocumentOptionsSave} language={estimate.document_language || 'en'} onLanguageChange={handleLanguageChange} />
+      <NewProposalCustomerModal open={showNewCustomerModal || (isNew && !hasClient && !dismissedCustomerModal)} onOpenChange={(v) => { setShowNewCustomerModal(v); if (!v) setDismissedCustomerModal(true); }} onCustomerSelected={async (client) => { const customerData = { client_id: client.id || '', client_name: client.full_name || '', client_email: client.email || '', client_phone: client.phone || '', client_address: [client.address, client.city, client.state].filter(Boolean).join(', ') }; await handleCustomerChange(customerData, client); setShowNewCustomerModal(false); }} />
       {showDiscardConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
             <h2 className="text-base font-bold text-slate-900 mb-2">Discard this estimate?</h2>
-            <p className="text-sm text-slate-500 mb-6">
-              This estimate hasn't been saved yet. Cancelling will delete it permanently.
-            </p>
+            <p className="text-sm text-slate-500 mb-6">This estimate hasn't been saved yet. Cancelling will delete it permanently.</p>
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowDiscardConfirm(false)}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                Keep Editing
-              </button>
-              <button
-                onClick={handleDiscard}
-                className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Discard Estimate
-              </button>
+              <button onClick={() => setShowDiscardConfirm(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Keep Editing</button>
+              <button onClick={handleDiscard} className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-1.5"><Trash2 className="w-3.5 h-3.5" />Discard Estimate</button>
             </div>
           </div>
         </div>
