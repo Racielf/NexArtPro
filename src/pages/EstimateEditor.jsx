@@ -411,36 +411,6 @@ export default function EstimateEditor() {
             </div>
           )}
 
-          {!isPreview && pricingInsight?.flaggedItems?.length > 0 && (
-            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Estimate Pricing Insight</p>
-                  <p className="text-xs text-slate-600 mt-0.5">{pricingInsight.summary}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-slate-900">{pricingInsight.score}</p>
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">{pricingInsight.level}</p>
-                </div>
-              </div>
-              <div className="mt-3">
-                <p className="text-xs font-semibold text-slate-700">Next action</p>
-                <p className="text-sm text-slate-600 mt-1">{pricingInsight.nextAction}</p>
-              </div>
-              <div className="mt-3 grid gap-2">
-                {pricingInsight.flaggedItems.map(item => (
-                  <div key={item.itemId} className="flex items-start gap-2 text-xs">
-                    <span className="mt-0.5 inline-block w-2 h-2 rounded-full bg-amber-500" />
-                    <div>
-                      <span className="font-semibold text-slate-700">{item.serviceName}</span>
-                      <span className="text-slate-500"> — ${item.currentEstimatePrice} vs suggested ${item.suggestedCatalogPrice} ({item.deltaPercent}% )</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="flex items-center gap-3 mb-5 flex-wrap">
             {estimate.document_type === 'BID' && (
               <div className="flex items-center gap-2">
