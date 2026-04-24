@@ -20,6 +20,7 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
   const [newChecklistIsExtra, setNewChecklistIsExtra] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const [photos, setPhotos] = useState([]);
+  const [afterPhotos, setAfterPhotos] = useState([]);
   const [beforePhotos, setBeforePhotos] = useState([]);
   const [uploadingBefore, setUploadingBefore] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -27,6 +28,7 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
   const [checkingIn, setCheckingIn] = useState(false);
   const fileRef = useRef();
   const beforeFileRef = useRef();
+  const afterFileRef = useRef();
 
   React.useEffect(() => {
     loadPhotos();
@@ -50,7 +52,8 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
     const data = await base44.entities.ProjectPhoto.filter({ work_order_id: workOrderId });
     const allPhotos = data || [];
     setBeforePhotos(allPhotos.filter(p => p.phase === 'before'));
-    setPhotos(allPhotos.filter(p => p.phase !== 'before'));
+    setAfterPhotos(allPhotos.filter(p => p.phase === 'after'));
+    setPhotos(allPhotos.filter(p => p.phase !== 'before' && p.phase !== 'after'));
   };
 
   // Initialize checklist on first render if empty
@@ -151,6 +154,26 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
     });
     toast.success('Before photo uploaded');
     setUploadingBefore(false);
+    e.target.value = '';
+    loadPhotos();
+  };
+
+  const handleAfterPhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    await base44.entities.ProjectPhoto.create({
+      photo_url: file_url,
+      phase: 'after',
+      work_order_id: workOrderId,
+      work_order_number: workOrder?.work_order_number,
+      customer_name: workOrder?.client_name,
+      taken_by: 'Field Staff',
+      caption: 'After photo',
+    });
+    toast.success('After photo uploaded');
+    setUploading(false);
     e.target.value = '';
     loadPhotos();
   };
@@ -400,6 +423,48 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
                     <span>•</span>
                     <span>{new Date(note.created_at).toLocaleString()}</span>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── AFTER PHOTOS ── */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Camera className="w-4 h-4 text-primary" />
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">After Photos</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Capture final result before closing work</p>
+            </div>
+            {afterPhotos.length > 0 && (
+              <span className="text-xs bg-slate-100 text-slate-600 rounded-full px-2 py-0.5 font-medium">{afterPhotos.length}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => afterFileRef.current?.click()}>
+              Upload After
+            </Button>
+            <input ref={afterFileRef} type="file" accept="image/*" className="hidden" onChange={handleAfterPhotoUpload} />
+          </div>
+        </div>
+        <div className="px-6 py-5">
+          {afterPhotos.length === 0 ? (
+            <div
+              className="border-2 border-dashed border-slate-200 rounded-lg py-8 flex flex-col items-center text-slate-400 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors"
+              onClick={() => afterFileRef.current?.click()}
+            >
+              <Camera className="w-7 h-7 mb-2" />
+              <p className="text-sm font-medium">Upload after photos</p>
+              <p className="text-xs mt-0.5">Required before completion</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {afterPhotos.map(p => (
+                <div key={p.id} className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                  <img src={p.photo_url} alt="After photo" className="w-full h-28 object-cover" />
                 </div>
               ))}
             </div>
