@@ -16,6 +16,7 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
   const [fieldNotes, setFieldNotes] = useState(workOrder?.field_notes || []);
   const [checklist, setChecklist] = useState(workOrder?.execution_checklist || []);
   const [newNote, setNewNote] = useState('');
+  const [newChecklistItem, setNewChecklistItem] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -89,6 +90,24 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
     });
     setChecklist(updated);
     await persistChecklist(updated);
+  };
+
+  const addChecklistItem = async () => {
+    const label = newChecklistItem.trim();
+    if (!label) return;
+    const item = {
+      id: `checklist-${Date.now()}`,
+      item: label,
+      completed: false,
+      created_by: 'Field Staff',
+      created_at: new Date().toISOString(),
+      source: 'field',
+    };
+    const updated = [...checklist, item];
+    setChecklist(updated);
+    setNewChecklistItem('');
+    await persistChecklist(updated);
+    toast.success('Checklist item added');
   };
 
   const handlePhotoUpload = async (e) => {
@@ -175,6 +194,20 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
                 </div>
               </div>
             ))}
+            <div className="pt-3 mt-3 border-t border-slate-100 flex gap-2">
+              <input
+                type="text"
+                value={newChecklistItem}
+                onChange={e => setNewChecklistItem(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addChecklistItem(); }}
+                placeholder="Add task found on site..."
+                className="flex-1 h-9 rounded-lg border border-slate-200 px-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <Button size="sm" onClick={addChecklistItem} disabled={!newChecklistItem.trim()} className="h-9 gap-1.5">
+                <Plus className="w-3.5 h-3.5" />
+                Add
+              </Button>
+            </div>
           </div>
         </div>
       </div>
