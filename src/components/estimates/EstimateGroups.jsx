@@ -10,7 +10,7 @@
  *   line_total  = quantity * unit_price
  *   line_margin = ((unit_price - unit_cost) / unit_price) * 100
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -441,7 +441,7 @@ function NotesSection({ label, placeholder, value, onChange, accent, badge }) {
   );
 }
 
-export default function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false, currentUser, onDirty, pricingWarningsMap = {} }) {
+const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false, currentUser, onDirty, pricingWarningsMap = {} }, ref) {
   const [groups, setGroups] = useState(() => {
     const resolved = resolveAndNormalizeGroups(estimate);
     return resolved.length ? resolved : DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] }));
@@ -610,6 +610,10 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
 
   const riskData = !isPreview ? calculateRiskScore({ scopeSummary, assumptions, includedScopeBullets, contingencyType, contingencyValue, total, discountValue, discountType, materials }, groups, { grossMarginPct }) : null;
 
+  useImperativeHandle(ref, () => ({
+    applyAllPricingFixes
+  }));
+
   return (
     <div className="w-full space-y-0 max-w-5xl mx-auto">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
@@ -734,4 +738,6 @@ export default function EstimateGroups({ estimate, onSave, saving, readOnlyDisco
       {!isPreview && <div className="space-y-3 mt-2"><PriceAuditLog entries={priceLog} onClear={clearLog} />{estimate?.id && <EstimateAuditHistory estimateId={estimate.id} />}</div>}
     </div>
   );
-}
+});
+
+export default EstimateGroups;
