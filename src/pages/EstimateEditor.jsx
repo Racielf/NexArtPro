@@ -494,8 +494,16 @@ export default function EstimateEditor() {
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-slate-100 flex justify-end">
-              <button onClick={() => setShowBrainPanel(false)} className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+            <div className="px-5 py-4 border-t border-slate-100 flex justify-between items-center">
+              {hasBrainInsights && (
+                <button
+                  onClick={() => estimateGroupsRef.current?.applyAllPricingFixes?.()}
+                  className="h-8 px-3 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-black transition-colors"
+                >
+                  Fix pricing automatically
+                </button>
+              )}
+              <button onClick={() => setShowBrainPanel(false)} className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors ml-auto">
                 Close
               </button>
             </div>
