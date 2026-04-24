@@ -17,6 +17,7 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
   const [checklist, setChecklist] = useState(workOrder?.execution_checklist || []);
   const [newNote, setNewNote] = useState('');
   const [newChecklistItem, setNewChecklistItem] = useState('');
+  const [newChecklistIsExtra, setNewChecklistIsExtra] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -102,10 +103,13 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
       created_by: 'Field Staff',
       created_at: new Date().toISOString(),
       source: 'field',
+      type: newChecklistIsExtra ? 'extra' : 'normal',
+      approval_status: newChecklistIsExtra ? 'pending_office_approval' : 'not_required',
     };
     const updated = [...checklist, item];
     setChecklist(updated);
     setNewChecklistItem('');
+    setNewChecklistIsExtra(false);
     await persistChecklist(updated);
     toast.success('Checklist item added');
   };
@@ -183,9 +187,16 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
                   {item.completed && <Square className="w-3 h-3 text-white fill-white" />}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${item.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
-                    {item.item}
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={`text-sm ${item.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                      {item.item}
+                    </p>
+                    {item.type === 'extra' && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700">
+                        Extra · Pending approval
+                      </span>
+                    )}
+                  </div>
                   {item.completed_at && (
                     <p className="text-xs text-green-600 mt-0.5">
                       ✓ {new Date(item.completed_at).toLocaleString()}
@@ -208,6 +219,15 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
                 Add
               </Button>
             </div>
+            <label className="mt-2 flex items-center gap-2 text-xs text-slate-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={newChecklistIsExtra}
+                onChange={e => setNewChecklistIsExtra(e.target.checked)}
+                className="rounded accent-amber-500"
+              />
+              Mark as extra work — needs office approval
+            </label>
           </div>
         </div>
       </div>
