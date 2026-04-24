@@ -262,6 +262,37 @@ export default function EstimateEditor() {
   const statusBadge = STATUS_BADGE[estimate.status] || STATUS_BADGE.draft;
   const brainInsightCount = pricingInsight?.flaggedItems?.length || 0;
   const hasBrainInsights = brainInsightCount > 0;
+  const brainScore = Number(pricingInsight?.score ?? 100);
+
+  const brainButtonState = hasBrainInsights
+    ? (brainScore < 70 || brainInsightCount > 3 ? 'critical' : 'warning')
+    : 'healthy';
+
+  const brainButtonConfig = {
+    healthy: {
+      label: 'AI OK',
+      badge: brainInsightCount,
+      cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+      badgeCls: 'bg-emerald-600 text-white',
+      title: 'AI review complete — no active pricing issues',
+    },
+    warning: {
+      label: 'AI Review',
+      badge: brainInsightCount,
+      cls: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
+      badgeCls: 'bg-amber-600 text-white',
+      title: `${brainInsightCount} pricing insight(s) need review`,
+    },
+    critical: {
+      label: 'AI Issues',
+      badge: brainInsightCount,
+      cls: 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100',
+      badgeCls: 'bg-red-600 text-white',
+      title: `${brainInsightCount} critical pricing issue(s) detected`,
+    },
+  };
+
+  const brainButton = brainButtonConfig[brainButtonState];
 
   return (
     <div className="fixed inset-0 bg-slate-100 flex flex-col z-50 font-inter">
@@ -283,19 +314,13 @@ export default function EstimateEditor() {
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => setShowBrainPanel(true)}
-              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold transition-colors ${
-                hasBrainInsights
-                  ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
-                  : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
-              }`}
-              title={hasBrainInsights ? `${brainInsightCount} pricing insight(s) available` : 'No active AI insights'}
+              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-bold shadow-sm transition-colors ${brainButton.cls}`}
+              title={brainButton.title}
             >
               <BrainCircuit className="w-3.5 h-3.5" />
-              AI Insights
-              <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
-                hasBrainInsights ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-400'
-              }`}>
-                {brainInsightCount}
+              {brainButton.label}
+              <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] leading-none ${brainButton.badgeCls}`}>
+                {brainButton.badge}
               </span>
             </button>
             <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
