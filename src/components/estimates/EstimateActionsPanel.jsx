@@ -202,65 +202,111 @@ function NextActionBlock({ estimate, omwActive }) {
 // Determines which button is the "primary" action based on estimate status
 function getPrimaryAction(estimate, omwActive) {
   const s = estimate?.status;
+
   if (!s || s === 'draft') return 'schedule';
   if (s === 'scheduled') return omwActive ? 'stopOmw' : 'omw';
   if (s === 'on_my_way') return 'finishVisit';
   if (s === 'visit_completed') return 'send';
   if (s === 'sent' || s === 'viewed' || s === 'changes_requested') return 'approveDecline';
+  if (s === 'approved' || s === 'signed') return 'send';
+  if (s === 'declined') return 'send';
+
   return 'send';
 }
 
-const PRIMARY_BTN = 'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors';
-const SECONDARY_BTN = 'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors';
+const PRIMARY_BTN =
+  'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-sm transition-colors';
 
-function ActionButtonsBlock({ estimate, omwActive, onSchedule, onOMW, onStopOMW, onFinishVisit, onSend, onApproveDecline }) {
+const SECONDARY_BTN =
+  'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors';
+
+const ACTIVE_OMW_BTN =
+  'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors';
+
+function ActionButtonsBlock({
+  estimate,
+  omwActive,
+  onSchedule,
+  onOMW,
+  onStopOMW,
+  onFinishVisit,
+  onSend,
+  onApproveDecline
+}) {
   const primary = getPrimaryAction(estimate, omwActive);
+
+  const actions = [
+    {
+      id: 'schedule',
+      label: 'Schedule',
+      icon: Calendar,
+      onClick: onSchedule,
+    },
+    {
+      id: omwActive ? 'stopOmw' : 'omw',
+      label: omwActive ? 'Stop OMW' : 'On My Way',
+      icon: Navigation2,
+      onClick: omwActive ? onStopOMW : onOMW,
+      active: omwActive,
+    },
+    {
+      id: 'finishVisit',
+      label: 'Finish Visit',
+      icon: CheckSquare,
+      onClick: onFinishVisit,
+    },
+    {
+      id: 'send',
+      label: 'Review & Send',
+      icon: Send,
+      onClick: onSend,
+    },
+    {
+      id: 'approveDecline',
+      label: 'Approve / Decline',
+      icon: ThumbsUp,
+      onClick: onApproveDecline,
+    },
+  ];
+
+  const sortedActions = [
+    ...actions.filter(action => action.id === primary),
+    ...actions.filter(action => action.id !== primary),
+  ];
 
   return (
     <div className="px-3 pb-3 pt-2.5 space-y-1.5 flex-1 flex flex-col">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pt-0.5 pb-1">Actions</p>
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pt-0.5 pb-1">
+        Actions
+      </p>
 
-      {/* Schedule */}
-      <button onClick={onSchedule} className={primary === 'schedule' ? PRIMARY_BTN : SECONDARY_BTN}>
-        <Calendar className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
-        Schedule
-      </button>
+      {sortedActions.map((action, index) => {
+        const Icon = action.icon;
+        const isPrimary = action.id === primary;
 
-      {/* On My Way / Stop OMW */}
-      <button
-        onClick={omwActive ? onStopOMW : onOMW}
-        className={
-          primary === 'omw' || primary === 'stopOmw'
-            ? PRIMARY_BTN
-            : omwActive
-              ? 'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors'
-              : SECONDARY_BTN
-        }
-      >
-        <Navigation2 className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
-        {omwActive ? 'Stop OMW' : 'On My Way'}
-        {omwActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />}
-      </button>
+        const className = isPrimary
+          ? PRIMARY_BTN
+          : action.active
+            ? ACTIVE_OMW_BTN
+            : SECONDARY_BTN;
 
-      {/* Finish Visit */}
-      <button onClick={onFinishVisit} className={primary === 'finishVisit' ? PRIMARY_BTN : SECONDARY_BTN}>
-        <CheckSquare className={`w-3.5 h-3.5 flex-shrink-0 ${primary === 'finishVisit' ? 'opacity-90' : 'text-emerald-500'}`} />
-        Finish Visit
-      </button>
+        return (
+          <React.Fragment key={action.id}>
+            {index === 1 && (
+              <div className="h-px bg-slate-100 my-0.5" />
+            )}
 
-      <div className="h-px bg-slate-100 my-0.5" />
+            <button onClick={action.onClick} className={className}>
+              <Icon className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
+              <span className="truncate">{action.label}</span>
 
-      {/* Review & Send */}
-      <button onClick={onSend} className={primary === 'send' ? PRIMARY_BTN : SECONDARY_BTN}>
-        <Send className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
-        Review &amp; Send
-      </button>
-
-      {/* Approve / Decline */}
-      <button onClick={onApproveDecline} className={primary === 'approveDecline' ? PRIMARY_BTN : SECONDARY_BTN}>
-        <ThumbsUp className={`w-3.5 h-3.5 flex-shrink-0 ${primary === 'approveDecline' ? 'opacity-90' : 'text-emerald-500'}`} />
-        Approve / Decline
-      </button>
+              {action.active && (
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+              )}
+            </button>
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }
