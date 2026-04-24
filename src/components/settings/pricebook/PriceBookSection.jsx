@@ -1,9 +1,17 @@
-// truncated for clarity modifications only
+import React, { useState, useEffect } from 'react';
 import { runPriceBookIntelligence } from '@/agent/agent';
 import PriceBookSuggestionsPanel from './PriceBookSuggestionsPanel';
+import { loadPriceBook, loadServices } from '@/lib/servicePersistence';
 
 export default function PriceBookSection() {
+  const [entries, setEntries] = useState([]);
+  const [services, setServices] = useState([]);
   const [brainResult, setBrainResult] = useState(null);
+
+  useEffect(() => {
+    loadPriceBook().then(setEntries).catch(() => {});
+    loadServices().then(setServices).catch(() => {});
+  }, []);
 
   const runBrain = async () => {
     const result = await runPriceBookIntelligence(entries, services);
