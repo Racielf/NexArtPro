@@ -52,7 +52,7 @@ async function logDocument(estimateId, estimate, action, extra = {}) {
   });
 }
 
-export default function EstimateSendReview({ estimate, open, onClose, onSent }) {
+export default function EstimateSendReview({ estimate, open, onClose, onSent, onFixAllPricing }) {
    const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
    const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'clean');
    const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
@@ -307,6 +307,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent }) 
         open={lossModalOpen}
         onClose={() => setLossModalOpen(false)}
         onProceed={handleProceedAfterPricingWarning}
+        onFixAllPricing={onFixAllPricing}
         lossItems={lossValidation.lossItems}
         zeroProfitItems={lossValidation.zeroProfitItems}
         materialsWithoutCost={lossValidation.materialsWithoutCost}

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, XCircle, AlertCircle } from 'lucide-react';
 
-export default function LossPreventionModal({ open, onClose, onProceed, lossItems = [], zeroProfitItems = [], materialsWithoutCost = [] }) {
+export default function LossPreventionModal({ open, onClose, onProceed, onFixAllPricing, lossItems = [], zeroProfitItems = [], materialsWithoutCost = [] }) {
   const hasLoss = lossItems.length > 0;
   const hasMissingCost = materialsWithoutCost.length > 0;
   const totalLoss = lossItems.reduce((sum, i) => sum + (i.loss_per_unit * i.quantity), 0);
@@ -108,18 +108,29 @@ export default function LossPreventionModal({ open, onClose, onProceed, lossItem
           )}
         </div>
 
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
-            {hasLoss ? 'Review Pricing' : 'Review Items'}
-          </Button>
-          {onProceed && (
+        <div className="flex flex-col gap-2 pt-2">
+          {onFixAllPricing && (
             <Button
-              className={`flex-1 text-white ${hasLoss ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'}`}
-              onClick={onProceed}
+              variant="outline"
+              className="w-full border-amber-200 text-amber-700 hover:bg-amber-50"
+              onClick={() => { onFixAllPricing(); onClose(); }}
             >
-              {hasLoss ? 'Send Anyway' : 'Confirm & Continue'}
+              Fix all before sending
             </Button>
           )}
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={onClose}>
+              {hasLoss ? 'Review Pricing' : 'Review Items'}
+            </Button>
+            {onProceed && (
+              <Button
+                className={`flex-1 text-white ${hasLoss ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'}`}
+                onClick={onProceed}
+              >
+                {hasLoss ? 'Send Anyway' : 'Confirm & Continue'}
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

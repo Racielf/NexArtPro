@@ -43,6 +43,7 @@ export default function EstimateEditor() {
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthResult, setHealthResult] = useState(null);
   const [pricingInsight, setPricingInsight] = useState(null);
+  const estimateGroupsRef = React.useRef(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
@@ -407,14 +408,14 @@ export default function EstimateEditor() {
             </button>
           </div>
 
-          <EstimateGroups estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
+          <EstimateGroups ref={estimateGroupsRef} estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
 
           {!isPreview && estimate?.id && <div className="mt-3"><PricingAuditHistory documentId={estimate.id} /></div>}
         </div>
       </div>
 
       <EstimatePreviewModal estimate={estimate} open={showPreviewModal} onClose={() => setShowPreviewModal(false)} onSend={() => setShowSendModal(true)} />
-      {showSendModal && <EstimateSendReview estimate={estimate} open={showSendModal} onClose={() => setShowSendModal(false)} onSent={() => { loadEstimate(); setShowSendModal(false); }} />}
+      {showSendModal && <EstimateSendReview estimate={estimate} open={showSendModal} onClose={() => setShowSendModal(false)} onSent={() => { loadEstimate(); setShowSendModal(false); }} onFixAllPricing={() => { estimateGroupsRef.current?.applyAllPricingFixes?.(); }} />}
       <EstimateDocumentOptions open={showDocumentOptions} onClose={() => setShowDocumentOptions(false)} options={estimate.document_config?.options} onSave={handleDocumentOptionsSave} language={estimate.document_language || 'en'} onLanguageChange={handleLanguageChange} />
       <NewProposalCustomerModal open={showNewCustomerModal || (isNew && !hasClient && !dismissedCustomerModal)} onOpenChange={(v) => { setShowNewCustomerModal(v); if (!v) setDismissedCustomerModal(true); }} onCustomerSelected={async (client) => { const customerData = { client_id: client.id || '', client_name: client.full_name || '', client_email: client.email || '', client_phone: client.phone || '', client_address: [client.address, client.city, client.state].filter(Boolean).join(', ') }; await handleCustomerChange(customerData, client); setShowNewCustomerModal(false); }} />
       {showDiscardConfirm && (
