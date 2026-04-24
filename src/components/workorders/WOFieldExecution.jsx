@@ -21,11 +21,27 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
   const [savingNote, setSavingNote] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [checkedInAt, setCheckedInAt] = useState(workOrder?.checked_in_at || null);
+  const [checkingIn, setCheckingIn] = useState(false);
   const fileRef = useRef();
 
   React.useEffect(() => {
     loadPhotos();
   }, [workOrderId]);
+
+  const handleCheckIn = async () => {
+    if (checkedInAt || checkingIn) return;
+    setCheckingIn(true);
+    const now = new Date().toISOString();
+    await base44.entities.WorkOrder.update(workOrderId, {
+      checked_in_at: now,
+      checked_in_by: 'Field Staff',
+      field_status: 'checked_in',
+    });
+    setCheckedInAt(now);
+    setCheckingIn(false);
+    toast.success('Checked in on site');
+  };
 
   const loadPhotos = async () => {
     const data = await base44.entities.ProjectPhoto.filter({ work_order_id: workOrderId });
@@ -146,6 +162,28 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
 
   return (
     <div className="space-y-5">
+      {/* ── FIELD CHECK-IN ── */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-slate-900">Field Check-In</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {checkedInAt
+                ? `Checked in ${new Date(checkedInAt).toLocaleString()}`
+                : 'Register arrival before starting field execution'}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleCheckIn}
+            disabled={!!checkedInAt || checkingIn}
+            className={checkedInAt ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-slate-900 hover:bg-black text-white'}
+          >
+            {checkedInAt ? 'Checked In' : checkingIn ? 'Checking In…' : 'Check In'}
+          </Button>
+        </div>
+      </div>
+
       {/* ── EXECUTION CHECKLIST ── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
