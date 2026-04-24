@@ -183,6 +183,7 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
   };
 
   const completedCount = checklist.filter(c => c.completed).length;
+  const isChecklistLocked = !checkedInAt || beforePhotos.length === 0;
   const checklistProgress = checklist.length > 0 ? Math.round((completedCount / checklist.length) * 100) : 0;
 
   return (
@@ -282,11 +283,19 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
           </div>
 
           {/* Checklist items */}
-          <div className="space-y-2">
+          {isChecklistLocked && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 font-medium">
+              Upload at least one Before Photo to unlock task execution.
+            </div>
+          )}
+          <div className={`space-y-2 ${isChecklistLocked ? 'opacity-50 pointer-events-none' : ''}`}>
             {checklist.map(item => (
               <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50">
                 <button
-                  onClick={() => toggleChecklistItem(item.id)}
+                  onClick={() => {
+                    if (isChecklistLocked) return;
+                    toggleChecklistItem(item.id);
+                  }}
                   className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                     item.completed
                       ? 'bg-green-500 border-green-500'
