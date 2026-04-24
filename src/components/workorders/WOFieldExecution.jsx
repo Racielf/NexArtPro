@@ -20,10 +20,13 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
   const [newChecklistIsExtra, setNewChecklistIsExtra] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const [photos, setPhotos] = useState([]);
+  const [beforePhotos, setBeforePhotos] = useState([]);
+  const [uploadingBefore, setUploadingBefore] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [checkedInAt, setCheckedInAt] = useState(workOrder?.checked_in_at || null);
   const [checkingIn, setCheckingIn] = useState(false);
   const fileRef = useRef();
+  const beforeFileRef = useRef();
 
   React.useEffect(() => {
     loadPhotos();
@@ -45,7 +48,9 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
 
   const loadPhotos = async () => {
     const data = await base44.entities.ProjectPhoto.filter({ work_order_id: workOrderId });
-    setPhotos(data || []);
+    const allPhotos = data || [];
+    setBeforePhotos(allPhotos.filter(p => p.phase === 'before'));
+    setPhotos(allPhotos.filter(p => p.phase !== 'before'));
   };
 
   // Initialize checklist on first render if empty
@@ -130,6 +135,26 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
     toast.success('Checklist item added');
   };
 
+  const handleBeforePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBefore(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    await base44.entities.ProjectPhoto.create({
+      photo_url: file_url,
+      phase: 'before',
+      work_order_id: workOrderId,
+      work_order_number: workOrder?.work_order_number,
+      customer_name: workOrder?.client_name,
+      taken_by: 'Field Staff',
+      caption: 'Before photo',
+    });
+    toast.success('Before photo uploaded');
+    setUploadingBefore(false);
+    e.target.value = '';
+    loadPhotos();
+  };
+
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -181,6 +206,52 @@ export default function WOFieldExecution({ workOrder, workOrderId, onUpdate }) {
           >
             {checkedInAt ? 'Checked In' : checkingIn ? 'Checking In…' : 'Check In'}
           </Button>
+        </div>
+      </div>
+
+      {/* ── BEFORE PHOTOS ── */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Camera className="w-4 h-4 text-primary" />
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Before Photos</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Capture the job condition before work starts</p>
+            </div>
+            {beforePhotos.length > 0 && (
+              <span className="text-xs bg-slate-100 text-slate-600 rounded-full px-2 py-0.5 font-medium">{beforePhotos.length}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => beforeFileRef.current?.click()} disabled={!checkedInAt || uploadingBefore}>
+              {uploadingBefore ? 'Uploading…' : 'Upload Before'}
+            </Button>
+            <input ref={beforeFileRef} type="file" accept="image/*" className="hidden" onChange={handleBeforePhotoUpload} />
+          </div>
+        </div>
+        <div className="px-6 py-5">
+          {!checkedInAt ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+              Check in first to unlock before photos.
+            </div>
+          ) : beforePhotos.length === 0 ? (
+            <div
+              className="border-2 border-dashed border-slate-200 rounded-lg py-8 flex flex-col items-center text-slate-400 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors"
+              onClick={() => beforeFileRef.current?.click()}
+            >
+              <Camera className="w-7 h-7 mb-2" />
+              <p className="text-sm font-medium">Upload before photos</p>
+              <p className="text-xs mt-0.5">Recommended before starting work</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {beforePhotos.map(p => (
+                <div key={p.id} className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                  <img src={p.photo_url} alt="Before photo" className="w-full h-28 object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
