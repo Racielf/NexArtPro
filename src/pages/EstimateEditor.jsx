@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Trash2, Send, ChevronRight, ChevronDown, ClipboardList, FileText, ShieldCheck } from 'lucide-react';
+import { X, Eye, Trash2, Send, ChevronRight, ChevronDown, ClipboardList, FileText, ShieldCheck, BrainCircuit } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import SaveStateIndicator from '@/components/shared/SaveStateIndicator';
@@ -43,6 +43,7 @@ export default function EstimateEditor() {
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthResult, setHealthResult] = useState(null);
   const [pricingInsight, setPricingInsight] = useState(null);
+  const [showBrainPanel, setShowBrainPanel] = useState(false);
   const estimateGroupsRef = React.useRef(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
@@ -259,6 +260,8 @@ export default function EstimateEditor() {
     converted:         { label: 'Converted', cls: 'bg-teal-700 text-white' },
   };
   const statusBadge = STATUS_BADGE[estimate.status] || STATUS_BADGE.draft;
+  const brainInsightCount = pricingInsight?.flaggedItems?.length || 0;
+  const hasBrainInsights = brainInsightCount > 0;
 
   return (
     <div className="fixed inset-0 bg-slate-100 flex flex-col z-50 font-inter">
@@ -278,6 +281,23 @@ export default function EstimateEditor() {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setShowBrainPanel(true)}
+              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold transition-colors ${
+                hasBrainInsights
+                  ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+                  : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+              }`}
+              title={hasBrainInsights ? `${brainInsightCount} pricing insight(s) available` : 'No active AI insights'}
+            >
+              <BrainCircuit className="w-3.5 h-3.5" />
+              AI Insights
+              <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
+                hasBrainInsights ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-400'
+              }`}>
+                {brainInsightCount}
+              </span>
+            </button>
             <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
             <div className="w-px h-5 bg-slate-200" />
             {import.meta.env.DEV && (
@@ -413,6 +433,80 @@ export default function EstimateEditor() {
           {!isPreview && estimate?.id && <div className="mt-3"><PricingAuditHistory documentId={estimate.id} /></div>}
         </div>
       </div>
+
+      {showBrainPanel && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-lg mx-4 rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
+                  <BrainCircuit className="w-4 h-4 text-violet-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">AI Insights</p>
+                  <p className="text-xs text-slate-400">Estimate intelligence summary</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBrainPanel(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {pricingInsight ? (
+                <>
+                  <div className={`rounded-xl border px-4 py-3 ${hasBrainInsights ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{pricingInsight.summary}</p>
+                        <p className="text-xs text-slate-600 mt-1">{pricingInsight.nextAction}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-slate-900">{pricingInsight.score}</p>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500">{pricingInsight.level}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {hasBrainInsights ? (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pricing Suggestions</p>
+                      {pricingInsight.flaggedItems.map(item => (
+                        <div key={item.itemId} className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-800 truncate">{item.serviceName}</p>
+                              <p className="text-slate-500 mt-0.5">Current ${item.currentEstimatePrice} · Suggested ${item.suggestedCatalogPrice}</p>
+                            </div>
+                            <span className="rounded-full bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 font-semibold whitespace-nowrap">{item.deltaPercent}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                      <p className="text-sm font-semibold text-emerald-800">No active pricing issues detected.</p>
+                      <p className="text-xs text-emerald-600 mt-1">This estimate currently looks aligned with the Price Book intelligence.</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center">
+                  <BrainCircuit className="w-7 h-7 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-slate-700">AI Insights are loading</p>
+                  <p className="text-xs text-slate-400 mt-1">The estimate brain will analyze pricing once line items are available.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-slate-100 flex justify-end">
+              <button onClick={() => setShowBrainPanel(false)} className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <EstimatePreviewModal estimate={estimate} open={showPreviewModal} onClose={() => setShowPreviewModal(false)} onSend={() => setShowSendModal(true)} />
       {showSendModal && <EstimateSendReview estimate={estimate} open={showSendModal} onClose={() => setShowSendModal(false)} onSent={() => { loadEstimate(); setShowSendModal(false); }} onFixAllPricing={() => { estimateGroupsRef.current?.applyAllPricingFixes?.(); }} />}
