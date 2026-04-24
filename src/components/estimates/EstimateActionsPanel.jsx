@@ -199,47 +199,66 @@ function NextActionBlock({ estimate, omwActive }) {
 }
 
 // ── ActionButtonsBlock ────────────────────────────────────────────────────────
+// Determines which button is the "primary" action based on estimate status
+function getPrimaryAction(estimate, omwActive) {
+  const s = estimate?.status;
+  if (!s || s === 'draft') return 'schedule';
+  if (s === 'scheduled') return omwActive ? 'stopOmw' : 'omw';
+  if (s === 'on_my_way') return 'finishVisit';
+  if (s === 'visit_completed') return 'send';
+  if (s === 'sent' || s === 'viewed' || s === 'changes_requested') return 'approveDecline';
+  return 'send';
+}
+
+const PRIMARY_BTN = 'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors';
+const SECONDARY_BTN = 'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors';
+
 function ActionButtonsBlock({ estimate, omwActive, onSchedule, onOMW, onStopOMW, onFinishVisit, onSend, onApproveDecline }) {
+  const primary = getPrimaryAction(estimate, omwActive);
+
   return (
     <div className="px-3 pb-3 pt-2.5 space-y-1.5 flex-1 flex flex-col">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pt-0.5 pb-0.5">Actions</p>
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pt-0.5 pb-1">Actions</p>
 
-      <button onClick={onSchedule}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm">
-        <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+      {/* Schedule */}
+      <button onClick={onSchedule} className={primary === 'schedule' ? PRIMARY_BTN : SECONDARY_BTN}>
+        <Calendar className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
         Schedule
       </button>
 
-      <button onClick={omwActive ? onStopOMW : onOMW}
-        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-colors shadow-sm ${
-          omwActive
-            ? 'bg-amber-50 border-amber-200 hover:bg-amber-100 text-amber-800'
-            : 'bg-amber-50 border-amber-100 hover:bg-amber-100 text-amber-900'
-        }`}>
-        <Navigation2 className="w-3.5 h-3.5 flex-shrink-0" />
+      {/* On My Way / Stop OMW */}
+      <button
+        onClick={omwActive ? onStopOMW : onOMW}
+        className={
+          primary === 'omw' || primary === 'stopOmw'
+            ? PRIMARY_BTN
+            : omwActive
+              ? 'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors'
+              : SECONDARY_BTN
+        }
+      >
+        <Navigation2 className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
         {omwActive ? 'Stop OMW' : 'On My Way'}
-        {omwActive && <span className="ml-auto w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+        {omwActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />}
       </button>
 
-      <button onClick={onFinishVisit}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
-        <CheckSquare className="w-3.5 h-3.5 flex-shrink-0 text-emerald-500" />
+      {/* Finish Visit */}
+      <button onClick={onFinishVisit} className={primary === 'finishVisit' ? PRIMARY_BTN : SECONDARY_BTN}>
+        <CheckSquare className={`w-3.5 h-3.5 flex-shrink-0 ${primary === 'finishVisit' ? 'opacity-90' : 'text-emerald-500'}`} />
         Finish Visit
       </button>
 
-      <div className="py-0.5">
-        <div className="h-px bg-slate-100" />
-      </div>
+      <div className="h-px bg-slate-100 my-0.5" />
 
-      <button onClick={onSend}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-black text-white transition-colors shadow-sm">
-        <Send className="w-3.5 h-3.5 flex-shrink-0" />
+      {/* Review & Send */}
+      <button onClick={onSend} className={primary === 'send' ? PRIMARY_BTN : SECONDARY_BTN}>
+        <Send className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
         Review &amp; Send
       </button>
 
-      <button onClick={onApproveDecline}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
-        <ThumbsUp className="w-3.5 h-3.5 flex-shrink-0 text-emerald-500" />
+      {/* Approve / Decline */}
+      <button onClick={onApproveDecline} className={primary === 'approveDecline' ? PRIMARY_BTN : SECONDARY_BTN}>
+        <ThumbsUp className={`w-3.5 h-3.5 flex-shrink-0 ${primary === 'approveDecline' ? 'opacity-90' : 'text-emerald-500'}`} />
         Approve / Decline
       </button>
     </div>
