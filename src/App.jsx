@@ -46,10 +46,7 @@ import ProposalEditor from './pages/ProposalEditor';
 import PublicProposalView from './pages/PublicProposalView';
 import ClientPortal from './pages/ClientPortal';
 import RecoveryCenter from './pages/RecoveryCenter';
-import SecurityDashboard from './pages/SecurityDashboard';
-// ClientDocumentView removed — document_token flow was never wired.
-// Proposals → /proposal-view?id=  |  Estimates → /client-estimate?id=
-
+import SecurityDashboardWithBrain from './pages/SecurityDashboardWithBrain';
 
 const ProtectedRoute = ({ children }) => {
   const { isLoadingAuth, isAuthenticated } = useAuth();
@@ -62,13 +59,11 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  // Accept base44 real auth OR legacy local_auth
   const localAuth = sessionStorage.getItem('local_auth') === 'true';
   if (!isAuthenticated && !localAuth) {
     return <Navigate to="/team-access" replace />;
   }
 
-  // Mark session so other components know auth is active
   if (isAuthenticated) {
     sessionStorage.setItem('base44_authenticated', 'true');
   }
@@ -77,7 +72,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
@@ -91,7 +86,6 @@ const AuthenticatedApp = () => {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Only redirect if no local_auth fallback
       const localAuth = sessionStorage.getItem('local_auth') === 'true';
       if (!localAuth) {
         return <Navigate to="/team-access" replace />;
@@ -137,8 +131,7 @@ const AuthenticatedApp = () => {
         <Route path="/proposal-editor" element={<ProposalEditor />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/recovery-center" element={<RecoveryCenter />} />
-        <Route path="/security-dashboard" element={<SecurityDashboard />} />
-
+        <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
       </Route>
       <Route path="/client-estimate" element={<ClientEstimateView />} />
       <Route path="/proposal-view" element={<PublicProposalView />} />
@@ -158,7 +151,7 @@ function App() {
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>
-  )
+  );
 }
 
 export default App
