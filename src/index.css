@@ -88,3 +88,50 @@
     @apply bg-background text-foreground font-inter;
   }
 }
+
+@layer components {
+  /* Estimate editor actions panel polish.
+     Scoped to the editor shell and the current panel signature so business logic remains untouched. */
+  .font-inter > .flex.flex-1 > div[class*="w-48"][class*="rounded-xl"][class*="border-slate-100"] {
+    width: 14rem;
+  }
+
+  @media (min-width: 1280px) {
+    .font-inter > .flex.flex-1 > div[class*="w-48"][class*="rounded-xl"][class*="border-slate-100"] {
+      width: 15rem;
+    }
+  }
+
+  .font-inter > .flex.flex-1 > div[class*="w-48"][class*="rounded-xl"][class*="border-slate-100"] > div:first-child {
+    padding-top: 1rem;
+    padding-bottom: 0.875rem;
+  }
+
+  .font-inter > .flex.flex-1 > div[class*="w-48"][class*="rounded-xl"][class*="border-slate-100"] > div:first-child p:nth-child(2) {
+    font-size: 1.625rem;
+    line-height: 1;
+    margin-bottom: 0.625rem;
+  }
+
+  .font-inter > .flex.flex-1 > div[class*="w-48"][class*="rounded-xl"][class*="border-slate-100"] > div:nth-child(2) {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+
+  .font-inter > .flex.flex-1 > div[class*="w-48"][class*="rounded-xl"][class*="border-slate-100"] > div:nth-child(2) > div {
+    row-gap: 0.625rem;
+  }
+
+  .font-inter > .flex.flex-1 > div[class*="w-48"][class*="rounded-xl"][class*="border-slate-100"] > div:nth-child(3) {
+    margin-left: 0.875rem;
+    margin-right: 0.875rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    background: rgb(248 250 252 / 0.9);
+  }
+
+  .font-inter > .flex.flex-1 > div[class*="w-48"][class*="rounded-xl"][class*="border-slate-100"] > div:nth-child(4) button:not(:first-of-type) {
+    font-weight: 600;
+    color: rgb(71 85 105);
+  }
+}
