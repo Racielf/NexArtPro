@@ -185,8 +185,15 @@ function NextActionBlock({ estimate, omwActive }) {
     green:  'border-emerald-200', orange: 'border-amber-200',
     red:    'border-red-200',     purple: 'border-violet-200', blue: 'border-blue-200',
   };
+  const bgColor = {
+    green:  'bg-emerald-50/70',
+    orange: 'bg-amber-50/70',
+    red:    'bg-red-50/70',
+    purple: 'bg-violet-50/70',
+    blue:   'bg-blue-50/70',
+  };
   return (
-    <div className={`mx-3 mt-3 mb-1 rounded-xl border px-3 py-3 flex items-start gap-2.5 ${borderColor[next.color] || 'border-blue-200'} bg-emerald-50/60`}>
+    <div className={`mx-3 mt-3 mb-1 rounded-xl border px-3 py-3 flex items-start gap-2.5 ${borderColor[next.color] || 'border-blue-200'} ${bgColor[next.color] || 'bg-blue-50/70'}`}>
     <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${iconBg[next.color] || 'bg-blue-100'}`}>
       <next.icon className={`w-3.5 h-3.5 ${iconColor[next.color] || 'text-blue-600'}`} />
     </div>
@@ -555,7 +562,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   };
 
   return (
-    <div className="w-48 flex-shrink-0 flex flex-col overflow-y-auto min-h-0 bg-white rounded-xl border border-slate-100 mx-0" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
+    <div className="w-56 xl:w-60 flex-shrink-0 flex flex-col overflow-y-auto min-h-0 bg-white rounded-xl border border-slate-100 mx-0" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
 
       <EstimateSummaryBlock estimate={estimate} />
 
