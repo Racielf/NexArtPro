@@ -103,10 +103,17 @@ export default function Estimates() {
     const { estimate: est } = archiveModal;
     setArchiveModal({ open: false, estimate: null });
     if (!est) return;
-    await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', est.id, actor, reason);
-    setEstimates(estimates.filter(e => e.id !== est.id));
-    setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
-    toast.success(`Estimate #${est.estimate_number} deleted`);
+
+    try {
+      await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', est.id, actor, reason);
+      setEstimates(prev => prev.filter(e => e.id !== est.id));
+      setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
+      toast.success(`Estimate #${est.estimate_number} deleted`);
+    } catch (err) {
+      console.error('[Estimates] Failed to delete estimate:', err?.message || err);
+      toast.error('Estimate was not deleted. Please refresh and try again.');
+      await loadData();
+    }
   };
 
   const toggleSelect = (id) => {
@@ -132,10 +139,17 @@ export default function Estimates() {
   const handleConfirmBulkArchive = async (reason) => {
     setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
-    await archiveManyWithSnapshot(base44.entities.Estimate, 'Estimate', idsArray, actor, reason);
-    setEstimates(estimates.filter(e => !selectedIds.has(e.id)));
-    setSelectedIds(new Set());
-    toast.success(`${idsArray.length} estimate(s) deleted`);
+
+    try {
+      await archiveManyWithSnapshot(base44.entities.Estimate, 'Estimate', idsArray, actor, reason);
+      setEstimates(prev => prev.filter(e => !idsArray.includes(e.id)));
+      setSelectedIds(new Set());
+      toast.success(`${idsArray.length} estimate(s) deleted`);
+    } catch (err) {
+      console.error('[Estimates] Failed to delete selected estimates:', err?.message || err);
+      toast.error('Selected estimates were not fully deleted. Please refresh and try again.');
+      await loadData();
+    }
   };
 
   return (
