@@ -1,8 +1,9 @@
 import React from 'react';
 import {
   Building2, FileText, Wrench, BookOpen,
-  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw, Activity, FlaskConical, Brain
+  ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw, Activity, FlaskConical, Brain, LayoutDashboard
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const BASE_SECTIONS = [
   { id: 'company',   label: 'Company',              icon: Building2 },
@@ -19,12 +20,14 @@ const BASE_SECTIONS = [
 ];
 
 const ADMIN_SECTIONS = [
-  { id: 'recovery',    label: 'Recovery Center',    icon: RotateCcw,     adminOnly: true },
-  { id: 'security',    label: 'Security Log',       icon: Activity,      adminOnly: true },
-  { id: 'agent_tests', label: 'Agent Test Runner',  icon: FlaskConical,  adminOnly: true },
+  { id: 'recovery',    label: 'Recovery Center',    icon: RotateCcw,        adminOnly: true },
+  { id: 'security',    label: 'Security Log',       icon: Activity,         adminOnly: true },
+  { id: 'agent_tests', label: 'Agent Test Runner',  icon: FlaskConical,     adminOnly: true },
+  { id: 'sec_dashboard_link', label: 'Security Dashboard ↗', icon: LayoutDashboard, adminOnly: true, isLink: '/security-dashboard' },
 ];
 
 export default function SettingsSidebar({ active, onChange, userRole }) {
+  const navigate = useNavigate();
   const sections = userRole === 'admin'
     ? [...BASE_SECTIONS, ...ADMIN_SECTIONS]
     : BASE_SECTIONS;
@@ -34,6 +37,18 @@ export default function SettingsSidebar({ active, onChange, userRole }) {
         {sections.map((s) => {
           const Icon = s.icon;
           const isActive = active === s.id;
+          if (s.isLink) {
+            return (
+              <button
+                key={s.id}
+                onClick={() => navigate(s.isLink)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                {s.label}
+              </button>
+            );
+          }
           return (
             <button
               key={s.id}
