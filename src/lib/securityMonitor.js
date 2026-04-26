@@ -10,6 +10,21 @@ import { sendSecurityAlertIfNeeded } from '@/lib/securityAlertDispatch';
 
 const RECOVERY_SESSION_KEY = '_recovery_privileged_session';
 const RECOVERY_SESSION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+export const SECURITY_EVENT_BROWSER_EVENT = 'nextruct:security-event';
+
+function dispatchSecurityBrowserEvent(logEntry) {
+  try {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent(SECURITY_EVENT_BROWSER_EVENT, {
+      detail: {
+        ...logEntry,
+        emitted_at: new Date().toISOString(),
+      },
+    }));
+  } catch (err) {
+    console.warn('[securityMonitor] Failed to dispatch browser security event:', err?.message);
+  }
+}
 
 /**
  * Log a security event to AuthSecurityLog
@@ -19,28 +34,32 @@ export async function logSecurityEvent({
   success,
   user_identifier,
   user_id = null,
-  origin_path = window.location.pathname,
+  origin_path = typeof window !== 'undefined' ? window.location.pathname : '',
   reason = null,
   metadata_json = null,
 }) {
-  try {
-    const logEntry = {
-      event_type,
-      success,
-      user_identifier,
-      user_id,
-      origin_path,
-      reason,
-      metadata_json,
-    };
+  const logEntry = {
+    event_type,
+    success,
+    user_identifier,
+    user_id,
+    origin_path,
+    reason,
+    metadata_json,
+  };
 
-    await base44.entities.AuthSecurityLog.create(logEntry);
+  try {
+    const created = await base44.entities.AuthSecurityLog.create(logEntry);
+    const emittedEntry = { ...logEntry, id: created?.id, created_date: created?.created_date || new Date().toISOString() };
+
+    // Instant in-app notification for same-tab/session listeners.
+    dispatchSecurityBrowserEvent(emittedEntry);
 
     // Attempt to send alert if this is a security-relevant event
     // (async, non-blocking)
     if (event_type && user_identifier) {
       setTimeout(() => {
-        sendSecurityAlertIfNeeded(logEntry, {
+        sendSecurityAlertIfNeeded(emittedEntry, {
           threshold_info: metadata_json?.actual ? `${metadata_json.actual} attempts in window` : null,
         }).catch(err => {
           console.error('[securityMonitor] Alert dispatch error:', err?.message);
@@ -79,7 +98,6 @@ export async function checkSuspiciousAttempts({
     });
 
     if (failedInWindow.length >= threshold) {
-      // Log suspicious activity
       await logSecurityEvent({
         event_type: 'suspicious_activity_detected',
         success: false,
@@ -121,7 +139,6 @@ export function hasValidRecoveryAccessSession() {
     const now = Date.now();
 
     if (now > session.expiresAt) {
-      // Session expired
       sessionStorage.removeItem(RECOVERY_SESSION_KEY);
       return false;
     }
