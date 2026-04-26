@@ -1,12 +1,5 @@
 /**
  * OtherCostsSection — Internal-only job-level cost entries.
- *
- * Tracks expenses not captured in line item unit_cost:
- * helper labor, gas, permits, dump fees, etc.
- *
- * Props:
- *   otherCosts — array of { id, name, amount, note }
- *   onChange   — (updated: array) => void
  */
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -58,7 +51,7 @@ function CostRow({ item, onUpdate, onRemove }) {
         />
       )}
 
-      <div className="relative flex-shrink-0">
+      <div className="relative flex-shrink-0" title="Internal cost only — not charged directly to the customer">
         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
         <Input
           type="number"
@@ -117,9 +110,9 @@ export default function OtherCostsSection({ otherCosts = [], onChange }) {
         <div className="flex items-center gap-2">
           {expanded ? <ChevronDown className="w-4 h-4 text-amber-600" /> : <ChevronRight className="w-4 h-4 text-amber-600" />}
           <DollarSign className="w-4 h-4 text-amber-600" />
-          <span className="text-sm font-bold text-amber-800">Other Costs</span>
+          <span className="text-sm font-bold text-amber-800">Internal Job Costs</span>
           <span className="text-[9px] font-bold uppercase tracking-wide text-amber-500 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded">
-            Internal only
+            Not billed directly
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs">
@@ -128,21 +121,19 @@ export default function OtherCostsSection({ otherCosts = [], onChange }) {
         </div>
       </button>
 
-      {/* Body */}
       {expanded && (
         <div className="px-5 py-4 space-y-2">
           {items.length === 0 && (
-            <p className="text-xs text-slate-400 text-center py-2">No additional costs — click below to add</p>
+            <p className="text-xs text-slate-400 text-center py-2">No internal costs — click below to add</p>
           )}
 
           {items.map(item => (
             <CostRow key={item.id} item={item} onUpdate={updateCost} onRemove={removeCost} />
           ))}
 
-          {/* Section Total Row */}
           {total > 0 && (
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-amber-200 bg-amber-50/60 -mx-5 px-5 pb-3 rounded-b">
-              <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">Other Costs Total</span>
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">Internal Costs Total</span>
               <span className="text-base font-bold text-amber-900 tabular-nums">
                 ${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
@@ -153,10 +144,9 @@ export default function OtherCostsSection({ otherCosts = [], onChange }) {
             <button
               type="button"
               onClick={addCost}
-              className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 hover:border-amber-200 transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Add cost
+              <Plus className="w-3.5 h-3.5" />Add internal cost
             </button>
           </div>
         </div>
