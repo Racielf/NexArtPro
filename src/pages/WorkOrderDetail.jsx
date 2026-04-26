@@ -102,6 +102,18 @@ export default function WorkOrderDetail() {
     updateTask(taskId, { status: nextStatus });
   };
 
+  const updateFieldExtraApproval = async (itemId, approvalStatus) => {
+    const currentChecklist = workOrder.execution_checklist || [];
+    const updatedChecklist = currentChecklist.map(item =>
+      item.id === itemId
+        ? { ...item, approval_status: approvalStatus, reviewed_by: 'Office', reviewed_at: new Date().toISOString() }
+        : item
+    );
+    await base44.entities.WorkOrder.update(id, { execution_checklist: updatedChecklist });
+    setWorkOrder(prev => ({ ...prev, execution_checklist: updatedChecklist }));
+    toast.success(approvalStatus === 'approved' ? 'Extra approved' : 'Extra rejected');
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
@@ -120,6 +132,8 @@ export default function WorkOrderDetail() {
   const groupItems = (workOrder.groups || []).flatMap(g => (g.items || []).map(normalizeLineItem));
   const flatItems = (workOrder.line_items || []).map(li => normalizeLineItem(li));
   const allItems = groupItems.length > 0 ? groupItems : flatItems;
+  const fieldExtras = (workOrder.execution_checklist || []).filter(item => item.type === 'extra');
+  const pendingFieldExtras = fieldExtras.filter(item => item.approval_status === 'pending_office_approval');
 
   return (
     <div className="min-h-screen bg-[#f0f2f5]">
@@ -455,9 +469,58 @@ export default function WorkOrderDetail() {
 
           <WOExpenses workOrderId={id} workOrderNumber={workOrder.work_order_number} />
 
+          {fieldExtras.length > 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">Field Extras Approval</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Review extra work added from the field</p>
+                </div>
+                {pendingFieldExtras.length > 0 && (
+                  <span className="text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5">
+                    {pendingFieldExtras.length} pending
+                  </span>
+                )}
+              </div>
+              <div className="px-6 py-5 space-y-3">
+                {fieldExtras.map(extra => (
+                  <div key={extra.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{extra.item}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Added by {extra.created_by || 'Field Staff'}
+                        {extra.created_at ? ` · ${new Date(extra.created_at).toLocaleString()}` : ''}
+                      </p>
+                      <span className={`inline-flex mt-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                        extra.approval_status === 'approved'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : extra.approval_status === 'rejected'
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        {extra.approval_status === 'approved' ? 'Approved' : extra.approval_status === 'rejected' ? 'Rejected' : 'Pending office approval'}
+                      </span>
+                    </div>
+                    {extra.approval_status === 'pending_office_approval' && (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateFieldExtraApproval(extra.id, 'approved')}>
+                          Approve
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => updateFieldExtraApproval(extra.id, 'rejected')}>
+                          Reject
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <WOFieldExecution
             workOrder={workOrder}
             workOrderId={id}
+            onUpdate={loadWorkOrder}
           />
 
           <WOReceipts
