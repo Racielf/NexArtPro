@@ -1,8 +1,7 @@
 /**
  * estimateSalesLifecycle.js
  * 
- * Phase 2+3 lifecycle: draft → sent → viewed → approved/declined
- * Only 5 allowed statuses. Only 8 allowed tracking fields.
+ * Phase 2+3 lifecycle: draft to sent to viewed to approved/declined
  */
 
 import { base44 } from '@/api/base44Client';
@@ -43,9 +42,6 @@ function resolveClientAttachmentsForSnapshot(estimate, documentConfig) {
     }));
 }
 
-/**
- * Mark estimate as sent + create immutable snapshot.
- */
 export async function markEstimateSent(estimateId, { documentConfig, estimate, currentUser } = {}) {
   const ts = now();
   const currentCount = estimate?.follow_up_count || 0;
@@ -59,7 +55,6 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
     document_config: resolvedDocumentConfig,
   };
   
-  // Create immutable snapshot
   try {
     await base44.entities.EstimateSnapshot.create({
       estimate_id: estimateId,
@@ -86,10 +81,6 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
   return payload;
 }
 
-/**
- * Mark estimate as viewed by client.
- * Only transitions from sent → viewed.
- */
 export async function markEstimateViewed(estimateId, currentEstimate) {
   const ts = now();
   
@@ -105,25 +96,24 @@ export async function markEstimateViewed(estimateId, currentEstimate) {
   return payload;
 }
 
-/**
- * Approve estimate.
- */
-export async function approveEstimate(estimateId, { approvedBy, estimate } = {}) {
+export async function approveEstimate(estimateId, { approvedBy, estimate, signatureName, termsAccepted = false } = {}) {
   const ts = now();
+  const signer = (signatureName || approvedBy || estimate?.client_name || '').trim();
   
   const payload = {
     status: 'approved',
     approved_at: ts,
-    accepted_by: approvedBy,
+    signed_at: ts,
+    accepted_by: signer,
+    signature_name: signer,
+    signature_method: 'typed_name',
+    terms_accepted: termsAccepted === true,
   };
   
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
 
-/**
- * Decline estimate.
- */
 export async function declineEstimate(estimateId, { declinedReason } = {}) {
   const ts = now();
   
