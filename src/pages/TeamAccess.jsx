@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import PublicHeader from '@/components/layout/PublicHeader';
 import PublicFooter from '@/components/layout/PublicFooter';
 import { ShieldCheck, X } from 'lucide-react';
 import { authenticate } from '@/lib/userStore';
+import { getDefaultRouteForRole, normalizeLocalRole } from '@/lib/roleUtils';
 
 const GATE_KEY = 'team_access_granted';
 const GATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -38,7 +39,7 @@ export function clearTeamAccessGrant() {
 }
 
 export default function TeamAccess() {
-  const { isAuthenticated, isLoadingAuth, navigateToLogin } = useAuth();
+  const { isLoadingAuth } = useAuth();
   const navigate = useNavigate();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -46,7 +47,7 @@ export default function TeamAccess() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [loginRole, setLoginRole] = useState('agent');
+  const [loginRole, setLoginRole] = useState('field_agent');
   const [loginError, setLoginError] = useState('');
   const [loginSubmitting, setLoginSubmitting] = useState(false);
 
@@ -61,8 +62,6 @@ export default function TeamAccess() {
       </div>
     );
   }
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -103,6 +102,45 @@ export default function TeamAccess() {
       setShowLoginModal(true);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCredentialLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    if (!loginEmail.trim() || !loginPassword.trim()) {
+      setLoginError('Email and password are required');
+      return;
+    }
+
+    setLoginSubmitting(true);
+    try {
+      const result = await authenticate(loginEmail.trim(), loginPassword.trim());
+      if (!result.ok) {
+        setLoginError(result.error);
+        return;
+      }
+
+      const actualRole = normalizeLocalRole(result.user?.role);
+      const selectedRole = normalizeLocalRole(loginRole);
+
+      if (actualRole !== selectedRole) {
+        setLoginError(`Role mismatch — this account is registered as ${actualRole || 'unknown'}`);
+        return;
+      }
+
+      sessionStorage.setItem('user_role', actualRole);
+      sessionStorage.setItem('local_auth', 'true');
+      if (result.user?.id) sessionStorage.setItem('local_user_id', result.user.id);
+      if (result.user?.username) sessionStorage.setItem('local_username', result.user.username);
+      if (result.user?.display_name) sessionStorage.setItem('local_display_name', result.user.display_name);
+
+      setShowLoginModal(false);
+      navigate(getDefaultRouteForRole(actualRole), { replace: true });
+    } catch (err) {
+      setLoginError('Connection error — try again');
+    } finally {
+      setLoginSubmitting(false);
     }
   };
 
@@ -158,40 +196,10 @@ export default function TeamAccess() {
             <div className="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 mb-4">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Temporary Credentials</p>
               <p className="text-xs text-slate-300"><span className="text-slate-500">Admin:</span> admin / admin</p>
-              <p className="text-xs text-slate-300"><span className="text-slate-500">Agent:</span> agent1 / admin</p>
+              <p className="text-xs text-slate-300"><span className="text-slate-500">Field:</span> agent1 / admin</p>
             </div>
 
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setLoginError('');
-                if (!loginEmail.trim() || !loginPassword.trim()) {
-                  setLoginError('Email and password are required');
-                  return;
-                }
-                setLoginSubmitting(true);
-                try {
-                  const result = await authenticate(loginEmail.trim(), loginPassword.trim());
-                  if (result.ok && result.user.role !== loginRole) {
-                    setLoginError('Role mismatch — your account is not registered as ' + loginRole);
-                    return;
-                  }
-                  if (result.ok) {
-                    sessionStorage.setItem('user_role', result.user.role);
-                    sessionStorage.setItem('local_auth', 'true');
-                    setShowLoginModal(false);
-                    navigate('/dashboard', { replace: true });
-                  } else {
-                    setLoginError(result.error);
-                  }
-                } catch (err) {
-                  setLoginError('Connection error — try again');
-                } finally {
-                  setLoginSubmitting(false);
-                }
-              }}
-              className="space-y-3"
-            >
+            <form onSubmit={handleCredentialLogin} className="space-y-3">
               <input
                 type="text"
                 value={loginEmail}
@@ -213,7 +221,7 @@ export default function TeamAccess() {
                 className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
               >
                 <option value="admin">Admin</option>
-                <option value="agent">Agent</option>
+                <option value="field_agent">Field Agent</option>
               </select>
               {loginError && (
                 <p className="text-xs text-red-400 font-medium">{loginError}</p>
