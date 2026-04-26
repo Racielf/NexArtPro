@@ -36,6 +36,50 @@ const DEFAULT_VISIBILITY = {
   materialsSection: true,
 };
 
+function visibilityFromDocumentOptions(options = {}) {
+  return {
+    businessLogo: options.showBusinessLogo !== false,
+    businessName: options.showBusinessName !== false,
+    businessAddress: options.showBusinessAddress !== false,
+    estimateNumber: options.showEstimateNumber !== false,
+    estimateName: options.showEstimateName !== false,
+    estimateMessage: options.showNotes !== false,
+    customerName: options.showCustomerName !== false,
+    estimateDate: options.showDocumentDate !== false,
+    expirationDate: options.showExpirationDate !== false,
+    serviceDate: options.showProjectStartDate !== false && options.showProjectEndDate !== false && options.showProjectDates !== false,
+    technicianName: options.showTechnicianName !== false,
+    services: options.showBreakdown !== false,
+    prices: options.showPrices !== false,
+    materialsSection: options.showMaterials !== false,
+  };
+}
+
+function documentOptionsFromVisibility(visibility = DEFAULT_VISIBILITY, existingOptions = {}) {
+  return {
+    ...existingOptions,
+    showPrices: visibility.prices !== false,
+    showBreakdown: visibility.services !== false,
+    showBusinessLogo: visibility.businessLogo !== false,
+    showBusinessName: visibility.businessName !== false,
+    showBusinessAddress: visibility.businessAddress !== false,
+    showEstimateNumber: visibility.estimateNumber !== false,
+    showEstimateName: visibility.estimateName !== false,
+    showNotes: visibility.estimateMessage !== false,
+    showMaterials: visibility.materialsSection !== false,
+    showCustomerName: visibility.customerName !== false,
+    showDocumentDate: visibility.estimateDate !== false,
+    showExpirationDate: visibility.expirationDate !== false,
+    showProjectStartDate: visibility.serviceDate !== false,
+    showProjectEndDate: visibility.serviceDate !== false,
+    showProjectDates: visibility.serviceDate !== false,
+    showTechnicianName: visibility.technicianName !== false,
+    showTerms: existingOptions.showTerms !== false,
+    showSignatures: existingOptions.showSignatures !== false,
+    hideInternalNotes: true,
+  };
+}
+
 async function logDocument(estimateId, estimate, action, extra = {}) {
   await base44.entities.DocumentLog.create({
     estimate_id: estimateId,
@@ -50,7 +94,7 @@ async function logDocument(estimateId, estimate, action, extra = {}) {
 }
 
 export default function EstimateSendReview({ estimate, open, onClose, onSent, onFixAllPricing }) {
-  const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
+  const [visibility, setVisibility] = useState(() => visibilityFromDocumentOptions(estimate?.document_config?.options));
   const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'clean');
   const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
   const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from ${appConfig.company.name}`);
@@ -73,6 +117,16 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
   const [moneyBrainChecking, setMoneyBrainChecking] = useState(false);
 
   useEffect(() => {
+    if (!open || !estimate?.id) return;
+    setVisibility(visibilityFromDocumentOptions(estimate?.document_config?.options));
+    setCurrentTemplate(estimate?.document_config?.template || 'clean');
+    setRecipientEmail(estimate?.client_email || '');
+    setSubject(`Estimate #${estimate?.estimate_number} from ${appConfig.company.name}`);
+    setMessage(`Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`);
+    setIncludedAttachmentIds((estimate?.attachments || []).filter(a => a.intent === 'send_to_client').map(a => a.id) || []);
+  }, [open, estimate?.id]);
+
+  useEffect(() => {
     if (estimate?.id && estimate?.client_email && !publicToken) {
       generatePublicShareToken(estimate).then(setPublicToken);
     }
@@ -84,25 +138,27 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
     ? `${window.location.origin}/client-estimate?token=${publicToken}`
     : `${window.location.origin}/client-estimate?token=generating`;
 
-  const currentOptions = {
-    showPrices: visibility.prices !== false,
-    showBreakdown: visibility.services !== false,
-    showBusinessLogo: visibility.businessLogo !== false,
-    showBusinessName: visibility.businessName !== false,
-    showBusinessAddress: visibility.businessAddress !== false,
-    showEstimateNumber: visibility.estimateNumber !== false,
-    showEstimateName: visibility.estimateName !== false,
-    showNotes: visibility.estimateMessage !== false,
-    showMaterials: visibility.materialsSection !== false,
-    showCustomerName: visibility.customerName !== false,
-    showDocumentDate: visibility.estimateDate !== false,
-    showExpirationDate: visibility.expirationDate !== false,
-    showProjectStartDate: visibility.serviceDate !== false,
-    showProjectEndDate: visibility.serviceDate !== false,
-    showTechnicianName: visibility.technicianName !== false,
-    showTerms: true,
-    showSignatures: true,
-    hideInternalNotes: true,
+  const currentOptions = documentOptionsFromVisibility(visibility, estimate?.document_config?.options || {});
+
+  const persistVisibilityOptions = async (nextVisibility) => {
+    setVisibility(nextVisibility);
+    if (!estimate?.id) return;
+
+    const updatedOptions = documentOptionsFromVisibility(nextVisibility, estimate?.document_config?.options || {});
+    const updatedConfig = {
+      ...(estimate.document_config || {}),
+      options: updatedOptions,
+    };
+
+    try {
+      await base44.entities.Estimate.update(estimate.id, {
+        document_config: updatedConfig,
+        updated_by: 'Admin',
+      });
+    } catch (err) {
+      console.error('[EstimateSendReview] Failed to save visibility options:', err);
+      toast.error('Document visibility was changed locally but could not be saved');
+    }
   };
 
   const docConfig = estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE');
@@ -330,7 +386,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
       message={message}
       onMessageChange={setMessage}
       visibility={visibility}
-      onVisibilityChange={setVisibility}
+      onVisibilityChange={persistVisibilityOptions}
       attachments={estimate?.attachments}
       estimateNumber={estimate?.estimate_number}
       estimate={estimate}
