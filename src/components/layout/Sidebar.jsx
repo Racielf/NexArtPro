@@ -19,8 +19,10 @@ import {
   BarChart2,
   ScrollText,
   LogOut,
+  RotateCcw,
 } from 'lucide-react';
 import { isAdmin } from '@/lib/roleUtils';
+import { useAuth } from '@/lib/AuthContext';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import useCompanyConfig from '@/hooks/useCompanyConfig';
 import { logout } from '@/lib/sessionManager';
@@ -62,10 +64,20 @@ const navGroups = [
   },
 ];
 
+const adminNavGroup = {
+  label: 'Admin',
+  items: [
+    { path: '/recovery-center', label: 'Recovery Center', icon: RotateCcw },
+  ],
+};
+
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const cc = useCompanyConfig();
+  const { user } = useAuth();
+  const canAccessAdmin = user?.role === 'admin' || isAdmin();
+  const visibleNavGroups = canAccessAdmin ? [...navGroups, adminNavGroup] : navGroups;
 
   return (
     <div
@@ -101,7 +113,7 @@ export default function Sidebar() {
 
       {/* ── Nav ── */}
       <nav className="flex-1 px-2.5 py-3 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-        {navGroups.map((group, gi) => (
+        {visibleNavGroups.map((group, gi) => (
           <div key={gi} className={gi > 0 ? 'mt-5' : ''}>
             {group.label && (
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] px-3 mb-2"
