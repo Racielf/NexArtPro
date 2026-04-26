@@ -70,7 +70,7 @@ function base64ToPdfBlob(base64) {
 }
 
 /**
- * Executa el envío después de todas las validaciones.
+ * Executa el envio depois de todas as validacoes.
  * Maneja: token generation, PDF generation, email send, persistence, logging.
  */
 export async function executeSend({
@@ -101,6 +101,7 @@ export async function executeSend({
   const documentConfig = {
     template: currentTemplate,
     options: currentOptions,
+    included_attachment_ids: Array.isArray(includedAttachmentIds) ? includedAttachmentIds : [],
   };
 
   // 3. Generate final PDF before email so the email body and attachments match the UI.
