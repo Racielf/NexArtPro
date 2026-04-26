@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useInactivityTimeout } from '@/lib/sessionManager';
 import { Search } from 'lucide-react';
+import GlobalSecurityAlertBanner from '@/components/security/GlobalSecurityAlertBanner';
 
 export default function AppLayout() {
   useInactivityTimeout();
@@ -10,6 +11,9 @@ export default function AppLayout() {
     <div className="flex h-screen bg-background font-inter overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* 🔔 Global Security Banner */}
+        <GlobalSecurityAlertBanner />
+
         <header className="flex-shrink-0 h-12 bg-white border-b border-border flex items-center px-5">
           <div className="relative max-w-xs w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
