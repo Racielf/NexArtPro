@@ -3,30 +3,16 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { validateWorkOrderCompletion } from '@/lib/workOrderCompletionValidator';
 import {
   ArrowLeft,
-  Camera,
-  CheckCircle2,
-  ClipboardCheck,
   Loader2,
-  MapPin,
   Navigation,
   Phone,
-  Send,
-  Signature,
 } from 'lucide-react';
 
 function getNowISO() {
   return new Date().toISOString();
-}
-
-function groupPhotos(list) {
-  const photos = Array.isArray(list) ? list : [];
-  return {
-    before: photos.filter(p => p.phase === 'before'),
-    during: photos.filter(p => p.phase === 'during'),
-    after: photos.filter(p => p.phase === 'after'),
-  };
 }
 
 export default function FieldWorkOrderDetail() {
@@ -63,23 +49,13 @@ export default function FieldWorkOrderDetail() {
   const handleCheckIn = async () => {
     if (!workOrder || workOrder.checked_in_at) return;
     try {
-      let location = null;
-      if (navigator.geolocation) {
-        try {
-          const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 7000 }));
-          location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        } catch (e) {
-          console.warn('GPS failed', e);
-        }
-      }
       await base44.entities.WorkOrder.update(workOrder.id, {
         checked_in_at: getNowISO(),
         field_status: 'checked_in',
-        check_in_location: location,
       });
       toast.success('Checked in');
       load();
-    } catch (e) {
+    } catch {
       toast.error('Check-in failed');
     }
   };
@@ -94,7 +70,6 @@ export default function FieldWorkOrderDetail() {
         work_order_id: workOrder.id,
         phase,
         photo_url: file_url,
-        taken_by: 'Field',
       });
       toast.success('Photo uploaded');
       load();
@@ -104,21 +79,21 @@ export default function FieldWorkOrderDetail() {
     }
   };
 
+  const validation = validateWorkOrderCompletion({
+    workOrder,
+    photos,
+    summary,
+    signed,
+  });
+
   const handleComplete = async () => {
-    if (!workOrder || !signed) {
-      toast.error('Signature required');
+    if (!validation.valid) {
+      validation.errors.forEach(err => toast.error(err));
       return;
     }
+
     setSaving(true);
     try {
-      let location = null;
-      if (navigator.geolocation) {
-        try {
-          const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 7000 }));
-          location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        } catch {}
-      }
-
       const signature = canvasRef.current?.toDataURL();
 
       await base44.entities.WorkOrder.update(workOrder.id, {
@@ -126,7 +101,6 @@ export default function FieldWorkOrderDetail() {
         completed_at: getNowISO(),
         work_summary: summary,
         closure_signature: signature,
-        closure_location: location,
       });
 
       toast.success('Work completed');
@@ -186,8 +160,6 @@ export default function FieldWorkOrderDetail() {
     return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
   }
 
-  const grouped = groupPhotos(photos);
-
   return (
     <div className="min-h-screen bg-slate-50 pb-28">
       <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
@@ -214,23 +186,8 @@ export default function FieldWorkOrderDetail() {
           {workOrder.checked_in_at ? 'Checked In' : 'Check In'}
         </Button>
 
-        <div className="bg-white p-4 rounded-xl space-y-3">
-          <div className="flex gap-2">
-            {['before','during','after'].map(p => (
-              <button key={p} onClick={() => setPhase(p)} className={`px-3 py-1 rounded ${phase===p?'bg-blue-600 text-white':'bg-slate-100'}`}>{p}</button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {photos.map(p => (
-              <img key={p.id} src={p.photo_url} className="rounded-lg" />
-            ))}
-
-            <button onClick={()=>fileRef.current.click()} className="border-dashed border p-6 rounded-lg text-center">
-              {uploading ? 'Uploading...' : 'Add Photo'}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-          </div>
+        <div className="bg-white p-4 rounded-xl">
+          <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoUpload} />
         </div>
 
         <textarea
@@ -245,7 +202,11 @@ export default function FieldWorkOrderDetail() {
           <canvas ref={canvasRef} width={300} height={120} className="border w-full" />
         </div>
 
-        <Button onClick={handleComplete} disabled={saving} className="w-full bg-green-600">
+        <Button
+          onClick={handleComplete}
+          disabled={!validation.valid || saving}
+          className="w-full bg-green-600"
+        >
           Complete Work
         </Button>
       </div>
