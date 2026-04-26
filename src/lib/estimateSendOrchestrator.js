@@ -52,7 +52,7 @@ function getSelectedClientAttachments(estimate, includedAttachmentIds = []) {
 
   return attachments
     .filter(att => att?.intent === 'send_to_client')
-    .filter(att => included.length === 0 || included.includes(att.id))
+    .filter(att => included.includes(att.id))
     .filter(att => att?.file_url)
     .map(att => ({
       filename: att.file_name || 'Attachment',
