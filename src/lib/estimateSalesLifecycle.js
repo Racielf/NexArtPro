@@ -1,7 +1,7 @@
 /**
  * estimateSalesLifecycle.js
- * 
- * Phase 2+3 lifecycle: draft to sent to viewed to approved/declined
+ *
+ * Phase 2+3 lifecycle: draft to sent to viewed to approved/declined.
  */
 
 import { base44 } from '@/api/base44Client';
@@ -10,18 +10,15 @@ function now() {
   return new Date().toISOString();
 }
 
-/**
- * Generate public share token for estimate.
- */
 export async function generatePublicShareToken(estimate) {
   const estimateId = estimate.id;
   const clientEmail = estimate.client_email || '';
-  
+
   const data = new TextEncoder().encode(estimateId + clientEmail);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  
+
   return `${estimateId}_${signature}`;
 }
 
@@ -46,7 +43,7 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
   const ts = now();
   const currentCount = estimate?.follow_up_count || 0;
   const resolvedDocumentConfig = documentConfig || estimate?.document_config;
-  
+
   const payload = {
     status: 'sent',
     sent_at: ts,
@@ -54,7 +51,7 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
     follow_up_count: currentCount + 1,
     document_config: resolvedDocumentConfig,
   };
-  
+
   try {
     await base44.entities.EstimateSnapshot.create({
       estimate_id: estimateId,
@@ -76,22 +73,22 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
   } catch (err) {
     console.warn('[markEstimateSent] snapshot creation failed:', err?.message);
   }
-  
+
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
 
 export async function markEstimateViewed(estimateId, currentEstimate) {
   const ts = now();
-  
+
   const payload = {
     viewed_at: ts,
   };
-  
+
   if (currentEstimate.status === 'sent') {
     payload.status = 'viewed';
   }
-  
+
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
@@ -102,11 +99,29 @@ export async function approveEstimate(estimateId, {
   signatureName,
   signatureImage,
   termsAccepted = false,
+  legalAudit = {},
 } = {}) {
   const ts = now();
   const signer = (signatureName || approvedBy || estimate?.client_name || '').trim();
   const hasDrawnSignature = typeof signatureImage === 'string' && signatureImage.startsWith('data:image/');
-  
+
+  const audit = {
+    signed_at: ts,
+    signed_by: signer,
+    client_name: estimate?.client_name || '',
+    client_email: estimate?.client_email || '',
+    estimate_id: estimateId,
+    estimate_number: estimate?.estimate_number || '',
+    document_type: estimate?.document_type || 'ESTIMATE',
+    signature_method: hasDrawnSignature ? 'drawn_signature' : 'typed_name',
+    terms_accepted: termsAccepted === true,
+    user_agent: legalAudit.user_agent || '',
+    language: legalAudit.language || '',
+    timezone: legalAudit.timezone || '',
+    screen: legalAudit.screen || '',
+    page_url: legalAudit.page_url || '',
+  };
+
   const payload = {
     status: 'approved',
     approved_at: ts,
@@ -114,23 +129,25 @@ export async function approveEstimate(estimateId, {
     accepted_by: signer,
     signature_name: signer,
     signature_image: hasDrawnSignature ? signatureImage : '',
-    signature_method: hasDrawnSignature ? 'drawn_signature' : 'typed_name',
+    signature_method: audit.signature_method,
     terms_accepted: termsAccepted === true,
+    legal_audit: audit,
+    locked_after_signature: true,
   };
-  
+
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
 
 export async function declineEstimate(estimateId, { declinedReason } = {}) {
   const ts = now();
-  
+
   const payload = {
     status: 'declined',
     declined_at: ts,
     declined_reason: declinedReason || '',
   };
-  
+
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
