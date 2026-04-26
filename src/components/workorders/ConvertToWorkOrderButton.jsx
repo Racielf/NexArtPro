@@ -23,6 +23,11 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
   const isApproved = estimate.status === 'approved';
 
   const handleConvert = async () => {
+    if (!isApproved) {
+      toast.error('Estimate must be approved before converting to a Work Order.');
+      return;
+    }
+
     setLoading(true);
     try {
       const estimateVersion = estimate.version_number ?? 1;
@@ -97,7 +102,12 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
     }
   };
 
-  const enabled = !!estimate.client_name && !loading;
+  const enabled = !!estimate.client_name && !loading && isApproved;
+  const disabledTitle = !estimate.client_name
+    ? 'Customer required'
+    : !isApproved
+      ? 'Estimate must be approved first'
+      : 'Convert to Work Order';
 
   if (asDropdownItem) {
     return (
@@ -119,7 +129,7 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
       variant="outline"
       size="sm"
       className="gap-1.5"
-      title={!estimate.client_name ? 'Customer required' : 'Convert to Work Order'}
+      title={disabledTitle}
     >
       {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ClipboardList className="w-3.5 h-3.5" />}
       Convert to Work Order
