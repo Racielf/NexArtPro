@@ -5,6 +5,7 @@ import { useInactivityTimeout } from '@/lib/sessionManager';
 import GlobalSecurityAlertBanner from '@/components/security/GlobalSecurityAlertBanner';
 import GlobalSearchBar from './GlobalSearchBar';
 import SecurityToastListener from '@/components/security/SecurityToastListener';
+import GlobalMoneyBrainBanner from '@/components/finance/GlobalMoneyBrainBanner';
 
 export default function AppLayout() {
   useInactivityTimeout();
@@ -14,6 +15,9 @@ export default function AppLayout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* ⚡ Instant Security Toasts */}
         <SecurityToastListener />
+
+        {/* 💰 Money Brain Alerts */}
+        <GlobalMoneyBrainBanner />
 
         {/* 🔔 Global Security Banner */}
         <GlobalSecurityAlertBanner />
