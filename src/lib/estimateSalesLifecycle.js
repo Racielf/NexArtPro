@@ -96,9 +96,16 @@ export async function markEstimateViewed(estimateId, currentEstimate) {
   return payload;
 }
 
-export async function approveEstimate(estimateId, { approvedBy, estimate, signatureName, termsAccepted = false } = {}) {
+export async function approveEstimate(estimateId, {
+  approvedBy,
+  estimate,
+  signatureName,
+  signatureImage,
+  termsAccepted = false,
+} = {}) {
   const ts = now();
   const signer = (signatureName || approvedBy || estimate?.client_name || '').trim();
+  const hasDrawnSignature = typeof signatureImage === 'string' && signatureImage.startsWith('data:image/');
   
   const payload = {
     status: 'approved',
@@ -106,7 +113,8 @@ export async function approveEstimate(estimateId, { approvedBy, estimate, signat
     signed_at: ts,
     accepted_by: signer,
     signature_name: signer,
-    signature_method: 'typed_name',
+    signature_image: hasDrawnSignature ? signatureImage : '',
+    signature_method: hasDrawnSignature ? 'drawn_signature' : 'typed_name',
     terms_accepted: termsAccepted === true,
   };
   
