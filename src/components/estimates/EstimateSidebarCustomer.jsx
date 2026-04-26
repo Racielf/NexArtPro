@@ -34,6 +34,8 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
   const [showSearch, setShowSearch] = useState(false);
   const [mapTab, setMapTab] = useState('map');
   const [mapExpanded, setMapExpanded] = useState(false);
+  const [attachmentsExpanded, setAttachmentsExpanded] = useState(false);
+  const [communicationsExpanded, setCommunicationsExpanded] = useState(false);
 
   useEffect(() => {
     base44.entities.Client.list('-created_date', 50)
@@ -197,16 +199,18 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
     ? displayName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
     : '?';
 
+  const attachmentCount = Array.isArray(estimate?.attachments) ? estimate.attachments.length : 0;
+
   return (
     <div className="flex flex-col h-full bg-white overflow-y-auto min-h-0">
 
       {/* ── PANEL HEADER ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-white flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
             <User className="w-3 h-3 text-slate-400" />
           </div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">Customer</p>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -230,7 +234,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
 
       {/* ── SEARCH EXISTING ──────────────────────────────────────────────── */}
       {showSearch && (
-        <div className="px-3 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
+        <div className="px-3 py-2.5 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
           <Input
             autoFocus
             placeholder="Search by name, phone, email…"
@@ -245,7 +249,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
             {filteredClients.map(c => (
               <button key={c.id} type="button" onClick={() => handleSelectClient(c)}
                 className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all text-xs">
-                <span className="font-semibold text-slate-800 block">{c.full_name}</span>
+                <span className="font-semibold text-slate-800 block truncate">{c.full_name}</span>
                 {c.phone && <span className="text-slate-400 text-[11px]">{c.phone}</span>}
               </button>
             ))}
@@ -255,7 +259,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
 
       {/* ── INLINE EDIT FORM ─────────────────────────────────────────────── */}
       {editing && (
-        <div className="px-4 py-4 border-b border-slate-100 space-y-2.5 bg-slate-50/60 flex-shrink-0">
+        <div className="px-4 py-3 border-b border-slate-100 space-y-2 bg-slate-50/60 flex-shrink-0">
           <div>
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Full Name *</label>
             <Input placeholder="John Smith" value={form.client_name} onChange={e => set('client_name', e.target.value)}
@@ -295,7 +299,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
       {!editing && hasDisplay && (
         <>
           {/* ── HERO BLOCK ─────────────────────────────────────────────── */}
-          <div className="relative flex-shrink-0 overflow-hidden" style={{ height: 116 }}>
+          <div className="relative flex-shrink-0 overflow-hidden" style={{ height: 104 }}>
             {displayAddress ? (
               <img
                 src={`https://maps.googleapis.com/maps/api/streetview?size=480x240&location=${encodedAddress}&key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY`}
@@ -311,7 +315,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-6">
+            <div className="absolute bottom-0 left-0 right-0 px-4 pb-2.5 pt-6">
               <p className="text-white font-bold text-[15px] leading-tight truncate drop-shadow">{displayName}</p>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none ${
@@ -327,23 +331,26 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
           </div>
 
           {/* ── IDENTITY + CONTACT BLOCK ──────────────────────────────── */}
-          <div className="px-4 pt-4 pb-3 space-y-3 flex-shrink-0">
+          <div className="px-4 pt-3.5 pb-3 space-y-2.5 flex-shrink-0">
             {/* Avatar row + profile link */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0 shadow-sm">
                   <span className="text-[11px] font-bold text-white tracking-wide">{initials}</span>
                 </div>
-                <div>
-                  <p className="text-[13px] font-bold text-slate-900 leading-tight">{displayName}</p>
-                  {(estimate?.client_id || linkedClient?.id) && (
-                    <Link
-                      to="/clients"
-                      className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 hover:text-blue-700 font-semibold transition-colors leading-none mt-0.5"
-                    >
-                      Customer profile <ExternalLink className="w-2.5 h-2.5" />
-                    </Link>
-                  )}
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold text-slate-900 leading-tight truncate">{displayName}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Customer info</span>
+                    {(estimate?.client_id || linkedClient?.id) && (
+                      <Link
+                        to="/clients"
+                        className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 hover:text-blue-700 font-semibold transition-colors leading-none"
+                      >
+                        Profile <ExternalLink className="w-2.5 h-2.5" />
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -359,20 +366,21 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
             <div className="h-px bg-slate-100" />
 
             {/* Contact rows */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Contact</p>
               {displayPhone && (
-                <a href={`tel:${displayPhone}`} className="flex items-center gap-3 group">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                <a href={`tel:${displayPhone}`} className="flex items-center gap-2.5 group rounded-lg -mx-1 px-1 py-0.5">
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
                     <Phone className="w-3.5 h-3.5 text-blue-500" />
                   </div>
-                  <span className="text-[13px] font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">
+                  <span className="text-[13px] font-semibold text-slate-700 group-hover:text-blue-600 transition-colors truncate">
                     {displayPhone}
                   </span>
                 </a>
               )}
               {displayEmail && (
-                <a href={`mailto:${displayEmail}`} className="flex items-center gap-3 group">
-                  <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0">
+                <a href={`mailto:${displayEmail}`} className="flex items-center gap-2.5 group rounded-lg -mx-1 px-1 py-0.5">
+                  <div className="w-6 h-6 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0">
                     <Mail className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                   <span className="text-[12px] text-slate-500 group-hover:text-blue-600 transition-colors truncate">
@@ -385,12 +393,12 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
                   href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-start gap-3 group"
+                  className="flex items-start gap-2.5 group rounded-lg -mx-1 px-1 py-0.5"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-6 h-6 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <MapPin className="w-3.5 h-3.5 text-slate-400" />
                   </div>
-                  <span className="text-[12px] text-slate-500 group-hover:text-blue-600 transition-colors leading-snug">
+                  <span className="text-[12px] text-slate-500 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">
                     {displayAddress}
                   </span>
                 </a>
@@ -399,18 +407,18 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
           </div>
 
           {/* ── QUICK ACTIONS ROW ─────────────────────────────────────── */}
-          <div className="px-4 pb-4 flex-shrink-0">
+          <div className="px-4 pb-3.5 flex-shrink-0">
             <div className="grid grid-cols-3 gap-2">
               {displayPhone && (
                 <a href={`tel:${displayPhone}`}
-                  className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
+                  className="flex flex-col items-center gap-1 py-2 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
                   <Phone className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
                   <span className="text-[9px] font-semibold text-slate-400 group-hover:text-blue-600 uppercase tracking-wide">Call</span>
                 </a>
               )}
               {displayEmail && (
                 <a href={`mailto:${displayEmail}`}
-                  className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
+                  className="flex flex-col items-center gap-1 py-2 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
                   <Mail className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
                   <span className="text-[9px] font-semibold text-slate-400 group-hover:text-blue-600 uppercase tracking-wide">Email</span>
                 </a>
@@ -419,7 +427,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`}
                   target="_blank" rel="noreferrer"
-                  className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
+                  className="flex flex-col items-center gap-1 py-2 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
                   <MapPin className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
                   <span className="text-[9px] font-semibold text-slate-400 group-hover:text-blue-600 uppercase tracking-wide">Directions</span>
                 </a>
@@ -431,7 +439,7 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
           {displayAddress && (
             <div className="flex-shrink-0 border-t border-slate-100">
               {/* Map header */}
-              <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/70">
+              <div className="flex items-center justify-between px-4 py-2 bg-slate-50/70">
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Location</span>
                 <div className="flex items-center gap-2">
                   {mapExpanded && (
@@ -457,12 +465,12 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
               </div>
 
               {/* Map iframe — always visible at default height */}
-              <div className="relative overflow-hidden" style={{ height: mapExpanded ? 200 : 130 }}>
+              <div className="relative overflow-hidden" style={{ height: mapExpanded ? 200 : 118 }}>
                 <iframe
                   key={`${displayAddress}-${mapTab}`}
                   title="map"
                   width="100%"
-                  height={mapExpanded ? 200 : 130}
+                  height={mapExpanded ? 200 : 118}
                   style={{ border: 0, display: 'block' }}
                   src={mapSrc}
                   allowFullScreen
@@ -487,22 +495,47 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
 
           {/* ── ATTACHMENTS ───────────────────────────────────────────── */}
           {estimate?.id && (
-            <div className="px-4 pt-1 pb-4 border-t border-slate-100 flex-shrink-0">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Attachments</p>
-              <EstimateAttachments
-                attachments={estimate.attachments}
-                onUpdate={async (newAttachments) => {
-                  if (onAttachmentsUpdate) onAttachmentsUpdate(newAttachments);
-                }}
-              />
+            <div className="border-t border-slate-100 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setAttachmentsExpanded(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-white hover:bg-slate-50 transition-colors"
+              >
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Attachments</span>
+                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400">
+                  {attachmentCount > 0 ? attachmentCount : 'None'}
+                  {attachmentsExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </span>
+              </button>
+              {attachmentsExpanded && (
+                <div className="px-4 pb-3">
+                  <EstimateAttachments
+                    attachments={estimate.attachments}
+                    onUpdate={async (newAttachments) => {
+                      if (onAttachmentsUpdate) onAttachmentsUpdate(newAttachments);
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
 
           {/* ── COMMUNICATIONS ────────────────────────────────────────── */}
           {estimate?.id && (
-            <div className="px-4 pt-1 pb-5 border-t border-slate-100 flex-shrink-0">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Communications</p>
-              <CommTimeline estimateId={estimate.id} />
+            <div className="border-t border-slate-100 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setCommunicationsExpanded(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-white hover:bg-slate-50 transition-colors"
+              >
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Communications</span>
+                {communicationsExpanded ? <ChevronUp className="w-3 h-3 text-slate-400" /> : <ChevronDown className="w-3 h-3 text-slate-400" />}
+              </button>
+              {communicationsExpanded && (
+                <div className="px-4 pb-4">
+                  <CommTimeline estimateId={estimate.id} />
+                </div>
+              )}
             </div>
           )}
         </>
