@@ -25,7 +25,19 @@
     "client_address": { "type": "string" },
     "status": {
       "type": "string",
-      "enum": ["draft", "sent", "viewed", "approved", "declined"],
+      "enum": [
+        "draft",
+        "scheduled",
+        "on_my_way",
+        "visit_completed",
+        "sent",
+        "viewed",
+        "changes_requested",
+        "approved",
+        "signed",
+        "declined",
+        "converted"
+      ],
       "default": "draft"
     },
     "groups": { "type": "array", "items": { "type": "object" } },
