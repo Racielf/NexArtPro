@@ -26,19 +26,37 @@ export async function generatePublicShareToken(estimate) {
   return `${estimateId}_${signature}`;
 }
 
+function resolveClientAttachmentsForSnapshot(estimate, documentConfig) {
+  const attachments = Array.isArray(estimate?.attachments) ? estimate.attachments : [];
+  const includedIds = Array.isArray(documentConfig?.included_attachment_ids)
+    ? documentConfig.included_attachment_ids
+    : attachments.filter(a => a.intent === 'send_to_client').map(a => a.id);
+
+  return attachments
+    .filter(a => a.intent === 'send_to_client')
+    .filter(a => includedIds.includes(a.id))
+    .map(a => ({
+      id: a.id,
+      file_name: a.file_name,
+      file_url: a.file_url,
+      intent: a.intent,
+    }));
+}
+
 /**
  * Mark estimate as sent + create immutable snapshot.
  */
 export async function markEstimateSent(estimateId, { documentConfig, estimate, currentUser } = {}) {
   const ts = now();
   const currentCount = estimate?.follow_up_count || 0;
+  const resolvedDocumentConfig = documentConfig || estimate?.document_config;
   
   const payload = {
     status: 'sent',
     sent_at: ts,
     last_contacted_at: ts,
     follow_up_count: currentCount + 1,
-    document_config: documentConfig || estimate?.document_config,
+    document_config: resolvedDocumentConfig,
   };
   
   // Create immutable snapshot
@@ -56,11 +74,9 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
       document_language: estimate?.document_language,
       title: estimate?.title,
       estimate_data: estimate,
-      document_config: documentConfig || estimate?.document_config,
+      document_config: resolvedDocumentConfig,
       total: estimate?.total,
-      client_attachments: (estimate?.attachments || [])
-        .filter(a => a.intent === 'send_to_client')
-        .map(a => ({ id: a.id, file_name: a.file_name, file_url: a.file_url })),
+      client_attachments: resolveClientAttachmentsForSnapshot(estimate, resolvedDocumentConfig),
     });
   } catch (err) {
     console.warn('[markEstimateSent] snapshot creation failed:', err?.message);
