@@ -7,6 +7,7 @@ import { validateWorkOrderCompletion } from '@/lib/workOrderCompletionValidator'
 import { ensureInvoiceFromWorkOrder } from '@/lib/workOrderInvoiceConversion';
 import { getInvoicePaymentState, recordInvoicePayment } from '@/lib/invoicePaymentRecorder';
 import { sendPaymentReceipt } from '@/lib/paymentReceiptAutomation';
+import { downloadPaymentReceiptPdf } from '@/lib/paymentReceiptPdf';
 import {
   ArrowLeft,
   CreditCard,
@@ -156,10 +157,16 @@ export default function FieldWorkOrderDetail() {
         balanceDue: state.balance_due,
       });
 
+      downloadPaymentReceiptPdf({
+        invoice: updatedInvoice,
+        payment,
+        balanceDue: state.balance_due,
+      });
+
       setInvoice(updatedInvoice);
       setPaymentAmount('');
       setPaymentNote('');
-      toast.success('Payment collected & receipt sent');
+      toast.success('Payment collected, receipt sent & PDF downloaded');
     } catch (err) {
       toast.error(err?.message || 'Payment failed');
     } finally {
