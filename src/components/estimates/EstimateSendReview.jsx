@@ -278,6 +278,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
         message,
         currentTemplate,
         currentOptions,
+        includedAttachmentIds,
         appConfig,
       });
 
