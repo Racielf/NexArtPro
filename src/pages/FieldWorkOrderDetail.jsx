@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { validateWorkOrderCompletion } from '@/lib/workOrderCompletionValidator';
+import { ensureInvoiceFromWorkOrder } from '@/lib/workOrderInvoiceConversion';
 import {
   ArrowLeft,
   Loader2,
@@ -103,8 +104,18 @@ export default function FieldWorkOrderDetail() {
         closure_signature: signature,
       });
 
-      toast.success('Work completed');
-      navigate('/field');
+      const { invoice, created } = await ensureInvoiceFromWorkOrder({
+        ...workOrder,
+        work_summary: summary,
+      });
+
+      if (created) {
+        toast.success(`Invoice #${invoice.invoice_number} created`);
+      } else {
+        toast.info(`Invoice #${invoice.invoice_number} already exists`);
+      }
+
+      navigate(`/invoice-detail?id=${invoice.id}`);
     } finally {
       setSaving(false);
     }
