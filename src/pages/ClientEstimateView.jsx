@@ -10,7 +10,7 @@ import { logComm } from '@/lib/commTracking';
 
 import FinalDocumentRenderer from '@/components/documents/FinalDocumentRenderer';
 import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
-import { downloadEstimate } from '@/lib/estimatePrint';
+import { downloadEstimate, generateEstimatePdfBase64 } from '@/lib/estimatePrint';
 import ClientAttachmentsSection from '@/components/estimates/ClientAttachmentsSection';
 import { generateSignedPdfUrl, generateSignedAttachmentUrls } from '@/lib/estimateDocumentAccess';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
@@ -25,6 +25,25 @@ import {
   approveEstimate,
   declineEstimate,
 } from '@/lib/estimateSalesLifecycle';
+
+function base64ToPdfBlob(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: 'application/pdf' });
+}
+
+function collectLegalAudit() {
+  return {
+    user_agent: navigator.userAgent || '',
+    language: navigator.language || '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    screen: `${window.innerWidth}x${window.innerHeight}`,
+    page_url: window.location.href,
+  };
+}
 
 export default function ClientEstimateView() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -86,6 +105,33 @@ export default function ClientEstimateView() {
     load();
   }, [token]);
 
+  const freezeSignedPdf = async (signedEstimate) => {
+    try {
+      const pdf = await generateEstimatePdfBase64(
+        signedEstimate,
+        signedEstimate?.document_config?.options,
+        signedEstimate?.document_config?.template
+      );
+
+      const blob = base64ToPdfBlob(pdf.base64);
+      const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
+      const finalSignedAt = new Date().toISOString();
+      const finalFields = {
+        final_signed_pdf_url: uploadRes?.file_url || '',
+        final_signed_pdf_name: pdf.filename || `Signed-Estimate-${signedEstimate.estimate_number}.pdf`,
+        final_signed_at: finalSignedAt,
+        legal_package_locked: true,
+      };
+
+      await base44.entities.Estimate.update(signedEstimate.id, finalFields);
+      return finalFields;
+    } catch (err) {
+      console.warn('[freezeSignedPdf] failed:', err?.message);
+      toast.warning('Estimate was approved, but final signed PDF could not be frozen automatically');
+      return null;
+    }
+  };
+
   const handleApprove = async () => {
     const cleanSignature = signatureName.trim();
 
@@ -105,11 +151,20 @@ export default function ClientEstimateView() {
         approvedBy: cleanSignature,
         signatureName: cleanSignature,
         termsAccepted,
+        legalAudit: collectLegalAudit(),
         estimate,
       });
-      setEstimate(e => ({ ...e, ...updates }));
-      notifyEstimateApproved(estimate).catch(err => console.warn('[notify] approved failed:', err?.message));
-      toast.success('Estimate approved and signed! We will be in touch soon.');
+
+      const signedEstimate = { ...estimate, ...updates };
+      setEstimate(signedEstimate);
+
+      const finalPdfFields = await freezeSignedPdf(signedEstimate);
+      if (finalPdfFields) {
+        setEstimate(e => ({ ...e, ...finalPdfFields }));
+      }
+
+      notifyEstimateApproved(signedEstimate).catch(err => console.warn('[notify] approved failed:', err?.message));
+      toast.success('Estimate approved, signed, and locked.');
     } catch (err) {
       console.warn('[handleApprove] failed:', err?.message);
       toast.error('Could not approve. Please try again.');
@@ -136,17 +191,20 @@ export default function ClientEstimateView() {
   const handlePrint = () => window.print();
 
   const handleDownload = async () => {
-    if (estimate.pdf_file_url) {
+    const preferredPdfUrl = estimate.final_signed_pdf_url || estimate.pdf_file_url;
+    const preferredPdfName = estimate.final_signed_pdf_name || estimate.pdf_file_name || `estimate-${estimate.estimate_number}.pdf`;
+
+    if (preferredPdfUrl) {
       try {
-        const signedUrl = await generateSignedPdfUrl(estimate.pdf_file_url);
+        const signedUrl = await generateSignedPdfUrl(preferredPdfUrl);
         if (signedUrl) {
           const link = document.createElement('a');
           link.href = signedUrl;
-          link.download = estimate.pdf_file_name || `estimate-${estimate.estimate_number}.pdf`;
+          link.download = preferredPdfName;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          toast.success('PDF downloaded');
+          toast.success(estimate.final_signed_pdf_url ? 'Signed PDF downloaded' : 'PDF downloaded');
           return;
         }
       } catch (err) {
@@ -183,9 +241,11 @@ export default function ClientEstimateView() {
       bg: 'bg-green-50 border-green-200',
       icon: <CheckCircle className="w-5 h-5 text-green-600" />,
       title: `${docLabel} Approved`,
-      body: estimate.signature_name
-        ? `Signed by ${estimate.signature_name}. We will be in touch soon to schedule the work.`
-        : "Thank you! We'll be in touch soon to schedule the work.",
+      body: estimate.final_signed_pdf_url
+        ? `Signed by ${estimate.signature_name}. Final signed PDF is locked.`
+        : estimate.signature_name
+          ? `Signed by ${estimate.signature_name}. We will be in touch soon to schedule the work.`
+          : "Thank you! We'll be in touch soon to schedule the work.",
     },
     declined: { bg: 'bg-red-50 border-red-200', icon: <XCircle className="w-5 h-5 text-red-500" />, title: `${docLabel} Declined`, body: 'We appreciate your feedback. Contact us if you change your mind.' },
     viewed: { bg: 'bg-blue-50 border-blue-200', icon: <Eye className="w-5 h-5 text-blue-500" />, title: `${docLabel} Viewed`, body: 'Please review below and take action when ready.' },
@@ -294,7 +354,7 @@ export default function ClientEstimateView() {
               <Printer className="w-3.5 h-3.5" />Print
             </Button>,
             <Button key="download" size="sm" variant="outline" onClick={handleDownload} className="gap-1.5 text-xs print:hidden">
-              <Download className="w-3.5 h-3.5" />Download PDF
+              <Download className="w-3.5 h-3.5" />{estimate.final_signed_pdf_url ? 'Download Signed PDF' : 'Download PDF'}
             </Button>,
           ]}
           banners={banners}
