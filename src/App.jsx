@@ -5,6 +5,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { getUserRole, isFieldAgent } from '@/lib/roleUtils';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import AppLayout from './components/layout/AppLayout';
@@ -52,16 +53,16 @@ import SecurityDashboardWithBrain from './pages/SecurityDashboardWithBrain';
 import FieldWorkOrders from './pages/FieldWorkOrders';
 import FieldWorkOrderDetail from './pages/FieldWorkOrderDetail';
 
-const ProtectedRoute = ({ children }) => {
+const LoadingScreen = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-background">
+    <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
+  </div>
+);
+
+const ProtectedRoute = ({ children, access = 'any' }) => {
   const { isLoadingAuth, isAuthenticated } = useAuth();
 
-  if (isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (isLoadingAuth) return <LoadingScreen />;
 
   const localAuth = sessionStorage.getItem('local_auth') === 'true';
   if (!isAuthenticated && !localAuth) {
@@ -72,19 +73,23 @@ const ProtectedRoute = ({ children }) => {
     sessionStorage.setItem('base44_authenticated', 'true');
   }
 
+  const role = getUserRole() || 'admin';
+
+  if (access === 'admin' && role === 'field_agent') {
+    return <Navigate to="/field" replace />;
+  }
+
+  if (access === 'field' && role !== 'field_agent' && role !== 'admin') {
+    return <Navigate to="/team-access" replace />;
+  }
+
   return children;
 };
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (isLoadingPublicSettings || isLoadingAuth) return <LoadingScreen />;
 
   if (authError) {
     if (authError.type === 'user_not_registered') {
@@ -109,10 +114,10 @@ const AuthenticatedApp = () => {
       <Route path="/login" element={<Login />} />
 
       {/* FIELD APP ROUTES */}
-      <Route path="/field" element={<ProtectedRoute><FieldWorkOrders /></ProtectedRoute>} />
-      <Route path="/field/work-orders/:id" element={<ProtectedRoute><FieldWorkOrderDetail /></ProtectedRoute>} />
+      <Route path="/field" element={<ProtectedRoute access="field"><FieldWorkOrders /></ProtectedRoute>} />
+      <Route path="/field/work-orders/:id" element={<ProtectedRoute access="field"><FieldWorkOrderDetail /></ProtectedRoute>} />
 
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      <Route element={<ProtectedRoute access="admin"><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/clients" element={<Clients />} />
