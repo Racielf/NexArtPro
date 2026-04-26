@@ -48,6 +48,10 @@ import ClientPortal from './pages/ClientPortal';
 import RecoveryCenter from './pages/RecoveryCenter';
 import SecurityDashboardWithBrain from './pages/SecurityDashboardWithBrain';
 
+// FIELD APP
+import FieldWorkOrders from './pages/FieldWorkOrders';
+import FieldWorkOrderDetail from './pages/FieldWorkOrderDetail';
+
 const ProtectedRoute = ({ children }) => {
   const { isLoadingAuth, isAuthenticated } = useAuth();
 
@@ -103,6 +107,11 @@ const AuthenticatedApp = () => {
       <Route path="/partners" element={<Partners />} />
       <Route path="/team-access" element={<TeamAccess />} />
       <Route path="/login" element={<Login />} />
+
+      {/* FIELD APP ROUTES */}
+      <Route path="/field" element={<ProtectedRoute><FieldWorkOrders /></ProtectedRoute>} />
+      <Route path="/field/work-orders/:id" element={<ProtectedRoute><FieldWorkOrderDetail /></ProtectedRoute>} />
+
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
