@@ -21,6 +21,7 @@ function formatSignedDate(value) {
 function SignedApprovalStamp({ estimate }) {
   const signer = estimate?.signature_name || estimate?.accepted_by;
   const signedAt = estimate?.signed_at || estimate?.approved_at;
+  const audit = estimate?.legal_audit || {};
 
   if (!signer || estimate?.status !== 'approved') return null;
 
@@ -52,7 +53,18 @@ function SignedApprovalStamp({ estimate }) {
           <div>
             <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Signed by</div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#14532d' }}>{signer}</div>
-            <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>Typed name signature</div>
+            {estimate?.signature_image && (
+              <div style={{ marginTop: 10, background: 'white', border: '1px solid #dcfce7', borderRadius: 8, padding: 10 }}>
+                <img
+                  src={estimate.signature_image}
+                  alt="Client signature"
+                  style={{ height: 62, maxWidth: '100%', objectFit: 'contain', display: 'block' }}
+                />
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
+              Signature method: {estimate?.signature_method === 'drawn_signature' ? 'Drawn signature' : 'Typed name'}
+            </div>
           </div>
           <div>
             <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Signed on</div>
@@ -60,11 +72,19 @@ function SignedApprovalStamp({ estimate }) {
             <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
               Terms accepted: {estimate?.terms_accepted ? 'Yes' : 'Recorded'}
             </div>
+            {audit.timezone && <div style={{ fontSize: 10, color: '#64748b', marginTop: 10 }}>Timezone: {audit.timezone}</div>}
+            {audit.language && <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>Language: {audit.language}</div>}
+            {audit.screen && <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>Screen: {audit.screen}</div>}
           </div>
         </div>
         <p style={{ fontSize: 11, color: '#475569', lineHeight: 1.6, margin: '14px 0 0' }}>
           By approving and signing, the client confirmed review of the estimate, included documents, pricing, scope, and terms.
         </p>
+        {audit.user_agent && (
+          <p style={{ fontSize: 9, color: '#64748b', lineHeight: 1.45, margin: '10px 0 0', wordBreak: 'break-word' }}>
+            Audit device: {audit.user_agent}
+          </p>
+        )}
       </div>
     </div>
   );
