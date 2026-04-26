@@ -7,7 +7,7 @@ import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import { FileText, Plus, Pencil, Search, X, Trash2 } from 'lucide-react';
-import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
+import { archiveWithSnapshot, archiveManyWithSnapshot, filterActiveRecords, restoreEntity } from '@/lib/softDelete';
 import { logAuditEvent } from '@/lib/auditLog';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
 import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
@@ -99,6 +99,28 @@ export default function Estimates() {
     setArchiveModal({ open: true, estimate: est });
   };
 
+  const undoDeletedEstimate = async (est) => {
+    try {
+      await restoreEntity(base44.entities.Estimate, est.id, actor);
+      await loadData();
+      toast.success(`Estimate #${est.estimate_number} restored`);
+    } catch (err) {
+      console.error('[Estimates] Failed to restore estimate:', err?.message || err);
+      toast.error('Estimate could not be restored. Please open Recovery Center.');
+    }
+  };
+
+  const undoDeletedEstimates = async (deletedEstimates) => {
+    try {
+      await Promise.all(deletedEstimates.map(est => restoreEntity(base44.entities.Estimate, est.id, actor)));
+      await loadData();
+      toast.success(`${deletedEstimates.length} estimate(s) restored`);
+    } catch (err) {
+      console.error('[Estimates] Failed to restore selected estimates:', err?.message || err);
+      toast.error('Selected estimates could not be fully restored. Please open Recovery Center.');
+    }
+  };
+
   const handleConfirmArchive = async (reason) => {
     const { estimate: est } = archiveModal;
     setArchiveModal({ open: false, estimate: null });
@@ -108,7 +130,12 @@ export default function Estimates() {
       await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', est.id, actor, reason);
       setEstimates(prev => prev.filter(e => e.id !== est.id));
       setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
-      toast.success(`Estimate #${est.estimate_number} deleted`);
+      toast.success(`Estimate #${est.estimate_number} deleted`, {
+        action: {
+          label: 'Undo',
+          onClick: () => undoDeletedEstimate(est),
+        },
+      });
     } catch (err) {
       console.error('[Estimates] Failed to delete estimate:', err?.message || err);
       toast.error('Estimate was not deleted. Please refresh and try again.');
@@ -139,12 +166,18 @@ export default function Estimates() {
   const handleConfirmBulkArchive = async (reason) => {
     setArchiveBulkModal(false);
     const idsArray = Array.from(selectedIds);
+    const deletedEstimates = estimates.filter(e => idsArray.includes(e.id));
 
     try {
       await archiveManyWithSnapshot(base44.entities.Estimate, 'Estimate', idsArray, actor, reason);
       setEstimates(prev => prev.filter(e => !idsArray.includes(e.id)));
       setSelectedIds(new Set());
-      toast.success(`${idsArray.length} estimate(s) deleted`);
+      toast.success(`${idsArray.length} estimate(s) deleted`, {
+        action: {
+          label: 'Undo',
+          onClick: () => undoDeletedEstimates(deletedEstimates),
+        },
+      });
     } catch (err) {
       console.error('[Estimates] Failed to delete selected estimates:', err?.message || err);
       toast.error('Selected estimates were not fully deleted. Please refresh and try again.');
