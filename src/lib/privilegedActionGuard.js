@@ -39,6 +39,7 @@ export const PRIVILEGED_ACTIONS = {
     requires_confirmation: true,
     confirmation_text: 'I understand the risks',
     brain_advisory: true,
+    auto_block_on_critical_brain: true,
   },
 };
 
@@ -135,6 +136,42 @@ async function runSecurityBrainAdvisory(actionId, userIdentifier = 'unknown') {
       related: { auditLogs },
       context: { page: 'PrivilegedActionGuard', actionId },
     });
+
+    if (action.auto_block_on_critical_brain && result?.level === 'critical') {
+      const reason = result.decision?.nextAction || 'Security Brain reported critical risk.';
+      await logSecurityEvent({
+        event_type: 'privileged_action_denied',
+        success: false,
+        user_identifier: userIdentifier,
+        reason: `Auto-blocked ${action.label}: ${reason}`,
+        metadata_json: {
+          action_id: actionId,
+          auto_blocked: true,
+          brain_level: result.level,
+          brain_score: result.score,
+          brain_next_action: reason,
+        },
+      });
+
+      if (typeof window !== 'undefined') {
+        window.alert([
+          `Security Brain blocked: ${action.label}`,
+          '',
+          `Current level: ${result.level}`,
+          `Score: ${result.score}`,
+          `Reason: ${reason}`,
+          '',
+          'Review the Security Dashboard before trying again.',
+        ].join('\n'));
+      }
+
+      return {
+        allowed: false,
+        warning: reason,
+        brain: result,
+        reason: `Security Brain auto-blocked this action: ${reason}`,
+      };
+    }
 
     const shouldWarn = result?.level === 'critical' || (actionId === 'PURGE_RECORD' && result?.level === 'warning');
     if (!shouldWarn) return { allowed: true, warning: null, brain: result };
