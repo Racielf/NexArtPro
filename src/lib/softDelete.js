@@ -8,6 +8,22 @@ import { base44 } from '@/api/base44Client';
 import { writeVaultSnapshot, markVaultRestored } from '@/lib/recoverySnapshot';
 import { logAuditEvent } from '@/lib/auditLog';
 
+async function assertSoftDeletePersisted(entityApi, id) {
+  try {
+    const records = await entityApi.filter({ id });
+    const record = records?.[0] || null;
+
+    if (!record?.deleted_at) {
+      throw new Error(
+        'Soft delete was not persisted. Verify this entity schema includes deleted_at, deleted_by, delete_reason, restored_at, and restored_by.'
+      );
+    }
+  } catch (err) {
+    console.error('[softDelete] Persistence validation failed:', err?.message || err);
+    throw err;
+  }
+}
+
 /**
  * archiveWithSnapshot — PREFERRED archive flow for all supported business entities.
  *
@@ -16,6 +32,7 @@ import { logAuditEvent } from '@/lib/auditLog';
  *   2. Write RecoveryVault snapshot (full JSON + metadata)
  *   3. Log AuditLog archive event
  *   4. Soft-delete the original record (deleted_at, deleted_by, delete_reason)
+ *   5. Verify deleted_at actually persisted before callers remove it from UI
  *
  * @param {object} entityApi   — base44.entities.SomeEntity
  * @param {string} entityName  — entity class name matching registry (e.g. 'Invoice')
@@ -52,6 +69,9 @@ export async function archiveWithSnapshot(entityApi, entityName, id, currentUser
     restored_at: null,
     restored_by: null,
   });
+
+  // 5. Guard against silent schema/update failures before UI removes the row
+  await assertSoftDeletePersisted(entityApi, id);
 }
 
 /**
@@ -75,6 +95,8 @@ export async function softDeleteEntity(entityApi, id, currentUser, reason = '') 
     restored_at: null,
     restored_by: null,
   });
+
+  await assertSoftDeletePersisted(entityApi, id);
 }
 
 /**
