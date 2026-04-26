@@ -5,7 +5,7 @@
  */
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, X, Package, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, X, Package, ChevronDown, ChevronRight } from 'lucide-react';
 import { calculateLineTotal } from '@/lib/estimateEngine';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -36,7 +36,7 @@ function MaterialRow({ item, onUpdate, onRemove, showCost }) {
 
   return (
     <div className="grid items-center gap-2 px-4 py-2 border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
-      style={{ gridTemplateColumns: '3fr minmax(48px,60px) minmax(56px,76px) minmax(80px,100px) minmax(56px,90px) minmax(80px,100px) 28px' }}>
+      style={{ gridTemplateColumns: '3fr minmax(48px,60px) minmax(56px,76px) minmax(88px,110px) minmax(72px,104px) minmax(88px,110px) 28px' }}>
       {/* Name + description */}
       <div className="min-w-0">
         <Input
@@ -63,17 +63,17 @@ function MaterialRow({ item, onUpdate, onRemove, showCost }) {
         {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
       </select>
 
-      {/* Unit Price */}
-      <div className="relative">
+      {/* Sale Price */}
+      <div className="relative" title="Customer-facing sale price. This drives the material line total.">
         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
         <Input type="number" step="0.01" value={item.unit_price}
           onChange={e => update('unit_price', e.target.value)}
           className="h-7 pl-4 pr-1 text-sm text-right font-semibold border-slate-200" min={0} />
       </div>
 
-      {/* Unit Cost (internal) */}
+      {/* Internal Cost */}
       {showCost ? (
-        <div className="relative">
+        <div className="relative" title="Internal material cost. Used for margin only; not shown as a client charge.">
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
           <Input type="number" step="0.01" value={item.unit_cost}
             onChange={e => update('unit_cost', e.target.value)}
@@ -133,7 +133,7 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
         <div className="flex items-center gap-2 flex-1">
           <Package className="w-3.5 h-3.5 opacity-70" />
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 leading-none mb-0.5">Section</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 leading-none mb-0.5">Client-facing section</p>
             <span className="font-bold text-sm tracking-wide">Materials</span>
           </div>
         </div>
@@ -141,7 +141,7 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
           <span className="text-[11px] text-white/60">{materials.length} item{materials.length !== 1 ? 's' : ''}</span>
           <span className="text-sm font-bold text-white tabular-nums">${materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           {showCost && materialsCost > 0 && (
-            <span className="text-[10px] font-semibold text-emerald-300 tabular-nums">cost ${materialsCost.toFixed(2)}</span>
+            <span className="text-[10px] font-semibold text-emerald-300 tabular-nums" title="Internal material cost, not a client-facing charge">internal cost ${materialsCost.toFixed(2)}</span>
           )}
           <button onClick={() => onChange([])}
             className="p-1 rounded hover:bg-red-500/30 text-white/40 hover:text-white transition-colors"
@@ -155,12 +155,12 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
         <>
           {/* Column headers */}
           <div className="grid text-[10px] text-slate-400 font-semibold uppercase tracking-wide px-4 py-2 bg-slate-50 border-b border-slate-100"
-            style={{ gridTemplateColumns: '3fr minmax(48px,60px) minmax(56px,76px) minmax(80px,100px) minmax(56px,90px) minmax(80px,100px) 28px' }}>
+            style={{ gridTemplateColumns: '3fr minmax(48px,60px) minmax(56px,76px) minmax(88px,110px) minmax(72px,104px) minmax(88px,110px) 28px' }}>
             <div>Material</div>
             <div className="text-center">Qty</div>
             <div className="text-center">Unit</div>
-            <div className="text-right">Unit Price</div>
-            <div className={`text-right ${showCost ? 'text-amber-600' : ''}`}>{showCost ? 'Cost' : ''}</div>
+            <div className="text-right" title="Customer-facing sale price">Sale Price</div>
+            <div className={`text-right ${showCost ? 'text-amber-600' : ''}`} title="Internal cost only">{showCost ? 'Internal Cost' : ''}</div>
             <div className="text-right">Total</div>
             <div />
           </div>
@@ -191,7 +191,7 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
           {/* Add row */}
           <div className="px-6 py-2.5 border-t border-emerald-100 bg-white">
             <button onClick={addItem}
-              className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-1.5 text-sm font-bold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-200 transition-colors">
               <Plus className="w-4 h-4" />Add material item
             </button>
           </div>
