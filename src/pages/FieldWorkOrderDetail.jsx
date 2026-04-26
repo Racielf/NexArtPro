@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { validateWorkOrderCompletion } from '@/lib/workOrderCompletionValidator';
 import { ensureInvoiceFromWorkOrder } from '@/lib/workOrderInvoiceConversion';
 import { getInvoicePaymentState, recordInvoicePayment } from '@/lib/invoicePaymentRecorder';
+import { sendPaymentReceipt } from '@/lib/paymentReceiptAutomation';
 import {
   ArrowLeft,
   CreditCard,
@@ -140,16 +141,25 @@ export default function FieldWorkOrderDetail() {
 
     setCollecting(true);
     try {
-      const { invoice: updatedInvoice } = await recordInvoicePayment(invoice, {
+      const { invoice: updatedInvoice, payment } = await recordInvoicePayment(invoice, {
         amount: paymentAmount,
         method: paymentMethod,
         note: paymentNote || 'Collected in field',
       }, 'Field Agent');
 
+      const state = getInvoicePaymentState(updatedInvoice);
+
+      await sendPaymentReceipt({
+        base44,
+        invoice: updatedInvoice,
+        payment,
+        balanceDue: state.balance_due,
+      });
+
       setInvoice(updatedInvoice);
       setPaymentAmount('');
       setPaymentNote('');
-      toast.success('Payment collected');
+      toast.success('Payment collected & receipt sent');
     } catch (err) {
       toast.error(err?.message || 'Payment failed');
     } finally {
@@ -241,11 +251,7 @@ export default function FieldWorkOrderDetail() {
             <div className="bg-white p-4 rounded-xl space-y-3">
               <div className="flex gap-2">
                 {['before', 'during', 'after'].map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPhase(p)}
-                    className={`px-3 py-1 rounded-lg text-sm font-semibold ${phase === p ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
-                  >
+                  <button key={p} onClick={() => setPhase(p)} className={`px-3 py-1 rounded-lg text-sm font-semibold ${phase === p ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                     {p}
                   </button>
                 ))}
@@ -253,23 +259,14 @@ export default function FieldWorkOrderDetail() {
               <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} />
             </div>
 
-            <textarea
-              value={summary}
-              onChange={e=>setSummary(e.target.value)}
-              placeholder="Work summary..."
-              className="w-full p-3 rounded-xl border"
-            />
+            <textarea value={summary} onChange={e=>setSummary(e.target.value)} placeholder="Work summary..." className="w-full p-3 rounded-xl border" />
 
             <div className="bg-white p-4 rounded-xl">
               <p className="text-xs font-bold">Signature</p>
               <canvas ref={canvasRef} width={300} height={120} className="border w-full" />
             </div>
 
-            <Button
-              onClick={handleComplete}
-              disabled={!validation.valid || saving}
-              className="w-full bg-green-600"
-            >
+            <Button onClick={handleComplete} disabled={!validation.valid || saving} className="w-full bg-green-600">
               {saving ? 'Completing...' : 'Complete Work & Create Invoice'}
             </Button>
           </>
@@ -304,21 +301,8 @@ export default function FieldWorkOrderDetail() {
                   <DollarSign className="w-4 h-4 text-green-600" /> Collect Payment
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max={paymentState?.balance_due || 0}
-                    value={paymentAmount}
-                    onChange={e => setPaymentAmount(e.target.value)}
-                    placeholder="Amount"
-                    className="h-11 rounded-xl border border-slate-200 px-3 text-sm"
-                  />
-                  <select
-                    value={paymentMethod}
-                    onChange={e => setPaymentMethod(e.target.value)}
-                    className="h-11 rounded-xl border border-slate-200 px-3 text-sm bg-white"
-                  >
+                  <input type="number" step="0.01" min="0.01" max={paymentState?.balance_due || 0} value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="Amount" className="h-11 rounded-xl border border-slate-200 px-3 text-sm" />
+                  <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="h-11 rounded-xl border border-slate-200 px-3 text-sm bg-white">
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
                     <option value="check">Check</option>
@@ -327,12 +311,7 @@ export default function FieldWorkOrderDetail() {
                     <option value="other">Other</option>
                   </select>
                 </div>
-                <input
-                  value={paymentNote}
-                  onChange={e => setPaymentNote(e.target.value)}
-                  placeholder="Payment note / reference optional"
-                  className="w-full h-11 rounded-xl border border-slate-200 px-3 text-sm"
-                />
+                <input value={paymentNote} onChange={e => setPaymentNote(e.target.value)} placeholder="Payment note / reference optional" className="w-full h-11 rounded-xl border border-slate-200 px-3 text-sm" />
                 <Button onClick={handleCollectPayment} disabled={collecting} className="w-full bg-green-600 hover:bg-green-700 gap-2">
                   <CreditCard className="w-4 h-4" />
                   {collecting ? 'Recording...' : 'Record Field Payment'}
