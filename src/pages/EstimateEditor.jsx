@@ -296,51 +296,98 @@ export default function EstimateEditor() {
 
   return (
     <div className="fixed inset-0 bg-slate-100 flex flex-col z-50 font-inter">
-      <div className="bg-white border-b border-slate-200 flex-shrink-0" style={{ boxShadow: '0 1px 3px 0 rgba(0,0,0,0.06)' }}>
-        <div className="flex items-center px-5 h-14 gap-4">
-          <div className="flex items-center gap-6 min-w-0 flex-1">
-            <div className="flex items-center gap-2.5 min-w-0">
-              {hasClient && <span className="text-base font-bold text-slate-900 truncate">{estimate.client_name}</span>}
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide flex-shrink-0 ${statusBadge.cls}`}>{statusBadge.label}</span>
-              {estimate.version_number && estimate.version_number > 1 && (
-                <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">V{estimate.version_number}</span>
-              )}
-            </div>
-            <div className="hidden md:block">
-              <EstimateTemplateSelector currentTemplate={estimate.document_config?.template || 'clean'} onTemplateChange={handleTemplateChange} onShowOptions={() => setShowDocumentOptions(true)} />
-            </div>
+      {/* ── HEADER ── */}
+      <div className="bg-white border-b border-slate-200 flex-shrink-0" style={{ boxShadow: '0 1px 4px 0 rgba(0,0,0,0.07)' }}>
+        <div className="flex items-center px-4 h-14 gap-2 min-w-0">
+
+          {/* LEFT ZONE: client name + status + version */}
+          <div className="flex items-center gap-2 min-w-0 shrink-0 max-w-[260px]">
+            {hasClient && (
+              <span className="text-sm font-bold text-slate-900 truncate leading-tight">{estimate.client_name}</span>
+            )}
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide flex-shrink-0 ${statusBadge.cls}`}>
+              {statusBadge.label}
+            </span>
+            {estimate.version_number && estimate.version_number > 1 && (
+              <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full flex-shrink-0">
+                V{estimate.version_number}
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* CENTER ZONE: template selector — grows to fill space */}
+          <div className="flex-1 flex justify-center min-w-0 hidden md:flex">
+            <EstimateTemplateSelector
+              currentTemplate={estimate.document_config?.template || 'clean'}
+              onTemplateChange={handleTemplateChange}
+              onShowOptions={() => setShowDocumentOptions(true)}
+            />
+          </div>
+
+          {/* RIGHT ZONE: secondary tools → primary action → close */}
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+
+            {/* AI Brain — icon-only on medium, full on large */}
             <button
               onClick={() => setShowBrainPanel(true)}
-              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-bold shadow-sm transition-colors ${brainButton.cls}`}
+              className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-bold shadow-sm transition-colors ${brainButton.cls}`}
               title={brainButton.title}
             >
-              <BrainCircuit className="w-3.5 h-3.5" />
-              {brainButton.label}
-              <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] leading-none ${brainButton.badgeCls}`}>
+              <BrainCircuit className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="hidden lg:inline">{brainButton.label}</span>
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${brainButton.badgeCls}`}>
                 {brainButton.badge}
               </span>
             </button>
+
+            {/* Save state — quiet, always visible */}
             <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
-            <div className="w-px h-5 bg-slate-200" />
+
+            {/* Health Check — DEV only */}
             {import.meta.env.DEV && (
-              <button onClick={handleRunHealthCheck} disabled={healthLoading} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                {healthLoading ? 'Checking...' : 'Health Check'}
+              <button
+                onClick={handleRunHealthCheck}
+                disabled={healthLoading}
+                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                title="Health Check"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="hidden lg:inline">{healthLoading ? 'Checking...' : 'Health'}</span>
               </button>
             )}
-            <button onClick={() => setShowPreviewModal(true)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
-              <Eye className="w-3.5 h-3.5 text-slate-400" />Client View
+
+            {/* Divider */}
+            <div className="w-px h-5 bg-slate-200 mx-0.5" />
+
+            {/* Client View — secondary, icon + text */}
+            <button
+              onClick={() => setShowPreviewModal(true)}
+              className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              title="Client View"
+            >
+              <Eye className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="hidden lg:inline">Client View</span>
             </button>
+
+            {/* Divider */}
+            <div className="w-px h-5 bg-slate-200 mx-0.5" />
+
+            {/* PRIMARY: Review & Send + dropdown */}
             <div className="flex items-center">
-              <Button size="sm" onClick={() => { if (!estimate.client_email) { toast.error('Client email is required to send'); return; } setShowSendModal(true); }} className="rounded-r-none gap-1.5 h-8 px-3 text-xs font-semibold bg-slate-900 hover:bg-black text-white border-slate-900">
-                <Send className="w-3.5 h-3.5" />Review & Send
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
+                  setShowSendModal(true);
+                }}
+                className="rounded-r-none gap-1.5 h-8 px-3 text-xs font-semibold bg-slate-900 hover:bg-black text-white border-slate-900"
+              >
+                <Send className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Review &amp; Send</span>
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" className="rounded-l-none border-l border-white/20 h-8 px-1.5 bg-slate-900 hover:bg-black text-white">
+                  <Button size="sm" className="rounded-l-none border-l border-white/20 h-8 px-2 bg-slate-900 hover:bg-black text-white">
                     <ChevronDown className="w-3.5 h-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -350,15 +397,23 @@ export default function EstimateEditor() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <button onClick={handleCancel} title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
+
+            {/* Close */}
+            <button
+              onClick={handleCancel}
+              title={isNew && !estimate?.client_name ? 'Cancel' : 'Close'}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors ml-0.5"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-1 gap-4 px-4 py-3 bg-slate-100 overflow-hidden">
-        <div className="w-80 flex-shrink-0 overflow-y-auto flex flex-col min-h-0 bg-white rounded-xl border border-slate-100" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
+      {/* ── MAIN LAYOUT ── */}
+      <div className="flex flex-1 gap-3 px-4 py-3 bg-slate-100 overflow-hidden min-w-0">
+        {/* Left sidebar: customer panel */}
+        <div className="w-72 xl:w-80 flex-shrink-0 overflow-y-auto flex flex-col min-h-0 bg-white rounded-xl border border-slate-100" style={{ boxShadow: '0 4px 16px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
           {isNew && !hasClient ? (
             <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3"><FileText className="w-5 h-5 text-slate-400" /></div>
@@ -393,7 +448,8 @@ export default function EstimateEditor() {
           />
         )}
 
-        <div className="flex-1 overflow-auto bg-white rounded-xl border border-slate-100 px-8 py-6" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
+        {/* Canvas: main estimate editor — gets remaining space */}
+        <div className="flex-1 min-w-0 overflow-auto bg-white rounded-xl border border-slate-100 px-6 py-5 xl:px-8 xl:py-6" style={{ boxShadow: '0 4px 16px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
           {!hasClient && (
             <div className="mb-5 bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
               <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><ClipboardList className="w-4 h-4 text-blue-500" /></div>
