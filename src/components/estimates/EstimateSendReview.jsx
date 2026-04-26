@@ -1,26 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, Download, Send, CheckCircle, Link } from 'lucide-react';
+import { Printer, Download, Send, CheckCircle, Link, Mail, BrainCircuit, AlertTriangle } from 'lucide-react';
 import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import DocumentCloseButton from '@/components/shared/DocumentCloseButton';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
-
-import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import LossPreventionModal from './internal/LossPreventionModal';
 import AttachmentWarningModal from './internal/AttachmentWarningModal';
-
-import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
-import { getDocTypeConfig, validateDocTypeFields } from '@/lib/documentTypeConfig';
+import { validateEstimatePricing } from '@/lib/pricingValidation';
+import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { validateBeforeSend, executeSend, logPricingOverride, logSendFailure } from '@/lib/estimateSendOrchestrator';
 import { generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
 import SendReviewSidePanel from './SendReviewSidePanel';
 import SendReviewBanners from './SendReviewBanners';
-import { Mail } from 'lucide-react';
+import { loadPriceBook, loadServices } from '@/lib/servicePersistence';
+import estimateCatalogPricingBrain from '@/brain/modules/estimateCatalogPricingBrain';
 
 const DEFAULT_VISIBILITY = {
   businessLogo: true,
@@ -53,35 +50,37 @@ async function logDocument(estimateId, estimate, action, extra = {}) {
 }
 
 export default function EstimateSendReview({ estimate, open, onClose, onSent, onFixAllPricing }) {
-   const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
-   const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'clean');
-   const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
-   const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from ${appConfig.company.name}`);
-   const [message, setMessage] = useState(
-     `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`
-   );
-   const [sending, setSending] = useState(false);
-   const [sentSuccess, setSentSuccess] = useState(false);
-   const [sentError, setSentError] = useState(null);
-   const [confirmOpen, setConfirmOpen] = useState(false);
-   const [lossModalOpen, setLossModalOpen] = useState(false);
-   const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [], materialsWithoutCost: [] });
-   const [attachWarningOpen, setAttachWarningOpen] = useState(false);
-     const [attachWarningReasons, setAttachWarningReasons] = useState([]);
-     const [includedAttachmentIds, setIncludedAttachmentIds] = useState(
-       (estimate?.attachments || []).filter(a => a.intent === 'send_to_client').map(a => a.id) || []
-     );
-   const [publicToken, setPublicToken] = useState(null);
+  const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY);
+  const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'clean');
+  const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
+  const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from ${appConfig.company.name}`);
+  const [message, setMessage] = useState(
+    `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`
+  );
+  const [sending, setSending] = useState(false);
+  const [sentSuccess, setSentSuccess] = useState(false);
+  const [sentError, setSentError] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [lossModalOpen, setLossModalOpen] = useState(false);
+  const [lossValidation, setLossValidation] = useState({ lossItems: [], zeroProfitItems: [], materialsWithoutCost: [] });
+  const [attachWarningOpen, setAttachWarningOpen] = useState(false);
+  const [attachWarningReasons, setAttachWarningReasons] = useState([]);
+  const [includedAttachmentIds, setIncludedAttachmentIds] = useState(
+    (estimate?.attachments || []).filter(a => a.intent === 'send_to_client').map(a => a.id) || []
+  );
+  const [publicToken, setPublicToken] = useState(null);
+  const [moneyBrainResult, setMoneyBrainResult] = useState(null);
+  const [moneyBrainChecking, setMoneyBrainChecking] = useState(false);
 
-   useEffect(() => {
-     if (estimate?.id && estimate?.client_email && !publicToken) {
-       generatePublicShareToken(estimate).then(setPublicToken);
-     }
-   }, [estimate?.id, estimate?.client_email, publicToken]);
+  useEffect(() => {
+    if (estimate?.id && estimate?.client_email && !publicToken) {
+      generatePublicShareToken(estimate).then(setPublicToken);
+    }
+  }, [estimate?.id, estimate?.client_email, publicToken]);
 
-   if (!open) return null;
+  if (!open) return null;
 
-  const clientLink = publicToken 
+  const clientLink = publicToken
     ? `${window.location.origin}/client-estimate?token=${publicToken}`
     : `${window.location.origin}/client-estimate?token=generating`;
 
@@ -106,6 +105,57 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
     hideInternalNotes: true,
   };
 
+  const docConfig = estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE');
+
+  const runMoneyBrainBeforeSend = async () => {
+    if (!estimate?.groups || estimate.groups.length === 0) return true;
+
+    setMoneyBrainChecking(true);
+    try {
+      const [priceBookEntries, services] = await Promise.all([
+        loadPriceBook().catch(() => []),
+        loadServices().catch(() => []),
+      ]);
+
+      const result = await estimateCatalogPricingBrain({
+        groups: estimate.groups,
+        priceBookEntries,
+        services,
+      });
+      setMoneyBrainResult(result);
+
+      const flaggedCount = result?.flaggedItems?.length || 0;
+      if (result?.level === 'critical') {
+        toast.error(`Money Brain blocked send: ${flaggedCount} pricing issue(s) need review`);
+        return false;
+      }
+
+      if (result?.level === 'warning') {
+        const ok = window.confirm([
+          'Money Brain recommends reviewing this estimate before sending.',
+          '',
+          `Score: ${result.score}`,
+          `Issues: ${flaggedCount}`,
+          `Reason: ${result.summary}`,
+          '',
+          'Continue sending anyway?',
+        ].join('\n'));
+
+        if (!ok) {
+          toast.message('Send cancelled. Review pricing before sending.');
+          return false;
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.warn('[Money Brain Send Guard] failed:', err?.message || err);
+      return true;
+    } finally {
+      setMoneyBrainChecking(false);
+    }
+  };
+
   const handlePrint = () => {
     printEstimate(estimate, currentOptions, currentTemplate);
     logDocument(estimate.id, estimate, 'printed');
@@ -121,10 +171,6 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
     toast.success('Secure link copied!');
     logDocument(estimate.id, estimate, 'sent_link', { secure_link: clientLink });
   };
-
-  const docConfig = estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE');
-
-  // --- Loss prevention / pricing validation handlers ---
 
   const handleProceedAfterPricingWarning = async () => {
     setLossModalOpen(false);
@@ -143,6 +189,9 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
   };
 
   const handleConfirmSend = async () => {
+    const moneyOk = await runMoneyBrainBeforeSend();
+    if (!moneyOk) return;
+
     const validation = await validateBeforeSend(estimate, recipientEmail);
     if (!validation.valid) {
       (validation.errors || []).forEach(e => toast.error(e));
@@ -176,14 +225,15 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
         appConfig,
       });
 
-      await logDocument(estimate.id, estimate, 'sent_email', { 
-        recipient_email: recipientEmail, 
-        subject, 
+      await logDocument(estimate.id, estimate, 'sent_email', {
+        recipient_email: recipientEmail,
+        subject,
         secure_link: result.secureLink,
       });
 
       setSentSuccess(true);
       toast.success('Estimate sent successfully!');
+      onSent?.();
     } catch (error) {
       await logSendFailure(estimate, recipientEmail, subject, error);
       const errMsg = error?.message || 'Failed to send email';
@@ -193,8 +243,6 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
       setSending(false);
     }
   };
-
-  // --- Shell props ---
 
   const titleContent = (
     <div className="flex items-center gap-3">
@@ -220,32 +268,51 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
       size="sm"
       className={`text-white gap-1.5 ${sentSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'}`}
       onClick={sentSuccess ? undefined : handleConfirmSend}
-      disabled={sending || sentSuccess}
+      disabled={sending || sentSuccess || moneyBrainChecking}
     >
       {sentSuccess ? (
         <><CheckCircle className="w-3.5 h-3.5" /> Sent</>
+      ) : moneyBrainChecking ? (
+        <><BrainCircuit className="w-3.5 h-3.5" /> Checking...</>
       ) : (
-        <><Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Confirm & Send'}</>
+        <><Send className="w-3.5 h-3.5" /> Confirm & Send</>
       )}
     </Button>,
   ];
 
+  const moneyBrainBanner = moneyBrainResult?.level === 'critical' ? (
+    <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-3">
+      <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5" />
+      <div>
+        <p className="text-sm font-bold text-red-800">Money Brain blocked sending</p>
+        <p className="text-xs text-red-700 mt-0.5">{moneyBrainResult.summary}</p>
+        <p className="text-xs text-red-600 mt-1">{moneyBrainResult.nextAction}</p>
+        {onFixAllPricing && (
+          <button onClick={onFixAllPricing} className="mt-2 text-xs font-bold text-red-700 underline">
+            Fix pricing automatically
+          </button>
+        )}
+      </div>
+    </div>
+  ) : null;
+
   const banners = (
-    <SendReviewBanners
-      sentSuccess={sentSuccess}
-      sentError={sentError}
-      recipientEmail={recipientEmail}
-      clientLink={clientLink}
-      docLabel={docConfig.label}
-    />
+    <>
+      {moneyBrainBanner}
+      <SendReviewBanners
+        sentSuccess={sentSuccess}
+        sentError={sentError}
+        recipientEmail={recipientEmail}
+        clientLink={clientLink}
+        docLabel={docConfig.label}
+      />
+    </>
   );
 
   const handleAttachmentsDelete = async (updatedAttachments) => {
-    // Persist deletion to estimate record
     try {
       await base44.entities.Estimate.update(estimate.id, { attachments: updatedAttachments });
-      // Update local state to reflect deletion
-      onClose(); // Close and reopen to refresh, or notify parent to update
+      onClose();
       toast.success('Attachment removed');
     } catch (err) {
       toast.error('Failed to remove attachment');
@@ -275,11 +342,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
 
   const documentContent = (
     <div className="shadow-xl rounded-sm bg-white">
-      <DocumentTypeRenderer
-        estimate={estimate}
-        template={currentTemplate}
-        options={currentOptions}
-      />
+      <DocumentTypeRenderer estimate={estimate} template={currentTemplate} options={currentOptions} />
     </div>
   );
 
@@ -295,7 +358,6 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
         documentContent={documentContent}
       />
 
-      {/* Modals — rendered outside shell to ensure proper z-index layering */}
       <AttachmentWarningModal
         open={attachWarningOpen}
         onClose={() => setAttachWarningOpen(false)}
