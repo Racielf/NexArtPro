@@ -36,15 +36,15 @@ export default function EstimateTemplateSelector({
         </button>
 
         {/* Options button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onShowOptions} className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground rounded-md px-3 gap-1.5 text-xs h-8 hidden">
+        
 
-          
-          <Settings className="w-3.5 h-3.5" />
-          Options
-        </Button>
+
+
+
+
+
+
+        
       </div>
 
       {/* Expandable panel */}
