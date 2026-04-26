@@ -83,7 +83,7 @@ export default function Settings() {
     payments: (
       <SettingsSection title="Payments" description="Configure accepted payment methods and receipt settings.">
         <SettingsCard title="Accepted Methods">
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
             {['Cash', 'Check', 'Card', 'Zelle', 'ACH', 'Wire'].map(method => (
               <label key={method} className="flex items-center gap-3 cursor-pointer">
                 <input
