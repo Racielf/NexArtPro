@@ -35,7 +35,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
 const emptyItem = () => normalizeLineItem({ id: uid() });
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
-const GRID_COLS = 'minmax(20px,24px) minmax(180px,3fr) minmax(48px,60px) minmax(56px,76px) minmax(88px,110px) minmax(56px,72px) minmax(80px,110px) minmax(24px,28px)';
+const GRID_COLS = 'minmax(20px,24px) minmax(220px,3fr) minmax(52px,64px) minmax(60px,78px) minmax(96px,118px) minmax(56px,72px) minmax(92px,118px) minmax(24px,28px)';
 
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null }) {
   const [expanded, setExpanded] = useState(!item.service_name || !item.description);
@@ -78,7 +78,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
 
   return (
     <div className={`border-b border-slate-100 last:border-0 transition-colors group/row ${isFixed ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-200' : expanded ? 'bg-blue-50/10' : 'hover:bg-slate-50/70'}`}>
-      <div className="grid items-center gap-2 px-4 py-3" style={{ gridTemplateColumns: GRID_COLS }}>
+      <div className="grid items-center gap-2 px-4 py-2.5" style={{ gridTemplateColumns: GRID_COLS }}>
         <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing flex justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
           <GripVertical className="w-3.5 h-3.5" />
         </button>
@@ -128,7 +128,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
               }
             }}
             placeholder="Search service from Price Book…"
-            className="h-8 w-full text-sm font-medium text-slate-800 border-transparent hover:border-slate-200 focus:border-blue-400 bg-transparent hover:bg-white focus:bg-white px-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/15 transition placeholder:text-slate-300"
+            className="h-9 w-full text-[13px] font-medium text-slate-800 border-transparent hover:border-slate-200 focus:border-blue-400 bg-transparent hover:bg-white focus:bg-white px-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/15 transition placeholder:text-slate-300"
           />
 
           {!expanded && item.description && (
@@ -293,7 +293,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
       </div>
 
       {expanded && (
-        <div className="px-10 pb-4 pt-0.5 space-y-2">
+        <div className="px-10 pb-3 pt-0.5 space-y-1.5">
           <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest leading-none">Description</p>
           {isPreview ? (
             <p className="text-sm text-slate-400 px-1 py-1 leading-relaxed">{item.description || '—'}</p>
@@ -341,7 +341,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
   return (
     <div className="bg-white rounded-xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
       <div className="overflow-x-auto">
-      <div className="flex items-center gap-3 px-6 py-3.5 bg-slate-800 text-white">
+      <div className="flex items-center gap-3 px-6 py-3 bg-slate-800 text-white">
         <button onClick={() => onUpdate({ ...group, collapsed: !group.collapsed })} className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0">
           {group.collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
@@ -388,7 +388,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
           </div>
 
           <div className="divide-y divide-slate-100/80 min-h-[40px]">
-            {group.items.length === 0 && <div className="py-8 text-center text-slate-300 text-xs">No items yet — click below to add</div>}
+            {group.items.length === 0 && <div className="py-6 text-center text-slate-300 text-xs">No items yet — click below to add</div>}
             {group.items.map(item => (
               <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} isPreview={isPreview} pricingWarning={pricingWarningsMap?.[item.id] || null} />
             ))}
@@ -401,9 +401,9 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
 
           {!isPreview && (
             <div className="px-6 py-2.5 flex items-center gap-4 border-t border-slate-100 bg-white/80">
-              <button onClick={addItem} className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"><Plus className="w-4 h-4" />Add line item</button>
-              <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"><BookOpen className="w-4 h-4" />Price book</button>
-              <button className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"><LayoutTemplate className="w-4 h-4" />Templates</button>
+              <button onClick={addItem} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-100 px-3 py-1.5 text-sm font-bold text-primary hover:bg-blue-100 hover:border-blue-200 transition-colors"><Plus className="w-4 h-4" />Add line item</button>
+              <button type="button" disabled title="Coming soon" className="inline-flex items-center gap-1.5 text-sm text-slate-300 cursor-not-allowed"><BookOpen className="w-4 h-4" />Price book</button>
+              <button type="button" disabled title="Coming soon" className="inline-flex items-center gap-1.5 text-sm text-slate-300 cursor-not-allowed"><LayoutTemplate className="w-4 h-4" />Templates</button>
             </div>
           )}
         </>
