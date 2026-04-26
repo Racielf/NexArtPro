@@ -16,6 +16,7 @@ import { logAuditEvent } from '@/lib/auditLog';
 import { useNavigate } from 'react-router-dom';
 import ArchiveReasonModal from '@/components/shared/ArchiveReasonModal';
 import { useAuth } from '@/lib/AuthContext';
+import WorkOrderDashboard from '@/components/workorders/WorkOrderDashboard';
 
 export default function WorkOrders() {
   const navigate = useNavigate();
@@ -112,6 +113,7 @@ export default function WorkOrders() {
       <PageHeader title="Work Orders" subtitle={`${workOrders.length} total`} />
 
       <PageShell>
+        {!loading && <WorkOrderDashboard workOrders={workOrders} />}
         <div className="flex items-center gap-3">
           {filtered.length > 0 && (
             <label className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
