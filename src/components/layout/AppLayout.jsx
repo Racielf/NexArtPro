@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import { useInactivityTimeout } from '@/lib/sessionManager';
 import GlobalSecurityAlertBanner from '@/components/security/GlobalSecurityAlertBanner';
 import GlobalSearchBar from './GlobalSearchBar';
+import SecurityToastListener from '@/components/security/SecurityToastListener';
 
 export default function AppLayout() {
   useInactivityTimeout();
@@ -11,6 +12,9 @@ export default function AppLayout() {
     <div className="flex h-screen bg-background font-inter overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* ⚡ Instant Security Toasts */}
+        <SecurityToastListener />
+
         {/* 🔔 Global Security Banner */}
         <GlobalSecurityAlertBanner />
 
