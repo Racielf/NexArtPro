@@ -140,6 +140,13 @@ export function generatePaymentReceiptPdf({ invoice, payment, balanceDue }) {
   return doc;
 }
 
+export function createPaymentReceiptPdfFile({ invoice, payment, balanceDue }) {
+  const doc = generatePaymentReceiptPdf({ invoice, payment, balanceDue });
+  const filename = buildReceiptPdfFileName(invoice, payment);
+  const blob = doc.output('blob');
+  return new File([blob], filename, { type: 'application/pdf' });
+}
+
 export function downloadPaymentReceiptPdf({ invoice, payment, balanceDue }) {
   const doc = generatePaymentReceiptPdf({ invoice, payment, balanceDue });
   const filename = buildReceiptPdfFileName(invoice, payment);
