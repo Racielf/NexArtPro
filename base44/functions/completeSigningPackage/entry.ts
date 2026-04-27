@@ -197,11 +197,30 @@ Deno.serve(async (req) => {
           metadata: { participant_id: next.id, role: next.role, signing_order: next.signing_order || 1 },
           created_at: now,
         }).catch(() => {});
-        return response({ success: true, status: 'pending_next_signer', next_participant_id: next.id, document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
+        return response({
+          success: true,
+          status: 'pending_next_signer',
+          next_participant_id: next.id,
+          next_participant_name: next.name || '',
+          next_participant_email: next.email || '',
+          document_type: pkg.document_type,
+          document_id: pkg.document_id,
+          signing_package_id: pkg.id,
+        });
       }
 
       const cert = await closePackageAsSigned(base44, pkg, signer, activeParticipant.email, now, ip, ua);
-      return response({ success: true, status: 'signed', certificate_id: cert.id, document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
+      return response({
+        success: true,
+        status: 'signed',
+        certificate_id: cert.id,
+        certificate_number: cert.certificate_number || '',
+        final_pdf_url: pkg.source_pdf_url || pkg.final_pdf_url || '',
+        final_pdf_name: pkg.source_pdf_name || pkg.final_pdf_name || '',
+        document_type: pkg.document_type,
+        document_id: pkg.document_id,
+        signing_package_id: pkg.id,
+      });
     }
 
     const signer = signer_name || pkg.signer_name || pkg.client_name || '';
@@ -218,7 +237,17 @@ Deno.serve(async (req) => {
     });
 
     const cert = await closePackageAsSigned(base44, pkg, signer, pkg.signer_email, now, ip, ua);
-    return response({ success: true, status: 'signed', certificate_id: cert.id, document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
+    return response({
+      success: true,
+      status: 'signed',
+      certificate_id: cert.id,
+      certificate_number: cert.certificate_number || '',
+      final_pdf_url: pkg.source_pdf_url || pkg.final_pdf_url || '',
+      final_pdf_name: pkg.source_pdf_name || pkg.final_pdf_name || '',
+      document_type: pkg.document_type,
+      document_id: pkg.document_id,
+      signing_package_id: pkg.id,
+    });
   } catch (err: any) {
     return response({ error: err.message || 'Server error' }, 500);
   }
