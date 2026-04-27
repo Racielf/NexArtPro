@@ -1,0 +1,22 @@
+{
+  "name": "PublicDocumentAccess",
+  "type": "object",
+  "properties": {
+    "token": { "type": "string" },
+    "document_type": { "type": "string", "default": "estimate" },
+    "document_id": { "type": "string" },
+    "document_number": { "type": "string" },
+    "client_email": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["active", "used", "expired", "revoked"],
+      "default": "active"
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "last_used_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "metadata": { "type": "object" },
+    "company_id": { "type": "string", "default": "rc-art" }
+  },
+  "required": ["token", "document_type", "document_id"]
+}
