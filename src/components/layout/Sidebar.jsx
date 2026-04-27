@@ -20,6 +20,7 @@ import {
   ScrollText,
   LogOut,
   RotateCcw,
+  FileSignature,
 } from 'lucide-react';
 import { isAdmin } from '@/lib/roleUtils';
 import { useAuth } from '@/lib/AuthContext';
@@ -67,6 +68,7 @@ const navGroups = [
 const adminNavGroup = {
   label: 'Admin',
   items: [
+    { path: '/nexartsign', label: 'NexArtSign', icon: FileSignature },
     { path: '/recovery-center', label: 'Recovery Center', icon: RotateCcw },
   ],
 };
@@ -84,7 +86,6 @@ export default function Sidebar() {
       className="w-[224px] flex-shrink-0 h-screen flex flex-col"
       style={{ background: '#1a2233', borderRight: '1px solid rgba(255,255,255,0.06)' }}
     >
-      {/* ── Branding ── */}
       <div className="px-4 pt-5 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-3">
           {cc.logo_url ? (
@@ -111,7 +112,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* ── Nav ── */}
       <nav className="flex-1 px-2.5 py-3 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
         {visibleNavGroups.map((group, gi) => (
           <div key={gi} className={gi > 0 ? 'mt-5' : ''}>
@@ -156,10 +156,8 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* ── Bottom: Settings + Logout ── */}
       <div className="flex-shrink-0 px-2.5 py-3 space-y-0.5"
         style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-  
         <Link
           to="/settings"
           style={location.pathname === '/settings' ? {
