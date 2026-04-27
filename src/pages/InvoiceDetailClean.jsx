@@ -95,6 +95,9 @@ export default function InvoiceDetailClean() {
   const isPartial = derived.payment_status === 'partial';
   const overdue = isInvoiceOverdue(invoice);
   const nextAction = getInvoiceNextAction(invoice);
+  const previousBalance = 0;
+  const currentInvoiceTotal = invoice?.total || 0;
+  const totalOwed = previousBalance + derived.balance_due;
 
   const allItems = useMemo(() => {
     if (!invoice) return [];
@@ -203,6 +206,7 @@ export default function InvoiceDetailClean() {
       <div class="grid"><div class="box"><p class="muted"><strong>BILL TO</strong></p><p><strong>${invoice.client_name}</strong></p>${viewSettings.show_client_address && invoice.client_address ? `<p>${invoice.client_address}</p>` : ''}${viewSettings.show_client_phone && invoice.client_phone ? `<p>${invoice.client_phone}</p>` : ''}${viewSettings.show_client_email && invoice.client_email ? `<p>${invoice.client_email}</p>` : ''}</div><div class="box"><p>Invoice #: <strong>${invoice.invoice_number}</strong></p><p>Date: <strong>${new Date().toLocaleDateString()}</strong></p>${invoice.due_date ? `<p>Due: <strong>${invoice.due_date}</strong></p>` : ''}<p>Status: <strong>${derived.payment_status.toUpperCase()}</strong></p></div></div>
       <table><thead><tr><th>Service</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>${lineRows}</tbody></table>
       <div style="text-align:right"><p>Subtotal: $${(invoice.subtotal || 0).toFixed(2)}</p>${invoice.discount_amount > 0 ? `<p>Discount: -$${(invoice.discount_amount || 0).toFixed(2)}</p>` : ''}${viewSettings.show_tax && invoice.tax_rate > 0 ? `<p>Tax (${invoice.tax_rate}%): $${(invoice.tax_amount || 0).toFixed(2)}</p>` : ''}<p class="total">TOTAL: $${(invoice.total || 0).toFixed(2)}</p><p>Paid: $${derived.amount_paid.toFixed(2)}</p><p>Balance Due: $${derived.balance_due.toFixed(2)}</p></div>
+      <div class="box"><strong>Account Summary</strong><p>Previous Balance: $${previousBalance.toFixed(2)}</p><p>This Invoice: $${currentInvoiceTotal.toFixed(2)}</p><p>Payments: -$${derived.amount_paid.toFixed(2)}</p><p><strong>Total Owed: $${totalOwed.toFixed(2)}</strong></p></div>
       ${viewSettings.show_notes && invoice.notes ? `<div class="box"><strong>Notes</strong><p>${invoice.notes}</p></div>` : ''}
       ${viewSettings.show_terms && invoice.payment_terms ? `<div class="box"><strong>Payment Terms</strong><p>${invoice.payment_terms}</p></div>` : ''}
       </body></html>`;
@@ -248,10 +252,18 @@ export default function InvoiceDetailClean() {
           <aside className="w-[320px] flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white">
             <section className={`px-5 py-5 border-b border-slate-100 ${isPaid ? 'bg-emerald-50' : overdue ? 'bg-red-50' : 'bg-slate-50'}`}>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Invoice</p>
-              <p className="text-3xl font-bold text-slate-900">${(invoice.total || 0).toFixed(2)}</p>
+              <p className="text-3xl font-bold text-slate-900">${currentInvoiceTotal.toFixed(2)}</p>
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <div className="bg-white rounded-lg px-3 py-2 border border-slate-200"><p className="text-[10px] text-slate-400">Paid</p><p className="text-sm font-bold text-emerald-600">${derived.amount_paid.toFixed(2)}</p></div>
                 <div className="bg-white rounded-lg px-3 py-2 border border-slate-200"><p className="text-[10px] text-slate-400">Balance</p><p className="text-sm font-bold text-slate-900">${derived.balance_due.toFixed(2)}</p></div>
+              </div>
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 p-3 space-y-1.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Account Summary</p>
+                <SummaryMini label="Previous Balance" value={previousBalance} />
+                <SummaryMini label="This Invoice" value={currentInvoiceTotal} />
+                <SummaryMini label="Payments" value={-derived.amount_paid} />
+                <div className="h-px bg-slate-200 my-1.5" />
+                <SummaryMini label="Total Owed" value={totalOwed} strong />
               </div>
               {invoice.due_date && <p className={`text-xs font-medium flex items-center gap-1.5 mt-3 ${overdue ? 'text-red-600' : 'text-slate-500'}`}><Clock className="w-3.5 h-3.5" />Due {invoice.due_date}</p>}
               {!isPaid && <button onClick={() => setPaymentModalOpen(true)} className="w-full mt-3 bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-3 rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5"><DollarSign className="w-4 h-4" />Add Payment</button>}
@@ -305,6 +317,17 @@ export default function InvoiceDetailClean() {
               <div className="bg-slate-50 px-5 py-4 space-y-2 border-t border-slate-100"><SummaryRow label="Subtotal" value={invoice.subtotal || 0} />{invoice.discount_amount > 0 && <SummaryRow label="Discount" value={-invoice.discount_amount} />}{viewSettings.show_tax && invoice.tax_rate > 0 && <SummaryRow label={`Tax (${invoice.tax_rate}%)`} value={invoice.tax_amount || 0} />}<div className="h-px bg-slate-200 my-2" /><SummaryRow label="Total" value={invoice.total || 0} strong /></div>
             </section>
 
+            <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100"><p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Account Summary</p></div>
+              <div className="p-5 space-y-2">
+                <SummaryRow label="Previous Balance" value={previousBalance} />
+                <SummaryRow label="This Invoice" value={currentInvoiceTotal} />
+                <SummaryRow label="Payments" value={-derived.amount_paid} />
+                <div className="h-px bg-slate-200 my-2" />
+                <SummaryRow label="Total Owed" value={totalOwed} strong />
+              </div>
+            </section>
+
             <section className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5"><p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Payments</p><PaymentHistory invoice={invoice} onPaymentRemoved={(updates) => setInvoice(prev => ({ ...prev, ...updates }))} /></div>
               {viewSettings.show_notes && <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5"><p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Notes</p><textarea value={notes} onChange={e => setNotes(e.target.value)} className="w-full min-h-[160px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary resize-y" placeholder="Customer-facing notes..." /></div>}
@@ -320,4 +343,8 @@ export default function InvoiceDetailClean() {
 
 function SummaryRow({ label, value, strong }) {
   return <div className="flex items-center justify-between text-sm"><span className={strong ? 'font-bold text-slate-900' : 'text-slate-500'}>{label}</span><span className={strong ? 'text-lg font-black text-slate-900' : 'font-semibold text-slate-700'}>{value < 0 ? '-' : ''}${Math.abs(value || 0).toFixed(2)}</span></div>;
+}
+
+function SummaryMini({ label, value, strong }) {
+  return <div className="flex items-center justify-between text-xs"><span className={strong ? 'font-bold text-slate-800' : 'text-slate-500'}>{label}</span><span className={strong ? 'font-black text-slate-900' : 'font-semibold text-slate-700'}>{value < 0 ? '-' : ''}${Math.abs(value || 0).toFixed(2)}</span></div>;
 }
