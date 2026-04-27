@@ -33,7 +33,6 @@ function todayFormatted() {
   });
 }
 
-// ─── Status styles ─────────────────────────────────────────────────────────────
 const STATUS_COLORS = {
   approved:  { bg: '#166534', color: '#bbf7d0' },
   declined:  { bg: '#7f1d1d', color: '#fecaca' },
@@ -42,7 +41,6 @@ const STATUS_COLORS = {
   converted: { bg: '#14532d', color: '#bbf7d0' },
 };
 
-// ─── Template alias normalization ──────────────────────────────────────────────
 const TEMPLATE_ALIASES = { professional: 'clean', detailed: 'clean', standard: 'clean', minimal: 'clean', modern: 'modern_card', executive: 'premium', compact: 'modern_card', pro: 'modern_card' };
 const VALID_TEMPLATES = ['clean', 'premium', 'modern_card', 'field_classic'];
 
@@ -51,7 +49,6 @@ function resolveTemplate(template) {
   return TEMPLATE_ALIASES[template] || 'clean';
 }
 
-// ─── Column visibility by document type ────────────────────────────────────────
 function getLineItemColumns(documentType, showPrices = true) {
   if (documentType === 'workorder') {
     return { description: true, quantity: true, unit: true, price: false, total: false };
@@ -59,7 +56,6 @@ function getLineItemColumns(documentType, showPrices = true) {
   return { description: true, quantity: true, unit: true, price: showPrices, total: showPrices };
 }
 
-// ─── Terms array builder ───────────────────────────────────────────────────────
 const TERMS_CONFIG = [
   { key: 'exclusions', label: 'Exclusions' },
   { key: 'paymentTerms', label: 'Payment Terms' },
@@ -73,7 +69,6 @@ function buildTermsArray(textObj) {
     .map(t => ({ key: t.key, label: t.label, value: textObj[t.key] }));
 }
 
-// ─── Groups resolution (groups[] or legacy line_items[] fallback) ──────────────
 function resolveGroups(estimate) {
   if (estimate?.groups?.length) {
     return estimate.groups.map(g => {
@@ -90,21 +85,6 @@ function resolveGroups(estimate) {
   return [];
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PUBLIC API
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Build a fully prepared, rendering-safe document view model.
- *
- * @param {Object} params
- * @param {Object} params.estimate       — Estimate (or estimate-shaped) record
- * @param {Object} [params.companyConfig] — From useCompanyConfig() hook
- * @param {string} [params.documentType]  — 'estimate' | 'proposal' | 'invoice' | 'workorder'
- * @param {string} [params.template]      — Template key (may be alias)
- * @param {Object} [params.options]       — Visibility overrides
- * @returns {Object} Fully resolved view model
- */
 export function buildEstimateDocumentViewModel({
   estimate,
   companyConfig = {},
@@ -115,8 +95,6 @@ export function buildEstimateDocumentViewModel({
   if (!estimate) return null;
 
   const cc = companyConfig;
-
-  // ─── Meta ────────────────────────────────────────────────────────────────
   const resolvedTemplate = resolveTemplate(template);
   const today = todayFormatted();
   const expirationDate = formatDate(estimate.expiration_date);
@@ -126,10 +104,7 @@ export function buildEstimateDocumentViewModel({
   const isInvoice = documentType === 'invoice';
   const isProposal = documentType === 'proposal';
   const isEstimate = documentType === 'estimate';
-
   const docTypeLabel = isWorkOrder ? 'WORK ORDER' : isInvoice ? 'INVOICE' : isProposal ? 'PROPOSAL' : 'ESTIMATE';
-
-  // Resolve best document number for display
   const documentNumber = estimate.estimate_number || estimate.invoice_number || estimate.work_order_number || null;
 
   const meta = {
@@ -147,7 +122,6 @@ export function buildEstimateDocumentViewModel({
     workOrderNumber: estimate.work_order_number || null,
   };
 
-  // ─── Company ─────────────────────────────────────────────────────────────
   const company = {
     name: cc.name || APP_CONFIG.company.name,
     address: cc.address || APP_CONFIG.company.address,
@@ -160,7 +134,6 @@ export function buildEstimateDocumentViewModel({
     paymentMethods: cc.payment_methods || '',
   };
 
-  // ─── Client ──────────────────────────────────────────────────────────────
   const client = {
     name: safeStr(estimate.client_name),
     email: safeStr(estimate.client_email),
@@ -168,14 +141,9 @@ export function buildEstimateDocumentViewModel({
     address: safeStr(estimate.client_address),
   };
 
-  // ─── Raw Project Dates ───────────────────────────────────────────────────
   const rawStartDate = formatDate(estimate.project_start_date);
   const rawEndDate = formatDate(estimate.project_end_date);
-
-  // ─── Visibility ──────────────────────────────────────────────────────────
   const showPrices = isWorkOrder ? false : (options.showPrices !== false);
-
-  // Date visibility — explicit per-flag with fallback rules
   const showDocumentDate = options.showDocumentDate !== false;
   const showProjectStartDate = options.showProjectStartDate !== false;
   const showProjectEndDate = options.showProjectEndDate !== false;
@@ -197,7 +165,6 @@ export function buildEstimateDocumentViewModel({
     showProjectEndDate: effectiveShowEndDate,
     showDeposit: options.showDeposit !== false,
     hideInternalNotes: options.hideInternalNotes !== false,
-    // Granular visibility flags used by all templates
     showBusinessLogo: options.showBusinessLogo !== false,
     showBusinessName: options.showBusinessName !== false,
     showBusinessAddress: options.showBusinessAddress !== false,
@@ -208,11 +175,11 @@ export function buildEstimateDocumentViewModel({
     showCustomerName: options.showCustomerName !== false,
     showExpirationDate: options.showExpirationDate !== false,
     showTechnicianName: options.showTechnicianName !== false,
+    // Attachments must stay separate from the estimate PDF/preview/email document.
+    // They are sent/downloaded through the attachment flow, not embedded visually.
+    showIncludedDocuments: options.showIncludedDocuments === true,
   };
 
-  // ─── Project ─────────────────────────────────────────────────────────────
-  // Fase 4: templates must not independently decide hidden dates.
-  // The view model only exposes project dates that are allowed by visibility.
   const startDate = visibility.showProjectStartDate ? rawStartDate : null;
   const endDate = visibility.showProjectEndDate ? rawEndDate : null;
 
@@ -226,10 +193,8 @@ export function buildEstimateDocumentViewModel({
     planReference: safeStr(estimate.plan_reference),
   };
 
-  // ─── Groups ──────────────────────────────────────────────────────────────
   const groups = resolveGroups(estimate);
 
-  // ─── Totals ──────────────────────────────────────────────────────────────
   const total = safeNum(estimate.total);
   const depositPct = safeNum(estimate.deposit_percent);
   const depositAmount = safeNum(estimate.deposit_amount) || (total * depositPct / 100);
@@ -251,8 +216,6 @@ export function buildEstimateDocumentViewModel({
     grossMarginPct: safeNum(estimate.gross_margin_pct),
   };
 
-  // ─── Text ────────────────────────────────────────────────────────────────
-  // Parse included_scope_bullets: split by newline or bullet chars, trim, filter empty → always array
   const includedScopeBullets = safeStr(estimate.included_scope_bullets)
     .split(/[\n•]/)
     .map(s => s.trim())
@@ -272,15 +235,10 @@ export function buildEstimateDocumentViewModel({
     uncertaintyNote: safeStr(estimate.uncertainty_note),
   };
 
-  // ─── Contingency ─────────────────────────────────────────────────────────
-  // Compute contingency_amount based on grand total (post-discount, post-tax).
-  // Basis: totals.total — the final client-facing amount already computed.
-  // This avoids circular recalculation with the estimate engine.
   const contingencyType = safeStr(estimate.contingency_type, 'none');
   const contingencyValue = safeNum(estimate.contingency_value, 0);
   const storedContingencyAmount = safeNum(estimate.contingency_amount, 0);
 
-  // Re-derive amount from current total to ensure freshness; fall back to stored.
   let contingencyAmount = 0;
   if (contingencyType === 'percent' && contingencyValue > 0) {
     contingencyAmount = parseFloat((safeNum(estimate.total) * contingencyValue / 100).toFixed(2));
@@ -290,16 +248,13 @@ export function buildEstimateDocumentViewModel({
     contingencyAmount = storedContingencyAmount;
   }
 
-  const showContingencyToClient = estimate.show_contingency_to_client === true;
-
   const contingency = {
     contingencyType,
     contingencyValue,
     contingencyAmount,
-    showContingencyToClient,
+    showContingencyToClient: estimate.show_contingency_to_client === true,
   };
 
-  // ─── Materials ────────────────────────────────────────────────────────────
   const materialsRaw = Array.isArray(estimate.materials) ? estimate.materials : [];
   const materialsItems = materialsRaw.map(m => ({
     id: m.id || '',
@@ -311,22 +266,19 @@ export function buildEstimateDocumentViewModel({
     line_total: safeNum(m.line_total),
   }));
   const materialsSubtotal = materialsItems.reduce((s, m) => s + m.line_total, 0);
-
-  // ─── Columns ─────────────────────────────────────────────────────────────
   const columns = getLineItemColumns(documentType, showPrices);
-
-  // ─── Pre-built terms array for templates ─────────────────────────────────
   const termsArray = buildTermsArray(text);
 
-  // ─── Client Attachments (only send_to_client, never internal) ────────────
   const allAttachments = Array.isArray(estimate.attachments) ? estimate.attachments : [];
-  const clientAttachments = allAttachments
-    .filter(a => a.intent === 'send_to_client')
-    .map(a => ({
-      id: a.id || '',
-      file_name: safeStr(a.file_name, 'Document'),
-      file_url: safeStr(a.file_url),
-    }));
+  const clientAttachments = visibility.showIncludedDocuments
+    ? allAttachments
+        .filter(a => a.intent === 'send_to_client')
+        .map(a => ({
+          id: a.id || '',
+          file_name: safeStr(a.file_name, 'Document'),
+          file_url: safeStr(a.file_url),
+        }))
+    : [];
 
   return {
     meta,
