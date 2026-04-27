@@ -1,28 +1,36 @@
 import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
 import { getLatestTransmission, listTransmissions } from '@/lib/estimateTransmission';
 import { getTransmissionStatus, formatTransmissionTime } from '@/lib/transmissionStatus';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { generateSignedPdfUrl } from '@/lib/estimateDocumentAccess';
+import { ChevronDown, ChevronUp, CheckCircle2, ExternalLink, FileSignature, XCircle } from 'lucide-react';
 
 /**
- * TransmissionPanel — Minimal transmission status for estimate.
- * Shows latest transmission + history list.
- * Placed in estimate detail/preview screens.
+ * TransmissionPanel — Minimal transmission + client decision status for estimate.
+ * Shows latest email transmission and, when available, client signature/decline details.
  */
 export default function TransmissionPanel({ estimateId }) {
   const [latest, setLatest] = useState(null);
+  const [estimate, setEstimate] = useState(null);
   const [history, setHistory] = useState([]);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [openingSignedPdf, setOpeningSignedPdf] = useState(false);
 
   useEffect(() => {
     if (!estimateId) return;
-    loadTransmissions();
+    loadPanelData();
   }, [estimateId]);
 
-  const loadTransmissions = async () => {
+  const loadPanelData = async () => {
     setLoading(true);
-    const latestTx = await getLatestTransmission(estimateId);
+    const [latestTx, estimateRows] = await Promise.all([
+      getLatestTransmission(estimateId),
+      base44.entities.Estimate.filter({ id: estimateId }).catch(() => []),
+    ]);
+
     setLatest(latestTx);
+    setEstimate(estimateRows?.[0] || null);
 
     if (latestTx) {
       const historyTx = await listTransmissions(estimateId, 10);
@@ -31,8 +39,80 @@ export default function TransmissionPanel({ estimateId }) {
     setLoading(false);
   };
 
-  if (loading || !latest) return null;
+  const openSignedDocument = async () => {
+    if (!estimate?.final_signed_pdf_url) return;
+    setOpeningSignedPdf(true);
+    try {
+      const url = await generateSignedPdfUrl(estimate.final_signed_pdf_url);
+      if (url) window.open(url, '_blank', 'noreferrer');
+    } finally {
+      setOpeningSignedPdf(false);
+    }
+  };
 
+  if (loading) return null;
+
+  const isSigned = ['approved', 'signed', 'converted'].includes(estimate?.status) || !!estimate?.signed_at;
+  const isDeclined = estimate?.status === 'declined' || !!estimate?.declined_at;
+
+  return (
+    <div className="space-y-2">
+      {isSigned && (
+        <div className="border border-emerald-200 rounded-lg overflow-hidden bg-emerald-50">
+          <div className="px-4 py-3 flex items-start gap-3">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Signed / Approved</p>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                {estimate?.signature_name || estimate?.accepted_by || 'Client'}
+                {estimate?.signed_at ? ` • ${formatTransmissionTime(estimate.signed_at)}` : ''}
+              </p>
+              {estimate?.terms_accepted && (
+                <p className="text-[11px] text-emerald-700 mt-1">Terms accepted electronically.</p>
+              )}
+              {estimate?.converted_work_order_id && (
+                <p className="text-[11px] text-emerald-700 mt-1">Converted to Work Order.</p>
+              )}
+            </div>
+            {estimate?.final_signed_pdf_url && (
+              <button
+                type="button"
+                onClick={openSignedDocument}
+                disabled={openingSignedPdf}
+                className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+              >
+                <FileSignature className="w-3 h-3" />
+                {openingSignedPdf ? 'Opening…' : 'Signed PDF'}
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isDeclined && (
+        <div className="border border-red-200 rounded-lg overflow-hidden bg-red-50">
+          <div className="px-4 py-3 flex items-start gap-3">
+            <XCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-red-700 uppercase tracking-wide">Declined</p>
+              <p className="text-xs text-red-700 mt-0.5">
+                {estimate?.declined_at ? formatTransmissionTime(estimate.declined_at) : 'Client declined this estimate.'}
+              </p>
+              {estimate?.declined_reason && (
+                <p className="text-[11px] text-red-700 mt-1 line-clamp-3">{estimate.declined_reason}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {latest && <TransmissionHistory latest={latest} history={history} expanded={expanded} setExpanded={setExpanded} />}
+    </div>
+  );
+}
+
+function TransmissionHistory({ latest, history, expanded, setExpanded }) {
   const status = getTransmissionStatus(latest);
   if (!status) return null;
 
@@ -40,7 +120,6 @@ export default function TransmissionPanel({ estimateId }) {
 
   return (
     <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
-      {/* Header / Latest Transmission */}
       <button
         onClick={() => setExpanded(!expanded)}
         className={`w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors ${status.bg} border-b ${expanded ? 'border-b-slate-200' : ''}`}
@@ -59,7 +138,6 @@ export default function TransmissionPanel({ estimateId }) {
         )}
       </button>
 
-      {/* Transmission Details */}
       <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
         <div className="grid grid-cols-2 gap-3 text-xs">
           {latest.sent_at && (
@@ -101,7 +179,6 @@ export default function TransmissionPanel({ estimateId }) {
         </div>
       </div>
 
-      {/* History List (if expanded and more than 1) */}
       {expanded && history.length > 1 && (
         <div className="border-t border-slate-100">
           <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
