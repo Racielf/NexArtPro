@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import {
   CheckCircle, XCircle, Loader2, Printer, Download,
-  Clock, Eye, AlertTriangle
+  Clock, Eye, AlertTriangle, FileSignature
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { logComm } from '@/lib/commTracking';
@@ -238,11 +238,7 @@ export default function ClientEstimateView() {
     try {
       const clientAudit = collectLegalAudit();
       const serverAudit = await captureServerAudit();
-      const legalAudit = {
-        ...clientAudit,
-        ...serverAudit,
-        audit_version: 'phase6_with_ip',
-      };
+      const legalAudit = { ...clientAudit, ...serverAudit, audit_version: 'legacy_client_approval_with_ip' };
 
       const updates = await approveEstimate(estimate.id, {
         approvedBy: cleanSignature,
@@ -263,15 +259,8 @@ export default function ClientEstimateView() {
       }
 
       try {
-        const conversion = await convertApprovedEstimateToWorkOrder(signedEstimate, {
-          actor: 'client_approval',
-        });
-        signedEstimate = {
-          ...signedEstimate,
-          status: 'converted',
-          sales_stage: 'converted',
-          converted_work_order_id: conversion?.workOrder?.id,
-        };
+        const conversion = await convertApprovedEstimateToWorkOrder(signedEstimate, { actor: 'client_approval' });
+        signedEstimate = { ...signedEstimate, status: 'converted', sales_stage: 'converted', converted_work_order_id: conversion?.workOrder?.id };
         setEstimate(signedEstimate);
       } catch (conversionErr) {
         console.warn('[convertApprovedEstimateToWorkOrder] failed:', conversionErr?.message);
@@ -354,6 +343,8 @@ export default function ClientEstimateView() {
 
   const isFinal = ['approved', 'declined', 'converted'].includes(estimate.status);
   const canAct = !isFinal;
+  const nexArtSignUrl = estimate.signing_package_token ? `${window.location.origin}/sign-document?token=${estimate.signing_package_token}` : '';
+  const hasNexArtSign = Boolean(nexArtSignUrl) && !['signed', 'declined', 'expired', 'voided'].includes(estimate.signing_package_status);
 
   const dc = getDocTypeConfig(estimate?.document_type);
   const docLabel = dc.label;
@@ -363,19 +354,13 @@ export default function ClientEstimateView() {
       bg: 'bg-green-50 border-green-200',
       icon: <CheckCircle className="w-5 h-5 text-green-600" />,
       title: `${docLabel} Approved`,
-      body: estimate.final_signed_pdf_url
-        ? `Signed by ${estimate.signature_name}. Final signed PDF is locked.`
-        : estimate.signature_name
-          ? `Signed by ${estimate.signature_name}. We will be in touch soon to schedule the work.`
-          : "Thank you! We'll be in touch soon to schedule the work.",
+      body: estimate.final_signed_pdf_url ? `Signed by ${estimate.signature_name}. Final signed PDF is locked.` : estimate.signature_name ? `Signed by ${estimate.signature_name}. We will be in touch soon to schedule the work.` : "Thank you! We'll be in touch soon to schedule the work.",
     },
     converted: {
       bg: 'bg-green-50 border-green-200',
       icon: <CheckCircle className="w-5 h-5 text-green-600" />,
       title: `${docLabel} Approved & Converted`,
-      body: estimate.converted_work_order_id
-        ? `Signed by ${estimate.signature_name}. Your approved estimate has been converted into a work order.`
-        : `Signed by ${estimate.signature_name}. Your approved estimate is ready for scheduling.`,
+      body: estimate.converted_work_order_id ? `Signed by ${estimate.signature_name}. Your approved estimate has been converted into a work order.` : `Signed by ${estimate.signature_name}. Your approved estimate is ready for scheduling.`,
     },
     declined: { bg: 'bg-red-50 border-red-200', icon: <XCircle className="w-5 h-5 text-red-500" />, title: `${docLabel} Declined`, body: 'We appreciate your feedback. Contact us if you change your mind.' },
     viewed: { bg: 'bg-blue-50 border-blue-200', icon: <Eye className="w-5 h-5 text-blue-500" />, title: `${docLabel} Viewed`, body: 'Please review below and take action when ready.' },
@@ -389,9 +374,7 @@ export default function ClientEstimateView() {
           <div>
             <p className="font-semibold text-slate-800 text-sm">{statusBanner.title}</p>
             <p className="text-sm text-slate-600 mt-0.5">{statusBanner.body}</p>
-            {estimate.signed_pdf_hash && (
-              <p className="text-[11px] text-slate-500 mt-2 break-all">SHA-256: {estimate.signed_pdf_hash}</p>
-            )}
+            {estimate.signed_pdf_hash && <p className="text-[11px] text-slate-500 mt-2 break-all">SHA-256: {estimate.signed_pdf_hash}</p>}
           </div>
         </div>
       )}
@@ -412,9 +395,28 @@ export default function ClientEstimateView() {
         token={token}
         useSignedUrl={true}
       />
+
+      {canAct && hasNexArtSign && (
+        <div className="px-8 py-7 bg-emerald-50 border border-emerald-200 rounded-xl">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <FileSignature className="w-5 h-5 text-emerald-700" />
+            </div>
+            <div>
+              <p className="font-semibold text-emerald-900 text-sm">Ready for secure approval</p>
+              <p className="text-sm text-emerald-700 mt-1">Continue to NexArtSign to approve this document with audit trail and certificate tracking.</p>
+            </div>
+          </div>
+          <Button onClick={() => { window.location.href = nexArtSignUrl; }} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-11 gap-2 text-sm font-semibold">
+            <FileSignature className="w-4 h-4" />Review & Sign with NexArtSign
+          </Button>
+          <p className="text-[11px] text-emerald-700/80 mt-3 text-center">Use this option for the official signing flow.</p>
+        </div>
+      )}
+
       {canAct && (
         <div className="px-8 py-7 bg-slate-50 border border-slate-200 rounded-xl">
-          <p className="text-sm text-slate-500 mb-5 text-center">Please review this estimate and choose an action below.</p>
+          <p className="text-sm text-slate-500 mb-5 text-center">Backup approval option.</p>
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Signature</label>
@@ -430,50 +432,24 @@ export default function ClientEstimateView() {
             </div>
 
             <label className="flex items-start gap-2 text-xs text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-3">
-              <input
-                type="checkbox"
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                disabled={acting}
-                className="mt-0.5"
-              />
+              <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} disabled={acting} className="mt-0.5" />
               <span>I have reviewed the estimate, included documents, pricing, scope, and terms, and I approve this work.</span>
             </label>
 
-            <Button
-              onClick={handleApprove}
-              disabled={acting || !signatureName.trim() || !termsAccepted}
-              className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 gap-2 text-sm font-semibold disabled:opacity-50"
-            >
-              <CheckCircle className="w-4 h-4" />Approve & Sign
+            <Button onClick={handleApprove} disabled={acting || !signatureName.trim() || !termsAccepted} className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 gap-2 text-sm font-semibold disabled:opacity-50">
+              <CheckCircle className="w-4 h-4" />Approve Without NexArtSign
             </Button>
 
             <div className="space-y-2 pt-2 border-t border-slate-200">
-              <div className="relative">
-                <textarea
-                  placeholder="Tell us why you're declining (required)"
-                  value={declineReason}
-                  onChange={(e) => setDeclineReason(e.target.value)}
-                  disabled={acting}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-1 focus:ring-red-500 focus:outline-none"
-                  rows="2"
-                />
-              </div>
-              <Button
-                onClick={handleDecline}
-                disabled={acting || !declineReason.trim()}
-                variant="outline"
-                className="w-full border-red-300 text-red-600 hover:bg-red-50 rounded-xl h-10 gap-2 text-sm disabled:opacity-50"
-              >
+              <textarea placeholder="Tell us why you're declining (required)" value={declineReason} onChange={(e) => setDeclineReason(e.target.value)} disabled={acting} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-1 focus:ring-red-500 focus:outline-none" rows="2" />
+              <Button onClick={handleDecline} disabled={acting || !declineReason.trim()} variant="outline" className="w-full border-red-300 text-red-600 hover:bg-red-50 rounded-xl h-10 gap-2 text-sm disabled:opacity-50">
                 <XCircle className="w-4 h-4" />Decline
               </Button>
             </div>
           </div>
         </div>
       )}
-      <p className="text-center text-[10px] text-slate-400 py-2">
-        This estimate was issued by {appConfig.appName}. Questions? Contact us at {appConfig.company.email}
-      </p>
+      <p className="text-center text-[10px] text-slate-400 py-2">This estimate was issued by {appConfig.appName}. Questions? Contact us at {appConfig.company.email}</p>
     </div>
   );
 
@@ -482,12 +458,8 @@ export default function ClientEstimateView() {
       <DocumentViewerShell
         title={`${docLabel} #${estimate.estimate_number}`}
         actions={[
-          <Button key="print" size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs print:hidden">
-            <Printer className="w-3.5 h-3.5" />Print
-          </Button>,
-          <Button key="download" size="sm" variant="outline" onClick={handleDownload} className="gap-1.5 text-xs print:hidden">
-            <Download className="w-3.5 h-3.5" />{estimate.final_signed_pdf_url ? 'Download Signed PDF' : 'Download PDF'}
-          </Button>,
+          <Button key="print" size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs print:hidden"><Printer className="w-3.5 h-3.5" />Print</Button>,
+          <Button key="download" size="sm" variant="outline" onClick={handleDownload} className="gap-1.5 text-xs print:hidden"><Download className="w-3.5 h-3.5" />{estimate.final_signed_pdf_url ? 'Download Signed PDF' : 'Download PDF'}</Button>,
         ]}
         banners={banners}
         documentContent={<FinalDocumentRenderer estimate={estimate} options={estimate?.document_config?.options} template={estimate?.document_config?.template} />}
