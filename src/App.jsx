@@ -30,6 +30,7 @@ import SendEstimate from './pages/SendEstimate';
 import EstimateEditor from './pages/EstimateEditor';
 import TimeTracking from './pages/TimeTracking';
 import ClientEstimateView from './pages/ClientEstimateView';
+import SignDocumentView from './pages/SignDocumentView';
 import WorkOrderDetail from './pages/WorkOrderDetail';
 import Customers from './pages/Customers';
 import Assignments from './pages/Assignments';
@@ -57,6 +58,7 @@ import FieldWorkOrderDetail from './pages/FieldWorkOrderDetail';
 
 const PUBLIC_ROUTE_PREFIXES = [
   '/client-estimate',
+  '/sign-document',
   '/proposal-view',
   '/client-portal',
   '/verify-document',
@@ -118,48 +120,13 @@ const AppRoutes = () => (
     <Route path="/team-access" element={<TeamAccess />} />
     <Route path="/login" element={<Login />} />
 
-    {/* FIELD APP ROUTES */}
-    <Route path="/field" element={<ProtectedRoute access="field"><FieldWorkOrders /></ProtectedRoute>} />
-    <Route path="/field/work-orders/:id" element={<ProtectedRoute access="field"><FieldWorkOrderDetail /></ProtectedRoute>} />
+    <Route path="/sign-document" element={<SignDocumentView />} />
 
     <Route element={<ProtectedRoute access="admin"><AppLayout /></ProtectedRoute>}>
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/leads" element={<Leads />} />
-      <Route path="/clients" element={<Clients />} />
-      <Route path="/appointments" element={<Appointments />} />
-      <Route path="/estimates" element={<Estimates />} />
-      <Route path="/work-orders" element={<WorkOrders />} />
-      <Route path="/invoices" element={<Invoices />} />
-      <Route path="/invoice-create" element={<InvoiceCreate />} />
-      <Route path="/schedule-estimate" element={<EstimateScheduler />} />
-      <Route path="/send-estimate" element={<SendEstimate />} />
-      <Route path="/estimate-editor" element={<EstimateEditor />} />
-      <Route path="/time-tracking" element={<TimeTracking />} />
-      <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
-      <Route path="/customers" element={<Customers />} />
-      <Route path="/assignments" element={<Assignments />} />
-      <Route path="/workers" element={<Workers />} />
-      <Route path="/invoice-detail" element={<InvoiceDetail />} />
-      <Route path="/customer-profile" element={<CustomerProfile />} />
-      <Route path="/payments" element={<Payments />} />
-      <Route path="/income-expenses" element={<IncomeExpenses />} />
-      <Route path="/payroll" element={<Payroll />} />
-      <Route path="/reports" element={<Reports />} />
-      <Route path="/profitability" element={<ProfitabilityDashboard />} />
-      <Route path="/proposals" element={<Proposals />} />
-      <Route path="/sales-pipeline" element={<SalesPipeline />} />
-      <Route path="/proposal-editor" element={<ProposalEditor />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/recovery-center" element={<RecoveryCenter />} />
-      <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
     </Route>
 
-    {/* PUBLIC ROUTES */}
     <Route path="/client-estimate" element={<ClientEstimateView />} />
-    <Route path="/proposal-view" element={<PublicProposalView />} />
-    <Route path="/client-portal" element={<ClientPortal />} />
-    <Route path="/verify-document" element={<VerifyDocument />} />
-
     <Route path="*" element={<PageNotFound />} />
   </Routes>
 );
