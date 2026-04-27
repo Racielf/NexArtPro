@@ -1,0 +1,23 @@
+{
+  "name": "SigningEvent",
+  "type": "object",
+  "properties": {
+    "signing_package_id": { "type": "string" },
+    "document_type": { "type": "string" },
+    "document_id": { "type": "string" },
+    "event_type": {
+      "type": "string",
+      "enum": ["created", "sent", "viewed", "approved", "signed", "declined", "expired", "voided", "downloaded"]
+    },
+    "actor_name": { "type": "string" },
+    "actor_email": { "type": "string" },
+    "ip_address": { "type": "string" },
+    "user_agent": { "type": "string" },
+    "timezone": { "type": "string" },
+    "page_url": { "type": "string" },
+    "metadata": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "company_id": { "type": "string", "default": "rc-art" }
+  },
+  "required": ["signing_package_id", "event_type"]
+}
