@@ -86,7 +86,7 @@ async function closePackageAsSigned(base44, pkg, signer, signerEmail, now, ip, u
 export default async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { token, action, signer_name } = await req.json();
+    const { token, action, signer_name, declined_reason } = await req.json();
 
     if (!token || !action) return response({ error: 'Missing token or action' }, 400);
 
@@ -127,6 +127,7 @@ export default async (req) => {
       await base44.asServiceRole.entities.SigningPackage.update(pkg.id, {
         status: 'declined',
         declined_at: now,
+        declined_reason: declined_reason || '',
       });
 
       await base44.asServiceRole.entities.SigningEvent.create({
@@ -148,6 +149,7 @@ export default async (req) => {
           signature_status: 'declined',
           signing_package_id: pkg.id,
           declined_at: now,
+          declined_reason: declined_reason || '',
         }).catch(() => {});
       }
 
