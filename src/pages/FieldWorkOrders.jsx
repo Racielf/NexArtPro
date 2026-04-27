@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { getLocalUser, normalizeLocalRole } from '@/lib/roleUtils';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { filterActiveRecords } from '@/lib/softDelete';
@@ -9,7 +10,6 @@ import {
   Activity,
   AlertCircle,
   Calendar,
-  CheckCircle2,
   ChevronRight,
   ClipboardList,
   Clock,
@@ -35,27 +35,42 @@ function formatDateLabel(value) {
 }
 
 function getWorkerName(user) {
-  return user?.full_name || user?.name || user?.email || '';
+  return user?.display_name || user?.full_name || user?.name || user?.username || user?.email || '';
+}
+
+function getWorkerEmail(user) {
+  return user?.email || user?.username || '';
 }
 
 function isAssignedToCurrentUser(workOrder, user) {
   if (!user) return false;
+
   const userId = normalizeText(user.id);
-  const userEmail = normalizeText(user.email);
+  const userEmail = normalizeText(getWorkerEmail(user));
   const userName = normalizeText(getWorkerName(user));
 
-  const assignedId = normalizeText(workOrder.assigned_worker_id || workOrder.assigned_to_id);
-  const assignedName = normalizeText(workOrder.assigned_worker_name || workOrder.assigned_to);
-  const assignedEmail = normalizeText(workOrder.assigned_worker_email || workOrder.assigned_email);
+  const assignedValues = [
+    workOrder.assigned_user_id,
+    workOrder.assigned_worker_id,
+    workOrder.assigned_to_id,
+    workOrder.assigned_worker_email,
+    workOrder.assigned_email,
+    workOrder.assigned_user_email,
+    workOrder.assigned_worker_name,
+    workOrder.assigned_to,
+    workOrder.assigned_user_name,
+  ].map(normalizeText).filter(Boolean);
 
-  return [assignedId, assignedName, assignedEmail].some(value => value && [userId, userEmail, userName].includes(value));
+  const currentValues = [userId, userEmail, userName].filter(Boolean);
+  return assignedValues.some(value => currentValues.includes(value));
 }
 
 function getVisibleOrders(workOrders, user) {
-  const role = normalizeText(user?.role || user?.app_role || user?.user_type);
-  const isFieldOnly = ['field_agent', 'worker', 'technician', 'tech'].includes(role);
-  if (!isFieldOnly) return workOrders;
-  return workOrders.filter(wo => isAssignedToCurrentUser(wo, user));
+  const role = normalizeLocalRole(user?.role || user?.app_role || user?.user_type);
+  if (role === 'field_agent') {
+    return workOrders.filter(wo => isAssignedToCurrentUser(wo, user));
+  }
+  return workOrders;
 }
 
 function getRouteUrl(orders) {
@@ -76,6 +91,7 @@ function getProgress(workOrder) {
 export default function FieldWorkOrders() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const currentUser = user || getLocalUser();
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -95,7 +111,7 @@ export default function FieldWorkOrders() {
 
   useEffect(() => { loadData(); }, []);
 
-  const visibleOrders = useMemo(() => getVisibleOrders(workOrders, user), [workOrders, user]);
+  const visibleOrders = useMemo(() => getVisibleOrders(workOrders, currentUser), [workOrders, currentUser?.id, currentUser?.username, currentUser?.email, currentUser?.role]);
 
   const filtered = useMemo(() => {
     const q = normalizeText(search);
@@ -147,7 +163,7 @@ export default function FieldWorkOrders() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Today</p>
-                <h2 className="text-3xl font-black tracking-tight mt-1">{filtered.length} active</h2>
+                <h2 className="text-3xl font-black tracking-tight">{filtered.length} active</h2>
               </div>
               <div className="rounded-2xl bg-white/10 border border-white/10 px-4 py-3 text-right">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scheduled</p>
@@ -189,8 +205,8 @@ export default function FieldWorkOrders() {
         {filtered.length === 0 ? (
           <div className="bg-white rounded-[2rem] border border-dashed border-slate-200 p-10 text-center">
             <ClipboardList className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="font-black text-slate-800">No field work orders</p>
-            <p className="text-sm text-slate-500 mt-1">Assigned jobs will appear here.</p>
+            <p className="font-black text-slate-800">No assigned field work orders</p>
+            <p className="text-sm text-slate-500 mt-1">Assigned jobs for {getWorkerName(currentUser) || 'this field agent'} will appear here.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -285,7 +301,7 @@ export default function FieldWorkOrders() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
           <p className="text-xs text-amber-800 font-medium leading-relaxed">
-            Field Mode writes to the same WorkOrder records used by the office. No Firebase copy, no duplicated source of truth.
+            Field Mode only shows work orders assigned to the logged-in Field Agent. Office and admin records remain the source of truth.
           </p>
         </div>
       </main>
