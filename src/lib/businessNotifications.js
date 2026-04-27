@@ -17,8 +17,11 @@ function estimateLink(estimateId) {
   return `${window.location.origin}/estimate-editor?id=${estimateId}`;
 }
 
-function clientLink(estimateId) {
-  return `${window.location.origin}/client-estimate?id=${estimateId}`;
+function clientLink(estimate) {
+  if (estimate?.public_share_token) {
+    return `${window.location.origin}/client-estimate?token=${estimate.public_share_token}`;
+  }
+  return estimate?.id ? estimateLink(estimate.id) : '';
 }
 
 function timestamp() {
@@ -46,7 +49,7 @@ export async function notifyEstimateViewed(estimate) {
     '',
     `View estimate: ${estimateLink(estimate.id)}`,
     '',
-    `— ${APP_NAME}`,
+    `- ${APP_NAME}`,
   ].filter(Boolean).join('\n');
 
   return base44.integrations.Core.SendEmail({
@@ -62,7 +65,7 @@ export async function notifyEstimateViewed(estimate) {
  */
 export async function notifyEstimateApproved(estimate) {
   const num = estimate.estimate_number;
-  const subject = `✅ Estimate #${num} Approved by ${estimate.client_name}`;
+  const subject = `Estimate #${num} Approved by ${estimate.client_name}`;
   const body = [
     `Hi ${COMPANY} team,`,
     '',
@@ -77,7 +80,7 @@ export async function notifyEstimateApproved(estimate) {
     '',
     `View estimate: ${estimateLink(estimate.id)}`,
     '',
-    `— ${APP_NAME}`,
+    `- ${APP_NAME}`,
   ].filter(Boolean).join('\n');
 
   return base44.integrations.Core.SendEmail({
@@ -95,27 +98,26 @@ export async function notifyEstimateApproved(estimate) {
 export async function notifyEstimateSigned(estimate, { signerName, signerEmail }) {
   const num = estimate.estimate_number;
   const signedAt = timestamp();
-  const subject = `✍️ Estimate #${num} Signed by ${signerName}`;
-  const signedDocLink = clientLink(estimate.id);
+  const subject = `Estimate #${num} Signed by ${signerName}`;
+  const signedDocLink = clientLink(estimate);
   const body = [
     `Hi ${COMPANY} team,`,
     '',
     `Estimate #${num} has been officially signed and accepted.`,
     '',
-    `═══ SIGNATURE CONFIRMATION ═══`,
+    `SIGNATURE CONFIRMATION`,
     `Signer: ${signerName}`,
     signerEmail ? `Signer Email: ${signerEmail}` : '',
     `Signed At: ${signedAt}`,
     `Client: ${estimate.client_name}`,
     `Total: $${(estimate.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
     '',
-    `📄 View Signed Document: ${signedDocLink}`,
-    '',
-    `The signed document (with signature) is accessible at the link above. You can print or download it as PDF from that page.`,
+    signedDocLink ? `View signed document: ${signedDocLink}` : '',
+    estimate.final_signed_pdf_url ? `Signed PDF: ${estimate.final_signed_pdf_url}` : '',
     '',
     `View in dashboard: ${estimateLink(estimate.id)}`,
     '',
-    `— ${APP_NAME}`,
+    `- ${APP_NAME}`,
   ].filter(Boolean).join('\n');
 
   return base44.integrations.Core.SendEmail({
@@ -131,7 +133,7 @@ export async function notifyEstimateSigned(estimate, { signerName, signerEmail }
  */
 export async function notifyEstimateDeclined(estimate) {
   const num = estimate.estimate_number;
-  const subject = `❌ Estimate #${num} Declined by ${estimate.client_name}`;
+  const subject = `Estimate #${num} Declined by ${estimate.client_name}`;
   const body = [
     `Hi ${COMPANY} team,`,
     '',
@@ -146,7 +148,7 @@ export async function notifyEstimateDeclined(estimate) {
     '',
     `View estimate: ${estimateLink(estimate.id)}`,
     '',
-    `— ${APP_NAME}`,
+    `- ${APP_NAME}`,
   ].filter(Boolean).join('\n');
 
   return base44.integrations.Core.SendEmail({
@@ -162,7 +164,7 @@ export async function notifyEstimateDeclined(estimate) {
  */
 export async function notifyEstimateChangesRequested(estimate, note) {
   const num = estimate.estimate_number;
-  const subject = `🔄 Changes Requested for Estimate #${num}`;
+  const subject = `Changes Requested for Estimate #${num}`;
   const body = [
     `Hi ${COMPANY} team,`,
     '',
@@ -172,15 +174,14 @@ export async function notifyEstimateChangesRequested(estimate, note) {
     `Client: ${estimate.client_name}`,
     estimate.client_email ? `Email: ${estimate.client_email}` : '',
     '',
-    `═══ CLIENT'S NOTE ═══`,
+    `CLIENT NOTE`,
     note || '(No details provided)',
-    `═══════════════════════`,
     '',
     `Please review and send a revised estimate.`,
     '',
     `View estimate: ${estimateLink(estimate.id)}`,
     '',
-    `— ${APP_NAME}`,
+    `- ${APP_NAME}`,
   ].filter(Boolean).join('\n');
 
   return base44.integrations.Core.SendEmail({
