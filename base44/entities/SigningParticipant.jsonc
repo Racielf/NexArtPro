@@ -1,0 +1,34 @@
+{
+  "name": "SigningParticipant",
+  "type": "object",
+  "properties": {
+    "signing_package_id": { "type": "string" },
+    "document_type": { "type": "string" },
+    "document_id": { "type": "string" },
+    "role": {
+      "type": "string",
+      "enum": ["client", "owner", "office", "technician", "witness", "other"],
+      "default": "client"
+    },
+    "name": { "type": "string" },
+    "email": { "type": "string" },
+    "phone": { "type": "string" },
+    "signing_order": { "type": "number", "default": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "active", "signed", "declined", "skipped", "voided"],
+      "default": "pending"
+    },
+    "token": { "type": "string" },
+    "sent_at": { "type": "string", "format": "date-time" },
+    "viewed_at": { "type": "string", "format": "date-time" },
+    "signed_at": { "type": "string", "format": "date-time" },
+    "declined_at": { "type": "string", "format": "date-time" },
+    "declined_reason": { "type": "string" },
+    "ip_address": { "type": "string" },
+    "user_agent": { "type": "string" },
+    "metadata": { "type": "object" },
+    "company_id": { "type": "string", "default": "rc-art" }
+  },
+  "required": ["signing_package_id", "email"]
+}
