@@ -2,10 +2,10 @@ import React from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import { getUserRole, isFieldAgent } from '@/lib/roleUtils';
+import { getUserRole } from '@/lib/roleUtils';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import AppLayout from './components/layout/AppLayout';
@@ -55,6 +55,25 @@ import VerifyDocument from './pages/VerifyDocument';
 import FieldWorkOrders from './pages/FieldWorkOrders';
 import FieldWorkOrderDetail from './pages/FieldWorkOrderDetail';
 
+const PUBLIC_ROUTE_PREFIXES = [
+  '/client-estimate',
+  '/proposal-view',
+  '/client-portal',
+  '/verify-document',
+  '/',
+  '/services',
+  '/gallery',
+  '/about',
+  '/contact',
+  '/partners',
+  '/team-access',
+  '/login',
+];
+
+function isPublicRoute(pathname) {
+  return PUBLIC_ROUTE_PREFIXES.some(path => pathname === path || (path !== '/' && pathname.startsWith(path)));
+}
+
 const LoadingScreen = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
     <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
@@ -88,12 +107,71 @@ const ProtectedRoute = ({ children, access = 'any' }) => {
   return children;
 };
 
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/" element={<PublicHome />} />
+    <Route path="/services" element={<Services />} />
+    <Route path="/gallery" element={<Gallery />} />
+    <Route path="/about" element={<About />} />
+    <Route path="/contact" element={<Contact />} />
+    <Route path="/partners" element={<Partners />} />
+    <Route path="/team-access" element={<TeamAccess />} />
+    <Route path="/login" element={<Login />} />
+
+    {/* FIELD APP ROUTES */}
+    <Route path="/field" element={<ProtectedRoute access="field"><FieldWorkOrders /></ProtectedRoute>} />
+    <Route path="/field/work-orders/:id" element={<ProtectedRoute access="field"><FieldWorkOrderDetail /></ProtectedRoute>} />
+
+    <Route element={<ProtectedRoute access="admin"><AppLayout /></ProtectedRoute>}>
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/leads" element={<Leads />} />
+      <Route path="/clients" element={<Clients />} />
+      <Route path="/appointments" element={<Appointments />} />
+      <Route path="/estimates" element={<Estimates />} />
+      <Route path="/work-orders" element={<WorkOrders />} />
+      <Route path="/invoices" element={<Invoices />} />
+      <Route path="/invoice-create" element={<InvoiceCreate />} />
+      <Route path="/schedule-estimate" element={<EstimateScheduler />} />
+      <Route path="/send-estimate" element={<SendEstimate />} />
+      <Route path="/estimate-editor" element={<EstimateEditor />} />
+      <Route path="/time-tracking" element={<TimeTracking />} />
+      <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
+      <Route path="/customers" element={<Customers />} />
+      <Route path="/assignments" element={<Assignments />} />
+      <Route path="/workers" element={<Workers />} />
+      <Route path="/invoice-detail" element={<InvoiceDetail />} />
+      <Route path="/customer-profile" element={<CustomerProfile />} />
+      <Route path="/payments" element={<Payments />} />
+      <Route path="/income-expenses" element={<IncomeExpenses />} />
+      <Route path="/payroll" element={<Payroll />} />
+      <Route path="/reports" element={<Reports />} />
+      <Route path="/profitability" element={<ProfitabilityDashboard />} />
+      <Route path="/proposals" element={<Proposals />} />
+      <Route path="/sales-pipeline" element={<SalesPipeline />} />
+      <Route path="/proposal-editor" element={<ProposalEditor />} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="/recovery-center" element={<RecoveryCenter />} />
+      <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
+    </Route>
+
+    {/* PUBLIC ROUTES */}
+    <Route path="/client-estimate" element={<ClientEstimateView />} />
+    <Route path="/proposal-view" element={<PublicProposalView />} />
+    <Route path="/client-portal" element={<ClientPortal />} />
+    <Route path="/verify-document" element={<VerifyDocument />} />
+
+    <Route path="*" element={<PageNotFound />} />
+  </Routes>
+);
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
+  const location = useLocation();
+  const publicRoute = isPublicRoute(location.pathname);
 
   if (isLoadingPublicSettings || isLoadingAuth) return <LoadingScreen />;
 
-  if (authError) {
+  if (authError && !publicRoute) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
@@ -104,62 +182,7 @@ const AuthenticatedApp = () => {
     }
   }
 
-  return (
-    <Routes>
-      <Route path="/" element={<PublicHome />} />
-      <Route path="/services" element={<Services />} />
-      <Route path="/gallery" element={<Gallery />} />
-      <Route path="/about" element={<About />} />
-      <Route path="/contact" element={<Contact />} />
-      <Route path="/partners" element={<Partners />} />
-      <Route path="/team-access" element={<TeamAccess />} />
-      <Route path="/login" element={<Login />} />
-
-      {/* FIELD APP ROUTES */}
-      <Route path="/field" element={<ProtectedRoute access="field"><FieldWorkOrders /></ProtectedRoute>} />
-      <Route path="/field/work-orders/:id" element={<ProtectedRoute access="field"><FieldWorkOrderDetail /></ProtectedRoute>} />
-
-      <Route element={<ProtectedRoute access="admin"><AppLayout /></ProtectedRoute>}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/leads" element={<Leads />} />
-        <Route path="/clients" element={<Clients />} />
-        <Route path="/appointments" element={<Appointments />} />
-        <Route path="/estimates" element={<Estimates />} />
-        <Route path="/work-orders" element={<WorkOrders />} />
-        <Route path="/invoices" element={<Invoices />} />
-        <Route path="/invoice-create" element={<InvoiceCreate />} />
-        <Route path="/schedule-estimate" element={<EstimateScheduler />} />
-        <Route path="/send-estimate" element={<SendEstimate />} />
-        <Route path="/estimate-editor" element={<EstimateEditor />} />
-        <Route path="/time-tracking" element={<TimeTracking />} />
-        <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/assignments" element={<Assignments />} />
-        <Route path="/workers" element={<Workers />} />
-        <Route path="/invoice-detail" element={<InvoiceDetail />} />
-        <Route path="/customer-profile" element={<CustomerProfile />} />
-        <Route path="/payments" element={<Payments />} />
-        <Route path="/income-expenses" element={<IncomeExpenses />} />
-        <Route path="/payroll" element={<Payroll />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/profitability" element={<ProfitabilityDashboard />} />
-        <Route path="/proposals" element={<Proposals />} />
-        <Route path="/sales-pipeline" element={<SalesPipeline />} />
-        <Route path="/proposal-editor" element={<ProposalEditor />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/recovery-center" element={<RecoveryCenter />} />
-        <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
-      </Route>
-
-      {/* PUBLIC ROUTES */}
-      <Route path="/client-estimate" element={<ClientEstimateView />} />
-      <Route path="/proposal-view" element={<PublicProposalView />} />
-      <Route path="/client-portal" element={<ClientPortal />} />
-      <Route path="/verify-document" element={<VerifyDocument />} />
-
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
-  );
+  return <AppRoutes />;
 };
 
 function App() {
