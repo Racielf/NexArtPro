@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, FileText, Hammer, Receipt, Inbox } from 'lucide-react';
+import { Loader2, FileText, Hammer, Receipt, Inbox, DollarSign } from 'lucide-react';
 import ClientPortalLogin from '@/components/client-portal/ClientPortalLogin';
 import ClientPortalHeader from '@/components/client-portal/ClientPortalHeader';
 import DocumentCard from '@/components/client-portal/DocumentCard';
 import InvoiceViewModal from '@/components/client-portal/InvoiceViewModal';
+import PaymentHistoryPanel from '@/components/client-portal/PaymentHistoryPanel';
 
 function normalizePhone(raw) {
   return (raw || '').replace(/\D/g, '').slice(-10);
@@ -24,7 +25,6 @@ export default function ClientPortal() {
   const [tab, setTab] = useState('all');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
-  // Check sessionStorage for existing session
   useEffect(() => {
     const saved = sessionStorage.getItem('client_portal_session');
     if (saved) {
@@ -34,7 +34,6 @@ export default function ClientPortal() {
     }
   }, []);
 
-  // Load documents when authenticated
   useEffect(() => {
     if (authed && client) loadDocuments();
   }, [authed, client]);
@@ -43,13 +42,11 @@ export default function ClientPortal() {
     setLoginLoading(true);
     setLoginError(null);
 
-    // Search for a matching customer by email AND phone
     const customers = await base44.entities.Customer.filter({ email });
     const normalizedInput = normalizePhone(phone);
     const match = customers.find(c => normalizePhone(c.phone) === normalizedInput);
 
     if (!match) {
-      // Also try Client entity
       const clients = await base44.entities.Client.filter({ email });
       const clientMatch = clients.find(c => normalizePhone(c.phone) === normalizedInput);
       if (!clientMatch) {
@@ -95,7 +92,6 @@ export default function ClientPortal() {
       base44.entities.WorkOrder.filter({ client_name: clientName }, '-created_date', 50).catch(() => []),
       base44.entities.Invoice.filter({ client_name: clientName }, '-created_date', 50).catch(() => []),
     ]);
-    // Filter out drafts — clients shouldn't see internal drafts
     setEstimates(est.filter(e => e.status !== 'draft'));
     setWorkOrders(wo.filter(w => w.status !== 'draft'));
     setInvoices(inv.filter(i => i.status !== 'draft'));
@@ -108,7 +104,6 @@ export default function ClientPortal() {
     } else if (type === 'invoice') {
       setSelectedInvoice(doc);
     }
-    // Work orders: expand later if needed
   };
 
   if (!authed) {
@@ -124,13 +119,15 @@ export default function ClientPortal() {
   const filtered = tab === 'all' ? allDocs
     : tab === 'estimates' ? allDocs.filter(d => d._type === 'estimate')
     : tab === 'work_orders' ? allDocs.filter(d => d._type === 'work_order')
-    : allDocs.filter(d => d._type === 'invoice');
+    : tab === 'invoices' ? allDocs.filter(d => d._type === 'invoice')
+    : [];
 
   const TABS = [
     { key: 'all', label: 'All', count: allDocs.length },
     { key: 'estimates', label: 'Estimates', icon: FileText, count: estimates.length },
     { key: 'work_orders', label: 'Work Orders', icon: Hammer, count: workOrders.length },
     { key: 'invoices', label: 'Invoices', icon: Receipt, count: invoices.length },
+    { key: 'payments', label: 'Payments', icon: DollarSign, count: invoices.reduce((acc, i) => acc + (i.payments?.length || 0), 0) },
   ];
 
   return (
@@ -141,36 +138,27 @@ export default function ClientPortal() {
       <ClientPortalHeader clientName={client.name} onLogout={handleLogout} />
 
       <div className="max-w-3xl mx-auto px-4 py-8">
-        {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <SummaryCard label="Estimates" count={estimates.length} icon={FileText} color="bg-blue-50 text-blue-600" />
           <SummaryCard label="Work Orders" count={workOrders.length} icon={Hammer} color="bg-purple-50 text-purple-600" />
           <SummaryCard label="Invoices" count={invoices.length} icon={Receipt} color="bg-emerald-50 text-emerald-600" />
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 bg-white rounded-xl border border-slate-200 p-1 mb-6">
           {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-colors ${
-                tab === t.key ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'
-              }`}
-            >
+            <button key={t.key} onClick={() => setTab(t.key)} className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-colors ${tab === t.key ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
               {t.label}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                tab === t.key ? 'bg-white/20' : 'bg-slate-100'
-              }`}>{t.count}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tab === t.key ? 'bg-white/20' : 'bg-slate-100'}`}>{t.count}</span>
             </button>
           ))}
         </div>
 
-        {/* Document List */}
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
           </div>
+        ) : tab === 'payments' ? (
+          <PaymentHistoryPanel invoices={invoices} />
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Inbox className="w-10 h-10 text-slate-300 mb-3" />
@@ -180,12 +168,7 @@ export default function ClientPortal() {
         ) : (
           <div className="space-y-3">
             {filtered.map(doc => (
-              <DocumentCard
-                key={`${doc._type}-${doc.id}`}
-                doc={doc}
-                type={doc._type}
-                onClick={() => handleDocClick(doc._type, doc)}
-              />
+              <DocumentCard key={`${doc._type}-${doc.id}`} doc={doc} type={doc._type} onClick={() => handleDocClick(doc._type, doc)} />
             ))}
           </div>
         )}
