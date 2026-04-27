@@ -119,6 +119,7 @@ export default function NexArtSign() {
   useEffect(() => { load(); }, []);
 
   const selected = useMemo(() => packages.find(p => p.id === selectedId) || packages[0] || null, [packages, selectedId]);
+  const selectedEstimate = useMemo(() => estimates.find(e => e.id === selected?.document_id) || null, [estimates, selected]);
   const selectedEvents = useMemo(() => events.filter(e => e.signing_package_id === selected?.id).sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)), [events, selected]);
   const selectedCert = useMemo(() => certificates.find(c => c.signing_package_id === selected?.id), [certificates, selected]);
   const selectedParticipants = useMemo(() => sortParticipants(participants.filter(p => p.signing_package_id === selected?.id)), [participants, selected]);
@@ -183,6 +184,12 @@ export default function NexArtSign() {
     } catch (err) {
       toast.error('Client view is not ready yet');
     }
+  };
+
+  const openCertificateVerification = () => {
+    const ref = selectedCert?.id || selectedCert?.certificate_number;
+    if (!ref) return toast.error('No certificate available yet');
+    window.open(`/verify-document?certificate=${encodeURIComponent(ref)}`, '_blank', 'noopener,noreferrer');
   };
 
   const connectEstimateToNexArtSign = async (estimate) => {
@@ -417,6 +424,14 @@ export default function NexArtSign() {
                   <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Expires</p><p className="font-medium mt-1">{fmt(selected.expires_at)}</p></div>
                 </div>
               )}
+              {selectedEstimate && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3 text-sm">
+                  <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Estimate</p><p className="font-medium mt-1">#{selectedEstimate.estimate_number}</p></div>
+                  <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Estimate Status</p><p className="font-medium mt-1 capitalize">{selectedEstimate.status || 'draft'}</p></div>
+                  <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Signature Status</p><p className="font-medium mt-1 capitalize">{selectedEstimate.signature_status || 'not_sent'}</p></div>
+                  <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Signed PDF</p><p className="font-medium mt-1">{selectedEstimate.final_signed_pdf_url ? 'Ready' : 'Pending'}</p></div>
+                </div>
+              )}
             </div>
 
             <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -455,6 +470,9 @@ export default function NexArtSign() {
                 <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selected && copyLink(selected)} disabled={!selected}><Copy className="w-4 h-4" />Copy signing link</Button>
                 <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selected && window.open(signingUrl(selected), '_blank')} disabled={!selected}><ExternalLink className="w-4 h-4" />Open signing page</Button>
                 <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selected && openDocument(selected)} disabled={!selected}><Eye className="w-4 h-4" />Open document</Button>
+                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selectedEstimate && openEstimateEditor(selectedEstimate.id)} disabled={!selectedEstimate}><PenSquare className="w-4 h-4" />Open estimate record</Button>
+                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selectedEstimate && openEstimateClientView(selectedEstimate)} disabled={!selectedEstimate}><FileText className="w-4 h-4" />Open client estimate</Button>
+                <Button variant="outline" className="w-full justify-start gap-2" onClick={openCertificateVerification} disabled={!selectedCert}><ShieldCheck className="w-4 h-4" />Verify certificate</Button>
                 <Button variant="outline" className="w-full justify-start gap-2" onClick={downloadCertificate} disabled={!selectedCert}><Download className="w-4 h-4" />Download certificate</Button>
                 <Button variant="outline" className="w-full justify-start gap-2 text-red-600 border-red-200 hover:bg-red-50" onClick={() => selected && voidPackage(selected)} disabled={!selected}><Ban className="w-4 h-4" />Void package</Button>
               </div>
