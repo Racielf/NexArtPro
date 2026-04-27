@@ -10,16 +10,39 @@ function now() {
   return new Date().toISOString();
 }
 
-export async function generatePublicShareToken(estimate) {
-  const estimateId = estimate.id;
-  const clientEmail = estimate.client_email || '';
-
-  const data = new TextEncoder().encode(estimateId + clientEmail);
+async function sha256Hex(value) {
+  const data = new TextEncoder().encode(value);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
-  return `${estimateId}_${signature}`;
+function randomTokenPart() {
+  if (crypto?.randomUUID) return crypto.randomUUID().replace(/-/g, '');
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function generatePublicShareToken(estimate) {
+  if (!estimate?.id) throw new Error('Estimate is required to generate public token');
+
+  if (estimate.public_share_token) {
+    return estimate.public_share_token;
+  }
+
+  const estimateId = estimate.id;
+  const nonce = randomTokenPart();
+  const signature = await sha256Hex(`${estimateId}:${nonce}:${estimate.client_email || ''}`);
+  const token = `${estimateId}_${nonce}_${signature}`;
+  const tokenCreatedAt = now();
+
+  await base44.entities.Estimate.update(estimateId, {
+    public_share_token: token,
+    public_share_token_created_at: tokenCreatedAt,
+  });
+
+  return token;
 }
 
 function resolveClientAttachmentsForSnapshot(estimate, documentConfig) {
@@ -43,6 +66,7 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
   const ts = now();
   const currentCount = estimate?.follow_up_count || 0;
   const resolvedDocumentConfig = documentConfig || estimate?.document_config;
+  const publicShareToken = estimate?.public_share_token || await generatePublicShareToken({ ...estimate, id: estimateId });
 
   const payload = {
     status: 'sent',
@@ -50,6 +74,8 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
     last_contacted_at: ts,
     follow_up_count: currentCount + 1,
     document_config: resolvedDocumentConfig,
+    public_share_token: publicShareToken,
+    public_share_token_created_at: estimate?.public_share_token_created_at || ts,
   };
 
   try {
@@ -68,6 +94,7 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
       estimate_data: estimate,
       document_config: resolvedDocumentConfig,
       total: estimate?.total,
+      public_share_token: publicShareToken,
       client_attachments: resolveClientAttachmentsForSnapshot(estimate, resolvedDocumentConfig),
     });
   } catch (err) {
@@ -120,6 +147,14 @@ export async function approveEstimate(estimateId, {
     timezone: legalAudit.timezone || '',
     screen: legalAudit.screen || '',
     page_url: legalAudit.page_url || '',
+    ip_address: legalAudit.ip_address || '',
+    ip_captured_from: legalAudit.ip_captured_from || '',
+    ip_capture_headers: legalAudit.ip_capture_headers || {},
+    server_user_agent: legalAudit.server_user_agent || '',
+    server_accept_language: legalAudit.server_accept_language || '',
+    captured_at: legalAudit.captured_at || '',
+    token_verified: legalAudit.token_verified === true,
+    audit_version: legalAudit.audit_version || 'phase6',
   };
 
   const payload = {
