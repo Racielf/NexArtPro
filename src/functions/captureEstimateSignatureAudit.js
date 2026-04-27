@@ -41,6 +41,22 @@ async function sha256Hex(value) {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function parseToken(token) {
+  const parts = String(token || '').split('_').filter(Boolean);
+
+  if (parts.length === 2) {
+    const [estimateId, signature] = parts;
+    return { estimateId, signature, nonce: '', format: 'legacy' };
+  }
+
+  if (parts.length >= 3) {
+    const [estimateId, nonce, ...rest] = parts;
+    return { estimateId, nonce, signature: rest.join('_'), format: 'v2' };
+  }
+
+  return null;
+}
+
 export default async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -54,23 +70,22 @@ export default async (req) => {
       });
     }
 
-    const parts = token.split('_');
-    if (parts.length !== 2) {
+    const parsed = parseToken(token);
+    if (!parsed?.estimateId || !parsed?.signature) {
       return new Response(JSON.stringify({ error: 'Invalid token format' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const [estimateId, signature] = parts;
-    if (estimate_id && estimate_id !== estimateId) {
+    if (estimate_id && estimate_id !== parsed.estimateId) {
       return new Response(JSON.stringify({ error: 'Token does not match estimate' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const list = await base44.asServiceRole.entities.Estimate.filter({ id: estimateId });
+    const list = await base44.asServiceRole.entities.Estimate.filter({ id: parsed.estimateId });
     if (!list || list.length === 0) {
       return new Response(JSON.stringify({ error: 'Estimate not found' }), {
         status: 404,
@@ -79,9 +94,12 @@ export default async (req) => {
     }
 
     const estimate = list[0];
-    const computedSignature = await sha256Hex(estimateId + (estimate.client_email || ''));
+    const legacySignature = await sha256Hex(`${parsed.estimateId}${estimate.client_email || ''}`);
+    const currentSignature = parsed.nonce
+      ? await sha256Hex(`${parsed.estimateId}:${parsed.nonce}:${estimate.client_email || ''}`)
+      : '';
 
-    if (signature !== computedSignature) {
+    if (parsed.signature !== legacySignature && parsed.signature !== currentSignature) {
       return new Response(JSON.stringify({ error: 'Token verification failed' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
@@ -110,7 +128,7 @@ export default async (req) => {
         server_accept_language: acceptLanguage,
         captured_at: new Date().toISOString(),
         token_verified: true,
-        estimate_id: estimateId,
+        estimate_id: parsed.estimateId,
         estimate_number: estimate.estimate_number,
       },
     }), {
