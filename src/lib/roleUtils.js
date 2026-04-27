@@ -1,6 +1,7 @@
 export function normalizeLocalRole(role) {
   const value = String(role || '').trim().toLowerCase();
   if (['admin', 'owner', 'manager'].includes(value)) return 'admin';
+  if (['office_agent', 'office-agent', 'office', 'dispatcher', 'coordinator', 'staff'].includes(value)) return 'office_agent';
   if (['field_agent', 'field-agent', 'field', 'technician', 'tech', 'worker', 'agent'].includes(value)) return 'field_agent';
   return value || null;
 }
@@ -22,16 +23,24 @@ export function isAdmin() {
   return getUserRole() === 'admin';
 }
 
+export function isOfficeAgent() {
+  return getUserRole() === 'office_agent';
+}
+
 export function isFieldAgent() {
   return getUserRole() === 'field_agent';
 }
 
 export function isAgent() {
-  return isFieldAgent();
+  return isOfficeAgent() || isFieldAgent();
 }
 
 export function getDefaultRouteForRole(role) {
-  return normalizeLocalRole(role) === 'admin' ? '/dashboard' : '/field';
+  const normalized = normalizeLocalRole(role);
+  if (normalized === 'field_agent') return '/field';
+  if (normalized === 'office_agent') return '/dashboard';
+  if (normalized === 'admin') return '/dashboard';
+  return '/team-access';
 }
 
 export function clearLocalSession() {
