@@ -108,8 +108,23 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
     await base44.entities.Estimate.update(estimate.id, {
       signing_package_id: signingPackage?.id || estimate.signing_package_id || '',
       signature_status: signingPackage?.id ? 'sent' : (estimate.signature_status || ''),
+      signature_provider: 'internal',
       document_hash: pdfHash || estimate.document_hash || '',
       document_hash_algorithm: pdfHash ? 'SHA-256' : estimate.document_hash_algorithm,
+      declined_at: null,
+      declined_reason: '',
+      accepted_by: '',
+      signature_name: '',
+      signed_at: null,
+      approved_at: null,
+      final_signed_at: null,
+      final_signed_pdf_url: '',
+      final_signed_pdf_name: '',
+      signed_pdf_hash: '',
+      legal_package_locked: false,
+      locked_after_signature: false,
+      signature_certificate: null,
+      certificate_generated_at: null,
     }).catch(() => {});
     const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter({ estimate_id: estimate.id }, '-created_date', 1);
     if (snapshots?.length) snapshotId = snapshots[0].id;
