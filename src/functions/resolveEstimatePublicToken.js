@@ -15,6 +15,9 @@ export default async (req) => {
       return new Response(JSON.stringify({ error: 'Invalid or missing token' }), { status: 400 });
     }
 
+    const direct = await base44.asServiceRole.entities.Estimate.filter({ public_share_token: token }).catch(() => []);
+    if (direct?.length) return buildResponse(direct[0], base44);
+
     const parts = token.split('_');
     const estimateId = parts[0];
 
