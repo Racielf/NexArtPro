@@ -5,8 +5,8 @@
 import { runRegisteredBrain } from './brainRegistry';
 import { aggregateBrainResults } from './brainAggregator';
 
-export async function runPageBrain({ module, page, entity, related = {}, context = {} }) {
-  const payload = { module, page, entity, related, context };
+export async function runPageBrain({ module, page, entity, related = {}, context = {}, config = null }) {
+  const payload = { module, page, entity, related, context, config };
 
   const moduleResult = await runRegisteredBrain(module, payload);
   const pageResult = await runRegisteredBrain(page, payload);
@@ -17,19 +17,30 @@ export async function runPageBrain({ module, page, entity, related = {}, context
   ].filter(Boolean), {
     module,
     page,
+    companyContext: config && config.companyContext ? config.companyContext : null,
   });
 }
 
-export async function runSystemBrain({ modules = [], context = {} }) {
+export async function runSystemBrain({ modules = [], context = {}, config = null }) {
   const results = [];
 
   for (const m of modules) {
-    const r = await runRegisteredBrain(m, { module: m, context });
+    const r = await runRegisteredBrain(m, { module: m, context, config });
     if (r) results.push(r);
   }
 
-  return aggregateBrainResults(results, {
+  const aggregated = aggregateBrainResults(results, {
     module: 'system',
     page: 'global',
   });
+
+  return {
+    ...aggregated,
+    systemMeta: {
+      companyContext: config && config.companyContext ? config.companyContext : null,
+      configAttached: Boolean(config),
+      moduleCount: modules.length,
+      analyzedAt: new Date().toISOString(),
+    },
+  };
 }
