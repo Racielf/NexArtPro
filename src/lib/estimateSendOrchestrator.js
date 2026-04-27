@@ -36,6 +36,14 @@ function base64ToPdfBlob(base64) {
   return new Blob([bytes], { type: 'application/pdf' });
 }
 
+async function sha256HexFromBase64(base64) {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function executeSend({
   estimate,
   recipientEmail,
@@ -57,12 +65,16 @@ export async function executeSend({
   let generatedPdf = null;
   let pdfUrl = null;
   let pdfFilename = null;
+  let pdfHash = '';
 
   try {
     generatedPdf = await generateEstimatePdfBase64(estimate, currentOptions, currentTemplate);
     pdfFilename = generatedPdf?.filename || null;
+    if (generatedPdf?.base64) {
+      pdfHash = await sha256HexFromBase64(generatedPdf.base64);
+    }
   } catch (err) {
-    console.warn('[executeSend] PDF generation failed before email:', err?.message);
+    console.warn('[executeSend] PDF generation/hash failed before email:', err?.message);
   }
 
   if (generatedPdf?.base64) {
@@ -89,6 +101,7 @@ export async function executeSend({
       estimate,
       pdfUrl: pdfUrl || '',
       pdfName: pdfFilename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`,
+      pdfHash,
       currentUser,
     });
     finalLink = `${window.location.origin}/sign-document?token=${signingPackage.token}`;
@@ -132,6 +145,8 @@ export async function executeSend({
     await base44.entities.Estimate.update(estimate.id, {
       signing_package_id: signingPackage?.id,
       signature_status: 'sent',
+      document_hash: pdfHash || estimate.document_hash || '',
+      document_hash_algorithm: pdfHash ? 'SHA-256' : estimate.document_hash_algorithm,
     }).catch(() => {});
     const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter({ estimate_id: estimate.id }, '-created_date', 1);
     if (snapshots?.length) snapshotId = snapshots[0].id;
@@ -144,6 +159,8 @@ export async function executeSend({
       await base44.asServiceRole.entities.EstimateSnapshot.update(snapshotId, {
         pdf_file_url: pdfUrl,
         pdf_file_name: pdfFilename || `estimate-${estimate.estimate_number}.pdf`,
+        pdf_file_hash: pdfHash || '',
+        hash_algorithm: pdfHash ? 'SHA-256' : '',
       });
     } catch (err) {
       console.warn('[executeSend] snapshot PDF linkage failed:', err?.message);
@@ -182,7 +199,7 @@ export async function executeSend({
     });
   } catch {}
 
-  return { success: true, messageId: emailRes.data?.id, secureLink: finalLink, pdfUrl, signingPackageId: signingPackage?.id };
+  return { success: true, messageId: emailRes.data?.id, secureLink: finalLink, pdfUrl, pdfHash, signingPackageId: signingPackage?.id };
 }
 
 export async function logPricingOverride(estimate, lossValidation, recipientEmail) {
