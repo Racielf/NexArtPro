@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, ShieldCheck, Upload, Hash, FileCheck } from 'lucide-react';
+import { CheckCircle, XCircle, ShieldCheck, Upload, Hash, FileCheck, LockKeyhole, BadgeCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 async function sha256File(file) {
   const buffer = await file.arrayBuffer();
@@ -16,8 +17,9 @@ function getInitialHashFromUrl() {
 }
 
 export default function VerifyDocument() {
+  const initialHash = getInitialHashFromUrl();
   const [file, setFile] = useState(null);
-  const [expectedHash, setExpectedHash] = useState(getInitialHashFromUrl);
+  const [expectedHash, setExpectedHash] = useState(initialHash);
   const [computedHash, setComputedHash] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
@@ -56,26 +58,43 @@ export default function VerifyDocument() {
     <div className="min-h-screen bg-slate-100 px-4 py-10">
       <div className="max-w-3xl mx-auto">
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="bg-slate-900 text-white px-7 py-6">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6" />
+          <div className="bg-slate-950 text-white px-7 py-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm overflow-hidden">
+                  {appConfig?.company?.logo_url ? (
+                    <img src={appConfig.company.logo_url} alt="Company logo" className="w-10 h-10 object-contain" />
+                  ) : (
+                    <ShieldCheck className="w-7 h-7 text-slate-900" />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold">Document Verification Portal</h1>
+                  <p className="text-sm text-slate-300 mt-1">
+                    Official integrity verification by {appConfig?.company?.name || appConfig?.appName || 'ProEstimate FSM'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold">Document Verification</h1>
-                <p className="text-sm text-slate-300 mt-1">Verify a signed estimate PDF using its SHA-256 hash.</p>
+              <div className="hidden sm:block text-right text-xs text-slate-300 leading-relaxed">
+                Secure Verification<br />SHA-256 Integrity Check
               </div>
             </div>
           </div>
 
           <div className="p-7 space-y-6">
-            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-800">
-              This verification happens locally in your browser. The PDF is not uploaded.
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800 flex items-start gap-2">
+              <BadgeCheck className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>This portal confirms document authenticity using cryptographic SHA-256 fingerprint comparison.</span>
             </div>
 
-            {getInitialHashFromUrl() && (
-              <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-green-800">
-                Verification hash loaded from the secure verification link.
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-800 flex items-start gap-2">
+              <LockKeyhole className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>This verification happens locally in your browser. The PDF is not uploaded.</span>
+            </div>
+
+            {initialHash && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700">
+                Verification hash loaded from the signed document QR code or secure verification link.
               </div>
             )}
 
@@ -133,14 +152,23 @@ export default function VerifyDocument() {
                   )}
                   <div className="min-w-0">
                     <p className={`font-bold ${status === 'verified' ? 'text-green-800' : 'text-red-800'}`}>
-                      {status === 'verified' ? 'Verified — document matches' : 'Mismatch — document may have been changed'}
+                      {status === 'verified'
+                        ? 'Verified — this document is authentic and has not been altered since it was signed.'
+                        : 'Warning — this document does not match the original signed version and may have been modified.'}
                     </p>
-                    <p className="text-xs text-slate-600 mt-2">Computed SHA-256</p>
+                    <p className="text-xs text-slate-600 mt-3">
+                      Verification is based on SHA-256 fingerprint comparison. Matching hashes prove the file content is identical to the signed record.
+                    </p>
+                    <p className="text-xs text-slate-600 mt-3">Computed SHA-256</p>
                     <p className="font-mono text-xs break-all text-slate-800 mt-1">{computedHash}</p>
                   </div>
                 </div>
               </div>
             )}
+
+            <div className="pt-2 border-t border-slate-100 text-center text-[11px] text-slate-400">
+              {appConfig?.company?.name || appConfig?.appName || 'ProEstimate FSM'} Document Trust System
+            </div>
           </div>
         </div>
       </div>
