@@ -107,9 +107,9 @@ export default function SignDocumentView() {
   };
 
   const openSignedEstimate = () => {
-    const estimateId = completion?.estimate?.id || pkg?.document_id;
-    if (!estimateId) return;
-    window.open(`/estimate-editor?id=${estimateId}`, '_blank', 'noopener,noreferrer');
+    const publicToken = completion?.estimate?.public_share_token;
+    if (!publicToken) return;
+    window.open(`/client-estimate?token=${publicToken}`, '_blank', 'noopener,noreferrer');
   };
 
   const openSignedPdf = () => {
@@ -153,8 +153,8 @@ export default function SignDocumentView() {
               <Button variant="outline" onClick={openSignedPdf} className="flex-1 gap-2" disabled={!completion?.estimate?.final_signed_pdf_url && !pkg?.final_pdf_url && !pkg?.source_pdf_url}>
                 <ExternalLink className="w-4 h-4" /> Open PDF
               </Button>
-              <Button variant="outline" onClick={openSignedEstimate} className="flex-1 gap-2" disabled={!completion?.estimate?.id && !pkg?.document_id}>
-                <ExternalLink className="w-4 h-4" /> Open Record
+              <Button variant="outline" onClick={openSignedEstimate} className="flex-1 gap-2" disabled={!completion?.estimate?.public_share_token}>
+                <ExternalLink className="w-4 h-4" /> Open Signed Estimate
               </Button>
             </div>
           </div>
