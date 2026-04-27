@@ -1,4 +1,6 @@
 import { base44 } from '@/api/base44Client';
+import { getUsers } from '@/lib/userStore';
+import { normalizeLocalRole } from '@/lib/roleUtils';
 
 function now() {
   return new Date().toISOString();
@@ -62,6 +64,19 @@ function buildEstimateSnapshot(estimate) {
   };
 }
 
+function isFieldAgent(user) {
+  return user?.active !== false && normalizeLocalRole(user?.role) === 'field_agent';
+}
+
+function matchUser(estimateAssignedTo, users) {
+  const value = String(estimateAssignedTo || '').toLowerCase();
+  return users.find(u =>
+    String(u.id) === value ||
+    (u.email && u.email.toLowerCase() === value) ||
+    (u.display_name && u.display_name.toLowerCase() === value)
+  );
+}
+
 export async function convertApprovedEstimateToWorkOrder(estimate, { actor = 'system' } = {}) {
   if (!estimate?.id) {
     throw new Error('Estimate is required');
@@ -79,6 +94,25 @@ export async function convertApprovedEstimateToWorkOrder(estimate, { actor = 'sy
 
   if (existing && existing.length > 0) {
     return { workOrder: existing[0], created: false };
+  }
+
+  const users = await getUsers();
+  const fieldAgents = (users || []).filter(isFieldAgent);
+
+  let lead = null;
+  let assignment_source = 'none';
+
+  if (estimate.assigned_to) {
+    const match = matchUser(estimate.assigned_to, fieldAgents);
+    if (match) {
+      lead = match;
+      assignment_source = 'estimate_assigned_to';
+    }
+  }
+
+  if (!lead && fieldAgents.length === 1) {
+    lead = fieldAgents[0];
+    assignment_source = 'single_field_agent';
   }
 
   const createdAt = now();
@@ -109,7 +143,7 @@ export async function convertApprovedEstimateToWorkOrder(estimate, { actor = 'sy
     title: estimate.title || `Work Order from Estimate #${estimate.estimate_number || ''}`.trim(),
     description: estimate.notes || estimate.title || '',
 
-    status: 'draft',
+    status: lead ? 'assigned' : 'draft',
 
     groups: estimate.groups || [],
     line_items: estimate.line_items || [],
@@ -137,13 +171,32 @@ export async function convertApprovedEstimateToWorkOrder(estimate, { actor = 'sy
     internal_notes: [
       `Created automatically from approved estimate #${estimate.estimate_number || ''}.`,
       `Converted by: ${actor}.`,
+      `Assignment source: ${assignment_source}.`,
       `Converted at: ${createdAt}.`,
-      estimate.final_signed_pdf_url ? `Final signed PDF: ${estimate.final_signed_pdf_url}` : '',
     ].filter(Boolean).join('\n'),
 
     tasks: buildTasksFromEstimate(estimate),
     execution_checklist: buildExecutionChecklist(),
     field_notes: [],
+
+    assignment_source,
+
+    ...(lead && {
+      assigned_user_id: lead.id,
+      assigned_worker_id: lead.id,
+      assigned_to_id: lead.id,
+      assigned_user_name: lead.display_name,
+      assigned_worker_name: lead.display_name,
+      assigned_to: lead.display_name,
+      assigned_user_email: lead.email,
+      assigned_worker_email: lead.email,
+      assigned_email: lead.email,
+      assigned_crew: [lead],
+      assigned_crew_ids: [lead.id],
+      assigned_crew_names: [lead.display_name],
+      crew_size: 1,
+      assigned_at: createdAt,
+    }),
 
     company_id: 'rc-art',
   };
