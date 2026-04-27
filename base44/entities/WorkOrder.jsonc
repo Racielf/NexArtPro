@@ -2,16 +2,25 @@
   "name": "WorkOrder",
   "type": "object",
   "properties": {
-    "work_order_number": {
-      "type": "number"
-    },
-    "estimate_id": {
-      "type": "string"
-    },
+    "work_order_number": { "type": "number" },
+    "estimate_id": { "type": "string" },
     "estimate_version": {
       "type": "number",
       "default": 1,
-      "description": "Version number of the source Estimate at conversion time \u2014 used for version-aware duplicate prevention"
+      "description": "Version number of the source Estimate at conversion time — used for version-aware duplicate prevention"
+    },
+    "source_estimate_id": { "type": "string" },
+    "source_estimate_number": { "type": "number" },
+    "source_estimate_version": { "type": "number", "default": 1 },
+    "source_document_type": { "type": "string" },
+    "source_estimate_status": { "type": "string" },
+    "source_estimate_total": { "type": "number", "default": 0 },
+    "source_estimate_signed_at": { "type": "string", "format": "date-time" },
+    "source_estimate_signed_by": { "type": "string" },
+    "source_estimate_final_pdf_url": { "type": "string" },
+    "source_estimate_snapshot": {
+      "type": "object",
+      "description": "Immutable business snapshot of the approved/signed Estimate at conversion time. Reference only; real WorkOrder profit is derived from invoices, expenses and time entries."
     },
     "source_proposal_id": {
       "type": "string",
@@ -33,93 +42,35 @@
       "type": "string",
       "description": "Title of the winning pricing option at conversion time (snapshot)"
     },
-    "client_id": {
-      "type": "string"
-    },
-    "client_name": {
-      "type": "string"
-    },
-    "client_email": {
-      "type": "string"
-    },
-    "client_address": {
-      "type": "string"
-    },
-    "client_phone": {
-      "type": "string"
-    },
-    "title": {
-      "type": "string"
-    },
-    "description": {
-      "type": "string"
-    },
+    "client_id": { "type": "string" },
+    "client_name": { "type": "string" },
+    "client_email": { "type": "string" },
+    "client_address": { "type": "string" },
+    "client_phone": { "type": "string" },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
     "status": {
       "type": "string",
-      "enum": [
-        "draft",
-        "assigned",
-        "scheduled",
-        "on_the_way",
-        "in_progress",
-        "completed",
-        "cancelled",
-        "invoiced"
-      ],
+      "enum": ["draft", "assigned", "scheduled", "on_the_way", "in_progress", "completed", "cancelled", "invoiced"],
       "default": "draft"
     },
-    "assigned_worker_id": {
-      "type": "string"
-    },
-    "assigned_worker_name": {
-      "type": "string"
-    },
-    "assigned_worker_phone": {
-      "type": "string"
-    },
-    "assigned_by": {
-      "type": "string"
-    },
-    "assigned_at": {
-      "type": "string"
-    },
-    "previous_worker_id": {
-      "type": "string"
-    },
-    "previous_worker_name": {
-      "type": "string"
-    },
-    "reassigned_at": {
-      "type": "string"
-    },
-    "reassigned_by": {
-      "type": "string"
-    },
-    "performed_by_worker_id": {
-      "type": "string"
-    },
-    "performed_by_worker_name": {
-      "type": "string"
-    },
-    "performed_by_corrected_at": {
-      "type": "string"
-    },
-    "performed_by_corrected_by": {
-      "type": "string"
-    },
-    "completed_by_user": {
-      "type": "string"
-    },
-    "completed_by_user_id": {
-      "type": "string"
-    },
-    "scheduled_date": {
-      "type": "string",
-      "format": "date"
-    },
-    "scheduled_time": {
-      "type": "string"
-    },
+    "assigned_worker_id": { "type": "string" },
+    "assigned_worker_name": { "type": "string" },
+    "assigned_worker_phone": { "type": "string" },
+    "assigned_by": { "type": "string" },
+    "assigned_at": { "type": "string" },
+    "previous_worker_id": { "type": "string" },
+    "previous_worker_name": { "type": "string" },
+    "reassigned_at": { "type": "string" },
+    "reassigned_by": { "type": "string" },
+    "performed_by_worker_id": { "type": "string" },
+    "performed_by_worker_name": { "type": "string" },
+    "performed_by_corrected_at": { "type": "string" },
+    "performed_by_corrected_by": { "type": "string" },
+    "completed_by_user": { "type": "string" },
+    "completed_by_user_id": { "type": "string" },
+    "scheduled_date": { "type": "string", "format": "date" },
+    "scheduled_time": { "type": "string" },
     "arrival_time": {
       "type": "string",
       "description": "Time worker arrived on site (HH:MM)"
@@ -131,38 +82,53 @@
     "groups": {
       "type": "array",
       "description": "Inherited from estimate groups",
-      "items": {
-        "type": "object"
-      }
+      "items": { "type": "object" }
     },
     "line_items": {
       "type": "array",
       "description": "Legacy line items",
-      "items": {
-        "type": "object"
-      }
+      "items": { "type": "object" }
     },
-    "subtotal": {
-      "type": "number"
+    "materials": {
+      "type": "array",
+      "description": "Materials inherited from approved estimate for execution reference",
+      "items": { "type": "object" }
     },
-    "total": {
-      "type": "number"
+    "other_costs": {
+      "type": "array",
+      "description": "Internal other costs inherited from approved estimate for reference only",
+      "items": { "type": "object" }
     },
-    "notes": {
-      "type": "string"
+    "subtotal": { "type": "number" },
+    "total": { "type": "number" },
+    "materials_subtotal": { "type": "number", "default": 0 },
+    "materials_cost": { "type": "number", "default": 0 },
+    "other_costs_total": { "type": "number", "default": 0 },
+    "total_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated cost snapshot from Estimate. Do not use as actual job cost."
     },
-    "internal_notes": {
-      "type": "string"
+    "gross_margin": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated gross margin snapshot from Estimate. Do not use as actual job profit."
     },
-    "admin_correction_notes": {
-      "type": "string"
+    "gross_margin_pct": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated gross margin percentage snapshot from Estimate."
     },
-    "completed_at": {
-      "type": "string"
-    },
-    "started_at": {
-      "type": "string"
-    },
+    "payment_terms": { "type": "string" },
+    "warranty_terms": { "type": "string" },
+    "exclusions": { "type": "string" },
+    "scope_summary": { "type": "string" },
+    "assumptions": { "type": "string" },
+    "notes": { "type": "string" },
+    "internal_notes": { "type": "string" },
+    "admin_correction_notes": { "type": "string" },
+    "completed_at": { "type": "string" },
+    "started_at": { "type": "string" },
     "work_summary": {
       "type": "string",
       "description": "Summary of work performed by the worker"
@@ -177,18 +143,10 @@
       "items": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "text": {
-            "type": "string"
-          },
-          "created_by": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string"
-          }
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "created_by": { "type": "string" },
+          "created_at": { "type": "string" }
         }
       }
     },
@@ -198,23 +156,14 @@
       "items": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
-          },
+          "id": { "type": "string" },
           "item": {
             "type": "string",
             "description": "Checklist item label (e.g. 'Materials delivered', 'Work completed')"
           },
-          "completed": {
-            "type": "boolean",
-            "default": false
-          },
-          "completed_at": {
-            "type": "string"
-          },
-          "completed_by": {
-            "type": "string"
-          }
+          "completed": { "type": "boolean", "default": false },
+          "completed_at": { "type": "string" },
+          "completed_by": { "type": "string" }
         }
       }
     },
@@ -224,42 +173,24 @@
       "items": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
           "status": {
             "type": "string",
-            "enum": [
-              "pending",
-              "in_progress",
-              "completed"
-            ],
+            "enum": ["pending", "in_progress", "completed"],
             "default": "pending"
           },
-          "assigned_to": {
-            "type": "string"
-          },
-          "order": {
-            "type": "number"
-          },
-          "started_at": {
-            "type": "string"
-          },
-          "completed_at": {
-            "type": "string"
-          }
+          "assigned_to": { "type": "string" },
+          "order": { "type": "number" },
+          "started_at": { "type": "string" },
+          "completed_at": { "type": "string" }
         }
       }
     },
     "task_statuses": {
       "type": "object",
-      "description": "Legacy map of item id \u2192 { status: pending|done, completed_at, completed_by_worker_id } (for backward compatibility)"
+      "description": "Legacy map of item id → { status: pending|done, completed_at, completed_by_worker_id } (for backward compatibility)"
     },
     "company_id": {
       "type": "string",
@@ -267,8 +198,5 @@
       "default": "rc-art"
     }
   },
-  "required": [
-    "client_name",
-    "title"
-  ]
+  "required": ["client_name", "title"]
 }
