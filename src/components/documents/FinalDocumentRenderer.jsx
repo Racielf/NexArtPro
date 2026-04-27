@@ -18,10 +18,17 @@ function formatSignedDate(value) {
   }
 }
 
+function shortHash(hash) {
+  if (!hash || hash.length < 16) return hash || '';
+  return `${hash.slice(0, 12)}...${hash.slice(-12)}`;
+}
+
 function SignedApprovalStamp({ estimate }) {
   const signer = estimate?.signature_name || estimate?.accepted_by;
   const signedAt = estimate?.signed_at || estimate?.approved_at;
   const audit = estimate?.legal_audit || {};
+  const hash = estimate?.final_signed_pdf_sha256 || '';
+  const isLocked = estimate?.legal_package_locked || estimate?.locked_after_signature;
 
   if (!signer || estimate?.status !== 'approved') return null;
 
@@ -38,7 +45,27 @@ function SignedApprovalStamp({ estimate }) {
         background: '#f0fdf4',
         borderRadius: 10,
         padding: '18px 20px',
+        position: 'relative',
       }}>
+        <div style={{
+          position: 'absolute',
+          top: 14,
+          right: 16,
+          border: '2px solid #15803d',
+          color: '#166534',
+          background: '#ffffff',
+          borderRadius: 999,
+          padding: '7px 12px',
+          fontSize: 10,
+          fontWeight: 900,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          transform: 'rotate(-3deg)',
+          boxShadow: '0 4px 10px rgba(22, 101, 52, 0.12)',
+        }}>
+          Verified Signed Document
+        </div>
+
         <div style={{
           fontSize: 11,
           fontWeight: 800,
@@ -46,6 +73,7 @@ function SignedApprovalStamp({ estimate }) {
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
           marginBottom: 12,
+          paddingRight: 190,
         }}>
           Digitally Signed Approval
         </div>
@@ -72,11 +100,48 @@ function SignedApprovalStamp({ estimate }) {
             <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
               Terms accepted: {estimate?.terms_accepted ? 'Yes' : 'Recorded'}
             </div>
+            {isLocked && (
+              <div style={{
+                display: 'inline-block',
+                marginTop: 10,
+                padding: '4px 8px',
+                borderRadius: 999,
+                background: '#dcfce7',
+                color: '#166534',
+                fontSize: 10,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}>
+                Legal package locked
+              </div>
+            )}
             {audit.timezone && <div style={{ fontSize: 10, color: '#64748b', marginTop: 10 }}>Timezone: {audit.timezone}</div>}
             {audit.language && <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>Language: {audit.language}</div>}
             {audit.screen && <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>Screen: {audit.screen}</div>}
           </div>
         </div>
+
+        {hash && (
+          <div style={{
+            marginTop: 14,
+            padding: '10px 12px',
+            borderRadius: 8,
+            background: '#ffffff',
+            border: '1px solid #dcfce7',
+          }}>
+            <div style={{ fontSize: 10, color: '#166534', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>
+              Verification Fingerprint
+            </div>
+            <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#334155', wordBreak: 'break-all' }}>
+              SHA-256: {shortHash(hash)}
+            </div>
+            <div style={{ fontSize: 9, color: '#64748b', marginTop: 5 }}>
+              Verify this document at /verify-document using the full SHA-256 hash from the legal package.
+            </div>
+          </div>
+        )}
+
         <p style={{ fontSize: 11, color: '#475569', lineHeight: 1.6, margin: '14px 0 0' }}>
           By approving and signing, the client confirmed review of the estimate, included documents, pricing, scope, and terms.
         </p>
