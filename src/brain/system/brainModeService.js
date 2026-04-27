@@ -16,7 +16,7 @@ export function resolveBrainModes(config = {}) {
   if (learningMode) restrictions.push('learning_mode_no_production_writes');
 
   const canAnalyze = true;
-  const canSuggest = !learningMode || observationMode || !decisionMode ? true : true;
+  const canSuggest = true;
   const canExecute = Boolean(writeMode && decisionMode && !observationMode && !learningMode);
 
   return {
