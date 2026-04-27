@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import PublicHeader from '@/components/layout/PublicHeader';
 import PublicFooter from '@/components/layout/PublicFooter';
 import { ShieldCheck, X } from 'lucide-react';
-import { authenticate } from '@/lib/userStore';
+import { authenticate, completeRegistration } from '@/lib/userStore';
 import { getDefaultRouteForRole, normalizeLocalRole } from '@/lib/roleUtils';
 
 const GATE_KEY = 'team_access_granted';
@@ -38,6 +38,16 @@ export function clearTeamAccessGrant() {
   sessionStorage.removeItem(GATE_KEY);
 }
 
+function persistLocalSession(user) {
+  const role = normalizeLocalRole(user?.role);
+  sessionStorage.setItem('user_role', role);
+  sessionStorage.setItem('local_auth', 'true');
+  if (user?.id) sessionStorage.setItem('local_user_id', user.id);
+  if (user?.username) sessionStorage.setItem('local_username', user.username);
+  if (user?.display_name) sessionStorage.setItem('local_display_name', user.display_name);
+  return role;
+}
+
 export default function TeamAccess() {
   const { isLoadingAuth } = useAuth();
   const navigate = useNavigate();
@@ -45,11 +55,17 @@ export default function TeamAccess() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [accessMode, setAccessMode] = useState('login');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginRole, setLoginRole] = useState('field_agent');
   const [loginError, setLoginError] = useState('');
   const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [registrationCode, setRegistrationCode] = useState('');
+  const [registrationUsername, setRegistrationUsername] = useState('');
+  const [registrationPassword, setRegistrationPassword] = useState('');
+  const [registrationError, setRegistrationError] = useState('');
+  const [registrationSubmitting, setRegistrationSubmitting] = useState(false);
 
   if (isLoadingAuth) {
     return (
@@ -99,6 +115,7 @@ export default function TeamAccess() {
         })
       );
 
+      setAccessMode('login');
       setShowLoginModal(true);
     } finally {
       setSubmitting(false);
@@ -129,18 +146,45 @@ export default function TeamAccess() {
         return;
       }
 
-      sessionStorage.setItem('user_role', actualRole);
-      sessionStorage.setItem('local_auth', 'true');
-      if (result.user?.id) sessionStorage.setItem('local_user_id', result.user.id);
-      if (result.user?.username) sessionStorage.setItem('local_username', result.user.username);
-      if (result.user?.display_name) sessionStorage.setItem('local_display_name', result.user.display_name);
-
+      const role = persistLocalSession(result.user);
       setShowLoginModal(false);
-      navigate(getDefaultRouteForRole(actualRole), { replace: true });
+      navigate(getDefaultRouteForRole(role), { replace: true });
     } catch (err) {
       setLoginError('Connection error — try again');
     } finally {
       setLoginSubmitting(false);
+    }
+  };
+
+  const handleCompleteRegistration = async (e) => {
+    e.preventDefault();
+    setRegistrationError('');
+
+    if (!registrationCode.trim() || !registrationUsername.trim() || !registrationPassword.trim()) {
+      setRegistrationError('Registration code, username and password are required');
+      return;
+    }
+
+    setRegistrationSubmitting(true);
+    try {
+      const result = await completeRegistration({
+        registrationCode: registrationCode.trim(),
+        username: registrationUsername.trim(),
+        password: registrationPassword.trim(),
+      });
+
+      if (!result.ok) {
+        setRegistrationError(result.error || 'Could not complete registration');
+        return;
+      }
+
+      const role = persistLocalSession(result.user);
+      setShowLoginModal(false);
+      navigate(getDefaultRouteForRole(role), { replace: true });
+    } catch (err) {
+      setRegistrationError('Connection error — try again');
+    } finally {
+      setRegistrationSubmitting(false);
     }
   };
 
@@ -190,50 +234,105 @@ export default function TeamAccess() {
               <X className="w-5 h-5" />
             </button>
 
-            <h2 className="text-xl font-bold text-white text-center mb-1">Sign In</h2>
-            <p className="text-slate-400 text-sm text-center mb-4">Enter your credentials to continue.</p>
+            <h2 className="text-xl font-bold text-white text-center mb-1">
+              {accessMode === 'login' ? 'Sign In' : 'Complete Registration'}
+            </h2>
+            <p className="text-slate-400 text-sm text-center mb-4">
+              {accessMode === 'login'
+                ? 'Enter your credentials to continue.'
+                : 'Use your registration code to activate your account.'}
+            </p>
 
-            <div className="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 mb-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Temporary Credentials</p>
-              <p className="text-xs text-slate-300"><span className="text-slate-500">Admin:</span> admin / admin</p>
-              <p className="text-xs text-slate-300"><span className="text-slate-500">Field:</span> agent1 / admin</p>
+            <div className="grid grid-cols-2 gap-2 mb-4 bg-slate-800/60 border border-slate-700 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => { setAccessMode('login'); setLoginError(''); }}
+                className={`h-9 rounded-md text-xs font-bold transition ${accessMode === 'login' ? 'bg-cta-orange text-white' : 'text-slate-400 hover:text-white'}`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAccessMode('register'); setRegistrationError(''); }}
+                className={`h-9 rounded-md text-xs font-bold transition ${accessMode === 'register' ? 'bg-cta-orange text-white' : 'text-slate-400 hover:text-white'}`}
+              >
+                Complete Registration
+              </button>
             </div>
 
-            <form onSubmit={handleCredentialLogin} className="space-y-3">
-              <input
-                type="text"
-                value={loginEmail}
-                onChange={(e) => { setLoginEmail(e.target.value); setLoginError(''); }}
-                placeholder="Username / Email"
-                autoFocus
-                className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
-              />
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => { setLoginPassword(e.target.value); setLoginError(''); }}
-                placeholder="Password"
-                className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
-              />
-              <select
-                value={loginRole}
-                onChange={(e) => setLoginRole(e.target.value)}
-                className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
-              >
-                <option value="admin">Admin</option>
-                <option value="field_agent">Field Agent</option>
-              </select>
-              {loginError && (
-                <p className="text-xs text-red-400 font-medium">{loginError}</p>
-              )}
-              <button
-                type="submit"
-                disabled={loginSubmitting}
-                className="w-full px-8 py-3 text-sm font-bold text-white bg-cta-orange hover:bg-orange-600 disabled:opacity-50 rounded-lg transition uppercase tracking-wider"
-              >
-                {loginSubmitting ? 'Signing in…' : 'Sign In'}
-              </button>
-            </form>
+            {accessMode === 'login' ? (
+              <form onSubmit={handleCredentialLogin} className="space-y-3">
+                <input
+                  type="text"
+                  value={loginEmail}
+                  onChange={(e) => { setLoginEmail(e.target.value); setLoginError(''); }}
+                  placeholder="Username / Email"
+                  autoFocus
+                  className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
+                />
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => { setLoginPassword(e.target.value); setLoginError(''); }}
+                  placeholder="Password"
+                  className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
+                />
+                <select
+                  value={loginRole}
+                  onChange={(e) => setLoginRole(e.target.value)}
+                  className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
+                >
+                  <option value="admin">Owner / Admin</option>
+                  <option value="office_agent">Office Agent</option>
+                  <option value="field_agent">Field Agent</option>
+                </select>
+                {loginError && (
+                  <p className="text-xs text-red-400 font-medium">{loginError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loginSubmitting}
+                  className="w-full px-8 py-3 text-sm font-bold text-white bg-cta-orange hover:bg-orange-600 disabled:opacity-50 rounded-lg transition uppercase tracking-wider"
+                >
+                  {loginSubmitting ? 'Signing in…' : 'Sign In'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleCompleteRegistration} className="space-y-3">
+                <input
+                  type="text"
+                  value={registrationCode}
+                  onChange={(e) => { setRegistrationCode(e.target.value); setRegistrationError(''); }}
+                  placeholder="Registration code"
+                  autoFocus
+                  className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
+                />
+                <input
+                  type="text"
+                  value={registrationUsername}
+                  onChange={(e) => { setRegistrationUsername(e.target.value); setRegistrationError(''); }}
+                  placeholder="Create username / email"
+                  className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
+                />
+                <input
+                  type="password"
+                  value={registrationPassword}
+                  onChange={(e) => { setRegistrationPassword(e.target.value); setRegistrationError(''); }}
+                  placeholder="Create password"
+                  className="w-full h-11 px-3 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
+                />
+                {registrationError && (
+                  <p className="text-xs text-red-400 font-medium">{registrationError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={registrationSubmitting}
+                  className="w-full px-8 py-3 text-sm font-bold text-white bg-cta-orange hover:bg-orange-600 disabled:opacity-50 rounded-lg transition uppercase tracking-wider"
+                >
+                  {registrationSubmitting ? 'Activating…' : 'Activate Account'}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
