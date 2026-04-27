@@ -1,12 +1,3 @@
-/**
- * SaveStateIndicator — Lightweight save-state badge for document editors.
- *
- * Props:
- *   saving    — boolean, true while a persist operation is in-flight
- *   savedAt   — Date|number|null, timestamp of last successful save
- *   dirty     — boolean, true if there are unsaved local changes
- *   error     — boolean, true if last save failed
- */
 import { Save, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -20,10 +11,21 @@ function timeAgo(ts) {
   return `${Math.round(min / 60)}h ago`;
 }
 
+function StateCard({ icon: Icon, title, subtitle, className }) {
+  return (
+    <span className={`inline-flex min-h-[46px] items-center gap-3 rounded-2xl px-5 py-2 text-sm font-bold leading-tight shadow-none ${className}`}>
+      <Icon className="h-5 w-5 shrink-0" />
+      <span className="flex flex-col items-start leading-tight">
+        <span>{title}</span>
+        {subtitle && <span>{subtitle}</span>}
+      </span>
+    </span>
+  );
+}
+
 export default function SaveStateIndicator({ saving, savedAt, dirty, error }) {
   const [, forceRender] = useState(0);
 
-  // Re-render every 15s to keep "saved Xm ago" fresh
   useEffect(() => {
     if (!savedAt) return;
     const t = setInterval(() => forceRender(n => n + 1), 15000);
@@ -31,39 +33,19 @@ export default function SaveStateIndicator({ saving, savedAt, dirty, error }) {
   }, [savedAt]);
 
   if (error) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-        <AlertCircle className="w-3 h-3" />
-        Save failed · retrying…
-      </span>
-    );
+    return <StateCard icon={AlertCircle} title="Save failed" subtitle="Retrying" className="border border-red-200 bg-red-50 text-red-700" />;
   }
 
   if (saving) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">
-        <Loader2 className="w-3 h-3 animate-spin" />
-        Saving…
-      </span>
-    );
+    return <StateCard icon={Loader2} title="Saving" className="border border-slate-200 bg-slate-50 text-slate-600" />;
   }
 
   if (dirty) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-        <Save className="w-3 h-3" />
-        Unsaved changes
-      </span>
-    );
+    return <StateCard icon={Save} title="Unsaved" subtitle="changes" className="border border-amber-200 bg-amber-50 text-amber-700" />;
   }
 
   if (savedAt) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-        <Check className="w-3 h-3" />
-        Saved {timeAgo(savedAt)}
-      </span>
-    );
+    return <StateCard icon={Check} title="Guardado" subtitle={`hace ${timeAgo(savedAt)}`} className="border-0 bg-emerald-50/80 text-emerald-700" />;
   }
 
   return null;
