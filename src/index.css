@@ -90,7 +90,7 @@
 }
 
 @layer components {
-  /* Estimate editor premium command bar — visual-only override.
+  /* Estimate editor premium command bar - visual-only override.
      Keeps the existing React structure, handlers, state, and actions intact. */
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 {
     margin: 12px 16px 0;
@@ -209,6 +209,41 @@
     background: #f5f3ff !important;
     border-color: #ddd6fe !important;
     color: #5b21b6 !important;
+  }
+
+  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > span.inline-flex {
+    min-height: 78px !important;
+    min-width: 164px !important;
+    padding: 12px 22px !important;
+    border-radius: 20px !important;
+    border: 0 !important;
+    background: linear-gradient(180deg, #ecfdf5 0%, #effdf8 100%) !important;
+    color: #047857 !important;
+    font-size: 0 !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 16px !important;
+    box-shadow: none !important;
+  }
+
+  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > span.inline-flex svg {
+    width: 26px !important;
+    height: 26px !important;
+    flex-shrink: 0 !important;
+    stroke-width: 2.2 !important;
+  }
+
+  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > span.inline-flex::after {
+    content: 'Guardado\A hace 18s';
+    white-space: pre-line;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    text-align: left;
+    line-height: 1.1;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto .w-px {
