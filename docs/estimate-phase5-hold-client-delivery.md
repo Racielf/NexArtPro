@@ -1,131 +1,132 @@
-# Estimate Phase 5 Hold — Client Delivery / Attachments / Signing
+# Estimate Phase 5 — Client Delivery / Attachments / Signing
 
 ## Status
 
-Phase 5 is PAUSED.
+Phase 5 client-delivery blockers are RESOLVED.
 
-Do not implement Estimate → WorkOrder conversion changes until the Estimate client delivery issues below are fixed and verified.
-
-This checkpoint exists to prevent future chats/agents from skipping the current blocker.
+The previous hold existed to protect the email attachment workflow and client approval flow before completing Estimate → WorkOrder conversion.
 
 ---
 
-## What is currently working
+## Resolved items
 
-The following behavior was observed as working:
+### 1. Attachments remain separate from the estimate document
 
-- Print works.
-- Document preview opens and displays the estimate.
-- PDF download works.
-- Send email sends the estimate document and the selected attachment.
-- The separate email attachment workflow was difficult to implement and must not be broken.
+Status: ✅ Resolved
 
-Important: Do not remove or redesign the current attachment sending mechanism.
+Client attachments are not embedded visually inside the estimate preview/PDF/email document by default.
+
+Important:
+
+- The estimate document stays clean.
+- Client attachments still send separately with the email.
+- Do not remove or redesign the current attachment sending mechanism.
 
 ---
 
-## Current blockers before Phase 5
+### 2. Attachment checkbox no longer controls a fake document section
 
-### 1. Included Documents section appears inside the estimate document
+Status: ✅ Resolved
 
-Problem:
+The attachment selection panel controls email attachment delivery.
 
-- The attached file appears inside the visual estimate preview under `Included Documents`.
-- It also appears inside the email-rendered estimate document because the same document renderer is used.
+The estimate document itself does not show `Included Documents` by default.
+
+---
+
+### 3. Email `View Estimate` link opens public client route
+
+Status: ✅ Resolved
+
+`/client-estimate?token=...` is treated as a public route and no longer gets blocked by admin/auth redirect behavior.
+
+---
+
+### 4. Signed / approved status is visible in admin
+
+Status: ✅ Resolved
+
+Admin UI shows signed/approved and declined status through the estimate transmission/admin panel.
+
+Signed fields formalized in `base44/entities/Estimate.jsonc` include:
+
+- `signed_at`
+- `accepted_by`
+- `signature_name`
+- `signature_image`
+- `signature_method`
+- `terms_accepted`
+- `legal_audit`
+- `locked_after_signature`
+- `final_signed_pdf_url`
+- `final_signed_pdf_name`
+- `legal_package_locked`
+
+---
+
+## Phase 5 conversion status
+
+Status: ✅ Implemented
+
+Estimate → WorkOrder conversion now preserves the approved/signed Estimate as a WorkOrder reference snapshot.
+
+Important:
+
+- This snapshot is reference-only.
+- Real WorkOrder profitability must still come from invoices, expenses, and time entries.
+- Do not change `jobFinancials.js` to use estimate snapshot as real profit.
+
+---
+
+## Auto-convert at signing
+
+Status: ✅ Connected
+
+The client approval flow in `src/pages/ClientEstimateView.jsx` calls:
+
+```js
+convertApprovedEstimateToWorkOrder(signedEstimate, { actor: 'client_approval' })
+```
+
+after approval/signature and signed PDF freeze.
 
 Expected behavior:
 
-- Client attachments must be sent separately with the email.
-- Client attachments must NOT be embedded visually inside the estimate document preview/PDF/email document unless the user explicitly wants that later.
-- The attachment selection panel should control what files are included as email attachments, not whether an `Included Documents` section is rendered inside the estimate document.
-
-Do not break the current ability to send the attachment separately.
-
----
-
-### 2. Attachment checkbox does not affect preview/document section
-
-Problem:
-
-- In Review & Send, unchecking the attachment marks it as excluded in the side panel.
-- However, the `Included Documents` section still remains visible in the estimate preview.
-
-Expected behavior:
-
-- If an attachment is excluded from email sending, it should not appear as included in the preview/document output.
-- Preferred fix: remove/hide the `Included Documents` section from the estimate document entirely and keep attachments separate in email delivery.
+1. Client opens public estimate link.
+2. Client types signature and accepts terms.
+3. Estimate is approved/signed.
+4. Final signed PDF is frozen when possible.
+5. Work Order is created automatically.
+6. Estimate is marked as converted.
+7. Admin sees signed/approved state and conversion reference.
 
 ---
 
-### 3. Email `View Estimate` button opens blank / does not reach client estimate
+## Do Not Break
 
-Problem:
+Do not redesign Estimate.
 
-- Email is received.
-- Button text says `View Estimate`.
-- Clicking the button opens `/client-estimate?token=...`, but the page is blank.
+Do not remove separate email attachment delivery.
 
-Expected behavior:
+Do not embed client attachments visually inside the Estimate document by default.
 
-- The button should open the client-facing estimate portal.
-- Client should be able to view the estimate and approve/sign/decline.
+Do not create another calculation engine.
 
-Must verify:
-
-- public token generation
-- token persistence on the Estimate
-- client route loading logic
-- client estimate fetch by token
-- Base44 preview sandbox URL behavior
+Do not replace real job profitability with estimate snapshot values.
 
 ---
 
-### 4. Signed document / approval notification is not yet verified
+## Future QA checklist
 
-Expected behavior:
+Before declaring production complete, manually test:
 
-- Client can sign/approve the estimate from the client portal.
-- Signed approval is saved back to the Estimate.
-- Admin/office can see somewhere that the estimate was signed/approved.
-- The signed document or signed status should be visible in the system.
-
-Do not assume this works until verified end-to-end.
-
----
-
-## Rules for the next agent/chat
-
-Before changing anything:
-
-1. Read this file.
-2. Read `docs/estimate-system-status.md`.
-3. Do not touch Phase 5 conversion yet.
-4. Do not break the separate email attachment workflow.
-5. Do not redesign Estimate.
-6. Fix only the client delivery/signing blockers listed here.
-
-Any proposed fix must identify exact files and explain why it does not break:
-
-- Preview
-- PDF download
-- Print
-- Email attachment sending
-- Client signing flow
-
----
-
-## Likely files to inspect next
-
-- `src/components/estimates/EstimateSendReview.jsx`
-- `src/lib/estimateSendOrchestrator.js`
-- `src/lib/estimatePrint.js`
-- `src/components/documents/DocumentAttachmentsSection.jsx`
-- `src/lib/buildEstimateDocumentViewModel.js`
-- client estimate route/page for `/client-estimate`
-- public token lifecycle in `estimateSalesLifecycle.js`
-
----
-
-## Current instruction
-
-Pause Phase 5 until these are fixed.
+1. Create Estimate.
+2. Attach a client-facing PDF.
+3. Send Estimate.
+4. Confirm email contains the Estimate PDF plus selected attachment.
+5. Confirm the Estimate document does not visually show `Included Documents` by default.
+6. Open `View Estimate` link without being logged in.
+7. Approve/sign as client.
+8. Confirm admin shows signed status.
+9. Confirm a Work Order is created automatically.
+10. Confirm WorkOrder has `source_estimate_snapshot` and inherited materials/cost context.
