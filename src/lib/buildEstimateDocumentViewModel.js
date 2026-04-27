@@ -168,19 +168,9 @@ export function buildEstimateDocumentViewModel({
     address: safeStr(estimate.client_address),
   };
 
-  // ─── Project ─────────────────────────────────────────────────────────────
-  const startDate = formatDate(estimate.project_start_date);
-  const endDate = formatDate(estimate.project_end_date);
-
-  const project = {
-    title: safeStr(estimate.title),
-    startDate,
-    endDate,
-    hasProjectDates: !!(startDate || endDate),
-    assignedTo: safeStr(estimate.assigned_to),
-    jobNumber: safeStr(estimate.job_number),
-    planReference: safeStr(estimate.plan_reference),
-  };
+  // ─── Raw Project Dates ───────────────────────────────────────────────────
+  const rawStartDate = formatDate(estimate.project_start_date);
+  const rawEndDate = formatDate(estimate.project_end_date);
 
   // ─── Visibility ──────────────────────────────────────────────────────────
   const showPrices = isWorkOrder ? false : (options.showPrices !== false);
@@ -189,10 +179,6 @@ export function buildEstimateDocumentViewModel({
   const showDocumentDate = options.showDocumentDate !== false;
   const showProjectStartDate = options.showProjectStartDate !== false;
   const showProjectEndDate = options.showProjectEndDate !== false;
-  // Legacy compat: if old showProjectDates is explicitly false, disable both project dates
-  if (options.showProjectDates === false && options.showProjectStartDate === undefined && options.showProjectEndDate === undefined) {
-    // handled below
-  }
   const effectiveShowStartDate = options.showProjectDates === false && options.showProjectStartDate === undefined ? false : showProjectStartDate;
   const effectiveShowEndDate = options.showProjectDates === false && options.showProjectEndDate === undefined ? false : showProjectEndDate;
 
@@ -211,7 +197,7 @@ export function buildEstimateDocumentViewModel({
     showProjectEndDate: effectiveShowEndDate,
     showDeposit: options.showDeposit !== false,
     hideInternalNotes: options.hideInternalNotes !== false,
-    // Granular visibility flags
+    // Granular visibility flags used by all templates
     showBusinessLogo: options.showBusinessLogo !== false,
     showBusinessName: options.showBusinessName !== false,
     showBusinessAddress: options.showBusinessAddress !== false,
@@ -222,6 +208,22 @@ export function buildEstimateDocumentViewModel({
     showCustomerName: options.showCustomerName !== false,
     showExpirationDate: options.showExpirationDate !== false,
     showTechnicianName: options.showTechnicianName !== false,
+  };
+
+  // ─── Project ─────────────────────────────────────────────────────────────
+  // Fase 4: templates must not independently decide hidden dates.
+  // The view model only exposes project dates that are allowed by visibility.
+  const startDate = visibility.showProjectStartDate ? rawStartDate : null;
+  const endDate = visibility.showProjectEndDate ? rawEndDate : null;
+
+  const project = {
+    title: safeStr(estimate.title),
+    startDate,
+    endDate,
+    hasProjectDates: !!(startDate || endDate),
+    assignedTo: safeStr(estimate.assigned_to),
+    jobNumber: safeStr(estimate.job_number),
+    planReference: safeStr(estimate.plan_reference),
   };
 
   // ─── Groups ──────────────────────────────────────────────────────────────
