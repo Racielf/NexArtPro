@@ -48,6 +48,7 @@ import PublicProposalView from './pages/PublicProposalView';
 import ClientPortal from './pages/ClientPortal';
 import RecoveryCenter from './pages/RecoveryCenter';
 import SecurityDashboardWithBrain from './pages/SecurityDashboardWithBrain';
+import VerifyDocument from './pages/VerifyDocument';
 
 // FIELD APP
 import FieldWorkOrders from './pages/FieldWorkOrders';
@@ -147,9 +148,13 @@ const AuthenticatedApp = () => {
         <Route path="/recovery-center" element={<RecoveryCenter />} />
         <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
       </Route>
+
+      {/* PUBLIC ROUTES */}
       <Route path="/client-estimate" element={<ClientEstimateView />} />
       <Route path="/proposal-view" element={<PublicProposalView />} />
       <Route path="/client-portal" element={<ClientPortal />} />
+      <Route path="/verify-document" element={<VerifyDocument />} />
+
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
