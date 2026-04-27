@@ -39,6 +39,29 @@ function buildExecutionChecklist() {
   ];
 }
 
+function buildEstimateSnapshot(estimate) {
+  return {
+    estimate_number: estimate.estimate_number,
+    version: estimate.version_number,
+    total: estimate.total,
+    subtotal: estimate.subtotal,
+    materials_subtotal: estimate.materials_subtotal,
+    materials_cost: estimate.materials_cost,
+    other_costs_total: estimate.other_costs_total,
+    total_cost: estimate.total_cost,
+    gross_margin: estimate.gross_margin,
+    gross_margin_pct: estimate.gross_margin_pct,
+    payment_terms: estimate.payment_terms,
+    warranty_terms: estimate.warranty_terms,
+    exclusions: estimate.exclusions,
+    scope_summary: estimate.scope_summary,
+    assumptions: estimate.assumptions,
+    signed_at: estimate.signed_at,
+    signature_name: estimate.signature_name,
+    final_signed_pdf_url: estimate.final_signed_pdf_url,
+  };
+}
+
 export async function convertApprovedEstimateToWorkOrder(estimate, { actor = 'system' } = {}) {
   if (!estimate?.id) {
     throw new Error('Estimate is required');
@@ -59,32 +82,69 @@ export async function convertApprovedEstimateToWorkOrder(estimate, { actor = 'sy
   }
 
   const createdAt = now();
+
   const payload = {
     work_order_number: buildWorkOrderNumber(),
+
     estimate_id: estimate.id,
     estimate_version: version,
+
+    source_estimate_id: estimate.id,
+    source_estimate_number: estimate.estimate_number,
+    source_estimate_version: version,
+    source_document_type: estimate.document_type,
+    source_estimate_status: estimate.status,
+    source_estimate_total: estimate.total || 0,
+    source_estimate_signed_at: estimate.signed_at || null,
+    source_estimate_signed_by: estimate.signature_name || null,
+    source_estimate_final_pdf_url: estimate.final_signed_pdf_url || null,
+    source_estimate_snapshot: buildEstimateSnapshot(estimate),
+
     client_id: estimate.client_id || '',
     client_name: estimate.client_name || '',
     client_email: estimate.client_email || '',
     client_phone: estimate.client_phone || '',
     client_address: estimate.client_address || '',
+
     title: estimate.title || `Work Order from Estimate #${estimate.estimate_number || ''}`.trim(),
     description: estimate.notes || estimate.title || '',
+
     status: 'draft',
+
     groups: estimate.groups || [],
     line_items: estimate.line_items || [],
+    materials: estimate.materials || [],
+    other_costs: estimate.other_costs || [],
+
     subtotal: estimate.subtotal || 0,
     total: estimate.total || 0,
+
+    materials_subtotal: estimate.materials_subtotal || 0,
+    materials_cost: estimate.materials_cost || 0,
+    other_costs_total: estimate.other_costs_total || 0,
+    total_cost: estimate.total_cost || 0,
+    gross_margin: estimate.gross_margin || 0,
+    gross_margin_pct: estimate.gross_margin_pct || 0,
+
+    payment_terms: estimate.payment_terms || '',
+    warranty_terms: estimate.warranty_terms || '',
+    exclusions: estimate.exclusions || '',
+    scope_summary: estimate.scope_summary || '',
+    assumptions: estimate.assumptions || '',
+
     notes: estimate.notes || '',
+
     internal_notes: [
       `Created automatically from approved estimate #${estimate.estimate_number || ''}.`,
       `Converted by: ${actor}.`,
       `Converted at: ${createdAt}.`,
       estimate.final_signed_pdf_url ? `Final signed PDF: ${estimate.final_signed_pdf_url}` : '',
     ].filter(Boolean).join('\n'),
+
     tasks: buildTasksFromEstimate(estimate),
     execution_checklist: buildExecutionChecklist(),
     field_notes: [],
+
     company_id: 'rc-art',
   };
 
