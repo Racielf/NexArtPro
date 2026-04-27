@@ -10,6 +10,7 @@ import SettingsToggle from '@/components/settings/SettingsToggle';
 import ServicesCatalogSection from '@/components/settings/services/ServicesCatalogSection';
 import PriceBookSection from '@/components/settings/pricebook/PriceBookSection';
 import MaterialsCatalogSection from '@/components/settings/materials/MaterialsCatalogSection';
+import TeamAccessPanel from '@/components/settings/TeamAccessPanel';
 import ManualDelSistemaPanel from '@/components/settings/ManualDelSistemaPanel';
 import BrainCommandCenterPanel from '@/components/settings/BrainCommandCenterPanel';
 import RecoveryCenterPanel from '@/components/settings/RecoveryCenterPanel';
@@ -108,13 +109,7 @@ export default function Settings() {
       </SettingsSection>
     ),
 
-    team: (
-      <SettingsSection title="Team & Access" description="Manage user roles and access permissions.">
-        <SettingsCard title="Roles">
-          <p className="text-sm text-slate-500">User roles are managed through the Base44 dashboard. Invite team members and assign roles (admin / user) from the Users section.</p>
-        </SettingsCard>
-      </SettingsSection>
-    ),
+    team: <TeamAccessPanel />,
 
     general: (
       <SettingsSection title="General" description="Configure regional and display preferences.">
