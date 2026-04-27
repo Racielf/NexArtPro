@@ -1,5 +1,5 @@
 import { base44 } from '@/api/base44Client';
-import { markEstimateSent } from '@/lib/estimateSalesLifecycle';
+import { generatePublicShareToken, markEstimateSent } from '@/lib/estimateSalesLifecycle';
 import { createSigningPackageForEstimate } from '@/lib/nexArtSign';
 import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
 import { validateDocTypeFields } from '@/lib/documentTypeConfig';
@@ -70,9 +70,7 @@ export async function executeSend({
   try {
     generatedPdf = await generateEstimatePdfBase64(estimate, currentOptions, currentTemplate);
     pdfFilename = generatedPdf?.filename || null;
-    if (generatedPdf?.base64) {
-      pdfHash = await sha256HexFromBase64(generatedPdf.base64);
-    }
+    if (generatedPdf?.base64) pdfHash = await sha256HexFromBase64(generatedPdf.base64);
   } catch (err) {
     console.warn('[executeSend] PDF generation/hash failed before email:', err?.message);
   }
@@ -94,8 +92,9 @@ export async function executeSend({
     console.warn('[executeSend] auth fetch failed:', err?.message);
   }
 
-  let signingPackage;
-  let finalLink = `${window.location.origin}/sign-document?token=generating`;
+  let signingPackage = null;
+  let finalLink = '';
+
   try {
     signingPackage = await createSigningPackageForEstimate({
       estimate,
@@ -106,8 +105,9 @@ export async function executeSend({
     });
     finalLink = `${window.location.origin}/sign-document?token=${signingPackage.token}`;
   } catch (err) {
-    console.warn('[executeSend] signing package creation failed:', err?.message);
-    throw new Error('Failed to generate signing link');
+    console.warn('[executeSend] NexArtSign unavailable; falling back to legacy client estimate link:', err?.message);
+    const legacyToken = await generatePublicShareToken(estimate);
+    finalLink = `${window.location.origin}/client-estimate?token=${legacyToken}`;
   }
 
   const emailAttachments = [];
@@ -143,8 +143,8 @@ export async function executeSend({
   try {
     await markEstimateSent(estimate.id, { documentConfig, estimate, currentUser });
     await base44.entities.Estimate.update(estimate.id, {
-      signing_package_id: signingPackage?.id,
-      signature_status: 'sent',
+      signing_package_id: signingPackage?.id || estimate.signing_package_id || '',
+      signature_status: signingPackage?.id ? 'sent' : (estimate.signature_status || ''),
       document_hash: pdfHash || estimate.document_hash || '',
       document_hash_algorithm: pdfHash ? 'SHA-256' : estimate.document_hash_algorithm,
     }).catch(() => {});
@@ -199,7 +199,7 @@ export async function executeSend({
     });
   } catch {}
 
-  return { success: true, messageId: emailRes.data?.id, secureLink: finalLink, pdfUrl, pdfHash, signingPackageId: signingPackage?.id };
+  return { success: true, messageId: emailRes.data?.id, secureLink: finalLink, pdfUrl, pdfHash, signingPackageId: signingPackage?.id || null };
 }
 
 export async function logPricingOverride(estimate, lossValidation, recipientEmail) {
