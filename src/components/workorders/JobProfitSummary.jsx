@@ -1,11 +1,13 @@
 /**
  * JobProfitSummary — Non-invasive profit panel for WorkOrderDetail
- * Reads live data via getJobFinancials. Pure display, no mutations.
+ * Reads live data via getJobFinancials. Pure display for financials.
+ * Also mounts WOAssigneePanel in the same WorkOrderDetail sidebar area.
  */
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getJobFinancials } from '@/lib/jobFinancials';
 import { TrendingDown, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import WOAssigneePanel from '@/components/workorders/WOAssigneePanel';
 
 const RISK_CONFIG = {
   losing:  { bg: 'bg-red-50 border-red-200',    text: 'text-red-700',    icon: TrendingDown,  iconCls: 'text-red-500' },
@@ -28,22 +30,48 @@ function fmtHours(h) {
 
 export default function JobProfitSummary({ workOrderId }) {
   const [data, setData] = useState(null);
+  const [workOrder, setWorkOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadPanelData = async () => {
     if (!workOrderId) return;
-    getJobFinancials(workOrderId, base44)
-      .then(result => { setData(result); setLoading(false); })
-      .catch(() => setLoading(false));
+    setLoading(true);
+    try {
+      const [financials, workOrderList] = await Promise.all([
+        getJobFinancials(workOrderId, base44),
+        base44.entities.WorkOrder.filter({ id: workOrderId }),
+      ]);
+      setData(financials);
+      setWorkOrder(workOrderList?.[0] || null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPanelData();
   }, [workOrderId]);
 
   if (loading) return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-      <p className="text-xs text-slate-400">Loading financials…</p>
+    <div className="space-y-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <p className="text-xs text-slate-400">Loading assignment…</p>
+      </div>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <p className="text-xs text-slate-400">Loading financials…</p>
+      </div>
     </div>
   );
 
-  if (!data) return null;
+  const assignmentPanel = workOrder ? (
+    <WOAssigneePanel
+      workOrder={workOrder}
+      workOrderId={workOrderId}
+      onAssigned={loadPanelData}
+    />
+  ) : null;
+
+  if (!data) return assignmentPanel;
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const fmtPct = (n) => `${(n * 100).toFixed(1)}%`;
@@ -65,83 +93,84 @@ export default function JobProfitSummary({ workOrderId }) {
   ].filter(Boolean).join(' · ');
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-      <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
-        <RiskIcon className={`w-4 h-4 ${riskCfg.iconCls}`} />
-        <h2 className="text-sm font-bold text-slate-900">Job Financials</h2>
-        {data.invoice_count > 0 && (
-          <span className="ml-auto text-[10px] text-slate-400">
-            {data.invoice_count} invoice{data.invoice_count > 1 ? 's' : ''}
-            {data.linked_invoice_number ? ` · INV #${data.linked_invoice_number}` : ''}
-          </span>
-        )}
-      </div>
+    <div className="space-y-4">
+      {assignmentPanel}
 
-      <div className="px-5 py-4 space-y-3">
-        {/* Risk indicator */}
-        {risk.level !== 'unknown' && (
-          <div className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border ${riskCfg.bg}`}>
-            <RiskIcon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${riskCfg.iconCls}`} />
-            <div>
-              <p className={`text-xs font-semibold ${riskCfg.text}`}>{risk.label}</p>
-              <p className={`text-[11px] mt-0.5 ${riskCfg.text} opacity-80`}>{risk.description}</p>
-            </div>
-          </div>
-        )}
-
-        {data.no_revenue_linked && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-slate-50 border border-slate-200">
-            <Info className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-slate-500">No linked invoice found — revenue shown as $0</p>
-          </div>
-        )}
-
-        {/* Main metrics grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Revenue</p>
-            <p className="text-base font-bold text-slate-900">{fmt(data.revenue)}</p>
-          </div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Collected</p>
-            <p className="text-base font-bold text-green-600">{fmt(data.collected)}</p>
-          </div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Actual Cost</p>
-            <p className="text-base font-bold text-slate-700">{fmt(data.actual_cost)}</p>
-          </div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Profit</p>
-            <p className={`text-base font-bold ${profitColor}`}>{fmt(data.profit)}</p>
-          </div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 col-span-2">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Margin</p>
-            <p className={`text-base font-bold ${profitColor}`}>{fmtPct(data.margin)}</p>
-          </div>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+          <RiskIcon className={`w-4 h-4 ${riskCfg.iconCls}`} />
+          <h2 className="text-sm font-bold text-slate-900">Job Financials</h2>
+          {data.invoice_count > 0 && (
+            <span className="ml-auto text-[10px] text-slate-400">
+              {data.invoice_count} invoice{data.invoice_count > 1 ? 's' : ''}
+              {data.linked_invoice_number ? ` · INV #${data.linked_invoice_number}` : ''}
+            </span>
+          )}
         </div>
 
-        {/* Cost breakdown */}
-        <div className="space-y-1.5 pt-1 border-t border-slate-100">
-          <div className="flex justify-between text-xs text-slate-600">
-            <span>Materials / Expenses</span>
-            <span className="font-medium">{fmt(data.breakdown.material)}</span>
+        <div className="px-5 py-4 space-y-3">
+          {risk.level !== 'unknown' && (
+            <div className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border ${riskCfg.bg}`}>
+              <RiskIcon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${riskCfg.iconCls}`} />
+              <div>
+                <p className={`text-xs font-semibold ${riskCfg.text}`}>{risk.label}</p>
+                <p className={`text-[11px] mt-0.5 ${riskCfg.text} opacity-80`}>{risk.description}</p>
+              </div>
+            </div>
+          )}
+
+          {data.no_revenue_linked && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-slate-50 border border-slate-200">
+              <Info className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-slate-500">No linked invoice found — revenue shown as $0</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Revenue</p>
+              <p className="text-base font-bold text-slate-900">{fmt(data.revenue)}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Collected</p>
+              <p className="text-base font-bold text-green-600">{fmt(data.collected)}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Actual Cost</p>
+              <p className="text-base font-bold text-slate-700">{fmt(data.actual_cost)}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Profit</p>
+              <p className={`text-base font-bold ${profitColor}`}>{fmt(data.profit)}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 col-span-2">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Margin</p>
+              <p className={`text-base font-bold ${profitColor}`}>{fmtPct(data.margin)}</p>
+            </div>
           </div>
-          <div className="flex justify-between text-xs text-slate-500">
-            <span className="flex items-center gap-1 flex-wrap">
-              <span>Labor</span>
-              {laborDetail && (
-                <span className="text-[10px] text-slate-400">({laborDetail})</span>
-              )}
-              <span className={`px-1 py-0.5 rounded text-[9px] font-semibold border ${laborBadge.cls}`}>
-                {laborBadge.label}
-              </span>
-              {data.using_legacy_time && (
-                <span className="px-1 py-0.5 rounded text-[9px] font-semibold border bg-slate-50 text-slate-500 border-slate-200">
-                  legacy time
+
+          <div className="space-y-1.5 pt-1 border-t border-slate-100">
+            <div className="flex justify-between text-xs text-slate-600">
+              <span>Materials / Expenses</span>
+              <span className="font-medium">{fmt(data.breakdown.material)}</span>
+            </div>
+            <div className="flex justify-between text-xs text-slate-500">
+              <span className="flex items-center gap-1 flex-wrap">
+                <span>Labor</span>
+                {laborDetail && (
+                  <span className="text-[10px] text-slate-400">({laborDetail})</span>
+                )}
+                <span className={`px-1 py-0.5 rounded text-[9px] font-semibold border ${laborBadge.cls}`}>
+                  {laborBadge.label}
                 </span>
-              )}
-            </span>
-            <span className="font-medium">{fmt(data.breakdown.labor)}</span>
+                {data.using_legacy_time && (
+                  <span className="px-1 py-0.5 rounded text-[9px] font-semibold border bg-slate-50 text-slate-500 border-slate-200">
+                    legacy time
+                  </span>
+                )}
+              </span>
+              <span className="font-medium">{fmt(data.breakdown.labor)}</span>
+            </div>
           </div>
         </div>
       </div>
