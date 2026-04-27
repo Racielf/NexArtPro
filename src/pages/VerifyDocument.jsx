@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CheckCircle, XCircle, ShieldCheck, Upload, Hash, FileCheck, LockKeyhole, BadgeCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import { base44 } from '@/api/base44Client';
 
 async function sha256File(file) {
   const buffer = await file.arrayBuffer();
@@ -11,18 +12,42 @@ async function sha256File(file) {
     .join('');
 }
 
-function getInitialHashFromUrl() {
+function getParams() {
   const params = new URLSearchParams(window.location.search);
-  return (params.get('hash') || '').trim().toLowerCase();
+  return {
+    hash: (params.get('hash') || '').trim().toLowerCase(),
+    certificate: (params.get('certificate') || '').trim(),
+  };
 }
 
 export default function VerifyDocument() {
-  const initialHash = getInitialHashFromUrl();
+  const { hash: initialHash, certificate } = getParams();
+
   const [file, setFile] = useState(null);
   const [expectedHash, setExpectedHash] = useState(initialHash);
   const [computedHash, setComputedHash] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
+  const [certData, setCertData] = useState(null);
+
+  useEffect(() => {
+    if (!certificate) return;
+
+    const loadCertificate = async () => {
+      try {
+        const res = await base44.functions.invoke('resolveSigningCertificate', { certificate });
+        if (res.data?.certificate) {
+          setCertData(res.data);
+          const expected = (res.data.verification?.expected_hash || '').toLowerCase();
+          if (expected) setExpectedHash(expected);
+        }
+      } catch (err) {
+        console.warn('Certificate lookup failed:', err?.message);
+      }
+    };
+
+    loadCertificate();
+  }, [certificate]);
 
   const cleanExpected = expectedHash.trim().toLowerCase();
   const isValidHash = /^[a-f0-9]{64}$/.test(cleanExpected);
@@ -75,26 +100,13 @@ export default function VerifyDocument() {
                   </p>
                 </div>
               </div>
-              <div className="hidden sm:block text-right text-xs text-slate-300 leading-relaxed">
-                Secure Verification<br />SHA-256 Integrity Check
-              </div>
             </div>
           </div>
 
           <div className="p-7 space-y-6">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800 flex items-start gap-2">
-              <BadgeCheck className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>This portal confirms document authenticity using cryptographic SHA-256 fingerprint comparison.</span>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-800 flex items-start gap-2">
-              <LockKeyhole className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>This verification happens locally in your browser. The PDF is not uploaded.</span>
-            </div>
-
-            {initialHash && (
+            {certData && (
               <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700">
-                Verification hash loaded from the signed document QR code or secure verification link.
+                Certificate #{certData.certificate.certificate_number} • Signed by {certData.certificate.signer_name}
               </div>
             )}
 
@@ -108,7 +120,6 @@ export default function VerifyDocument() {
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
               />
-              {file && <p className="text-xs text-slate-500">Selected: {file.name}</p>}
             </div>
 
             <div className="space-y-2">
@@ -118,13 +129,9 @@ export default function VerifyDocument() {
               <textarea
                 value={expectedHash}
                 onChange={(e) => setExpectedHash(e.target.value)}
-                placeholder="Paste the SHA-256 hash from audit.json, VERIFY.txt, or verification QR"
                 rows={3}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono"
               />
-              {expectedHash && !isValidHash && (
-                <p className="text-xs text-amber-600">SHA-256 must be exactly 64 hexadecimal characters.</p>
-              )}
             </div>
 
             {error && (
@@ -133,42 +140,27 @@ export default function VerifyDocument() {
               </div>
             )}
 
-            <Button
-              onClick={handleVerify}
-              disabled={verifying}
-              className="w-full bg-slate-900 hover:bg-black text-white rounded-xl h-11 gap-2"
-            >
-              <FileCheck className="w-4 h-4" />
-              {verifying ? 'Verifying...' : 'Verify Document'}
+            <Button onClick={handleVerify} disabled={verifying} className="w-full bg-slate-900 text-white">
+              <FileCheck className="w-4 h-4" /> Verify Document
             </Button>
 
             {computedHash && (
               <div className={`rounded-2xl border px-5 py-5 ${status === 'verified' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                 <div className="flex items-start gap-3">
                   {status === 'verified' ? (
-                    <CheckCircle className="w-6 h-6 text-green-600 mt-0.5" />
+                    <CheckCircle className="w-6 h-6 text-green-600" />
                   ) : (
-                    <XCircle className="w-6 h-6 text-red-600 mt-0.5" />
+                    <XCircle className="w-6 h-6 text-red-600" />
                   )}
-                  <div className="min-w-0">
-                    <p className={`font-bold ${status === 'verified' ? 'text-green-800' : 'text-red-800'}`}>
-                      {status === 'verified'
-                        ? 'Verified — this document is authentic and has not been altered since it was signed.'
-                        : 'Warning — this document does not match the original signed version and may have been modified.'}
+                  <div>
+                    <p className="font-bold">
+                      {status === 'verified' ? 'Verified — Document is authentic.' : 'Mismatch — Document may be altered.'}
                     </p>
-                    <p className="text-xs text-slate-600 mt-3">
-                      Verification is based on SHA-256 fingerprint comparison. Matching hashes prove the file content is identical to the signed record.
-                    </p>
-                    <p className="text-xs text-slate-600 mt-3">Computed SHA-256</p>
-                    <p className="font-mono text-xs break-all text-slate-800 mt-1">{computedHash}</p>
+                    <p className="text-xs mt-2 font-mono break-all">{computedHash}</p>
                   </div>
                 </div>
               </div>
             )}
-
-            <div className="pt-2 border-t border-slate-100 text-center text-[11px] text-slate-400">
-              {appConfig?.company?.name || appConfig?.appName || 'ProEstimate FSM'} Document Trust System
-            </div>
           </div>
         </div>
       </div>
