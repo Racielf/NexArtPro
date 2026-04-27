@@ -36,6 +36,14 @@ function base64ToPdfBlob(base64) {
   return new Blob([bytes], { type: 'application/pdf' });
 }
 
+async function sha256HexFromBase64(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function collectLegalAudit() {
   return {
     user_agent: navigator.userAgent || '',
@@ -43,7 +51,58 @@ function collectLegalAudit() {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
     screen: `${window.innerWidth}x${window.innerHeight}`,
     page_url: window.location.href,
+    ip_address: 'unavailable_client_side',
+    ip_capture_note: 'Real signer IP requires backend request capture; client-side JavaScript cannot reliably read public IP.',
   };
+}
+
+function buildSignatureCertificate({ estimate, signedAt, pdfHash, finalPdfUrl, finalPdfName, legalAudit }) {
+  return {
+    certificate_type: 'electronic_signature_certificate',
+    generated_at: new Date().toISOString(),
+    document_id: estimate.id,
+    document_type: estimate.document_type || 'ESTIMATE',
+    estimate_number: estimate.estimate_number,
+    signer_name: estimate.signature_name || estimate.accepted_by || '',
+    signer_email: estimate.client_email || '',
+    signer_client_name: estimate.client_name || '',
+    signed_at: signedAt || estimate.signed_at || '',
+    terms_accepted: estimate.terms_accepted === true,
+    signature_method: estimate.signature_method || 'typed_name',
+    document_total: estimate.total || 0,
+    final_signed_pdf_url: finalPdfUrl || '',
+    final_signed_pdf_name: finalPdfName || '',
+    document_hash_algorithm: 'SHA-256',
+    document_hash: pdfHash || '',
+    signed_pdf_hash_algorithm: 'SHA-256',
+    signed_pdf_hash: pdfHash || '',
+    audit: legalAudit || estimate.legal_audit || {},
+    integrity_statement: 'This certificate records the SHA-256 hash of the frozen signed PDF generated at approval time. Any PDF modification after signing will produce a different hash.',
+  };
+}
+
+async function sendFinalSignedCopyEmail(estimate) {
+  if (!estimate?.client_email || !estimate?.final_signed_pdf_url) return;
+  const signedUrl = await generateSignedPdfUrl(estimate.final_signed_pdf_url).catch(() => estimate.final_signed_pdf_url);
+  const body = [
+    `Hi ${estimate.client_name || ''},`,
+    '',
+    `Thank you for approving Estimate #${estimate.estimate_number}.`,
+    '',
+    `Your signed estimate has been saved and locked.`,
+    estimate.signed_pdf_hash ? `Document Hash (SHA-256): ${estimate.signed_pdf_hash}` : '',
+    '',
+    signedUrl ? `Signed document: ${signedUrl}` : '',
+    '',
+    `— ${appConfig.company.name}`,
+  ].filter(Boolean).join('\n');
+
+  await base44.integrations.Core.SendEmail({
+    to: estimate.client_email,
+    subject: `Signed Estimate #${estimate.estimate_number}`,
+    body,
+    from_name: appConfig.appName,
+  });
 }
 
 export default function ClientEstimateView() {
@@ -106,7 +165,7 @@ export default function ClientEstimateView() {
     load();
   }, [token]);
 
-  const freezeSignedPdf = async (signedEstimate) => {
+  const freezeSignedPdf = async (signedEstimate, legalAudit) => {
     try {
       const pdf = await generateEstimatePdfBase64(
         signedEstimate,
@@ -114,14 +173,32 @@ export default function ClientEstimateView() {
         signedEstimate?.document_config?.template
       );
 
+      const pdfHash = await sha256HexFromBase64(pdf.base64);
       const blob = base64ToPdfBlob(pdf.base64);
       const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
       const finalSignedAt = new Date().toISOString();
+      const finalSignedPdfUrl = uploadRes?.file_url || '';
+      const finalSignedPdfName = pdf.filename || `Signed-Estimate-${signedEstimate.estimate_number}.pdf`;
+      const signatureCertificate = buildSignatureCertificate({
+        estimate: signedEstimate,
+        signedAt: finalSignedAt,
+        pdfHash,
+        finalPdfUrl: finalSignedPdfUrl,
+        finalPdfName: finalSignedPdfName,
+        legalAudit,
+      });
+
       const finalFields = {
-        final_signed_pdf_url: uploadRes?.file_url || '',
-        final_signed_pdf_name: pdf.filename || `Signed-Estimate-${signedEstimate.estimate_number}.pdf`,
+        final_signed_pdf_url: finalSignedPdfUrl,
+        final_signed_pdf_name: finalSignedPdfName,
         final_signed_at: finalSignedAt,
         legal_package_locked: true,
+        document_hash: pdfHash,
+        document_hash_algorithm: 'SHA-256',
+        signed_pdf_hash: pdfHash,
+        signed_pdf_hash_algorithm: 'SHA-256',
+        signature_certificate: signatureCertificate,
+        certificate_generated_at: signatureCertificate.generated_at,
       };
 
       await base44.entities.Estimate.update(signedEstimate.id, finalFields);
@@ -148,21 +225,23 @@ export default function ClientEstimateView() {
 
     setActing(true);
     try {
+      const legalAudit = collectLegalAudit();
       const updates = await approveEstimate(estimate.id, {
         approvedBy: cleanSignature,
         signatureName: cleanSignature,
         termsAccepted,
-        legalAudit: collectLegalAudit(),
+        legalAudit,
         estimate,
       });
 
       let signedEstimate = { ...estimate, ...updates };
       setEstimate(signedEstimate);
 
-      const finalPdfFields = await freezeSignedPdf(signedEstimate);
+      const finalPdfFields = await freezeSignedPdf(signedEstimate, legalAudit);
       if (finalPdfFields) {
         signedEstimate = { ...signedEstimate, ...finalPdfFields };
         setEstimate(signedEstimate);
+        sendFinalSignedCopyEmail(signedEstimate).catch(err => console.warn('[sendFinalSignedCopyEmail] failed:', err?.message));
       }
 
       try {
@@ -192,11 +271,18 @@ export default function ClientEstimateView() {
   };
 
   const handleDecline = async () => {
+    const cleanReason = declineReason.trim();
+    if (!cleanReason) {
+      toast.error('Please tell us why you are declining this estimate');
+      return;
+    }
+
     setActing(true);
     try {
-      const updates = await declineEstimate(estimate.id, { declinedReason: declineReason });
-      setEstimate(e => ({ ...e, ...updates }));
-      notifyEstimateDeclined(estimate).catch(err => console.warn('[notify] declined failed:', err?.message));
+      const updates = await declineEstimate(estimate.id, { declinedReason: cleanReason });
+      const declinedEstimate = { ...estimate, ...updates, declined_reason: cleanReason };
+      setEstimate(declinedEstimate);
+      notifyEstimateDeclined(declinedEstimate).catch(err => console.warn('[notify] declined failed:', err?.message));
       toast.success('Estimate declined. Thank you for letting us know.');
     } catch (err) {
       console.warn('[handleDecline] failed:', err?.message);
@@ -285,6 +371,9 @@ export default function ClientEstimateView() {
           <div>
             <p className="font-semibold text-slate-800 text-sm">{statusBanner.title}</p>
             <p className="text-sm text-slate-600 mt-0.5">{statusBanner.body}</p>
+            {estimate.signed_pdf_hash && (
+              <p className="text-[11px] text-slate-500 mt-2 break-all">SHA-256: {estimate.signed_pdf_hash}</p>
+            )}
           </div>
         </div>
       )}
@@ -344,7 +433,7 @@ export default function ClientEstimateView() {
             <div className="space-y-2 pt-2 border-t border-slate-200">
               <div className="relative">
                 <textarea
-                  placeholder="Optional: Tell us why you're declining (optional)"
+                  placeholder="Tell us why you're declining (required)"
                   value={declineReason}
                   onChange={(e) => setDeclineReason(e.target.value)}
                   disabled={acting}
@@ -354,9 +443,9 @@ export default function ClientEstimateView() {
               </div>
               <Button
                 onClick={handleDecline}
-                disabled={acting}
+                disabled={acting || !declineReason.trim()}
                 variant="outline"
-                className="w-full border-red-300 text-red-600 hover:bg-red-50 rounded-xl h-10 gap-2 text-sm"
+                className="w-full border-red-300 text-red-600 hover:bg-red-50 rounded-xl h-10 gap-2 text-sm disabled:opacity-50"
               >
                 <XCircle className="w-4 h-4" />Decline
               </Button>
