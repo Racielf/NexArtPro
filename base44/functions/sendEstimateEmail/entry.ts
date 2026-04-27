@@ -59,7 +59,7 @@ function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, 
 
   <!-- CTA Button -->
   <tr><td style="padding:28px 32px" align="center">
-    <a href="${clientLink}" style="display:inline-block;background:#2563eb;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:0.02em">View Estimate</a>
+    <a href="${clientLink}" style="display:inline-block;background:#2563eb;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:0.02em">View Full Estimate</a>
   </td></tr>
 
   <!-- Fallback link -->
@@ -99,7 +99,7 @@ function buildPlainText({ greeting, message, clientLink, estimateNumber, clientN
    let text = `${greeting}\n\n${message}\n\n`;
    if (estimateNumber) text += `Estimate #: ${estimateNumber}\n`;
    if (clientName) text += `Client: ${clientName}\n`;
-   text += `\nView & approve your estimate here:\n${clientLink}\n`;
+   text += `\nView the full estimate here:\n${clientLink}\n`;
 
    // Build inline attachments list: estimate PDF + client attachments
    const inlineAttachments = [];
