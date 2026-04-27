@@ -7,15 +7,26 @@ function randomTokenPart() {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', pdfName = '', currentUser = null }) {
+export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', pdfName = '', pdfHash = '', currentUser = null }) {
   if (!estimate?.id) throw new Error('Estimate is required');
+
   const existing = await base44.entities.SigningPackage.filter({
     document_type: 'estimate',
     document_id: estimate.id,
   }).catch(() => []);
 
   const reusable = (existing || []).find(p => !['signed', 'declined', 'expired', 'voided'].includes(p.status));
-  if (reusable?.token) return reusable;
+  if (reusable?.token) {
+    const patch = {};
+    if (pdfUrl && !reusable.source_pdf_url) patch.source_pdf_url = pdfUrl;
+    if (pdfName && !reusable.source_pdf_name) patch.source_pdf_name = pdfName;
+    if (pdfHash && !reusable.source_pdf_hash) patch.source_pdf_hash = pdfHash;
+    if (Object.keys(patch).length > 0) {
+      await base44.entities.SigningPackage.update(reusable.id, patch).catch(() => {});
+      return { ...reusable, ...patch };
+    }
+    return reusable;
+  }
 
   const token = `ns_${estimate.id}_${randomTokenPart()}`;
   const now = new Date().toISOString();
@@ -41,6 +52,8 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     sent_at: now,
     source_pdf_url: pdfUrl || '',
     source_pdf_name: pdfName || '',
+    source_pdf_hash: pdfHash || '',
+    hash_algorithm: 'SHA-256',
     created_by: currentUser?.email || 'system',
     company_id: 'rc-art',
   });
@@ -53,6 +66,7 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     actor_name: currentUser?.full_name || currentUser?.email || 'system',
     actor_email: currentUser?.email || '',
     created_at: now,
+    metadata: { source_pdf_hash: pdfHash || '' },
     company_id: 'rc-art',
   }).catch(() => {});
 
