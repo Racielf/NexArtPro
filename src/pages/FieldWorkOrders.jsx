@@ -42,6 +42,25 @@ function getWorkerEmail(user) {
   return user?.email || user?.username || '';
 }
 
+function getCrewValues(workOrder) {
+  const crew = Array.isArray(workOrder?.assigned_crew) ? workOrder.assigned_crew : [];
+  const crewIds = Array.isArray(workOrder?.assigned_crew_ids) ? workOrder.assigned_crew_ids : [];
+  const crewNames = Array.isArray(workOrder?.assigned_crew_names) ? workOrder.assigned_crew_names : [];
+
+  return [
+    ...crewIds,
+    ...crewNames,
+    ...crew.flatMap(member => [
+      member?.id,
+      member?.user_id,
+      member?.name,
+      member?.display_name,
+      member?.email,
+      member?.username,
+    ]),
+  ];
+}
+
 function isAssignedToCurrentUser(workOrder, user) {
   if (!user) return false;
 
@@ -59,6 +78,7 @@ function isAssignedToCurrentUser(workOrder, user) {
     workOrder.assigned_worker_name,
     workOrder.assigned_to,
     workOrder.assigned_user_name,
+    ...getCrewValues(workOrder),
   ].map(normalizeText).filter(Boolean);
 
   const currentValues = [userId, userEmail, userName].filter(Boolean);
@@ -246,10 +266,10 @@ export default function FieldWorkOrders() {
                         <span className="truncate">{order.client_address}</span>
                       </div>
                     )}
-                    {(order.assigned_worker_name || order.assigned_to) && (
+                    {(order.assigned_worker_name || order.assigned_to || order.crew_size > 1) && (
                       <div className="flex items-center gap-2">
                         <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{order.assigned_worker_name || order.assigned_to}</span>
+                        <span>{order.assigned_worker_name || order.assigned_to || 'Crew assigned'}{order.crew_size > 1 ? ` + ${order.crew_size - 1}` : ''}</span>
                       </div>
                     )}
                   </div>
@@ -301,7 +321,7 @@ export default function FieldWorkOrders() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
           <p className="text-xs text-amber-800 font-medium leading-relaxed">
-            Field Mode only shows work orders assigned to the logged-in Field Agent. Office and admin records remain the source of truth.
+            Field Mode shows work orders where the logged-in Field Agent is the lead or part of the assigned crew. Office and admin records remain the source of truth.
           </p>
         </div>
       </main>
