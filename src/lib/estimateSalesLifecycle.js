@@ -24,10 +24,32 @@ function randomTokenPart() {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function createPublicAccessRecord(estimate, token) {
+  if (!estimate?.id || !token) return;
+  const existing = await base44.entities.PublicDocumentAccess.filter({ token }).catch(() => []);
+  if (existing?.length) return existing[0];
+
+  const ts = now();
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
+  return base44.entities.PublicDocumentAccess.create({
+    token,
+    document_type: 'estimate',
+    document_id: estimate.id,
+    document_number: String(estimate.estimate_number || ''),
+    client_email: estimate.client_email || '',
+    status: 'active',
+    created_at: ts,
+    expires_at: expiresAt,
+    metadata: { source: 'estimate_send' },
+    company_id: 'rc-art',
+  });
+}
+
 export async function generatePublicShareToken(estimate) {
   if (!estimate?.id) throw new Error('Estimate is required to generate public token');
 
   if (estimate.public_share_token) {
+    await createPublicAccessRecord(estimate, estimate.public_share_token).catch(err => console.warn('[PublicDocumentAccess] existing token sync failed:', err?.message));
     return estimate.public_share_token;
   }
 
@@ -36,6 +58,8 @@ export async function generatePublicShareToken(estimate) {
   const signature = await sha256Hex(`${estimateId}:${nonce}:${estimate.client_email || ''}`);
   const token = `${estimateId}_${nonce}_${signature}`;
   const tokenCreatedAt = now();
+
+  await createPublicAccessRecord({ ...estimate, id: estimateId }, token);
 
   await base44.entities.Estimate.update(estimateId, {
     public_share_token: token,
@@ -67,6 +91,7 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
   const currentCount = estimate?.follow_up_count || 0;
   const resolvedDocumentConfig = documentConfig || estimate?.document_config;
   const publicShareToken = estimate?.public_share_token || await generatePublicShareToken({ ...estimate, id: estimateId });
+  await createPublicAccessRecord({ ...estimate, id: estimateId }, publicShareToken).catch(err => console.warn('[markEstimateSent] public access sync failed:', err?.message));
 
   const payload = {
     status: 'sent',
@@ -107,31 +132,16 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
 
 export async function markEstimateViewed(estimateId, currentEstimate) {
   const ts = now();
-
-  const payload = {
-    viewed_at: ts,
-  };
-
-  if (currentEstimate.status === 'sent') {
-    payload.status = 'viewed';
-  }
-
+  const payload = { viewed_at: ts };
+  if (currentEstimate.status === 'sent') payload.status = 'viewed';
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
 
-export async function approveEstimate(estimateId, {
-  approvedBy,
-  estimate,
-  signatureName,
-  signatureImage,
-  termsAccepted = false,
-  legalAudit = {},
-} = {}) {
+export async function approveEstimate(estimateId, { approvedBy, estimate, signatureName, signatureImage, termsAccepted = false, legalAudit = {} } = {}) {
   const ts = now();
   const signer = (signatureName || approvedBy || estimate?.client_name || '').trim();
   const hasDrawnSignature = typeof signatureImage === 'string' && signatureImage.startsWith('data:image/');
-
   const audit = {
     signed_at: ts,
     signed_by: signer,
@@ -156,7 +166,6 @@ export async function approveEstimate(estimateId, {
     token_verified: legalAudit.token_verified === true,
     audit_version: legalAudit.audit_version || 'phase6',
   };
-
   const payload = {
     status: 'approved',
     approved_at: ts,
@@ -169,20 +178,13 @@ export async function approveEstimate(estimateId, {
     legal_audit: audit,
     locked_after_signature: true,
   };
-
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
 
 export async function declineEstimate(estimateId, { declinedReason } = {}) {
   const ts = now();
-
-  const payload = {
-    status: 'declined',
-    declined_at: ts,
-    declined_reason: declinedReason || '',
-  };
-
+  const payload = { status: 'declined', declined_at: ts, declined_reason: declinedReason || '' };
   await base44.entities.Estimate.update(estimateId, payload);
   return payload;
 }
