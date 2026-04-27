@@ -31,6 +31,7 @@ import EstimateEditor from './pages/EstimateEditor';
 import TimeTracking from './pages/TimeTracking';
 import ClientEstimateView from './pages/ClientEstimateView';
 import SignDocumentView from './pages/SignDocumentView';
+import NexArtSign from './pages/NexArtSign';
 import WorkOrderDetail from './pages/WorkOrderDetail';
 import Customers from './pages/Customers';
 import Assignments from './pages/Assignments';
@@ -52,7 +53,6 @@ import RecoveryCenter from './pages/RecoveryCenter';
 import SecurityDashboardWithBrain from './pages/SecurityDashboardWithBrain';
 import VerifyDocument from './pages/VerifyDocument';
 
-// FIELD APP
 import FieldWorkOrders from './pages/FieldWorkOrders';
 import FieldWorkOrderDetail from './pages/FieldWorkOrderDetail';
 
@@ -84,28 +84,13 @@ const LoadingScreen = () => (
 
 const ProtectedRoute = ({ children, access = 'any' }) => {
   const { isLoadingAuth, isAuthenticated } = useAuth();
-
   if (isLoadingAuth) return <LoadingScreen />;
-
   const localAuth = sessionStorage.getItem('local_auth') === 'true';
-  if (!isAuthenticated && !localAuth) {
-    return <Navigate to="/team-access" replace />;
-  }
-
-  if (isAuthenticated) {
-    sessionStorage.setItem('base44_authenticated', 'true');
-  }
-
+  if (!isAuthenticated && !localAuth) return <Navigate to="/team-access" replace />;
+  if (isAuthenticated) sessionStorage.setItem('base44_authenticated', 'true');
   const role = getUserRole() || 'admin';
-
-  if (access === 'admin' && role === 'field_agent') {
-    return <Navigate to="/field" replace />;
-  }
-
-  if (access === 'field' && role !== 'field_agent' && role !== 'admin') {
-    return <Navigate to="/team-access" replace />;
-  }
-
+  if (access === 'admin' && role === 'field_agent') return <Navigate to="/field" replace />;
+  if (access === 'field' && role !== 'field_agent' && role !== 'admin') return <Navigate to="/team-access" replace />;
   return children;
 };
 
@@ -119,14 +104,48 @@ const AppRoutes = () => (
     <Route path="/partners" element={<Partners />} />
     <Route path="/team-access" element={<TeamAccess />} />
     <Route path="/login" element={<Login />} />
-
     <Route path="/sign-document" element={<SignDocumentView />} />
+
+    <Route path="/field" element={<ProtectedRoute access="field"><FieldWorkOrders /></ProtectedRoute>} />
+    <Route path="/field/work-orders/:id" element={<ProtectedRoute access="field"><FieldWorkOrderDetail /></ProtectedRoute>} />
 
     <Route element={<ProtectedRoute access="admin"><AppLayout /></ProtectedRoute>}>
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/leads" element={<Leads />} />
+      <Route path="/clients" element={<Clients />} />
+      <Route path="/appointments" element={<Appointments />} />
+      <Route path="/estimates" element={<Estimates />} />
+      <Route path="/work-orders" element={<WorkOrders />} />
+      <Route path="/invoices" element={<Invoices />} />
+      <Route path="/invoice-create" element={<InvoiceCreate />} />
+      <Route path="/schedule-estimate" element={<EstimateScheduler />} />
+      <Route path="/send-estimate" element={<SendEstimate />} />
+      <Route path="/estimate-editor" element={<EstimateEditor />} />
+      <Route path="/time-tracking" element={<TimeTracking />} />
+      <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
+      <Route path="/customers" element={<Customers />} />
+      <Route path="/assignments" element={<Assignments />} />
+      <Route path="/workers" element={<Workers />} />
+      <Route path="/invoice-detail" element={<InvoiceDetail />} />
+      <Route path="/customer-profile" element={<CustomerProfile />} />
+      <Route path="/payments" element={<Payments />} />
+      <Route path="/income-expenses" element={<IncomeExpenses />} />
+      <Route path="/payroll" element={<Payroll />} />
+      <Route path="/reports" element={<Reports />} />
+      <Route path="/profitability" element={<ProfitabilityDashboard />} />
+      <Route path="/proposals" element={<Proposals />} />
+      <Route path="/sales-pipeline" element={<SalesPipeline />} />
+      <Route path="/proposal-editor" element={<ProposalEditor />} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="/recovery-center" element={<RecoveryCenter />} />
+      <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
+      <Route path="/nexartsign" element={<NexArtSign />} />
     </Route>
 
     <Route path="/client-estimate" element={<ClientEstimateView />} />
+    <Route path="/proposal-view" element={<PublicProposalView />} />
+    <Route path="/client-portal" element={<ClientPortal />} />
+    <Route path="/verify-document" element={<VerifyDocument />} />
     <Route path="*" element={<PageNotFound />} />
   </Routes>
 );
@@ -135,20 +154,14 @@ const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
   const location = useLocation();
   const publicRoute = isPublicRoute(location.pathname);
-
   if (isLoadingPublicSettings || isLoadingAuth) return <LoadingScreen />;
-
   if (authError && !publicRoute) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
+    if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
+    if (authError.type === 'auth_required') {
       const localAuth = sessionStorage.getItem('local_auth') === 'true';
-      if (!localAuth) {
-        return <Navigate to="/team-access" replace />;
-      }
+      if (!localAuth) return <Navigate to="/team-access" replace />;
     }
   }
-
   return <AppRoutes />;
 };
 
