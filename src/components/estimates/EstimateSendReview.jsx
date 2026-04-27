@@ -93,14 +93,17 @@ async function logDocument(estimateId, estimate, action, extra = {}) {
   });
 }
 
+function buildDefaultClientMessage(estimate) {
+  const firstName = estimate?.client_name?.split(' ')[0] || 'there';
+  return `Hi ${firstName},\n\nWe prepared a detailed estimate for your project. Please review the full scope of work, included services, labor, materials, notes, and project details before making a decision.\n\nThank you!`;
+}
+
 export default function EstimateSendReview({ estimate, open, onClose, onSent, onFixAllPricing }) {
   const [visibility, setVisibility] = useState(() => visibilityFromDocumentOptions(estimate?.document_config?.options));
   const [currentTemplate, setCurrentTemplate] = useState(estimate?.document_config?.template || 'clean');
   const [recipientEmail, setRecipientEmail] = useState(estimate?.client_email || '');
   const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from ${appConfig.company.name}`);
-  const [message, setMessage] = useState(
-    `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`
-  );
+  const [message, setMessage] = useState(() => buildDefaultClientMessage(estimate));
   const [sending, setSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
   const [sentError, setSentError] = useState(null);
@@ -122,7 +125,7 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
     setCurrentTemplate(estimate?.document_config?.template || 'clean');
     setRecipientEmail(estimate?.client_email || '');
     setSubject(`Estimate #${estimate?.estimate_number} from ${appConfig.company.name}`);
-    setMessage(`Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nPlease review your estimate and click the link below to approve or decline.\n\nThank you!`);
+    setMessage(buildDefaultClientMessage(estimate));
     setIncludedAttachmentIds((estimate?.attachments || []).filter(a => a.intent === 'send_to_client').map(a => a.id) || []);
   }, [open, estimate?.id]);
 
