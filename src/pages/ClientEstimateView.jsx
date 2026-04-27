@@ -15,6 +15,7 @@ import ClientAttachmentsSection from '@/components/estimates/ClientAttachmentsSe
 import { generateSignedPdfUrl, generateSignedAttachmentUrls } from '@/lib/estimateDocumentAccess';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import { convertApprovedEstimateToWorkOrder } from '@/lib/estimateToWorkOrder';
 import {
   notifyEstimateViewed,
   notifyEstimateApproved,
@@ -155,16 +156,33 @@ export default function ClientEstimateView() {
         estimate,
       });
 
-      const signedEstimate = { ...estimate, ...updates };
+      let signedEstimate = { ...estimate, ...updates };
       setEstimate(signedEstimate);
 
       const finalPdfFields = await freezeSignedPdf(signedEstimate);
       if (finalPdfFields) {
-        setEstimate(e => ({ ...e, ...finalPdfFields }));
+        signedEstimate = { ...signedEstimate, ...finalPdfFields };
+        setEstimate(signedEstimate);
+      }
+
+      try {
+        const conversion = await convertApprovedEstimateToWorkOrder(signedEstimate, {
+          actor: 'client_approval',
+        });
+        signedEstimate = {
+          ...signedEstimate,
+          status: 'converted',
+          sales_stage: 'converted',
+          converted_work_order_id: conversion?.workOrder?.id,
+        };
+        setEstimate(signedEstimate);
+      } catch (conversionErr) {
+        console.warn('[convertApprovedEstimateToWorkOrder] failed:', conversionErr?.message);
+        toast.warning('Estimate was signed, but the work order could not be created automatically');
       }
 
       notifyEstimateApproved(signedEstimate).catch(err => console.warn('[notify] approved failed:', err?.message));
-      toast.success('Estimate approved, signed, and locked.');
+      toast.success('Estimate approved, signed, locked, and converted to a work order.');
     } catch (err) {
       console.warn('[handleApprove] failed:', err?.message);
       toast.error('Could not approve. Please try again.');
@@ -230,7 +248,7 @@ export default function ClientEstimateView() {
     </div>
   );
 
-  const isFinal = ['approved', 'declined'].includes(estimate.status);
+  const isFinal = ['approved', 'declined', 'converted'].includes(estimate.status);
   const canAct = !isFinal;
 
   const dc = getDocTypeConfig(estimate?.document_type);
@@ -246,6 +264,14 @@ export default function ClientEstimateView() {
         : estimate.signature_name
           ? `Signed by ${estimate.signature_name}. We will be in touch soon to schedule the work.`
           : "Thank you! We'll be in touch soon to schedule the work.",
+    },
+    converted: {
+      bg: 'bg-green-50 border-green-200',
+      icon: <CheckCircle className="w-5 h-5 text-green-600" />,
+      title: `${docLabel} Approved & Converted`,
+      body: estimate.converted_work_order_id
+        ? `Signed by ${estimate.signature_name}. Your approved estimate has been converted into a work order.`
+        : `Signed by ${estimate.signature_name}. Your approved estimate is ready for scheduling.`,
     },
     declined: { bg: 'bg-red-50 border-red-200', icon: <XCircle className="w-5 h-5 text-red-500" />, title: `${docLabel} Declined`, body: 'We appreciate your feedback. Contact us if you change your mind.' },
     viewed: { bg: 'bg-blue-50 border-blue-200', icon: <Eye className="w-5 h-5 text-blue-500" />, title: `${docLabel} Viewed`, body: 'Please review below and take action when ready.' },
