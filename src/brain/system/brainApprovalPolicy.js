@@ -1,15 +1,42 @@
 export function evaluateBrainApproval({ modes, risk }) {
-  if (!modes.canExecute) {
-    return { allowed: false, executionMode: 'blocked', reason: 'Execution disabled by mode' };
+  const { canExecute } = modes;
+  const { riskLevel } = risk;
+
+  if (!canExecute) {
+    return {
+      allowed: false,
+      requiresConfirmation: false,
+      approvalLevel: 'blocked',
+      executionMode: 'blocked',
+      reason: 'Execution is disabled due to active modes (write/decision/observation/learning).',
+    };
   }
 
-  if (risk === 'low') {
-    return { allowed: true, executionMode: 'suggest_only' };
+  if (riskLevel === 'low') {
+    return {
+      allowed: true,
+      requiresConfirmation: false,
+      approvalLevel: 'none',
+      executionMode: 'suggest_only',
+      reason: 'Low-risk action. Suggestion only, no execution.',
+    };
   }
 
-  if (risk === 'medium') {
-    return { allowed: true, executionMode: 'confirm_then_execute' };
+  if (riskLevel === 'medium') {
+    return {
+      allowed: true,
+      requiresConfirmation: true,
+      approvalLevel: 'confirm',
+      executionMode: 'confirm_then_execute',
+      reason: 'Medium-risk action requires user confirmation before execution.',
+    };
   }
 
-  return { allowed: true, executionMode: 'confirm_then_execute', approvalLevel: 'explicit' };
+  return {
+    allowed: true,
+    requiresConfirmation: true,
+    approvalLevel: 'explicit',
+    executionMode: 'confirm_then_execute',
+    reason: 'High-risk action requires explicit confirmation (financial or destructive).',
+  };
 }
