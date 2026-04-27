@@ -1,8 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, total, attachments, estimatePdfFilename, fallbackLinks = [] }) {
-   const fmtTotal = total != null ? `$${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : null;
-
+function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, attachments, estimatePdfFilename, fallbackLinks = [] }) {
    // Build inline attachments list: estimate PDF + client attachments
    const inlineAttachments = [];
    if (estimatePdfFilename) {
@@ -54,7 +52,6 @@ function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, 
         <table width="100%" cellpadding="0" cellspacing="0">
           ${estimateNumber ? `<tr><td style="font-size:13px;color:#64748b;padding:4px 0">Estimate #</td><td style="font-size:13px;font-weight:700;color:#0f172a;text-align:right;padding:4px 0">${estimateNumber}</td></tr>` : ''}
           ${clientName ? `<tr><td style="font-size:13px;color:#64748b;padding:4px 0">Client</td><td style="font-size:13px;font-weight:600;color:#0f172a;text-align:right;padding:4px 0">${clientName}</td></tr>` : ''}
-          ${fmtTotal ? `<tr><td style="font-size:13px;color:#64748b;padding:4px 0">Total</td><td style="font-size:16px;font-weight:800;color:#0f172a;text-align:right;padding:4px 0">${fmtTotal}</td></tr>` : ''}
         </table>
       </td></tr>
     </table>
@@ -98,12 +95,10 @@ function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, 
 </html>`;
 }
 
-function buildPlainText({ greeting, message, clientLink, estimateNumber, clientName, total, attachments, estimatePdfFilename, fallbackLinks = [] }) {
-   const fmtTotal = total != null ? `$${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '';
+function buildPlainText({ greeting, message, clientLink, estimateNumber, clientName, attachments, estimatePdfFilename, fallbackLinks = [] }) {
    let text = `${greeting}\n\n${message}\n\n`;
    if (estimateNumber) text += `Estimate #: ${estimateNumber}\n`;
    if (clientName) text += `Client: ${clientName}\n`;
-   if (fmtTotal) text += `Total: ${fmtTotal}\n`;
    text += `\nView & approve your estimate here:\n${clientLink}\n`;
 
    // Build inline attachments list: estimate PDF + client attachments
