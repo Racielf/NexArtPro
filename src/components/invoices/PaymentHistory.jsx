@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { CheckCircle2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
@@ -22,7 +22,6 @@ export default function PaymentHistory({ invoice, onPaymentRemoved }) {
     try {
       const updatedPayments = payments.filter(p => p.id !== paymentId);
       
-      // Compute ALL derived fields from updated payments array
       const temp = { ...invoice, payments: updatedPayments };
       const derived = computeInvoiceDerivedFields(temp);
 
@@ -56,7 +55,14 @@ export default function PaymentHistory({ invoice, onPaymentRemoved }) {
           <div className="flex items-center gap-3 flex-1">
             <span className="text-lg">{methodIcons[pay.method] || '📌'}</span>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-slate-800">${pay.amount.toFixed(2)}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-slate-800">${pay.amount.toFixed(2)}</p>
+                {pay.payment_authorized && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                    <CheckCircle2 className="w-3 h-3" /> Confirmed
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-500">
                 {pay.method.charAt(0).toUpperCase() + pay.method.slice(1)} •{' '}
                 {format(new Date(pay.payment_date), 'MMM d, yyyy')}
