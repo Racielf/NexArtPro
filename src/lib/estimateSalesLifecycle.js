@@ -24,32 +24,10 @@ function randomTokenPart() {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function createPublicAccessRecord(estimate, token) {
-  if (!estimate?.id || !token) return;
-  const existing = await base44.entities.PublicDocumentAccess.filter({ token }).catch(() => []);
-  if (existing?.length) return existing[0];
-
-  const ts = now();
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
-  return base44.entities.PublicDocumentAccess.create({
-    token,
-    document_type: 'estimate',
-    document_id: estimate.id,
-    document_number: String(estimate.estimate_number || ''),
-    client_email: estimate.client_email || '',
-    status: 'active',
-    created_at: ts,
-    expires_at: expiresAt,
-    metadata: { source: 'estimate_send' },
-    company_id: 'rc-art',
-  });
-}
-
 export async function generatePublicShareToken(estimate) {
   if (!estimate?.id) throw new Error('Estimate is required to generate public token');
 
   if (estimate.public_share_token) {
-    await createPublicAccessRecord(estimate, estimate.public_share_token).catch(err => console.warn('[PublicDocumentAccess] existing token sync failed:', err?.message));
     return estimate.public_share_token;
   }
 
@@ -58,8 +36,6 @@ export async function generatePublicShareToken(estimate) {
   const signature = await sha256Hex(`${estimateId}:${nonce}:${estimate.client_email || ''}`);
   const token = `${estimateId}_${nonce}_${signature}`;
   const tokenCreatedAt = now();
-
-  await createPublicAccessRecord({ ...estimate, id: estimateId }, token);
 
   await base44.entities.Estimate.update(estimateId, {
     public_share_token: token,
@@ -91,7 +67,7 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
   const currentCount = estimate?.follow_up_count || 0;
   const resolvedDocumentConfig = documentConfig || estimate?.document_config;
   const publicShareToken = estimate?.public_share_token || await generatePublicShareToken({ ...estimate, id: estimateId });
-  await createPublicAccessRecord({ ...estimate, id: estimateId }, publicShareToken).catch(err => console.warn('[markEstimateSent] public access sync failed:', err?.message));
+  const publicShareTokenCreatedAt = estimate?.public_share_token_created_at || ts;
 
   const payload = {
     status: 'sent',
@@ -100,7 +76,7 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
     follow_up_count: currentCount + 1,
     document_config: resolvedDocumentConfig,
     public_share_token: publicShareToken,
-    public_share_token_created_at: estimate?.public_share_token_created_at || ts,
+    public_share_token_created_at: publicShareTokenCreatedAt,
   };
 
   try {
@@ -116,7 +92,7 @@ export async function markEstimateSent(estimateId, { documentConfig, estimate, c
       document_type: estimate?.document_type,
       document_language: estimate?.document_language,
       title: estimate?.title,
-      estimate_data: estimate,
+      estimate_data: { ...estimate, public_share_token: publicShareToken, public_share_token_created_at: publicShareTokenCreatedAt },
       document_config: resolvedDocumentConfig,
       total: estimate?.total,
       public_share_token: publicShareToken,
