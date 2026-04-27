@@ -50,6 +50,7 @@ export default function InvoiceDetailClean() {
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [showCustomize, setShowCustomize] = useState(false);
+  const [previousBalance, setPreviousBalance] = useState(0);
 
   useEffect(() => {
     loadInvoice();
@@ -62,6 +63,7 @@ export default function InvoiceDetailClean() {
     }
 
     setLoading(true);
+    setPreviousBalance(0);
     const list = await base44.entities.Invoice.filter({ id: invoiceId });
     const inv = list?.[0];
 
@@ -69,6 +71,22 @@ export default function InvoiceDetailClean() {
       setInvoice(inv);
       setNotes(inv.notes || '');
       setDueDate(inv.due_date || '');
+
+      if (inv.client_id) {
+        try {
+          const clientInvoices = await base44.entities.Invoice.filter({ client_id: inv.client_id });
+          const clientPreviousBalance = (clientInvoices || [])
+            .filter(otherInvoice => otherInvoice.id !== inv.id)
+            .reduce((sum, otherInvoice) => {
+              const otherDerived = computeInvoiceDerivedFields(otherInvoice);
+              if (otherDerived.payment_status === 'paid') return sum;
+              return sum + otherDerived.balance_due;
+            }, 0);
+          setPreviousBalance(clientPreviousBalance);
+        } catch (err) {
+          console.warn('[InvoiceDetailClean] Client balance load failed:', err?.message);
+        }
+      }
 
       if (inv.work_order_id) {
         try {
@@ -95,7 +113,6 @@ export default function InvoiceDetailClean() {
   const isPartial = derived.payment_status === 'partial';
   const overdue = isInvoiceOverdue(invoice);
   const nextAction = getInvoiceNextAction(invoice);
-  const previousBalance = 0;
   const currentInvoiceTotal = invoice?.total || 0;
   const totalOwed = previousBalance + derived.balance_due;
 
