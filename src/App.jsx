@@ -24,6 +24,7 @@ import Appointments from './pages/Appointments';
 import Estimates from './pages/Estimates';
 import WorkOrders from './pages/WorkOrders';
 import Invoices from './pages/Invoices';
+import InvoiceCreate from './pages/InvoiceCreate';
 import EstimateScheduler from './pages/EstimateScheduler';
 import SendEstimate from './pages/SendEstimate';
 import EstimateEditor from './pages/EstimateEditor';
@@ -126,6 +127,7 @@ const AuthenticatedApp = () => {
         <Route path="/estimates" element={<Estimates />} />
         <Route path="/work-orders" element={<WorkOrders />} />
         <Route path="/invoices" element={<Invoices />} />
+        <Route path="/invoice-create" element={<InvoiceCreate />} />
         <Route path="/schedule-estimate" element={<EstimateScheduler />} />
         <Route path="/send-estimate" element={<SendEstimate />} />
         <Route path="/estimate-editor" element={<EstimateEditor />} />
