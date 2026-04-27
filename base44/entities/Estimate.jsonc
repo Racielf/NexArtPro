@@ -35,19 +35,7 @@
 
     "status": {
       "type": "string",
-      "enum": [
-        "draft",
-        "scheduled",
-        "on_my_way",
-        "visit_completed",
-        "sent",
-        "viewed",
-        "changes_requested",
-        "approved",
-        "signed",
-        "declined",
-        "converted"
-      ],
+      "enum": ["draft", "scheduled", "on_my_way", "visit_completed", "sent", "viewed", "changes_requested", "approved", "signed", "declined", "converted"],
       "default": "draft"
     },
     "sales_stage": { "type": "string" },
@@ -63,11 +51,7 @@
     "subtotal": { "type": "number", "default": 0 },
     "tax_rate": { "type": "number", "default": 0 },
     "tax_amount": { "type": "number", "default": 0 },
-    "discount_type": {
-      "type": "string",
-      "enum": ["percent", "fixed"],
-      "default": "percent"
-    },
+    "discount_type": { "type": "string", "enum": ["percent", "fixed"], "default": "percent" },
     "discount_value": { "type": "number", "default": 0 },
     "discount_amount": { "type": "number", "default": 0 },
     "total": { "type": "number", "default": 0 },
@@ -98,11 +82,7 @@
     "included_scope_bullets": { "type": "string" },
     "uncertainty_note": { "type": "string" },
 
-    "contingency_type": {
-      "type": "string",
-      "enum": ["none", "percent", "fixed"],
-      "default": "none"
-    },
+    "contingency_type": { "type": "string", "enum": ["none", "percent", "fixed"], "default": "none" },
     "contingency_value": { "type": "number", "default": 0 },
     "contingency_amount": { "type": "number", "default": 0 },
     "show_contingency_to_client": { "type": "boolean", "default": false },
@@ -120,6 +100,12 @@
     "signature_method": { "type": "string" },
     "terms_accepted": { "type": "boolean", "default": false },
     "legal_audit": { "type": "object" },
+    "signature_certificate": { "type": "object" },
+    "document_hash": { "type": "string" },
+    "document_hash_algorithm": { "type": "string", "default": "SHA-256" },
+    "certificate_generated_at": { "type": "string", "format": "date-time" },
+    "signed_pdf_hash": { "type": "string" },
+    "signed_pdf_hash_algorithm": { "type": "string", "default": "SHA-256" },
     "locked_after_signature": { "type": "boolean", "default": false },
     "final_signed_at": { "type": "string", "format": "date-time" },
     "final_signed_pdf_name": { "type": "string" },
