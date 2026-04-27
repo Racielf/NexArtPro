@@ -9,6 +9,28 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+async function sha256Hex(value) {
+  const data = new TextEncoder().encode(value);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function parseToken(token) {
+  const parts = String(token || '').split('_').filter(Boolean);
+
+  if (parts.length === 2) {
+    const [estimateId, signature] = parts;
+    return { estimateId, signature, nonce: '', format: 'legacy' };
+  }
+
+  if (parts.length >= 3) {
+    const [estimateId, nonce, ...rest] = parts;
+    return { estimateId, nonce, signature: rest.join('_'), format: 'v2' };
+  }
+
+  return null;
+}
+
 export default async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -22,9 +44,8 @@ export default async (req) => {
       );
     }
 
-    // Verify token is valid for this estimate
-    const parts = token.split('_');
-    if (parts.length !== 2 || parts[0] !== estimate_id) {
+    const parsed = parseToken(token);
+    if (!parsed || parsed.estimateId !== estimate_id) {
       return new Response(
         JSON.stringify({ error: 'Invalid token for estimate' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
@@ -41,15 +62,13 @@ export default async (req) => {
     }
 
     const estimate = list[0];
-    const [estimateIdFromToken, signature] = parts;
 
-    // Verify token signature
-    const data = new TextEncoder().encode(estimateIdFromToken + (estimate.client_email || ''));
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const computedSignature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const legacySignature = await sha256Hex(`${parsed.estimateId}${estimate.client_email || ''}`);
+    const currentSignature = parsed.nonce
+      ? await sha256Hex(`${parsed.estimateId}:${parsed.nonce}:${estimate.client_email || ''}`)
+      : '';
 
-    if (signature !== computedSignature) {
+    if (parsed.signature !== legacySignature && parsed.signature !== currentSignature) {
       return new Response(
         JSON.stringify({ error: 'Token verification failed' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
