@@ -28,11 +28,17 @@ export default async (req) => {
       return json({ error: 'Signing package expired' }, 410);
     }
 
+    let resolvedStatus = pkg.status;
+    let resolvedViewedAt = pkg.viewed_at;
+
     if (!['signed', 'declined', 'expired', 'voided'].includes(pkg.status)) {
       const viewedAt = new Date().toISOString();
+      resolvedStatus = pkg.status === 'draft' || pkg.status === 'sent' ? 'viewed' : pkg.status;
+      resolvedViewedAt = pkg.viewed_at || viewedAt;
+
       await base44.asServiceRole.entities.SigningPackage.update(pkg.id, {
-        status: pkg.status === 'draft' || pkg.status === 'sent' ? 'viewed' : pkg.status,
-        viewed_at: pkg.viewed_at || viewedAt,
+        status: resolvedStatus,
+        viewed_at: resolvedViewedAt,
       });
       await base44.asServiceRole.entities.SigningEvent.create({
         signing_package_id: pkg.id,
@@ -54,7 +60,7 @@ export default async (req) => {
         document_id: pkg.document_id,
         document_number: pkg.document_number,
         document_title: pkg.document_title,
-        status: pkg.status,
+        status: resolvedStatus,
         signer_name: pkg.signer_name,
         signer_email: pkg.signer_email,
         client_name: pkg.client_name,
@@ -63,6 +69,7 @@ export default async (req) => {
         final_pdf_url: pkg.final_pdf_url,
         provider: pkg.provider,
         signing_mode: pkg.signing_mode,
+        viewed_at: resolvedViewedAt || '',
       },
     });
   } catch (error) {
