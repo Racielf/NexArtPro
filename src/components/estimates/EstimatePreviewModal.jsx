@@ -3,8 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer, Send } from 'lucide-react';
 import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
-import EstimateTemplateRenderer from './EstimateTemplateRenderer';
-import BidDocumentRenderer from '@/components/documents/BidDocumentRenderer';
+import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
 import { printEstimate, downloadEstimate } from '@/lib/estimatePrint';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import LossPreventionModal from './internal/LossPreventionModal';
@@ -13,7 +12,7 @@ import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 
 export default function EstimatePreviewModal({ estimate, open, onClose, onSend }) {
   const [lossModalOpen, setLossModalOpen] = React.useState(false);
-  const [lossValidation, setLossValidation] = React.useState({ lossItems: [], zeroProfitItems: [] });
+  const [lossValidation, setLossValidation] = React.useState({ lossItems: [], zeroProfitItems: [], materialsWithoutCost: [] });
 
   if (!estimate || !open) return null;
 
@@ -34,7 +33,6 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
   };
 
   const handleSend = () => {
-    // Loss prevention gate before opening send flow
     const pv = validateEstimatePricing(estimate);
     if (!pv.canProceed || pv.requiresConfirmation) {
       setLossValidation(pv);
@@ -42,31 +40,24 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
       return;
     }
     onClose();
-    if (onSend) onSend();
+    onSend?.();
   };
 
   const handleLossConfirmed = () => {
     setLossModalOpen(false);
     onClose();
-    if (onSend) onSend();
+    onSend?.();
   };
 
-  // --- Shell integration ---
-
-  const docLabel = (estimate?.document_type === 'BID' ? getDocTypeConfig('BID') : getDocTypeConfig('ESTIMATE')).label;
+  const docType = estimate?.document_type === 'BID' ? 'BID' : 'ESTIMATE';
+  const docLabel = getDocTypeConfig(docType).label;
   const title = `${docLabel} #${estimate?.estimate_number} — Preview`;
 
-  const documentContent = estimate?.document_type === 'BID' ? (
-    <BidDocumentRenderer
-      estimate={estimate}
-      options={previewOptions}
-    />
-  ) : (
-    <EstimateTemplateRenderer
+  const documentContent = (
+    <DocumentTypeRenderer
       estimate={estimate}
       template={previewTemplate}
       options={previewOptions}
-      documentType="estimate"
     />
   );
 
@@ -84,7 +75,6 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] p-0 flex flex-col" showCloseButton={false}>
-
         <DocumentViewerShell
           title={title}
           actions={actions}
@@ -92,15 +82,14 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
           documentContent={documentContent}
         />
 
-        {/* Loss Prevention Modal */}
         <LossPreventionModal
           open={lossModalOpen}
           onClose={() => setLossModalOpen(false)}
           onProceed={handleLossConfirmed}
           lossItems={lossValidation.lossItems}
           zeroProfitItems={lossValidation.zeroProfitItems}
+          materialsWithoutCost={lossValidation.materialsWithoutCost}
         />
-
       </DialogContent>
     </Dialog>
   );
