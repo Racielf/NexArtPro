@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, AlertTriangle, FileSignature, ExternalLink } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, AlertTriangle, FileSignature, ExternalLink, ShieldCheck, FileCheck, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   finalizeDeclinedEstimateFromPackage,
@@ -19,6 +19,8 @@ export default function SignDocumentView() {
   const [accepted, setAccepted] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [completion, setCompletion] = useState(null);
+  const [certificateId, setCertificateId] = useState('');
+  const [certificateNumber, setCertificateNumber] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -28,6 +30,7 @@ export default function SignDocumentView() {
         if (res.data?.package) {
           setPkg(res.data.package);
           setName(res.data.package.signer_name || '');
+          setCertificateId(res.data.package.certificate_id || '');
         }
       } catch (err) {
         console.warn('[SignDocumentView] resolve failed:', err?.message);
@@ -54,6 +57,8 @@ export default function SignDocumentView() {
 
       const result = res?.data || {};
       const nextStatus = result.status || 'signed';
+      if (result.certificate_id) setCertificateId(result.certificate_id);
+      if (result.certificate_number) setCertificateNumber(result.certificate_number);
 
       if (nextStatus === 'signed' && result.document_type === 'estimate' && result.document_id) {
         const finalization = await finalizeSignedEstimateFromPackage({
@@ -120,6 +125,18 @@ export default function SignDocumentView() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const openCertificateVerification = () => {
+    const ref = certificateId || certificateNumber;
+    if (!ref) return;
+    window.open(`/verify-document?certificate=${encodeURIComponent(ref)}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const openReviewPdf = () => {
+    const url = pkg?.source_pdf_url || pkg?.final_pdf_url;
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
   if (!pkg) return (
@@ -140,11 +157,25 @@ export default function SignDocumentView() {
         </div>
         <p className="text-sm text-slate-500">{pkg.document_title || 'Document'}</p>
         <p className="text-xs text-slate-400">Signer: {pkg.signer_email}</p>
+        {pkg.expires_at && (
+          <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center gap-2">
+            <Clock3 className="w-4 h-4" /> This signing link expires on {new Date(pkg.expires_at).toLocaleString()}.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-2">
+          <Button variant="outline" onClick={openReviewPdf} className="w-full gap-2" disabled={!pkg?.source_pdf_url && !pkg?.final_pdf_url}>
+            <ExternalLink className="w-4 h-4" /> Open Document Preview
+          </Button>
+        </div>
 
         {pkg.status === 'signed' ? (
           <div className="space-y-3">
             <div className="text-green-700 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
               <CheckCircle className="w-4 h-4" /> Signed successfully
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600">
+              The signed file and verification certificate are now part of the NexArtSign record for this estimate.
             </div>
             {completion?.estimate?.converted_work_order_id && (
               <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
@@ -159,13 +190,28 @@ export default function SignDocumentView() {
                 <ExternalLink className="w-4 h-4" /> Open Signed Estimate
               </Button>
             </div>
+            <Button variant="outline" onClick={openCertificateVerification} className="w-full gap-2" disabled={!certificateId && !certificateNumber}>
+              <ShieldCheck className="w-4 h-4" /> Verify Certificate
+            </Button>
           </div>
         ) : pkg.status === 'declined' ? (
-          <div className="text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2"><XCircle className="w-4 h-4" /> Declined</div>
+          <div className="space-y-3">
+            <div className="text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2"><XCircle className="w-4 h-4" /> Declined</div>
+            {declineReason && (
+              <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                Reason provided: {declineReason}
+              </div>
+            )}
+          </div>
         ) : (
           <>
             <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
               Review completed. Signing here is the official approval step for this document.
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 flex items-start gap-2">
+              <FileCheck className="w-4 h-4 mt-0.5" />
+              <span>Your signature will lock the document, generate the NexArtSign certificate, and preserve the signed record for verification.</span>
             </div>
 
             <input
