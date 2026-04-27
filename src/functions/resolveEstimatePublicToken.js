@@ -1,134 +1,78 @@
-/**
- * resolveEstimatePublicToken.js
- *
- * Serverless handler to resolve a public share token to an estimate record.
- * NO authentication required — token is the only security mechanism.
- *
- * Token format: {estimateId}_{sha256(estimateId + estimate.client_email)}
- * This prevents guessing tokens for other estimates while keeping them immutable.
- */
-
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+
+async function sha256Hex(value) {
+  const data = new TextEncoder().encode(value);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export default async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const payload = await req.json();
-    const { token } = payload;
+    const { token } = await req.json();
 
     if (!token || typeof token !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Invalid or missing token' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Invalid or missing token' }), { status: 400 });
     }
 
-    // Parse token: estimateId_signature
     const parts = token.split('_');
-    if (parts.length !== 2) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token format' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+    const estimateId = parts[0];
 
-    const [estimateId, signature] = parts;
-
-    // Fetch estimate using service role (no auth needed, token is validation)
     const list = await base44.asServiceRole.entities.Estimate.filter({ id: estimateId });
     if (!list || list.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Estimate not found' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Estimate not found' }), { status: 404 });
     }
 
     const estimate = list[0];
 
-    // Verify token signature: sha256(estimateId + clientEmail)
-    const data = new TextEncoder().encode(estimateId + (estimate.client_email || ''));
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const computedSignature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-    if (signature !== computedSignature) {
-      return new Response(
-        JSON.stringify({ error: 'Token verification failed' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
-      );
+    // 1. New persistent token match
+    if (estimate.public_share_token && estimate.public_share_token === token) {
+      return buildResponse(estimate, base44);
     }
 
-    // Try to load sent snapshot if exists (for immutable sent version)
-    let snapshotData = null;
-    try {
-      const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter(
-        { estimate_id: estimateId },
-        '-created_date',
-        1
-      );
-      if (snapshots && snapshots.length > 0) {
-        snapshotData = snapshots[0];
+    // 2. Legacy token fallback (old email-based)
+    if (parts.length === 2) {
+      const legacySignature = parts[1];
+      const currentSig = await sha256Hex(estimateId + (estimate.client_email || ''));
+      if (legacySignature === currentSig) {
+        return buildResponse(estimate, base44);
       }
-    } catch (err) {
-      // Snapshot entity may not exist yet, use live estimate
+
+      // try snapshot email
+      const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter({ estimate_id: estimateId }, '-created_date', 1);
+      if (snapshots?.length) {
+        const snapEmail = snapshots[0]?.client_email || snapshots[0]?.estimate_data?.client_email || '';
+        const snapSig = await sha256Hex(estimateId + snapEmail);
+        if (legacySignature === snapSig) {
+          return buildResponse(estimate, base44);
+        }
+      }
     }
 
-    // Use snapshot if available, else fallback to live estimate
-    const sourceData = snapshotData?.estimate_data || estimate;
-    const attachments = snapshotData?.client_attachments || 
-      (estimate.attachments || []).filter(a => a.intent === 'send_to_client');
-
-    // Token valid — return estimate record (client-safe)
-    return new Response(
-      JSON.stringify({
-        estimate: {
-          id: estimate.id,
-          estimate_number: estimate.estimate_number,
-          document_type: sourceData.document_type || estimate.document_type,
-          document_language: sourceData.document_language || estimate.document_language,
-          client_id: sourceData.client_id || estimate.client_id,
-          client_name: sourceData.client_name || estimate.client_name,
-          client_email: sourceData.client_email || estimate.client_email,
-          title: sourceData.title || estimate.title,
-          status: estimate.status,
-          groups: sourceData.groups || estimate.groups,
-          materials: sourceData.materials || estimate.materials,
-          subtotal: sourceData.subtotal || estimate.subtotal,
-          discount_type: sourceData.discount_type || estimate.discount_type,
-          discount_value: sourceData.discount_value || estimate.discount_value,
-          discount_amount: sourceData.discount_amount || estimate.discount_amount,
-          tax_rate: sourceData.tax_rate || estimate.tax_rate,
-          tax_amount: sourceData.tax_amount || estimate.tax_amount,
-          total: sourceData.total || estimate.total,
-          notes: sourceData.notes || estimate.notes,
-          exclusions: sourceData.exclusions || estimate.exclusions,
-          payment_terms: sourceData.payment_terms || estimate.payment_terms,
-          warranty_terms: sourceData.warranty_terms || estimate.warranty_terms,
-          attachments: (attachments || []).map(a => ({
-            id: a.id,
-            file_name: a.file_name || a.name,
-            file_url: a.file_url,
-            intent: a.intent,
-            uploaded_at: a.uploaded_at,
-          })),
-          view_count: estimate.view_count,
-          last_viewed_at: estimate.last_viewed_at,
-          approved_at: estimate.approved_at,
-          version: estimate.version,
-          document_config: snapshotData?.document_config || estimate.document_config,
-          scope_summary: sourceData.scope_summary || estimate.scope_summary,
-          assumptions: sourceData.assumptions || estimate.assumptions,
-          pdf_file_url: snapshotData?.pdf_file_url,
-          snapshot_id: snapshotData?.id,
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Token verification failed' }), { status: 403 });
   } catch (error) {
-    console.error('[resolveEstimatePublicToken] Server error:', error.message);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 };
+
+async function buildResponse(estimate, base44) {
+  let snapshotData = null;
+  try {
+    const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter({ estimate_id: estimate.id }, '-created_date', 1);
+    if (snapshots?.length) snapshotData = snapshots[0];
+  } catch {}
+
+  const sourceData = snapshotData?.estimate_data || estimate;
+
+  return new Response(JSON.stringify({ estimate: {
+    id: estimate.id,
+    estimate_number: estimate.estimate_number,
+    client_name: sourceData.client_name || estimate.client_name,
+    client_email: sourceData.client_email || estimate.client_email,
+    total: sourceData.total || estimate.total,
+    status: estimate.status,
+    document_type: estimate.document_type,
+    attachments: sourceData.attachments || estimate.attachments,
+    document_config: snapshotData?.document_config || estimate.document_config,
+  }}), { status: 200 });
+}
