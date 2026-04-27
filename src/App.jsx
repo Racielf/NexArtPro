@@ -34,7 +34,7 @@ import WorkOrderDetail from './pages/WorkOrderDetail';
 import Customers from './pages/Customers';
 import Assignments from './pages/Assignments';
 import Workers from './pages/Workers';
-import InvoiceDetail from './pages/InvoiceDetail';
+import InvoiceDetail from './pages/InvoiceDetailClean';
 import CustomerProfile from './pages/CustomerProfile';
 import Payments from './pages/Payments';
 import IncomeExpenses from './pages/IncomeExpenses';
