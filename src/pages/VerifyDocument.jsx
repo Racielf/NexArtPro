@@ -10,9 +10,14 @@ async function sha256File(file) {
     .join('');
 }
 
+function getInitialHashFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return (params.get('hash') || '').trim().toLowerCase();
+}
+
 export default function VerifyDocument() {
   const [file, setFile] = useState(null);
-  const [expectedHash, setExpectedHash] = useState('');
+  const [expectedHash, setExpectedHash] = useState(getInitialHashFromUrl);
   const [computedHash, setComputedHash] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
@@ -68,6 +73,12 @@ export default function VerifyDocument() {
               This verification happens locally in your browser. The PDF is not uploaded.
             </div>
 
+            {getInitialHashFromUrl() && (
+              <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-green-800">
+                Verification hash loaded from the secure verification link.
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2">
                 <Upload className="w-3.5 h-3.5" /> Signed PDF
@@ -88,7 +99,7 @@ export default function VerifyDocument() {
               <textarea
                 value={expectedHash}
                 onChange={(e) => setExpectedHash(e.target.value)}
-                placeholder="Paste the SHA-256 hash from audit.json or VERIFY.txt"
+                placeholder="Paste the SHA-256 hash from audit.json, VERIFY.txt, or verification QR"
                 rows={3}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
