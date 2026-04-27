@@ -67,8 +67,11 @@ Deno.serve(async (req) => {
         source_pdf_url: pkg.source_pdf_url,
         source_pdf_name: pkg.source_pdf_name,
         final_pdf_url: pkg.final_pdf_url,
+        final_pdf_name: pkg.final_pdf_name,
+        certificate_id: pkg.certificate_id || '',
         provider: pkg.provider,
         signing_mode: pkg.signing_mode,
+        expires_at: pkg.expires_at || '',
         viewed_at: resolvedViewedAt || '',
       },
     });
