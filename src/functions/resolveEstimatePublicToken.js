@@ -27,7 +27,6 @@ export default async (req) => {
     }
 
     return buildResponse(estimate, base44);
-
   } catch (error) {
     return json({ error: error.message || 'Server error' }, 500);
   }
@@ -51,23 +50,34 @@ async function buildResponse(estimate, base44) {
 
   const sourceData = snapshotData?.estimate_data || estimate;
 
-  return json({ estimate: {
-    id: estimate.id,
-    estimate_number: estimate.estimate_number,
-    client_name: sourceData.client_name || estimate.client_name,
-    client_email: sourceData.client_email || estimate.client_email,
-    client_id: sourceData.client_id || estimate.client_id,
-    total: sourceData.total || estimate.total,
-    status: estimate.status,
-    title: sourceData.title || estimate.title,
-    document_type: estimate.document_type,
-    document_language: sourceData.document_language || estimate.document_language,
-    line_items: sourceData.line_items || estimate.line_items,
-    attachments: sourceData.attachments || estimate.attachments,
-    document_config: snapshotData?.document_config || estimate.document_config,
-    pdf_file_url: snapshotData?.pdf_file_url || estimate.pdf_file_url,
-    signing_package_id: signingPackage?.id || estimate.signing_package_id || '',
-    signing_package_status: signingPackage?.status || estimate.signature_status || '',
-    signing_package_token: signingPackage?.token || '',
-  }});
+  return json({
+    estimate: {
+      id: estimate.id,
+      estimate_number: estimate.estimate_number,
+      client_name: sourceData.client_name || estimate.client_name,
+      client_email: sourceData.client_email || estimate.client_email,
+      client_id: sourceData.client_id || estimate.client_id,
+      total: sourceData.total || estimate.total,
+      status: estimate.status,
+      title: sourceData.title || estimate.title,
+      document_type: estimate.document_type,
+      document_language: sourceData.document_language || estimate.document_language,
+      line_items: sourceData.line_items || estimate.line_items,
+      attachments: sourceData.attachments || estimate.attachments,
+      document_config: snapshotData?.document_config || estimate.document_config,
+      pdf_file_url: snapshotData?.pdf_file_url || estimate.pdf_file_url,
+      signing_package_id: signingPackage?.id || estimate.signing_package_id || '',
+      signing_package_status: signingPackage?.status || estimate.signature_status || '',
+      signing_package_token: signingPackage?.token || '',
+      signature_name: estimate.signature_name || '',
+      signed_at: estimate.signed_at || '',
+      final_signed_at: estimate.final_signed_at || '',
+      final_signed_pdf_url: estimate.final_signed_pdf_url || '',
+      final_signed_pdf_name: estimate.final_signed_pdf_name || '',
+      signed_pdf_hash: estimate.signed_pdf_hash || '',
+      legal_package_locked: estimate.legal_package_locked === true,
+      converted_work_order_id: estimate.converted_work_order_id || '',
+      terms_accepted: estimate.terms_accepted === true,
+    },
+  });
 }
