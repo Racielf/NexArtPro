@@ -7,9 +7,55 @@ function json(data, status = 200) {
   });
 }
 
+async function sha256Hex(value) {
+  const data = new TextEncoder().encode(value);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function parseToken(token) {
+  const parts = String(token || '').split('_').filter(Boolean);
+
+  if (parts.length === 2) {
+    const [estimateId, signature] = parts;
+    return { estimateId, signature, nonce: '', format: 'legacy' };
+  }
+
+  if (parts.length >= 3) {
+    const [estimateId, nonce, ...rest] = parts;
+    return { estimateId, nonce, signature: rest.join('_'), format: 'v2' };
+  }
+
+  return null;
+}
+
 async function findEstimateByToken(base44, token) {
-  const rows = await base44.asServiceRole.entities.Estimate.filter({ public_share_token: token }).catch(() => []);
-  return rows?.[0] || null;
+  const directRows = await base44.asServiceRole.entities.Estimate.filter({ public_share_token: token }).catch(() => []);
+  if (directRows?.[0]) {
+    return directRows[0];
+  }
+
+  const parsed = parseToken(token);
+  if (!parsed?.estimateId || !parsed?.signature) {
+    return null;
+  }
+
+  const rows = await base44.asServiceRole.entities.Estimate.filter({ id: parsed.estimateId }).catch(() => []);
+  const estimate = rows?.[0] || null;
+  if (!estimate) {
+    return null;
+  }
+
+  const legacySignature = await sha256Hex(`${parsed.estimateId}${estimate.client_email || ''}`);
+  const currentSignature = parsed.nonce
+    ? await sha256Hex(`${parsed.estimateId}:${parsed.nonce}:${estimate.client_email || ''}`)
+    : '';
+
+  if (parsed.signature === legacySignature || parsed.signature === currentSignature) {
+    return estimate;
+  }
+
+  return null;
 }
 
 export default async (req) => {
