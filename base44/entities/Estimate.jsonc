@@ -89,6 +89,12 @@
     "signature_name": { "type": "string" },
     "signature_image": { "type": "string" },
     "signature_method": { "type": "string" },
+    "signing_package_id": { "type": "string" },
+    "signature_status": {
+      "type": "string",
+      "enum": ["not_sent", "sent", "viewed", "signed", "declined", "expired", "voided"],
+      "default": "not_sent"
+    },
     "terms_accepted": { "type": "boolean", "default": false },
     "legal_audit": { "type": "object" },
     "signature_certificate": { "type": "object" },
