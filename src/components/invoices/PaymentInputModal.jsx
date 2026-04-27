@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, PenLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 import { buildTimelineEvent, appendCollectionTimelineEvent } from '@/lib/invoiceCollectionTimeline';
@@ -12,30 +12,53 @@ export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdd
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [note, setNote] = useState('');
+  const [signedBy, setSignedBy] = useState(invoice?.client_name || '');
+  const [authorizationAccepted, setAuthorizationAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    setSignedBy(invoice?.client_name || '');
+    setAuthorizationAccepted(false);
+  }, [open, invoice?.client_name]);
+
   // Derive current state from payments[] (single source of truth)
-  const { amount_paid, balance_due } = computeInvoiceDerivedFields(invoice);
+  const { balance_due } = computeInvoiceDerivedFields(invoice);
   const maxPayment = balance_due;
-  const isValid = parseFloat(amount) > 0 && parseFloat(amount) <= maxPayment;
+  const paymentAmount = parseFloat(amount);
+  const isValid = paymentAmount > 0 && paymentAmount <= maxPayment && signedBy.trim() && authorizationAccepted;
 
   const handleSubmit = async () => {
-    if (!isValid) {
+    if (paymentAmount <= 0 || paymentAmount > maxPayment) {
       toast.error(`Payment must be between $0 and $${maxPayment.toFixed(2)}`);
+      return;
+    }
+
+    if (!signedBy.trim()) {
+      toast.error('Signer name is required');
+      return;
+    }
+
+    if (!authorizationAccepted) {
+      toast.error('Payment authorization is required');
       return;
     }
 
     setLoading(true);
     try {
       const user = await (window.base44?.auth?.me?.() || Promise.resolve(null));
+      const signedAt = new Date().toISOString();
       const newPayment = {
         id: `pay-${Date.now()}`,
-        amount: parseFloat(amount),
+        amount: paymentAmount,
         method,
-        payment_date: new Date().toISOString(),
+        payment_date: signedAt,
         note,
         recorded_by: user?.email || user?.full_name || 'Admin',
-        recorded_at: new Date().toISOString(),
+        recorded_at: signedAt,
+        signed_by: signedBy.trim(),
+        signed_at: signedAt,
+        payment_authorized: true,
       };
 
       // ONLY update payments array — let derived helpers compute everything else
@@ -50,7 +73,7 @@ export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdd
         'payment_recorded',
         user?.email || user?.full_name || 'Admin',
         note || undefined,
-        { amount: parseFloat(amount), method }
+        { amount: paymentAmount, method, signed_by: signedBy.trim() }
       );
       const timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
 
@@ -60,7 +83,7 @@ export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdd
         amount_paid: derived.amount_paid,
         balance_due: derived.balance_due,
         payment_status: derived.payment_status,
-        paid_at: derived.payment_status === 'paid' ? new Date().toISOString() : invoice?.paid_at || null,
+        paid_at: derived.payment_status === 'paid' ? signedAt : invoice?.paid_at || null,
         collection_timeline: timeline,
       };
 
@@ -70,6 +93,8 @@ export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdd
       setAmount('');
       setMethod('cash');
       setNote('');
+      setSignedBy(invoice?.client_name || '');
+      setAuthorizationAccepted(false);
       onClose();
     } catch (err) {
       toast.error(err?.message || 'Failed to record payment');
@@ -131,6 +156,30 @@ export default function PaymentInputModal({ open, onClose, invoice, onPaymentAdd
               placeholder="e.g. Check #123, Invoice confirmation..."
               className="h-16 text-sm resize-none mt-1"
             />
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+            <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+              <PenLine className="w-4 h-4 text-slate-500" />
+              Client Signature
+            </label>
+            <Input
+              value={signedBy}
+              onChange={e => setSignedBy(e.target.value)}
+              placeholder="Signer name"
+              className="bg-white"
+            />
+            <label className="flex items-start gap-2 text-xs text-slate-600 leading-relaxed">
+              <input
+                type="checkbox"
+                checked={authorizationAccepted}
+                onChange={e => setAuthorizationAccepted(e.target.checked)}
+                className="mt-0.5 rounded accent-green-600"
+              />
+              <span>
+                I authorize this payment and confirm the amount, method, and invoice balance are correct.
+              </span>
+            </label>
           </div>
 
           <div className="flex gap-2 pt-2">
