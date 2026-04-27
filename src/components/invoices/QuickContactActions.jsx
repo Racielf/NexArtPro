@@ -34,10 +34,10 @@ export default function QuickContactActions({ invoice, isOverdue = false }) {
       toast.error('No phone number available');
       return;
     }
-    const msg = isOverdue 
-      ? generateOverdueNotice(invoice) 
+    const msg = isOverdue
+      ? generateOverdueNotice(invoice)
       : generatePaymentReminder(invoice);
-    
+
     navigator.clipboard.writeText(msg);
     toast.success('Message copied to clipboard');
     setCopiedTemplate('sms');
@@ -49,10 +49,10 @@ export default function QuickContactActions({ invoice, isOverdue = false }) {
       toast.error('No email available');
       return;
     }
-    const msg = isOverdue 
-      ? generateOverdueNotice(invoice) 
+    const msg = isOverdue
+      ? generateOverdueNotice(invoice)
       : generatePaymentReminder(invoice);
-    
+
     navigator.clipboard.writeText(msg);
     toast.success('Email body copied to clipboard');
     setCopiedTemplate('email');
@@ -68,60 +68,60 @@ export default function QuickContactActions({ invoice, isOverdue = false }) {
   };
 
   return (
-    <div className="px-4 py-4 border-t border-slate-100 space-y-3">
+    <div className="px-4 py-4 border-t border-slate-100 space-y-3 overflow-hidden">
       <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Contact Actions</p>
-      
+
       {/* Quick Call/SMS/Email */}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-1 gap-2">
         {invoice.client_phone && (
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 text-xs gap-1.5"
+            className="w-full justify-start text-xs gap-2 h-9 px-3"
             onClick={handleCallClick}
           >
-            <Phone className="w-3.5 h-3.5" />
-            Call
+            <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="truncate">Call Customer</span>
           </Button>
         )}
-        
+
         {invoice.client_phone && (
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 text-xs gap-1.5"
+            className="w-full justify-start text-xs gap-2 h-9 px-3"
             onClick={handleCopySMS}
           >
             {copiedTemplate === 'sms' ? (
               <>
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                Copied!
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                <span className="truncate">SMS Copied</span>
               </>
             ) : (
               <>
-                <MessageSquare className="w-3.5 h-3.5" />
-                Copy SMS
+                <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">Copy SMS Message</span>
               </>
             )}
           </Button>
         )}
-        
+
         {invoice.client_email && (
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 text-xs gap-1.5"
+            className="w-full justify-start text-xs gap-2 h-9 px-3"
             onClick={handleCopyEmail}
           >
             {copiedTemplate === 'email' ? (
               <>
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                Copied!
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                <span className="truncate">Email Copied</span>
               </>
             ) : (
               <>
-                <Mail className="w-3.5 h-3.5" />
-                Copy Email
+                <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">Copy Email Message</span>
               </>
             )}
           </Button>
@@ -136,16 +136,16 @@ export default function QuickContactActions({ invoice, isOverdue = false }) {
             <button
               key={tmpl.key}
               onClick={() => handleCopyTemplate(tmpl.fn)}
-              className="w-full text-left px-2.5 py-1.5 rounded text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium transition-colors border border-slate-200 flex items-center gap-2"
+              className="w-full text-left px-2.5 py-1.5 rounded text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium transition-colors border border-slate-200 flex items-center gap-2 overflow-hidden"
             >
               <Copy className="w-3 h-3 text-slate-400 flex-shrink-0" />
-              {tmpl.label}
+              <span className="truncate">{tmpl.label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <p className="text-[10px] text-slate-400 mt-2">
+      <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
         All messages include invoice #{invoice.invoice_number} and balance due.
       </p>
     </div>
