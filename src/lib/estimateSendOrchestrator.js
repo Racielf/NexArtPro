@@ -12,17 +12,12 @@ export async function validateBeforeSend(estimate, recipientEmail) {
   if (!recipientEmail) return { valid: false, errors: ['Recipient email is required'] };
   const dtv = validateDocTypeFields(estimate);
   if (!dtv.valid) return { valid: false, errors: dtv.errors };
-  return {
-    valid: true,
-    pricingWarning: validateEstimatePricing(estimate),
-    attachmentWarning: checkAttachmentCompleteness(estimate),
-  };
+  return { valid: true, pricingWarning: validateEstimatePricing(estimate), attachmentWarning: checkAttachmentCompleteness(estimate) };
 }
 
 function getSelectedClientAttachments(estimate, includedAttachmentIds = []) {
   const included = Array.isArray(includedAttachmentIds) ? includedAttachmentIds : [];
-  const attachments = Array.isArray(estimate?.attachments) ? estimate.attachments : [];
-  return attachments
+  return (Array.isArray(estimate?.attachments) ? estimate.attachments : [])
     .filter(att => att?.intent === 'send_to_client')
     .filter(att => included.includes(att.id))
     .filter(att => att?.file_url)
@@ -44,24 +39,10 @@ async function sha256HexFromBase64(base64) {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function executeSend({
-  estimate,
-  recipientEmail,
-  subject,
-  message,
-  currentTemplate,
-  currentOptions,
-  includedAttachmentIds = [],
-  appConfig,
-}) {
+export async function executeSend({ estimate, recipientEmail, subject, message, currentTemplate, currentOptions, includedAttachmentIds = [], appConfig }) {
   if (!recipientEmail) throw new Error('Recipient email is required');
 
-  const documentConfig = {
-    template: currentTemplate,
-    options: currentOptions,
-    included_attachment_ids: Array.isArray(includedAttachmentIds) ? includedAttachmentIds : [],
-  };
-
+  const documentConfig = { template: currentTemplate, options: currentOptions, included_attachment_ids: Array.isArray(includedAttachmentIds) ? includedAttachmentIds : [] };
   let generatedPdf = null;
   let pdfUrl = null;
   let pdfFilename = null;
@@ -72,13 +53,12 @@ export async function executeSend({
     pdfFilename = generatedPdf?.filename || null;
     if (generatedPdf?.base64) pdfHash = await sha256HexFromBase64(generatedPdf.base64);
   } catch (err) {
-    console.warn('[executeSend] PDF generation/hash failed before email:', err?.message);
+    console.warn('[executeSend] PDF generation/hash failed:', err?.message);
   }
 
   if (generatedPdf?.base64) {
     try {
-      const pdfFile = base64ToPdfBlob(generatedPdf.base64);
-      const uploadRes = await base44.integrations.Core.UploadFile({ file: pdfFile });
+      const uploadRes = await base44.integrations.Core.UploadFile({ file: base64ToPdfBlob(generatedPdf.base64) });
       pdfUrl = uploadRes?.file_url || null;
     } catch (err) {
       console.warn('[executeSend] PDF upload failed:', err?.message);
@@ -86,37 +66,14 @@ export async function executeSend({
   }
 
   let currentUser = null;
-  try {
-    currentUser = await base44.auth.me().catch(() => null);
-  } catch (err) {
-    console.warn('[executeSend] auth fetch failed:', err?.message);
-  }
+  try { currentUser = await base44.auth.me().catch(() => null); } catch {}
 
-  let signingPackage = null;
-  let finalLink = '';
-
-  try {
-    signingPackage = await createSigningPackageForEstimate({
-      estimate,
-      pdfUrl: pdfUrl || '',
-      pdfName: pdfFilename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`,
-      pdfHash,
-      currentUser,
-    });
-    finalLink = `${window.location.origin}/sign-document?token=${signingPackage.token}`;
-  } catch (err) {
-    console.warn('[executeSend] NexArtSign unavailable; falling back to legacy client estimate link:', err?.message);
-    const legacyToken = await generatePublicShareToken(estimate);
-    finalLink = `${window.location.origin}/client-estimate?token=${legacyToken}`;
-  }
+  const shareToken = await generatePublicShareToken(estimate);
+  const finalLink = `${window.location.origin}/client-estimate?token=${shareToken}`;
 
   const emailAttachments = [];
   if (generatedPdf?.base64) {
-    emailAttachments.push({
-      filename: generatedPdf.filename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`,
-      content: generatedPdf.base64,
-      contentType: 'application/pdf',
-    });
+    emailAttachments.push({ filename: generatedPdf.filename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`, content: generatedPdf.base64, contentType: 'application/pdf' });
   }
   emailAttachments.push(...getSelectedClientAttachments(estimate, includedAttachmentIds));
 
@@ -136,8 +93,14 @@ export async function executeSend({
   } catch (err) {
     throw new Error(`Email service error: ${err?.message}`);
   }
-
   if (emailRes.data?.error) throw new Error(emailRes.data.error);
+
+  let signingPackage = null;
+  try {
+    signingPackage = await createSigningPackageForEstimate({ estimate, pdfUrl: pdfUrl || '', pdfName: pdfFilename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`, pdfHash, currentUser });
+  } catch (err) {
+    console.warn('[executeSend] NexArtSign link step failed after email send:', err?.message);
+  }
 
   let snapshotId = null;
   try {
@@ -151,55 +114,20 @@ export async function executeSend({
     const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter({ estimate_id: estimate.id }, '-created_date', 1);
     if (snapshots?.length) snapshotId = snapshots[0].id;
   } catch (err) {
-    console.warn('[executeSend] markEstimateSent failed:', err?.message);
+    console.warn('[executeSend] post-send persistence failed:', err?.message);
   }
 
   if (pdfUrl && snapshotId) {
     try {
-      await base44.asServiceRole.entities.EstimateSnapshot.update(snapshotId, {
-        pdf_file_url: pdfUrl,
-        pdf_file_name: pdfFilename || `estimate-${estimate.estimate_number}.pdf`,
-        pdf_file_hash: pdfHash || '',
-        hash_algorithm: pdfHash ? 'SHA-256' : '',
-      });
-    } catch (err) {
-      console.warn('[executeSend] snapshot PDF linkage failed:', err?.message);
-    }
+      await base44.asServiceRole.entities.EstimateSnapshot.update(snapshotId, { pdf_file_url: pdfUrl, pdf_file_name: pdfFilename || `estimate-${estimate.estimate_number}.pdf`, pdf_file_hash: pdfHash || '', hash_algorithm: pdfHash ? 'SHA-256' : '' });
+    } catch {}
   }
 
-  try {
-    if (currentUser) {
-      await logSend({ estimate_id: estimate.id, estimate_number: estimate.estimate_number, user: currentUser, client_email: recipientEmail }).catch(() => {});
-    }
-  } catch {}
+  try { if (currentUser) await logSend({ estimate_id: estimate.id, estimate_number: estimate.estimate_number, user: currentUser, client_email: recipientEmail }).catch(() => {}); } catch {}
+  try { await logComm({ event_type: 'estimate_sent', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: recipientEmail, estimate_id: estimate.id, appointment_id: estimate.appointment_id || '', subject, preview: `Total: $${(estimate.total || 0).toFixed(2)}` }); } catch {}
+  try { await recordSuccessfulTransmission({ estimateId: estimate.id, snapshotId, recipientEmail, messageId: emailRes.data?.id, subject, clientName: estimate.client_name, estimateNumber: estimate.estimate_number, documentType: estimate.document_type }); } catch {}
 
-  try {
-    await logComm({
-      event_type: 'estimate_sent',
-      client_id: estimate.client_id || '',
-      client_name: estimate.client_name,
-      client_email: recipientEmail,
-      estimate_id: estimate.id,
-      appointment_id: estimate.appointment_id || '',
-      subject,
-      preview: `Total: $${(estimate.total || 0).toFixed(2)}`,
-    });
-  } catch {}
-
-  try {
-    await recordSuccessfulTransmission({
-      estimateId: estimate.id,
-      snapshotId,
-      recipientEmail,
-      messageId: emailRes.data?.id,
-      subject,
-      clientName: estimate.client_name,
-      estimateNumber: estimate.estimate_number,
-      documentType: estimate.document_type,
-    });
-  } catch {}
-
-  return { success: true, messageId: emailRes.data?.id, secureLink: finalLink, pdfUrl, pdfHash, signingPackageId: signingPackage?.id || null };
+  return { success: true, messageId: emailRes.data?.id, secureLink: finalLink, pdfUrl, pdfHash, signingPackageId: signingPackage?.id || null, nexArtSignLinked: Boolean(signingPackage?.id) };
 }
 
 export async function logPricingOverride(estimate, lossValidation, recipientEmail) {
@@ -208,17 +136,11 @@ export async function logPricingOverride(estimate, lossValidation, recipientEmai
   const totalLoss = lossItems.reduce((sum, item) => sum + ((Number(item.loss_per_unit) || 0) * (Number(item.quantity) || 0)), 0);
   try {
     const currentUser = await base44.auth.me().catch(() => null);
-    if (currentUser) {
-      await logBelowCostOverride({ estimate_id: estimate.id, estimate_number: estimate.estimate_number, user: currentUser, totalLoss, lossItemsCount: lossItems.length, metadata: { client_email: recipientEmail, client_name: estimate?.client_name || '' } }).catch(() => {});
-    }
+    if (currentUser) await logBelowCostOverride({ estimate_id: estimate.id, estimate_number: estimate.estimate_number, user: currentUser, totalLoss, lossItemsCount: lossItems.length, metadata: { client_email: recipientEmail, client_name: estimate?.client_name || '' } }).catch(() => {});
   } catch {}
 }
 
 export async function logSendFailure(estimate, recipientEmail, subject, error) {
-  try {
-    await logCommFailed({ event_type: 'estimate_sent', client_name: estimate.client_name, client_email: recipientEmail, estimate_id: estimate.id, subject }).catch(() => {});
-  } catch {}
-  try {
-    await recordFailedTransmission({ estimateId: estimate.id, recipientEmail, errorMessage: error?.message || String(error), subject, clientName: estimate.client_name, estimateNumber: estimate.estimate_number, documentType: estimate.document_type });
-  } catch {}
+  try { await logCommFailed({ event_type: 'estimate_sent', client_name: estimate.client_name, client_email: recipientEmail, estimate_id: estimate.id, subject }).catch(() => {}); } catch {}
+  try { await recordFailedTransmission({ estimateId: estimate.id, recipientEmail, errorMessage: error?.message || String(error), subject, clientName: estimate.client_name, estimateNumber: estimate.estimate_number, documentType: estimate.document_type }); } catch {}
 }
