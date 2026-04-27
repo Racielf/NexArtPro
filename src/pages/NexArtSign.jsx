@@ -1,86 +1,273 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
-import { FileSignature, RefreshCw, Settings } from 'lucide-react';
+import {
+  FileSignature,
+  RefreshCw,
+  Settings,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Eye,
+  Copy,
+  ExternalLink,
+  ShieldCheck,
+  Ban,
+  Download,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+function statusClass(status) {
+  switch (status) {
+    case 'signed': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'declined': return 'bg-red-50 text-red-700 border-red-200';
+    case 'viewed': return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'sent': return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'expired': return 'bg-slate-100 text-slate-500 border-slate-200';
+    case 'voided': return 'bg-zinc-100 text-zinc-600 border-zinc-200';
+    default: return 'bg-slate-50 text-slate-600 border-slate-200';
+  }
+}
+
+function eventIcon(type) {
+  if (type === 'signed' || type === 'approved') return <CheckCircle className="w-4 h-4 text-emerald-600" />;
+  if (type === 'declined') return <XCircle className="w-4 h-4 text-red-500" />;
+  if (type === 'viewed') return <Eye className="w-4 h-4 text-blue-500" />;
+  return <Clock className="w-4 h-4 text-slate-400" />;
+}
+
+function fmt(value) {
+  if (!value) return '—';
+  try { return new Date(value).toLocaleString(); } catch { return value; }
+}
+
+function signingUrl(pkg) {
+  if (!pkg?.token) return '';
+  return `${window.location.origin}/sign-document?token=${pkg.token}`;
+}
 
 export default function NexArtSign() {
   const [packages, setPackages] = useState([]);
   const [events, setEvents] = useState([]);
+  const [certificates, setCertificates] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const [pkgRows, eventRows] = await Promise.all([
+    const [pkgRows, eventRows, certRows] = await Promise.all([
       base44.entities.SigningPackage.list('-created_date').catch(() => []),
       base44.entities.SigningEvent.list('-created_at').catch(() => []),
+      base44.entities.SigningCertificate.list('-generated_at').catch(() => []),
     ]);
     setPackages(pkgRows || []);
     setEvents(eventRows || []);
+    setCertificates(certRows || []);
+    if (!selectedId && pkgRows?.[0]?.id) setSelectedId(pkgRows[0].id);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
+  const selected = useMemo(
+    () => packages.find(p => p.id === selectedId) || packages[0] || null,
+    [packages, selectedId]
+  );
+
+  const selectedEvents = useMemo(
+    () => events.filter(e => e.signing_package_id === selected?.id).sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)),
+    [events, selected]
+  );
+
+  const selectedCert = useMemo(
+    () => certificates.find(c => c.signing_package_id === selected?.id),
+    [certificates, selected]
+  );
+
+  const counts = useMemo(() => packages.reduce((acc, p) => {
+    const key = p.status || 'draft';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {}), [packages]);
+
+  const copyLink = async (pkg) => {
+    const url = signingUrl(pkg);
+    if (!url) return toast.error('No signing link available');
+    await navigator.clipboard.writeText(url);
+    toast.success('Signing link copied');
+  };
+
+  const openDocument = (pkg) => {
+    const url = pkg.final_pdf_url || pkg.source_pdf_url;
+    if (!url) return toast.error('No PDF available');
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const downloadCertificate = () => {
+    if (!selectedCert) return toast.error('No certificate available yet');
+    const blob = new Blob([JSON.stringify(selectedCert, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedCert.certificate_number || 'nexartsign-certificate'}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const voidPackage = async (pkg) => {
+    if (!pkg || ['signed', 'declined', 'expired', 'voided'].includes(pkg.status)) {
+      toast.error('Closed packages cannot be voided here');
+      return;
+    }
+    await base44.entities.SigningPackage.update(pkg.id, { status: 'voided' });
+    await base44.entities.SigningEvent.create({
+      signing_package_id: pkg.id,
+      document_type: pkg.document_type,
+      document_id: pkg.document_id,
+      event_type: 'voided',
+      created_at: new Date().toISOString(),
+      metadata: { action_source: 'nexartsign_admin_console' },
+    }).catch(() => {});
+    toast.success('Package voided');
+    await load();
+  };
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         eyebrow="NEXARTSIGN"
         title="NexArtSign"
-        subtitle="Document signing packages, activity, and provider settings"
+        subtitle="Signing packages, timelines, certificates, and provider configuration"
         actionLabel="Refresh"
         onAction={load}
       />
       <PageShell>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="bg-white border border-slate-200 rounded-xl p-4">
             <p className="text-xs text-slate-500 font-semibold uppercase">Packages</p>
             <p className="text-2xl font-bold mt-2">{packages.length}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs text-slate-500 font-semibold uppercase">Events</p>
-            <p className="text-2xl font-bold mt-2">{events.length}</p>
+            <p className="text-xs text-slate-500 font-semibold uppercase">Pending</p>
+            <p className="text-2xl font-bold mt-2">{(counts.sent || 0) + (counts.viewed || 0) + (counts.draft || 0)}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs text-slate-500 font-semibold uppercase">Mode</p>
-            <p className="text-sm font-bold mt-2">Internal active / external prepared</p>
+            <p className="text-xs text-slate-500 font-semibold uppercase">Signed</p>
+            <p className="text-2xl font-bold mt-2">{counts.signed || 0}</p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <p className="text-xs text-slate-500 font-semibold uppercase">Certificates</p>
+            <p className="text-2xl font-bold mt-2">{certificates.length}</p>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-slate-500" />
-              <h3 className="font-bold text-slate-900">Configuration</h3>
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+          <div className="xl:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileSignature className="w-4 h-4 text-slate-500" />
+                <h3 className="font-bold text-slate-900">Signing Packages</h3>
+              </div>
+              {loading && <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />}
             </div>
-            {loading && <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />}
+            {packages.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 text-sm">No signing packages yet.</div>
+            ) : (
+              <div className="divide-y divide-slate-100 max-h-[620px] overflow-auto">
+                {packages.map(pkg => (
+                  <button
+                    key={pkg.id}
+                    onClick={() => setSelectedId(pkg.id)}
+                    className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition ${selected?.id === pkg.id ? 'bg-primary/5' : ''}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm text-slate-900 truncate">{pkg.document_title || pkg.document_number || pkg.document_id}</p>
+                        <p className="text-xs text-slate-500 mt-1 truncate">{pkg.signer_name || pkg.client_name || 'Signer'} • {pkg.signer_email}</p>
+                      </div>
+                      <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${statusClass(pkg.status)}`}>{pkg.status || 'draft'}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-            <div className="border border-slate-100 rounded-lg p-3"><p className="font-semibold">NexArtSign</p><p className="text-xs text-emerald-600 mt-1">Active</p></div>
-            <div className="border border-slate-100 rounded-lg p-3"><p className="font-semibold">External providers</p><p className="text-xs text-slate-500 mt-1">Prepared, not connected</p></div>
-            <div className="border border-slate-100 rounded-lg p-3"><p className="font-semibold">Audit</p><p className="text-xs text-slate-500 mt-1">Packages and events</p></div>
-          </div>
-        </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-            <FileSignature className="w-4 h-4 text-slate-500" />
-            <h3 className="font-bold text-slate-900">Signing Packages</h3>
-          </div>
-          {packages.length === 0 ? <div className="py-12 text-center text-slate-500 text-sm">No signing packages yet.</div> : (
-            <div className="divide-y divide-slate-100">
-              {packages.map(pkg => (
-                <div key={pkg.id} className="px-4 py-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-sm text-slate-900">{pkg.document_title || pkg.document_number || pkg.document_id}</p>
-                    <p className="text-xs text-slate-500 mt-1">{pkg.signer_name || pkg.client_name || 'Signer'} • {pkg.signer_email}</p>
+          <div className="xl:col-span-3 space-y-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-lg font-bold text-slate-900">{selected?.document_title || 'Select a package'}</h3>
+                    {selected && <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${statusClass(selected.status)}`}>{selected.status || 'draft'}</span>}
                   </div>
-                  <span className="text-[10px] font-bold border rounded-full px-2 py-0.5 bg-slate-50 text-slate-600 border-slate-200">{pkg.status || 'draft'}</span>
+                  {selected && (
+                    <p className="text-sm text-slate-500 mt-1">{selected.signer_name || selected.client_name || 'Signer'} • {selected.signer_email}</p>
+                  )}
                 </div>
-              ))}
+                {selected && (
+                  <div className="flex gap-2 flex-wrap justify-end">
+                    <Button size="sm" variant="outline" onClick={() => copyLink(selected)} className="gap-1.5"><Copy className="w-3.5 h-3.5" />Copy Link</Button>
+                    <Button size="sm" variant="outline" onClick={() => window.open(signingUrl(selected), '_blank')} className="gap-1.5"><ExternalLink className="w-3.5 h-3.5" />Open Link</Button>
+                    <Button size="sm" variant="outline" onClick={() => openDocument(selected)} className="gap-1.5"><Eye className="w-3.5 h-3.5" />PDF</Button>
+                    <Button size="sm" variant="outline" onClick={downloadCertificate} className="gap-1.5"><Download className="w-3.5 h-3.5" />Certificate</Button>
+                    <Button size="sm" variant="outline" onClick={() => voidPackage(selected)} className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50"><Ban className="w-3.5 h-3.5" />Void</Button>
+                  </div>
+                )}
+              </div>
+
+              {selected && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-sm">
+                  <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Document</p><p className="font-medium mt-1">{selected.document_type} #{selected.document_number || selected.document_id}</p></div>
+                  <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Provider</p><p className="font-medium mt-1">{selected.provider || 'nexartsign'}</p></div>
+                  <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Expires</p><p className="font-medium mt-1">{fmt(selected.expires_at)}</p></div>
+                </div>
+              )}
             </div>
-          )}
+
+            <div className="bg-white border border-slate-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldCheck className="w-4 h-4 text-slate-500" />
+                <h3 className="font-bold text-slate-900">Timeline</h3>
+              </div>
+              {!selected ? (
+                <p className="text-sm text-slate-500">Select a package to view timeline.</p>
+              ) : selectedEvents.length === 0 ? (
+                <p className="text-sm text-slate-500">No events recorded yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {selectedEvents.map((ev, idx) => (
+                    <div key={ev.id || idx} className="flex gap-3">
+                      <div className="pt-0.5">{eventIcon(ev.event_type)}</div>
+                      <div className="flex-1 border-b border-slate-100 pb-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-semibold text-sm text-slate-800 capitalize">{ev.event_type}</p>
+                          <span className="text-xs text-slate-400">{fmt(ev.created_at)}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">{ev.actor_email || ev.actor_name || 'Public signer'} {ev.ip_address ? `• IP ${ev.ip_address}` : ''}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Settings className="w-4 h-4 text-slate-500" />
+                <h3 className="font-bold text-slate-900">Configuration</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div className="border border-slate-100 rounded-lg p-3"><p className="font-semibold">NexArtSign</p><p className="text-xs text-emerald-600 mt-1">Active</p></div>
+                <div className="border border-slate-100 rounded-lg p-3"><p className="font-semibold">External providers</p><p className="text-xs text-slate-500 mt-1">Prepared, not connected</p></div>
+                <div className="border border-slate-100 rounded-lg p-3"><p className="font-semibold">Certificate</p><p className="text-xs text-slate-500 mt-1">{selectedCert ? selectedCert.certificate_number : 'Generated after signing'}</p></div>
+              </div>
+            </div>
+          </div>
         </div>
       </PageShell>
     </div>
