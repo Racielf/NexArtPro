@@ -17,6 +17,7 @@ export default function SignDocumentView() {
   const [acting, setActing] = useState(false);
   const [name, setName] = useState('');
   const [accepted, setAccepted] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
   const [completion, setCompletion] = useState(null);
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export default function SignDocumentView() {
       const res = await base44.functions.invoke('completeSigningPackage', {
         token,
         action: 'decline',
+        declined_reason: declineReason.trim(),
       });
       const result = res?.data || {};
 
@@ -182,6 +184,12 @@ export default function SignDocumentView() {
               <Button onClick={handleApprove} disabled={acting || !name.trim() || !accepted} className="flex-1">Sign & Approve</Button>
               <Button variant="outline" onClick={handleDecline} disabled={acting} className="flex-1">Decline</Button>
             </div>
+            <textarea
+              value={declineReason}
+              onChange={e => setDeclineReason(e.target.value)}
+              placeholder="Optional reason if you are declining"
+              className="w-full border border-slate-300 p-2 rounded-lg text-sm min-h-[88px]"
+            />
           </>
         )}
       </div>
