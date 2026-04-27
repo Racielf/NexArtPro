@@ -67,11 +67,16 @@ async function closePackageAsSigned(base44, pkg, signer, signerEmail, now, ip, u
 
   if (pkg.document_type === 'estimate' && pkg.document_id) {
     await base44.asServiceRole.entities.Estimate.update(pkg.document_id, {
+      status: 'signed',
       signature_status: 'signed',
       signed_at: now,
+      approved_at: now,
       accepted_by: signer,
       signature_name: signer,
+      signature_provider: 'internal',
       signing_package_id: pkg.id,
+      terms_accepted: true,
+      locked_after_signature: true,
     }).catch(() => {});
   }
 
@@ -138,10 +143,15 @@ export default async (req) => {
       });
 
       if (pkg.document_type === 'estimate' && pkg.document_id) {
-        await base44.asServiceRole.entities.Estimate.update(pkg.document_id, { signature_status: 'declined' }).catch(() => {});
+        await base44.asServiceRole.entities.Estimate.update(pkg.document_id, {
+          status: 'declined',
+          signature_status: 'declined',
+          signing_package_id: pkg.id,
+          declined_at: now,
+        }).catch(() => {});
       }
 
-      return response({ success: true, status: 'declined' });
+      return response({ success: true, status: 'declined', document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
     }
 
     if (action !== 'approve') return response({ error: 'Invalid action' }, 400);
@@ -188,11 +198,11 @@ export default async (req) => {
           metadata: { participant_id: next.id, role: next.role, signing_order: next.signing_order || 1 },
           created_at: now,
         }).catch(() => {});
-        return response({ success: true, status: 'pending_next_signer', next_participant_id: next.id });
+        return response({ success: true, status: 'pending_next_signer', next_participant_id: next.id, document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
       }
 
       const cert = await closePackageAsSigned(base44, pkg, signer, activeParticipant.email, now, ip, ua);
-      return response({ success: true, status: 'signed', certificate_id: cert.id });
+      return response({ success: true, status: 'signed', certificate_id: cert.id, document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
     }
 
     const signer = signer_name || pkg.signer_name || pkg.client_name || '';
@@ -209,7 +219,7 @@ export default async (req) => {
     });
 
     const cert = await closePackageAsSigned(base44, pkg, signer, pkg.signer_email, now, ip, ua);
-    return response({ success: true, status: 'signed', certificate_id: cert.id });
+    return response({ success: true, status: 'signed', certificate_id: cert.id, document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
   } catch (err) {
     return response({ error: err.message || 'Server error' }, 500);
   }
