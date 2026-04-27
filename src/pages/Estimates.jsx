@@ -26,9 +26,16 @@ export default function Estimates() {
 
   const loadData = async () => {
     setLoading(true);
-    const data = await base44.entities.Estimate.list('-created_date');
-    setEstimates(filterActiveRecords(data || []));
-    setLoading(false);
+    try {
+      const data = await base44.entities.Estimate.list('-created_date');
+      setEstimates(filterActiveRecords(data || []));
+    } catch (err) {
+      console.error('[Estimates] Failed to load estimates:', err);
+      toast.error('Could not load estimates');
+      setEstimates([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNewEstimate = () => setShowConfirm(true);
