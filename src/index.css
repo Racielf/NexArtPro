@@ -90,32 +90,34 @@
 }
 
 @layer components {
-  /* Estimate editor premium command bar - visual-only override.
-     Keeps the existing React structure, handlers, state, and actions intact. */
+  /* Estimate editor premium command bar visual bridge.
+     This keeps the existing EstimateEditor behavior intact while the modular
+     EstimateCommandBar component is available for the full JSX migration. */
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 {
-    margin: 12px 16px 0;
+    margin: 16px 18px 0;
     border: 1px solid rgb(226 232 240) !important;
-    border-radius: 22px;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
-    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.10), 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: 0 22px 55px rgba(15, 23, 42, 0.10), 0 2px 10px rgba(15, 23, 42, 0.05) !important;
     overflow: visible;
+    backdrop-filter: blur(16px);
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 > .flex.items-center {
-    min-height: 78px;
+    min-height: 82px;
     height: auto !important;
-    padding: 12px 16px !important;
-    gap: 16px !important;
+    padding: 14px 18px !important;
+    gap: 18px !important;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 > .flex.items-center > .flex.items-center.gap-2.min-w-0.shrink-0 {
     position: relative;
-    min-height: 54px;
-    padding-left: 68px;
-    padding-right: 22px;
+    min-height: 58px;
+    padding-left: 76px;
+    padding-right: 26px;
     border-right: 1px solid rgb(226 232 240);
-    max-width: 340px !important;
-    gap: 8px !important;
+    max-width: 350px !important;
+    gap: 9px !important;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 > .flex.items-center > .flex.items-center.gap-2.min-w-0.shrink-0::before {
@@ -123,45 +125,45 @@
     position: absolute;
     left: 0;
     top: 50%;
-    width: 48px;
-    height: 48px;
+    width: 56px;
+    height: 56px;
     transform: translateY(-50%);
     display: grid;
     place-items: center;
-    border-radius: 18px;
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    border-radius: 20px;
+    background: linear-gradient(135deg, #4f46e5 0%, #2563eb 52%, #7c3aed 100%);
     color: white;
-    font-weight: 800;
-    font-size: 17px;
+    font-weight: 900;
+    font-size: 18px;
     letter-spacing: -0.03em;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 18px rgba(79,70,229,0.30);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 12px 26px rgba(37,99,235,0.30);
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 > .flex.items-center > .flex.items-center.gap-2.min-w-0.shrink-0::after {
     content: '';
     position: absolute;
-    left: 39px;
-    bottom: 7px;
-    width: 13px;
-    height: 13px;
+    left: 46px;
+    bottom: 4px;
+    width: 15px;
+    height: 15px;
     border-radius: 999px;
     background: #10b981;
     border: 3px solid white;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 > .flex.items-center > .flex.items-center.gap-2.min-w-0.shrink-0 > span:first-child {
-    font-size: 15px !important;
-    font-weight: 750 !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
     color: #0f172a !important;
+    letter-spacing: -0.02em;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 > .flex.items-center > .flex.items-center.gap-2.min-w-0.shrink-0 > span:nth-child(2) {
-    padding: 6px 12px !important;
+    padding: 7px 13px !important;
     border-radius: 999px !important;
-    background: linear-gradient(180deg, #ede9fe 0%, #ddd6fe 100%) !important;
+    background: #eef2ff !important;
     color: #4f46e5 !important;
-    border: 1px solid rgba(124, 58, 237, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+    border: 1px solid #e0e7ff;
     font-size: 12px !important;
     font-weight: 800 !important;
   }
@@ -169,28 +171,37 @@
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .hidden.md\:flex {
     justify-content: flex-start !important;
     flex: 0 0 auto !important;
-    padding-left: 16px;
+    padding-left: 18px;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .hidden.md\:flex button,
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .hidden.md\:flex [role='button'] {
-    min-height: 46px;
-    border-radius: 16px !important;
-    border-color: rgb(226 232 240) !important;
+    min-height: 54px !important;
+    border-radius: 18px !important;
+    border: 1px solid rgb(226 232 240) !important;
     background: white !important;
     box-shadow: 0 1px 2px rgba(15,23,42,0.04);
-  }
-
-  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto {
+    padding-inline: 20px !important;
+    font-size: 14px !important;
     gap: 12px !important;
   }
 
+  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto {
+    gap: 14px !important;
+  }
+
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > button {
-    min-height: 46px !important;
-    border-radius: 16px !important;
-    padding-inline: 14px !important;
-    font-weight: 700 !important;
-    box-shadow: none !important;
+    min-height: 54px !important;
+    border-radius: 18px !important;
+    padding-inline: 18px !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease !important;
+  }
+
+  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > button:hover,
+  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto .flex.items-center > button:hover {
+    transform: translateY(-1px);
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > button:first-child {
@@ -208,94 +219,91 @@
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > button[title='Client View'] {
     background: #f5f3ff !important;
     border-color: #ddd6fe !important;
-    color: #5b21b6 !important;
+    color: #4f46e5 !important;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > span.inline-flex {
-    min-height: 78px !important;
-    min-width: 164px !important;
-    padding: 12px 22px !important;
-    border-radius: 20px !important;
+    min-height: 54px !important;
+    min-width: 154px !important;
+    padding: 10px 18px !important;
+    border-radius: 18px !important;
     border: 0 !important;
-    background: linear-gradient(180deg, #ecfdf5 0%, #effdf8 100%) !important;
+    background: #ecfdf5 !important;
     color: #047857 !important;
-    font-size: 0 !important;
+    font-size: 14px !important;
     font-weight: 800 !important;
     line-height: 1.15 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 16px !important;
+    gap: 12px !important;
     box-shadow: none !important;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > span.inline-flex svg {
-    width: 26px !important;
-    height: 26px !important;
+    width: 22px !important;
+    height: 22px !important;
     flex-shrink: 0 !important;
     stroke-width: 2.2 !important;
   }
 
-  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > span.inline-flex::after {
-    content: 'Guardado\A hace 18s';
-    white-space: pre-line;
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    text-align: left;
-    line-height: 1.1;
-  }
-
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto .w-px {
-    height: 42px !important;
+    height: 50px !important;
     margin-inline: 2px !important;
     background: rgb(226 232 240) !important;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto .flex.items-center > button {
-    height: 48px !important;
-    border-radius: 16px 0 0 16px !important;
-    padding-inline: 20px !important;
-    background: linear-gradient(135deg, #312e81 0%, #0f172a 100%) !important;
+    height: 56px !important;
+    border-radius: 18px 0 0 18px !important;
+    padding-inline: 24px !important;
+    background: linear-gradient(135deg, #312e81 0%, #020617 100%) !important;
     border-color: #1e1b4b !important;
     color: white !important;
-    font-size: 14px !important;
-    font-weight: 800 !important;
-    box-shadow: 0 12px 24px rgba(15,23,42,0.18) !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    box-shadow: 0 16px 30px rgba(30,27,75,0.22) !important;
   }
 
-  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto .flex.items-center [data-radix-popper-content-wrapper] + button,
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto .flex.items-center button.rounded-l-none {
-    width: 48px !important;
-    height: 48px !important;
-    border-radius: 0 16px 16px 0 !important;
-    background: linear-gradient(135deg, #312e81 0%, #0f172a 100%) !important;
+    width: 54px !important;
+    height: 56px !important;
+    border-radius: 0 18px 18px 0 !important;
+    background: linear-gradient(135deg, #312e81 0%, #020617 100%) !important;
     border-left-color: rgba(255,255,255,0.18) !important;
   }
 
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 button[title='Cancel'],
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 button[title='Close'] {
-    width: 46px !important;
-    height: 46px !important;
-    border-radius: 16px !important;
+    width: 54px !important;
+    height: 54px !important;
+    border-radius: 18px !important;
     border: 1px solid rgb(226 232 240) !important;
     background: white !important;
     color: #64748b !important;
+    transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease !important;
   }
 
-  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto > div:not(.w-px) {
-    border-radius: 16px;
+  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 button[title='Cancel']:hover,
+  .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 button[title='Close']:hover {
+    color: #0f172a !important;
+    background: #f8fafc !important;
+    box-shadow: 0 10px 20px rgba(15,23,42,0.08);
   }
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 > .flex.items-center {
       flex-wrap: wrap;
     }
 
     .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .hidden.md\:flex {
       order: 3;
-      width: 100%;
+      width: auto;
       padding-left: 0;
+    }
+
+    .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 .ml-auto {
+      flex-wrap: wrap;
     }
   }
 }
