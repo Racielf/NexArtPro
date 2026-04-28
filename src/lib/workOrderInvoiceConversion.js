@@ -8,6 +8,15 @@ function getDueDate(days = 30) {
   return dueDate.toISOString().split('T')[0];
 }
 
+function buildInitialPaymentState(total = 0) {
+  return {
+    payments: [],
+    amount_paid: 0,
+    balance_due: total || 0,
+    payment_status: 'unpaid',
+  };
+}
+
 export async function ensureInvoiceFromWorkOrder(workOrder, options = {}) {
   if (!workOrder?.id) {
     throw new Error('Work order is required to create an invoice.');
@@ -23,6 +32,7 @@ export async function ensureInvoiceFromWorkOrder(workOrder, options = {}) {
   }
 
   const invoiceNum = await getNextDocumentNumber('invoice');
+  const total = workOrder.total || 0;
   const invoice = await base44.entities.Invoice.create({
     invoice_number: invoiceNum,
     work_order_id: workOrder.id,
@@ -47,8 +57,8 @@ export async function ensureInvoiceFromWorkOrder(workOrder, options = {}) {
     discount_amount: workOrder.discount_amount || 0,
     tax_rate: workOrder.tax_rate || 0,
     tax_amount: workOrder.tax_amount || 0,
-    total: workOrder.total || 0,
-    amount_paid: 0,
+    total,
+    ...buildInitialPaymentState(total),
     due_date: options.due_date || getDueDate(options.netDays || 30),
     notes: workOrder.notes || '',
     internal_notes: [
@@ -56,6 +66,7 @@ export async function ensureInvoiceFromWorkOrder(workOrder, options = {}) {
       workOrder.work_summary ? `Work summary: ${workOrder.work_summary}` : '',
       workOrder.issues_found ? `Issues found: ${workOrder.issues_found}` : '',
     ].filter(Boolean).join('\n\n'),
+    payment_terms: workOrder.payment_terms || '',
     company_id: workOrder.company_id || 'rc-art',
   });
 
