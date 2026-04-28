@@ -34,6 +34,9 @@ function buildSignatureCertificate({ estimate, pkg, certificate, signerName, sig
     signer_name: signerName || estimate.signature_name || estimate.accepted_by || '',
     signer_email: pkg?.signer_email || estimate.client_email || '',
     signer_client_name: estimate.client_name || '',
+    company_signature_name: estimate.company_signature_name || appConfig.company.name,
+    company_signature_email: estimate.company_signature_email || appConfig.company.email,
+    company_signed_at: estimate.company_signed_at || pkg?.sent_at || '',
     signed_at: signedAt || estimate.signed_at || '',
     signature_method: estimate.signature_method || 'typed_name',
     terms_accepted: true,
@@ -60,28 +63,9 @@ async function getFirstRow(entityName, query) {
   return rows?.[0] || null;
 }
 
-async function sendFinalSignedCopyEmail(estimate) {
-  if (!estimate?.client_email || !estimate?.final_signed_pdf_url) return;
-
-  const body = [
-    `Hi ${estimate.client_name || ''},`,
-    '',
-    `Thank you for signing Estimate #${estimate.estimate_number}.`,
-    '',
-    'Your signed estimate has been saved and locked in NexArtSign.',
-    estimate.signed_pdf_hash ? `Document Hash (SHA-256): ${estimate.signed_pdf_hash}` : '',
-    '',
-    estimate.final_signed_pdf_url ? `Signed document: ${estimate.final_signed_pdf_url}` : '',
-    '',
-    `- ${appConfig.company.name}`,
-  ].filter(Boolean).join('\n');
-
-  await base44.integrations.Core.SendEmail({
-    to: estimate.client_email,
-    subject: `Signed Estimate #${estimate.estimate_number}`,
-    body,
-    from_name: appConfig.appName,
-  });
+async function sendFinalSignedCopyEmail(estimate, pkg) {
+  if (!estimate?.client_email || !estimate?.final_signed_pdf_url || !pkg?.token) return;
+  await base44.functions.invoke('sendSignedEstimateCopy', { token: pkg.token });
 }
 
 export async function finalizeSignedEstimateFromPackage({ packageId, estimateId, signerName }) {
@@ -111,11 +95,26 @@ export async function finalizeSignedEstimateFromPackage({ packageId, estimateId,
     locked_after_signature: true,
     legal_package_locked: true,
     final_signed_at: signedAt,
+    company_signature_name: estimate.company_signature_name || appConfig.company.name,
+    company_signature_email: estimate.company_signature_email || appConfig.company.email,
+    company_signature_role: estimate.company_signature_role || 'authorized_representative',
+    company_signed_at: estimate.company_signed_at || pkg.sent_at || estimate.sent_at || signedAt,
   };
 
   try {
     const pdf = await generateEstimatePdfBase64(
-      { ...estimate, status: 'signed', signature_name: signer, accepted_by: signer, signed_at: signedAt, terms_accepted: true },
+      {
+        ...estimate,
+        status: 'signed',
+        signature_name: signer,
+        accepted_by: signer,
+        signed_at: signedAt,
+        company_signature_name: finalFields.company_signature_name,
+        company_signature_email: finalFields.company_signature_email,
+        company_signature_role: finalFields.company_signature_role,
+        company_signed_at: finalFields.company_signed_at,
+        terms_accepted: true,
+      },
       estimate?.document_config?.options,
       estimate?.document_config?.template
     );
@@ -162,7 +161,7 @@ export async function finalizeSignedEstimateFromPackage({ packageId, estimateId,
 
   const updatedEstimate = { ...estimate, ...finalFields };
 
-  await sendFinalSignedCopyEmail(updatedEstimate).catch(err => {
+  await sendFinalSignedCopyEmail(updatedEstimate, pkg).catch(err => {
     console.warn('[finalizeSignedEstimateFromPackage] signed copy email failed:', err?.message);
   });
 
