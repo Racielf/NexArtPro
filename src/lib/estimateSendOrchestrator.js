@@ -7,6 +7,30 @@ import { logComm, logCommFailed } from '@/lib/commTracking';
 import { logSend, logBelowCostOverride } from '@/lib/estimateAuditLog';
 import { generateEstimatePdfBase64 } from '@/lib/estimatePrint';
 import { recordSuccessfulTransmission, recordFailedTransmission } from '@/lib/estimateTransmission';
+import { getLocalUser, normalizeLocalRole } from '@/lib/roleUtils';
+
+function resolveAuthorizedSender(currentUser = null) {
+  const localUser = getLocalUser();
+  const fallbackRole = normalizeLocalRole(localUser?.role);
+  const fallbackName = localUser?.display_name || localUser?.username || '';
+
+  const senderName = currentUser?.full_name
+    || currentUser?.display_name
+    || currentUser?.name
+    || currentUser?.email
+    || fallbackName
+    || 'Authorized Representative';
+
+  const senderEmail = currentUser?.email || localUser?.username || '';
+  const senderRole = normalizeLocalRole(currentUser?.role) || fallbackRole || 'admin';
+
+  return {
+    full_name: senderName,
+    display_name: senderName,
+    email: senderEmail,
+    role: senderRole,
+  };
+}
 
 export async function validateBeforeSend(estimate, recipientEmail) {
   if (!recipientEmail) return { valid: false, errors: ['Recipient email is required'] };
@@ -43,6 +67,7 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
   if (!recipientEmail) throw new Error('Recipient email is required');
 
   const documentConfig = { template: currentTemplate, options: currentOptions, included_attachment_ids: Array.isArray(includedAttachmentIds) ? includedAttachmentIds : [] };
+  const ts = new Date().toISOString();
   let generatedPdf = null;
   let pdfUrl = null;
   let pdfFilename = null;
@@ -67,6 +92,7 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
 
   let currentUser = null;
   try { currentUser = await base44.auth.me().catch(() => null); } catch {}
+  currentUser = resolveAuthorizedSender(currentUser);
 
   const shareToken = await generatePublicShareToken(estimate);
   const finalLink = `${window.location.origin}/client-estimate?token=${shareToken}`;
@@ -108,23 +134,12 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
     await base44.entities.Estimate.update(estimate.id, {
       signing_package_id: signingPackage?.id || estimate.signing_package_id || '',
       signature_status: signingPackage?.id ? 'sent' : (estimate.signature_status || ''),
-      signature_provider: 'internal',
       document_hash: pdfHash || estimate.document_hash || '',
       document_hash_algorithm: pdfHash ? 'SHA-256' : estimate.document_hash_algorithm,
-      declined_at: null,
-      declined_reason: '',
-      accepted_by: '',
-      signature_name: '',
-      signed_at: null,
-      approved_at: null,
-      final_signed_at: null,
-      final_signed_pdf_url: '',
-      final_signed_pdf_name: '',
-      signed_pdf_hash: '',
-      legal_package_locked: false,
-      locked_after_signature: false,
-      signature_certificate: null,
-      certificate_generated_at: null,
+      company_signature_name: currentUser.full_name || estimate.company_signature_name || '',
+      company_signature_email: currentUser.email || estimate.company_signature_email || '',
+      company_signature_role: currentUser.role || estimate.company_signature_role || '',
+      company_signed_at: estimate.company_signed_at || ts,
     }).catch(() => {});
     const snapshots = await base44.asServiceRole.entities.EstimateSnapshot.filter({ estimate_id: estimate.id }, '-created_date', 1);
     if (snapshots?.length) snapshotId = snapshots[0].id;
