@@ -52,17 +52,30 @@ function fmt(value) {
   try { return new Date(value).toLocaleString(); } catch { return value; }
 }
 
-function signingUrl(pkg) {
-  if (!pkg?.token) return '';
-  return `${window.location.origin}/sign-document?token=${pkg.token}`;
-}
-
 function sortParticipants(rows = []) {
   return [...rows].sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
 }
 
 function getNextSigner(participants = []) {
   return sortParticipants(participants).find(p => ['active', 'pending'].includes(p.status));
+}
+
+function randomTokenPart() {
+  if (crypto?.randomUUID) return crypto.randomUUID().replace(/-/g, '');
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function buildParticipantToken(pkgId) {
+  return `nsp_${pkgId}_${randomTokenPart()}`;
+}
+
+function signingUrl(pkg, participantRows = []) {
+  const nextSigner = getNextSigner(participantRows);
+  const token = participantRows.length > 0 ? nextSigner?.token : pkg?.token;
+  if (!token) return '';
+  return `${window.location.origin}/sign-document?token=${token}`;
 }
 
 function ProgressStepper({ participants }) {
@@ -124,6 +137,7 @@ export default function NexArtSign() {
   const selectedCert = useMemo(() => certificates.find(c => c.signing_package_id === selected?.id), [certificates, selected]);
   const selectedParticipants = useMemo(() => sortParticipants(participants.filter(p => p.signing_package_id === selected?.id)), [participants, selected]);
   const nextSigner = useMemo(() => getNextSigner(selectedParticipants), [selectedParticipants]);
+  const selectedSigningUrl = useMemo(() => signingUrl(selected, selectedParticipants), [selected, selectedParticipants]);
 
   const counts = useMemo(() => packages.reduce((acc, p) => {
     const key = p.status || 'draft';
@@ -158,9 +172,8 @@ export default function NexArtSign() {
     };
   }, [estimates, packageByEstimateId]);
 
-  const copyLink = async (pkg) => {
-    const url = signingUrl(pkg);
-    if (!url) return toast.error('No signing link available');
+  const copyLink = async (url) => {
+    if (!url) return toast.error('No active participant signing link available');
     await navigator.clipboard.writeText(url);
     toast.success('Signing link copied');
   };
@@ -271,7 +284,7 @@ export default function NexArtSign() {
       email: selected.signer_email || '',
       signing_order: 1,
       status: 'active',
-      token: selected.token || '',
+      token: buildParticipantToken(selected.id),
       sent_at: selected.sent_at || now,
       company_id: selected.company_id || 'rc-art',
     });
@@ -286,6 +299,7 @@ export default function NexArtSign() {
         email: user.email,
         signing_order: 2,
         status: 'pending',
+        token: buildParticipantToken(selected.id),
         sent_at: selected.sent_at || now,
         company_id: selected.company_id || 'rc-art',
       });
@@ -467,8 +481,8 @@ export default function NexArtSign() {
             <div className="bg-white border border-slate-200 rounded-xl p-5">
               <h3 className="font-bold text-slate-900 mb-3">Actions</h3>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selected && copyLink(selected)} disabled={!selected}><Copy className="w-4 h-4" />Copy signing link</Button>
-                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selected && window.open(signingUrl(selected), '_blank')} disabled={!selected}><ExternalLink className="w-4 h-4" />Open signing page</Button>
+                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => copyLink(selectedSigningUrl)} disabled={!selectedSigningUrl}><Copy className="w-4 h-4" />Copy signing link</Button>
+                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selectedSigningUrl && window.open(selectedSigningUrl, '_blank')} disabled={!selectedSigningUrl}><ExternalLink className="w-4 h-4" />Open signing page</Button>
                 <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selected && openDocument(selected)} disabled={!selected}><Eye className="w-4 h-4" />Open document</Button>
                 <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selectedEstimate && openEstimateEditor(selectedEstimate.id)} disabled={!selectedEstimate}><PenSquare className="w-4 h-4" />Open estimate record</Button>
                 <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selectedEstimate && openEstimateClientView(selectedEstimate)} disabled={!selectedEstimate}><FileText className="w-4 h-4" />Open client estimate</Button>
