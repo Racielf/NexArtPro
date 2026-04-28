@@ -49,6 +49,7 @@
     "certificate_id": { "type": "string" },
     "certificate_url": { "type": "string" },
     "audit_summary": { "type": "object" },
+    "signature_brand_logo_url": { "type": "string" },
     "external_request_id": { "type": "string" },
     "external_status": { "type": "string" },
     "external_payload": { "type": "object" },
