@@ -89,6 +89,10 @@
     "signature_name": { "type": "string" },
     "signature_image": { "type": "string" },
     "signature_method": { "type": "string" },
+    "company_signature_name": { "type": "string" },
+    "company_signature_email": { "type": "string" },
+    "company_signature_role": { "type": "string" },
+    "company_signed_at": { "type": "string", "format": "date-time" },
     "signing_package_id": { "type": "string" },
     "signature_status": {
       "type": "string",
