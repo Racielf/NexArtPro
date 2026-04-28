@@ -10,6 +10,7 @@ export interface Company {
   phone?: string;
   address?: string;
   logo_url?: string;
+  app_logo_url?: string;
   website?: string;
   created_at?: string;
 }
