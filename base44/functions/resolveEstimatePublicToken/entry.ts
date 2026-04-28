@@ -154,6 +154,7 @@ async function buildResponse(estimate: any, base44: any) {
       legal_package_locked: estimate.legal_package_locked === true,
       converted_work_order_id: estimate.converted_work_order_id || '',
       terms_accepted: estimate.terms_accepted === true,
+      signature_brand_logo_url: signingPackage?.signature_brand_logo_url || '',
     },
   });
 }
