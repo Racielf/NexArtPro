@@ -25,6 +25,71 @@ function getActiveParticipant(participants: any[] = []) {
   return ordered.find(p => p.status === 'active') || ordered.find(p => p.status === 'pending') || null;
 }
 
+function randomTokenPart() {
+  return crypto.randomUUID().replace(/-/g, '');
+}
+
+function buildParticipantToken(pkgId: string, participantId: string) {
+  return `nsp_${pkgId}_${participantId}_${randomTokenPart()}`;
+}
+
+async function ensureParticipantToken(base44: any, pkgId: string, participant: any) {
+  if (!participant) return '';
+  if (participant.token) return participant.token;
+  const token = buildParticipantToken(pkgId, participant.id || 'participant');
+  await base44.asServiceRole.entities.SigningParticipant.update(participant.id, { token }).catch(() => {});
+  participant.token = token;
+  return token;
+}
+
+async function resolveSigningContext(base44: any, token: string) {
+  const participantRows = await base44.asServiceRole.entities.SigningParticipant.filter({ token }).catch(() => []);
+  let matchedParticipant = participantRows?.[0] || null;
+  let pkg = null;
+
+  if (matchedParticipant?.signing_package_id) {
+    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ id: matchedParticipant.signing_package_id }).catch(() => []);
+    pkg = pkgRows?.[0] || null;
+  }
+
+  if (!pkg) {
+    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ token }).catch(() => []);
+    pkg = pkgRows?.[0] || null;
+  }
+
+  if (!pkg) return null;
+
+  const participants = await base44.asServiceRole.entities.SigningParticipant.filter({ signing_package_id: pkg.id }).catch(() => []);
+  const orderedParticipants = sortParticipants(participants);
+  const hasParticipants = orderedParticipants.length > 0;
+
+  let activeParticipant = hasParticipants ? getActiveParticipant(orderedParticipants) : null;
+
+  if (activeParticipant && activeParticipant.status === 'pending') {
+    await base44.asServiceRole.entities.SigningParticipant.update(activeParticipant.id, { status: 'active' }).catch(() => {});
+    activeParticipant.status = 'active';
+  }
+
+  if (activeParticipant) {
+    await ensureParticipantToken(base44, pkg.id, activeParticipant);
+  }
+
+  if (matchedParticipant) {
+    matchedParticipant = orderedParticipants.find(p => p.id === matchedParticipant.id) || matchedParticipant;
+    if (!matchedParticipant.token) {
+      await ensureParticipantToken(base44, pkg.id, matchedParticipant);
+    }
+  }
+
+  return {
+    pkg,
+    participants: orderedParticipants,
+    hasParticipants,
+    matchedParticipant,
+    activeParticipant,
+  };
+}
+
 function buildEstimateSignatureCertificate({
   estimate,
   pkg,
@@ -231,10 +296,10 @@ Deno.serve(async (req) => {
 
     if (!token || !action) return response({ error: 'Missing token or action' }, 400);
 
-    const rows = await base44.asServiceRole.entities.SigningPackage.filter({ token });
-    if (!rows?.length) return response({ error: 'Not found' }, 404);
+    const context = await resolveSigningContext(base44, token);
+    if (!context?.pkg) return response({ error: 'Not found' }, 404);
 
-    const pkg = rows[0];
+    const { pkg, hasParticipants, matchedParticipant, activeParticipant } = context;
     const now = new Date().toISOString();
     const ip = getIp(req);
     const ua = req.headers.get('user-agent') || '';
@@ -248,15 +313,22 @@ Deno.serve(async (req) => {
       return response({ error: 'Package already closed' }, 409);
     }
 
-    const participants = await base44.asServiceRole.entities.SigningParticipant.filter({ signing_package_id: pkg.id }).catch(() => []);
-    const hasParticipants = Array.isArray(participants) && participants.length > 0;
-    const activeParticipant = hasParticipants ? getActiveParticipant(participants) : null;
+    if (hasParticipants) {
+      if (!matchedParticipant) {
+        return response({ error: 'Participant signing token required', code: 'participant_token_required' }, 409);
+      }
+
+      if (!activeParticipant || matchedParticipant.id !== activeParticipant.id || matchedParticipant.status !== 'active') {
+        return response({ error: 'This signing link is not active for the current signer', code: 'participant_not_active' }, 409);
+      }
+    }
 
     if (action === 'decline') {
-      if (hasParticipants && activeParticipant) {
-        await base44.asServiceRole.entities.SigningParticipant.update(activeParticipant.id, {
+      if (hasParticipants && matchedParticipant) {
+        await base44.asServiceRole.entities.SigningParticipant.update(matchedParticipant.id, {
           status: 'declined',
           declined_at: now,
+          declined_reason: declined_reason || '',
           ip_address: ip,
           user_agent: ua,
         });
@@ -273,11 +345,11 @@ Deno.serve(async (req) => {
         document_type: pkg.document_type,
         document_id: pkg.document_id,
         event_type: 'declined',
-        actor_name: signer_name || activeParticipant?.name || pkg.signer_name || '',
-        actor_email: activeParticipant?.email || pkg.signer_email,
+        actor_name: signer_name || matchedParticipant?.name || pkg.signer_name || '',
+        actor_email: matchedParticipant?.email || pkg.signer_email,
         ip_address: ip,
         user_agent: ua,
-        metadata: hasParticipants ? { participant_id: activeParticipant?.id, role: activeParticipant?.role } : {},
+        metadata: hasParticipants ? { participant_id: matchedParticipant?.id, role: matchedParticipant?.role } : {},
         created_at: now,
       });
 
@@ -296,11 +368,9 @@ Deno.serve(async (req) => {
 
     if (action !== 'approve') return response({ error: 'Invalid action' }, 400);
 
-    if (hasParticipants) {
-      if (!activeParticipant) return response({ error: 'No active participant found' }, 409);
-
-      const signer = signer_name || activeParticipant.name || pkg.signer_name || pkg.client_name || '';
-      await base44.asServiceRole.entities.SigningParticipant.update(activeParticipant.id, {
+    if (hasParticipants && matchedParticipant) {
+      const signer = signer_name || matchedParticipant.name || pkg.signer_name || pkg.client_name || '';
+      await base44.asServiceRole.entities.SigningParticipant.update(matchedParticipant.id, {
         status: 'signed',
         signed_at: now,
         name: signer,
@@ -314,10 +384,10 @@ Deno.serve(async (req) => {
         document_id: pkg.document_id,
         event_type: 'signed',
         actor_name: signer,
-        actor_email: activeParticipant.email,
+        actor_email: matchedParticipant.email,
         ip_address: ip,
         user_agent: ua,
-        metadata: { participant_id: activeParticipant.id, role: activeParticipant.role, signing_order: activeParticipant.signing_order || 1 },
+        metadata: { participant_id: matchedParticipant.id, role: matchedParticipant.role, signing_order: matchedParticipant.signing_order || 1 },
         created_at: now,
       });
 
@@ -326,7 +396,11 @@ Deno.serve(async (req) => {
       const next = remaining[0] || null;
 
       if (next) {
-        await base44.asServiceRole.entities.SigningParticipant.update(next.id, { status: 'active' });
+        const nextToken = await ensureParticipantToken(base44, pkg.id, next);
+        await base44.asServiceRole.entities.SigningParticipant.update(next.id, {
+          status: 'active',
+          sent_at: next.sent_at || now,
+        }).catch(() => {});
         await base44.asServiceRole.entities.SigningPackage.update(pkg.id, { status: 'viewed' });
         await base44.asServiceRole.entities.SigningEvent.create({
           signing_package_id: pkg.id,
@@ -344,13 +418,14 @@ Deno.serve(async (req) => {
           next_participant_id: next.id,
           next_participant_name: next.name || '',
           next_participant_email: next.email || '',
+          next_participant_token: nextToken || '',
           document_type: pkg.document_type,
           document_id: pkg.document_id,
           signing_package_id: pkg.id,
         });
       }
 
-      const cert = await closePackageAsSigned(base44, pkg, signer, activeParticipant.email, now, ip, ua);
+      const cert = await closePackageAsSigned(base44, pkg, signer, matchedParticipant.email, now, ip, ua);
       return response({
         success: true,
         status: 'signed',
