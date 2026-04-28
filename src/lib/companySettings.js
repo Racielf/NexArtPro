@@ -16,6 +16,7 @@ const DEFAULTS = {
   address: APP_CONFIG.company.address || '',
   license: '',
   logo_url: '',
+  app_logo_url: APP_CONFIG.app.logo_url || '',
   payment_methods: '',
 };
 
