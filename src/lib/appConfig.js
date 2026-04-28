@@ -3,12 +3,18 @@
  * Single source of truth for app and company branding.
  * Used by all components to access app/company metadata.
  * 
+ * PHASE 1: App identity is separated from document identity.
  * PHASE 2: Preparation only (read-only, no backend changes)
  * PHASE 4: Will become dynamic (read from entity/backend)
  */
 
 export const APP_CONFIG = {
   // App branding
+  app: {
+    name: "NexArt Pro",
+    description: "Professional Field Service Management",
+    logo_url: "",
+  },
   appName: "NexArt Pro",
   appDescription: "Professional Field Service Management",
   
@@ -33,7 +39,7 @@ export const APP_CONFIG = {
 };
 
 // Convenience exports for common usage
-export const appName = APP_CONFIG.appName;
+export const appName = APP_CONFIG.app.name;
 export const companyName = APP_CONFIG.company.name;           // Legal name
 export const companyDisplayName = APP_CONFIG.company.displayName; // UI name
 export const companyId = APP_CONFIG.company.id;
