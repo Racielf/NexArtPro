@@ -1,5 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { APP_CONFIG } from '@/lib/appConfig';
+import { loadCompanySettings } from '@/lib/companySettings';
 
 function randomTokenPart() {
   if (crypto?.randomUUID) return crypto.randomUUID().replace(/-/g, '');
@@ -8,18 +9,27 @@ function randomTokenPart() {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function resolveSignatureBrandLogoUrl(currentUser = null) {
+async function resolveSignatureBrandLogoUrl(currentUser = null) {
+  try {
+    const settings = await loadCompanySettings();
+    if (settings?.app_logo_url) return settings.app_logo_url;
+    if (settings?.logo_url) return settings.logo_url;
+  } catch (err) {
+    console.warn('[nexArtSign] company settings logo lookup failed:', err?.message);
+  }
+
   const companySettings = currentUser?.company_settings;
   if (companySettings && typeof companySettings === 'object') {
-    return companySettings.app_logo_url || APP_CONFIG.app.logo_url || '';
+    return companySettings.app_logo_url || companySettings.logo_url || APP_CONFIG.app.logo_url || '';
   }
+
   return APP_CONFIG.app.logo_url || '';
 }
 
 export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', pdfName = '', pdfHash = '', currentUser = null }) {
   if (!estimate?.id) throw new Error('Estimate is required');
 
-  const signatureBrandLogoUrl = resolveSignatureBrandLogoUrl(currentUser);
+  const signatureBrandLogoUrl = await resolveSignatureBrandLogoUrl(currentUser);
 
   const existing = await base44.entities.SigningPackage.filter({
     document_type: 'estimate',
@@ -32,7 +42,7 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     if (pdfUrl && !reusable.source_pdf_url) patch.source_pdf_url = pdfUrl;
     if (pdfName && !reusable.source_pdf_name) patch.source_pdf_name = pdfName;
     if (pdfHash && !reusable.source_pdf_hash) patch.source_pdf_hash = pdfHash;
-    if (signatureBrandLogoUrl && !reusable.signature_brand_logo_url) patch.signature_brand_logo_url = signatureBrandLogoUrl;
+    if (signatureBrandLogoUrl && reusable.signature_brand_logo_url !== signatureBrandLogoUrl) patch.signature_brand_logo_url = signatureBrandLogoUrl;
     if (Object.keys(patch).length > 0) {
       await base44.entities.SigningPackage.update(reusable.id, patch).catch(() => {});
       return { ...reusable, ...patch };
