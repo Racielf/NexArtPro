@@ -92,14 +92,91 @@ function buildDiagnostics(business = {}) {
   return diagnostics;
 }
 
+function buildSuggestedActions(business = {}) {
+  const actions = [];
+
+  if ((business.overdueInvoices || 0) > 0) {
+    actions.push({
+      priority: 'cash_flow',
+      label: 'Review overdue invoices',
+      reason: `${business.overdueInvoices} invoice(s) are overdue.`,
+      target: '/invoices',
+      requiresConfirmation: true,
+      safeMode: 'suggest_only',
+    });
+  } else if ((business.unpaidBalance || 0) > 0) {
+    actions.push({
+      priority: 'cash_flow',
+      label: 'Review unpaid balances',
+      reason: `$${business.unpaidBalance.toLocaleString()} is unpaid.`,
+      target: '/invoices',
+      requiresConfirmation: false,
+      safeMode: 'navigate_only',
+    });
+  }
+
+  if ((business.unassignedWorkOrders || 0) > 0) {
+    actions.push({
+      priority: 'execution',
+      label: 'Review unassigned work orders',
+      reason: `${business.unassignedWorkOrders} open work order(s) appear unassigned.`,
+      target: '/work-orders',
+      requiresConfirmation: false,
+      safeMode: 'navigate_only',
+    });
+  }
+
+  if ((business.approvedUnconverted || 0) > 0) {
+    actions.push({
+      priority: 'sales',
+      label: 'Review approved estimates for conversion',
+      reason: `${business.approvedUnconverted} approved/signed estimate(s) may need work order conversion.`,
+      target: '/estimates',
+      requiresConfirmation: true,
+      safeMode: 'suggest_only',
+    });
+  }
+
+  if ((business.staleEstimates || 0) > 0) {
+    actions.push({
+      priority: 'sales',
+      label: 'Review stale estimate follow-ups',
+      reason: `${business.staleEstimates} sent/viewed estimate(s) are older than 7 days.`,
+      target: '/estimates',
+      requiresConfirmation: false,
+      safeMode: 'navigate_only',
+    });
+  }
+
+  if (!actions.length) {
+    actions.push({
+      priority: 'monitoring',
+      label: 'Continue monitoring',
+      reason: 'No immediate action is recommended by the read-only checks.',
+      target: null,
+      requiresConfirmation: false,
+      safeMode: 'read_only',
+    });
+  }
+
+  return actions;
+}
+
 function severityClasses(severity) {
   if (severity === 'high') return 'border-red-200 bg-red-50 text-red-700';
   if (severity === 'medium') return 'border-amber-200 bg-amber-50 text-amber-700';
   return 'border-slate-200 bg-slate-50 text-slate-700';
 }
 
+function priorityClasses(priority) {
+  if (priority === 'cash_flow') return 'border-red-200 bg-red-50 text-red-700';
+  if (priority === 'execution') return 'border-blue-200 bg-blue-50 text-blue-700';
+  if (priority === 'sales') return 'border-violet-200 bg-violet-50 text-violet-700';
+  return 'border-slate-200 bg-slate-50 text-slate-700';
+}
+
 export default function NexArtAgentPanel() {
-  const [state, setState] = React.useState({ loading: true, data: null, business: null, diagnostics: [], error: '' });
+  const [state, setState] = React.useState({ loading: true, data: null, business: null, diagnostics: [], actions: [], error: '' });
 
   React.useEffect(() => {
     let mounted = true;
@@ -115,10 +192,11 @@ export default function NexArtAgentPanel() {
 
         const business = summarizeBusinessData({ invoices, estimates, workOrders });
         const diagnostics = buildDiagnostics(business);
+        const actions = buildSuggestedActions(business);
 
-        if (mounted) setState({ loading: false, data: agentData, business, diagnostics, error: '' });
+        if (mounted) setState({ loading: false, data: agentData, business, diagnostics, actions, error: '' });
       } catch (err) {
-        if (mounted) setState({ loading: false, data: null, business: null, diagnostics: [], error: err?.message || 'Agent unavailable' });
+        if (mounted) setState({ loading: false, data: null, business: null, diagnostics: [], actions: [], error: err?.message || 'Agent unavailable' });
       }
     }
 
@@ -192,6 +270,29 @@ export default function NexArtAgentPanel() {
           ))}
         </div>
         <p className="mt-3 text-xs text-slate-400">Read-only mode: no records were changed by NexArt Agent.</p>
+      </div>
+
+      <div className="p-4 border rounded-xl bg-white">
+        <h3 className="font-semibold mb-3">Suggested Actions</h3>
+        <div className="space-y-2">
+          {state.actions.map((action, index) => (
+            <div key={`${action.priority}-${index}`} className={`rounded-lg border p-3 ${priorityClasses(action.priority)}`}>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-semibold">{action.label}</p>
+                  <p className="mt-1 text-sm">{action.reason}</p>
+                  <p className="mt-1 text-xs font-medium">Mode: {action.safeMode}{action.requiresConfirmation ? ' · requires confirmation before execution' : ''}</p>
+                </div>
+                {action.target ? (
+                  <a className="rounded-lg border border-current px-3 py-1 text-sm font-semibold hover:bg-white/70" href={action.target}>
+                    Open
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-slate-400">Suggested actions are navigation/review only. NexArt Agent does not execute changes in this phase.</p>
       </div>
     </div>
   );
