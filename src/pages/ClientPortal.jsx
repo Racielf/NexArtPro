@@ -7,6 +7,7 @@ import ClientPortalHeader from '@/components/client-portal/ClientPortalHeader';
 import DocumentCard from '@/components/client-portal/DocumentCard';
 import InvoiceViewModal from '@/components/client-portal/InvoiceViewModal';
 import PaymentHistoryPanel from '@/components/client-portal/PaymentHistoryPanel';
+import { toast } from 'sonner';
 
 function normalizePhone(raw) {
   return (raw || '').replace(/\D/g, '').slice(-10);
@@ -100,7 +101,11 @@ export default function ClientPortal() {
 
   const handleDocClick = (type, doc) => {
     if (type === 'estimate') {
-      navigate(`/client-estimate?id=${doc.id}`);
+      if (!doc.public_share_token) {
+        toast.error('This estimate does not have an active public link yet.');
+        return;
+      }
+      navigate(`/client-estimate?token=${doc.public_share_token}`);
     } else if (type === 'invoice') {
       setSelectedInvoice(doc);
     }
