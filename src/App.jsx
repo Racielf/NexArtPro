@@ -52,6 +52,7 @@ import ClientPortal from './pages/ClientPortal';
 import RecoveryCenter from './pages/RecoveryCenter';
 import SecurityDashboardWithBrain from './pages/SecurityDashboardWithBrain';
 import VerifyDocument from './pages/VerifyDocument';
+import NexArtAgent from './pages/NexArtAgent';
 
 import FieldWorkOrders from './pages/FieldWorkOrders';
 import FieldWorkOrderDetail from './pages/FieldWorkOrderDetail';
@@ -140,6 +141,7 @@ const AppRoutes = () => (
       <Route path="/recovery-center" element={<RecoveryCenter />} />
       <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
       <Route path="/nexartsign" element={<NexArtSign />} />
+      <Route path="/agent" element={<NexArtAgent />} />
     </Route>
 
     <Route path="/client-estimate" element={<ClientEstimateView />} />
