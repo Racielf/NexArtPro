@@ -251,8 +251,8 @@ export default function CompanyPanel() {
 
         {renderLogoUploader({
           field: 'app_logo_url',
-          label: 'App Logo',
-          description: 'Used in the app interface. Does not replace the document header logo.',
+          label: 'App / Signing Credits Logo',
+          description: 'Used in the app interface and in the signature credits shown at the end of the signing flow and shared signing document. It does not replace the main document header logo.',
           fileRef: appLogoRef,
           previewUrl: previewUrls.app_logo_url,
           error: logoErrors.app_logo_url,
