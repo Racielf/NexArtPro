@@ -10,12 +10,13 @@ function randomTokenPart() {
 }
 
 async function resolveSigningBranding(currentUser = null) {
-  let settings = null;
+  let settings = {};
 
   try {
-    settings = await loadCompanySettings();
+    settings = await loadCompanySettings() || {};
   } catch (err) {
-    console.warn('[nexArtSign] company settings branding lookup failed:', err?.message);
+    console.warn('[nexArtSign] company settings branding lookup failed, using fallback:', err?.message);
+    settings = {};
   }
 
   const companySettings = currentUser?.company_settings && typeof currentUser.company_settings === 'object'
@@ -23,19 +24,19 @@ async function resolveSigningBranding(currentUser = null) {
     : {};
 
   const companyLogoUrl = settings?.logo_url
-    || companySettings.logo_url
-    || APP_CONFIG.company.logo_url
+    || companySettings?.logo_url
+    || APP_CONFIG?.company?.logo_url
     || '';
 
   const signatureBrandLogoUrl = settings?.app_logo_url
-    || companySettings.app_logo_url
+    || companySettings?.app_logo_url
     || companyLogoUrl
-    || APP_CONFIG.app.logo_url
+    || APP_CONFIG?.app?.logo_url
     || '';
 
   const companyName = settings?.name
-    || companySettings.name
-    || APP_CONFIG.company.name
+    || companySettings?.name
+    || APP_CONFIG?.company?.name
     || 'R.C Art Construction LLC';
 
   return {
@@ -62,8 +63,6 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     if (pdfName && !reusable.source_pdf_name) patch.source_pdf_name = pdfName;
     if (pdfHash && !reusable.source_pdf_hash) patch.source_pdf_hash = pdfHash;
     if (signingBranding.signatureBrandLogoUrl && reusable.signature_brand_logo_url !== signingBranding.signatureBrandLogoUrl) patch.signature_brand_logo_url = signingBranding.signatureBrandLogoUrl;
-    if (signingBranding.companyLogoUrl && reusable.company_logo_url !== signingBranding.companyLogoUrl) patch.company_logo_url = signingBranding.companyLogoUrl;
-    if (signingBranding.companyName && reusable.company_name !== signingBranding.companyName) patch.company_name = signingBranding.companyName;
     if (Object.keys(patch).length > 0) {
       await base44.entities.SigningPackage.update(reusable.id, patch).catch(() => {});
       return { ...reusable, ...patch };
@@ -97,9 +96,11 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     source_pdf_name: pdfName || '',
     source_pdf_hash: pdfHash || '',
     hash_algorithm: 'SHA-256',
-    company_logo_url: signingBranding.companyLogoUrl,
-    company_name: signingBranding.companyName,
     signature_brand_logo_url: signingBranding.signatureBrandLogoUrl,
+    audit_summary: {
+      company_logo_url: signingBranding.companyLogoUrl,
+      company_name: signingBranding.companyName,
+    },
     created_by: currentUser?.email || 'system',
     company_id: 'rc-art',
   });
@@ -117,4 +118,4 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
   }).catch(() => {});
 
   return pkg;
-}
+} 
