@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, AlertTriangle, FileSignature, ExternalLink, ShieldCheck, FileCheck, Clock3, LockKeyhole, UserCheck } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, AlertTriangle, FileSignature, ExternalLink, ShieldCheck, FileCheck, Clock3, LockKeyhole, UserCheck, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import SignatureBrandCredit from '@/components/signing/SignatureBrandCredit';
 
@@ -18,6 +18,7 @@ export default function SignDocumentView() {
   const [declineReason, setDeclineReason] = useState('');
   const [certificateId, setCertificateId] = useState('');
   const [certificateNumber, setCertificateNumber] = useState('');
+  const [deliveryStatus, setDeliveryStatus] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -39,6 +40,20 @@ export default function SignDocumentView() {
   }, [token]);
 
   const isComplete = pkg?.status === 'signed' || pkg?.status === 'declined' || pkg?.status === 'expired' || pkg?.status === 'voided';
+
+  const deliverSignedCopy = async () => {
+    if (!token) return;
+    setDeliveryStatus('sending');
+    try {
+      const res = await base44.functions.invoke('sendSignedEstimateCopy', { token });
+      if (res?.data?.error) throw new Error(res.data.error);
+      setDeliveryStatus('sent');
+    } catch (err) {
+      console.warn('[SignDocumentView] signed copy delivery failed:', err?.message);
+      setDeliveryStatus('failed');
+      toast.error('Signed successfully, but email delivery needs review');
+    }
+  };
 
   const handleApprove = async () => {
     if (!name.trim() || !accepted || !identityConfirmed) {
@@ -72,6 +87,10 @@ export default function SignDocumentView() {
         final_pdf_url: result.final_pdf_url || p?.final_pdf_url || p?.source_pdf_url || '',
         final_pdf_name: result.final_pdf_name || p?.final_pdf_name || p?.source_pdf_name || '',
       }));
+
+      if (nextStatus === 'signed') {
+        await deliverSignedCopy();
+      }
     } catch (err) {
       console.warn('[SignDocumentView] approve failed:', err?.message);
       toast.error('Error approving document');
@@ -199,8 +218,11 @@ export default function SignDocumentView() {
               <div className="text-green-700 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2">
                 <CheckCircle className="w-5 h-5" /> Signed successfully
               </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
-                The signed file and verification certificate are now part of the NexArtSign record for this document.
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600 space-y-2">
+                <p>The signed file and verification certificate are now part of the NexArtSign record for this document.</p>
+                {deliveryStatus === 'sending' && <p className="text-slate-500 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Sending signed copies...</p>}
+                {deliveryStatus === 'sent' && <p className="text-green-700 flex items-center gap-2"><MailCheck className="w-4 h-4" /> Signed copies were sent to the client and company archive.</p>}
+                {deliveryStatus === 'failed' && <p className="text-amber-700 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Signed copy email delivery needs review.</p>}
               </div>
               <Button variant="outline" onClick={openSignedPdf} className="w-full gap-2" disabled={!pkg?.final_pdf_url && !pkg?.source_pdf_url}>
                 <ExternalLink className="w-4 h-4" /> Open Signed PDF
