@@ -29,11 +29,7 @@ import useCompanyConfig from '@/hooks/useCompanyConfig';
 import { logout } from '@/lib/sessionManager';
 
 const navGroups = [
-  {
-    items: [
-      { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    ],
-  },
+  { items: [{ path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
   {
     label: 'Operations',
     items: [
@@ -80,35 +76,24 @@ export default function Sidebar() {
   const { user } = useAuth();
   const canAccessAdmin = user?.role === 'admin' || isAdmin();
   const visibleNavGroups = canAccessAdmin ? [...navGroups, adminNavGroup] : navGroups;
-  const appLogoUrl = cc.app_logo_url || appConfig.app.logo_url || '';
+  const sidebarLogoUrl = cc.logo_url || appConfig.company.logo_url || '';
 
   return (
-    <div
-      className="w-[224px] flex-shrink-0 h-screen flex flex-col"
-      style={{ background: '#1a2233', borderRight: '1px solid rgba(255,255,255,0.06)' }}
-    >
+    <div className="w-[224px] flex-shrink-0 h-screen flex flex-col" style={{ background: '#1a2233', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="px-4 pt-5 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-3">
-          {appLogoUrl ? (
-            <div className="w-8 h-8 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.08)' }}>
-              <img src={appLogoUrl} alt="App logo" className="max-w-full max-h-full object-contain" />
+          {sidebarLogoUrl ? (
+            <div className="w-8 h-8 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <img src={sidebarLogoUrl} alt="Company logo" className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: '#2563EB' }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#2563EB' }}>
               <Wrench className="w-4 h-4 text-white" />
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-[13px] leading-tight truncate"
-              style={{ color: '#f1f5f9' }}>
-              {cc.name || appConfig.appName}
-            </p>
-            <p className="text-[11px] leading-tight mt-0.5 truncate"
-              style={{ color: 'rgba(148,163,184,0.7)' }}>
-              {cc.displayName || appConfig.company.displayName}
-            </p>
+            <p className="font-semibold text-[13px] leading-tight truncate" style={{ color: '#f1f5f9' }}>{cc.name || appConfig.appName}</p>
+            <p className="text-[11px] leading-tight mt-0.5 truncate" style={{ color: 'rgba(148,163,184,0.7)' }}>{cc.displayName || appConfig.company.displayName}</p>
           </div>
         </div>
       </div>
@@ -116,38 +101,19 @@ export default function Sidebar() {
       <nav className="flex-1 px-2.5 py-3 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
         {visibleNavGroups.map((group, gi) => (
           <div key={gi} className={gi > 0 ? 'mt-5' : ''}>
-            {group.label && (
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] px-3 mb-2"
-                style={{ color: 'rgba(100,116,139,0.8)' }}>
-                {group.label}
-              </p>
-            )}
+            {group.label && <p className="text-[10px] font-bold uppercase tracking-[0.12em] px-3 mb-2" style={{ color: 'rgba(100,116,139,0.8)' }}>{group.label}</p>}
             <div className="space-y-0.5">
-              {group.items.map((item) => {
+              {group.items.map(item => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    style={isActive ? {
-                      background: 'rgba(37,99,235,0.18)',
-                      color: '#93c5fd',
-                      borderLeft: '2px solid #3b82f6',
-                      paddingLeft: '10px',
-                    } : {
-                      color: 'rgba(148,163,184,0.85)',
-                      borderLeft: '2px solid transparent',
-                      paddingLeft: '10px',
-                    }}
-                    className={`flex items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
-                      isActive ? '' : 'hover:bg-white/[0.05] hover:text-slate-200'
-                    }`}
+                    style={isActive ? { background: 'rgba(37,99,235,0.18)', color: '#93c5fd', borderLeft: '2px solid #3b82f6', paddingLeft: '10px' } : { color: 'rgba(148,163,184,0.85)', borderLeft: '2px solid transparent', paddingLeft: '10px' }}
+                    className={`flex items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${isActive ? '' : 'hover:bg-white/[0.05] hover:text-slate-200'}`}
                   >
-                    <Icon
-                      className="w-[15px] h-[15px] flex-shrink-0"
-                      style={{ color: isActive ? '#60a5fa' : 'rgba(100,116,139,0.9)', strokeWidth: 1.75 }}
-                    />
+                    <Icon className="w-[15px] h-[15px] flex-shrink-0" style={{ color: isActive ? '#60a5fa' : 'rgba(100,116,139,0.9)', strokeWidth: 1.75 }} />
                     <span className="truncate">{item.label}</span>
                   </Link>
                 );
@@ -157,28 +123,13 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="flex-shrink-0 px-2.5 py-3 space-y-0.5"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex-shrink-0 px-2.5 py-3 space-y-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <Link
           to="/settings"
-          style={location.pathname === '/settings' ? {
-            background: 'rgba(37,99,235,0.18)',
-            color: '#93c5fd',
-            borderLeft: '2px solid #3b82f6',
-            paddingLeft: '10px',
-          } : {
-            color: 'rgba(148,163,184,0.85)',
-            borderLeft: '2px solid transparent',
-            paddingLeft: '10px',
-          }}
-          className={`flex items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
-            location.pathname === '/settings' ? '' : 'hover:bg-white/[0.05] hover:text-slate-200'
-          }`}
+          style={location.pathname === '/settings' ? { background: 'rgba(37,99,235,0.18)', color: '#93c5fd', borderLeft: '2px solid #3b82f6', paddingLeft: '10px' } : { color: 'rgba(148,163,184,0.85)', borderLeft: '2px solid transparent', paddingLeft: '10px' }}
+          className={`flex items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${location.pathname === '/settings' ? '' : 'hover:bg-white/[0.05] hover:text-slate-200'}`}
         >
-          <Settings
-            className="w-[15px] h-[15px] flex-shrink-0"
-            style={{ color: location.pathname === '/settings' ? '#60a5fa' : 'rgba(100,116,139,0.9)', strokeWidth: 1.75 }}
-          />
+          <Settings className="w-[15px] h-[15px] flex-shrink-0" style={{ color: location.pathname === '/settings' ? '#60a5fa' : 'rgba(100,116,139,0.9)', strokeWidth: 1.75 }} />
           <span>Settings</span>
         </Link>
         <button
