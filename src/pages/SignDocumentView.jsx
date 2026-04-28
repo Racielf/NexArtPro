@@ -3,10 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, AlertTriangle, FileSignature, ExternalLink, ShieldCheck, FileCheck, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  finalizeDeclinedEstimateFromPackage,
-  finalizeSignedEstimateFromPackage,
-} from '@/lib/nexArtSignCompletion';
 
 export default function SignDocumentView() {
   const params = new URLSearchParams(window.location.search);
@@ -18,7 +14,6 @@ export default function SignDocumentView() {
   const [name, setName] = useState('');
   const [accepted, setAccepted] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
-  const [completion, setCompletion] = useState(null);
   const [certificateId, setCertificateId] = useState('');
   const [certificateNumber, setCertificateNumber] = useState('');
 
@@ -60,22 +55,19 @@ export default function SignDocumentView() {
       if (result.certificate_id) setCertificateId(result.certificate_id);
       if (result.certificate_number) setCertificateNumber(result.certificate_number);
 
-      if (nextStatus === 'signed' && result.document_type === 'estimate' && result.document_id) {
-        const finalization = await finalizeSignedEstimateFromPackage({
-          packageId: result.signing_package_id,
-          estimateId: result.document_id,
-          signerName: name.trim(),
-        });
-        setCompletion(finalization || null);
-      }
-
       if (nextStatus === 'pending_next_signer') {
         toast.success('Your signature was saved. The next signer has been activated.');
       } else {
         toast.success('Document signed successfully');
       }
 
-      setPkg(p => ({ ...p, status: nextStatus === 'pending_next_signer' ? 'viewed' : 'signed', signer_name: name.trim() }));
+      setPkg(p => ({
+        ...p,
+        status: nextStatus === 'pending_next_signer' ? 'viewed' : 'signed',
+        signer_name: name.trim(),
+        final_pdf_url: result.final_pdf_url || p?.final_pdf_url || p?.source_pdf_url || '',
+        final_pdf_name: result.final_pdf_name || p?.final_pdf_name || p?.source_pdf_name || '',
+      }));
     } catch (err) {
       console.warn('[SignDocumentView] approve failed:', err?.message);
       toast.error('Error approving document');
@@ -87,21 +79,11 @@ export default function SignDocumentView() {
   const handleDecline = async () => {
     setActing(true);
     try {
-      const res = await base44.functions.invoke('completeSigningPackage', {
+      await base44.functions.invoke('completeSigningPackage', {
         token,
         action: 'decline',
         declined_reason: declineReason.trim(),
       });
-      const result = res?.data || {};
-
-      if (result.document_type === 'estimate' && result.document_id) {
-        await finalizeDeclinedEstimateFromPackage({
-          packageId: result.signing_package_id,
-          estimateId: result.document_id,
-        }).catch(err => {
-          console.warn('[SignDocumentView] decline finalization failed:', err?.message);
-        });
-      }
 
       toast.success('Document declined');
       setPkg(p => ({ ...p, status: 'declined' }));
@@ -113,14 +95,8 @@ export default function SignDocumentView() {
     }
   };
 
-  const openSignedEstimate = () => {
-    const publicToken = completion?.estimate?.public_share_token;
-    if (!publicToken) return;
-    window.open(`/client-estimate?token=${publicToken}`, '_blank', 'noopener,noreferrer');
-  };
-
   const openSignedPdf = () => {
-    const url = completion?.estimate?.final_signed_pdf_url || pkg?.final_pdf_url || pkg?.source_pdf_url;
+    const url = pkg?.final_pdf_url || pkg?.source_pdf_url;
     if (!url) return;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -175,19 +151,11 @@ export default function SignDocumentView() {
               <CheckCircle className="w-4 h-4" /> Signed successfully
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600">
-              The signed file and verification certificate are now part of the NexArtSign record for this estimate.
+              The signed file and verification certificate are now part of the NexArtSign record for this document.
             </div>
-            {completion?.estimate?.converted_work_order_id && (
-              <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
-                This estimate was finalized and converted to a work order automatically.
-              </div>
-            )}
             <div className="flex gap-2">
-              <Button variant="outline" onClick={openSignedPdf} className="flex-1 gap-2" disabled={!completion?.estimate?.final_signed_pdf_url && !pkg?.final_pdf_url && !pkg?.source_pdf_url}>
+              <Button variant="outline" onClick={openSignedPdf} className="flex-1 gap-2" disabled={!pkg?.final_pdf_url && !pkg?.source_pdf_url}>
                 <ExternalLink className="w-4 h-4" /> Open PDF
-              </Button>
-              <Button variant="outline" onClick={openSignedEstimate} className="flex-1 gap-2" disabled={!completion?.estimate?.public_share_token}>
-                <ExternalLink className="w-4 h-4" /> Open Signed Estimate
               </Button>
             </div>
             <Button variant="outline" onClick={openCertificateVerification} className="w-full gap-2" disabled={!certificateId && !certificateNumber}>
