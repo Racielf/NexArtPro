@@ -107,6 +107,9 @@ export default function NexArtSign() {
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [creatingEstimateId, setCreatingEstimateId] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
+  const [search, setSearch] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -117,21 +120,39 @@ export default function NexArtSign() {
       base44.entities.SigningParticipant.list('signing_order').catch(() => []),
       base44.entities.Estimate.list('-created_date').catch(() => []),
     ]);
-    const estimatePackages = (pkgRows || []).filter(p => p.document_type === 'estimate');
+    const allPackages = pkgRows || [];
     const liveEstimates = (estimateRows || []).filter(e => e?.deleted_at == null);
 
-    setPackages(estimatePackages);
+    setPackages(allPackages);
     setEvents(eventRows || []);
     setCertificates(certRows || []);
     setParticipants(participantRows || []);
     setEstimates(liveEstimates);
-    if (!selectedId && estimatePackages?.[0]?.id) setSelectedId(estimatePackages[0].id);
+    if (!selectedId && allPackages?.[0]?.id) setSelectedId(allPackages[0].id);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
-  const selected = useMemo(() => packages.find(p => p.id === selectedId) || packages[0] || null, [packages, selectedId]);
+  const filteredPackages = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return packages.filter(pkg => {
+      const matchesStatus = statusFilter === 'all' || (pkg.status || 'draft') === statusFilter;
+      const matchesType = documentTypeFilter === 'all' || (pkg.document_type || 'unknown') === documentTypeFilter;
+      const haystack = [
+        pkg.document_title,
+        pkg.document_number,
+        pkg.document_type,
+        pkg.signer_name,
+        pkg.signer_email,
+        pkg.client_name,
+      ].join(' ').toLowerCase();
+      const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
+      return matchesStatus && matchesType && matchesSearch;
+    });
+  }, [packages, statusFilter, documentTypeFilter, search]);
+
+  const selected = useMemo(() => filteredPackages.find(p => p.id === selectedId) || packages.find(p => p.id === selectedId) || filteredPackages[0] || packages[0] || null, [filteredPackages, packages, selectedId]);
   const selectedEstimate = useMemo(() => estimates.find(e => e.id === selected?.document_id) || null, [estimates, selected]);
   const selectedEvents = useMemo(() => events.filter(e => e.signing_package_id === selected?.id).sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)), [events, selected]);
   const selectedCert = useMemo(() => certificates.find(c => c.signing_package_id === selected?.id), [certificates, selected]);
@@ -144,6 +165,22 @@ export default function NexArtSign() {
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {}), [packages]);
+
+  const documentTypeCounts = useMemo(() => packages.reduce((acc, pkg) => {
+    const key = pkg.document_type || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {}), [packages]);
+
+  const certificateCoverage = useMemo(() => {
+    const signedPackages = packages.filter(pkg => pkg.status === 'signed');
+    const withCertificate = signedPackages.filter(pkg => pkg.certificate_id || certificates.some(cert => cert.signing_package_id === pkg.id));
+    return {
+      signed: signedPackages.length,
+      withCertificate: withCertificate.length,
+      missingCertificate: signedPackages.length - withCertificate.length,
+    };
+  }, [packages, certificates]);
 
   const packageByEstimateId = useMemo(() => {
     const map = new Map();
@@ -237,7 +274,12 @@ export default function NexArtSign() {
 
   const downloadCertificate = () => {
     if (!selectedCert) return toast.error('No certificate available yet');
-    const blob = new Blob([JSON.stringify(selectedCert, null, 2)], { type: 'application/json' });
+    const certificateBundle = {
+      certificate: selectedCert,
+      package: selected || null,
+      verification_url: `${window.location.origin}/verify-document?certificate=${encodeURIComponent(selectedCert.id || selectedCert.certificate_number || '')}`,
+    };
+    const blob = new Blob([JSON.stringify(certificateBundle, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -274,6 +316,7 @@ export default function NexArtSign() {
     let user = null;
     try { user = await base44.auth.me().catch(() => null); } catch {}
     const now = new Date().toISOString();
+    const companyId = selected.company_id || user?.company_id || '';
 
     await base44.entities.SigningParticipant.create({
       signing_package_id: selected.id,
@@ -286,7 +329,7 @@ export default function NexArtSign() {
       status: 'active',
       token: buildParticipantToken(selected.id),
       sent_at: selected.sent_at || now,
-      company_id: selected.company_id || 'rc-art',
+      ...(companyId ? { company_id: companyId } : {}),
     });
 
     if (user?.email) {
@@ -301,7 +344,7 @@ export default function NexArtSign() {
         status: 'pending',
         token: buildParticipantToken(selected.id),
         sent_at: selected.sent_at || now,
-        company_id: selected.company_id || 'rc-art',
+        ...(companyId ? { company_id: companyId } : {}),
       });
     }
 
@@ -330,10 +373,10 @@ export default function NexArtSign() {
       <PageHeader eyebrow="NEXARTSIGN" title="NexArtSign" subtitle="Signing packages, participants, timeline, certificates, and future provider settings" actionLabel="Refresh" onAction={load} />
       <PageShell>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="bg-white border border-slate-200 rounded-xl p-4"><p className="text-xs text-slate-500 font-semibold uppercase">Estimate Packages</p><p className="text-2xl font-bold mt-2">{packages.length}</p></div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4"><p className="text-xs text-slate-500 font-semibold uppercase">Signing Packages</p><p className="text-2xl font-bold mt-2">{packages.length}</p></div>
           <div className="bg-white border border-slate-200 rounded-xl p-4"><p className="text-xs text-slate-500 font-semibold uppercase">Waiting</p><p className="text-2xl font-bold mt-2">{(counts.sent || 0) + (counts.viewed || 0) + (counts.draft || 0)}</p></div>
           <div className="bg-white border border-slate-200 rounded-xl p-4"><p className="text-xs text-slate-500 font-semibold uppercase">Signed</p><p className="text-2xl font-bold mt-2">{counts.signed || 0}</p></div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4"><p className="text-xs text-slate-500 font-semibold uppercase">Missing Package</p><p className="text-2xl font-bold mt-2">{coverage.missingPackages}</p></div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4"><p className="text-xs text-slate-500 font-semibold uppercase">Missing Certificate</p><p className="text-2xl font-bold mt-2">{certificateCoverage.missingCertificate}</p></div>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -392,15 +435,58 @@ export default function NexArtSign() {
           )}
         </div>
 
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-slate-900">Signing hub</h3>
+              <p className="text-sm text-slate-500 mt-1">Packages across estimates and any other supported document types, with quick filtering for operational follow-up.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto lg:min-w-[720px]">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search signer, client, title, document #"
+                className="h-9 rounded-lg border border-slate-300 px-3 text-sm"
+              />
+              <select value={documentTypeFilter} onChange={(e) => setDocumentTypeFilter(e.target.value)} className="h-9 rounded-lg border border-slate-300 px-3 text-sm bg-white">
+                <option value="all">All document types</option>
+                <option value="estimate">Estimate</option>
+                <option value="proposal">Proposal</option>
+                <option value="invoice">Invoice</option>
+                <option value="work_order">Work Order</option>
+                {Object.keys(documentTypeCounts).filter(type => !['estimate', 'proposal', 'invoice', 'work_order'].includes(type)).map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 rounded-lg border border-slate-300 px-3 text-sm bg-white">
+                <option value="all">All statuses</option>
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="viewed">Viewed</option>
+                <option value="signed">Signed</option>
+                <option value="declined">Declined</option>
+                <option value="expired">Expired</option>
+                <option value="voided">Voided</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm">
+            <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Filtered</p><p className="font-semibold mt-1">{filteredPackages.length}</p></div>
+            <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Estimates</p><p className="font-semibold mt-1">{documentTypeCounts.estimate || 0}</p></div>
+            <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Proposals</p><p className="font-semibold mt-1">{documentTypeCounts.proposal || 0}</p></div>
+            <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Certificates Ready</p><p className="font-semibold mt-1">{certificateCoverage.withCertificate}</p></div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 2xl:grid-cols-12 gap-4">
           <div className="2xl:col-span-3 bg-white border border-slate-200 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2"><FileSignature className="w-4 h-4 text-slate-500" /><h3 className="font-bold text-slate-900">Estimate Packages</h3></div>
+              <div className="flex items-center gap-2"><FileSignature className="w-4 h-4 text-slate-500" /><h3 className="font-bold text-slate-900">Signing Packages</h3></div>
               {loading && <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />}
             </div>
-            {packages.length === 0 ? <div className="py-12 text-center text-slate-500 text-sm">No signing packages yet.</div> : (
+            {filteredPackages.length === 0 ? <div className="py-12 text-center text-slate-500 text-sm">No packages match the current filters.</div> : (
               <div className="divide-y divide-slate-100 max-h-[680px] overflow-auto">
-                {packages.map(pkg => {
+                {filteredPackages.map(pkg => {
                   const pkgParticipants = sortParticipants(participants.filter(p => p.signing_package_id === pkg.id));
                   const pkgNext = getNextSigner(pkgParticipants);
                   return (
@@ -409,7 +495,7 @@ export default function NexArtSign() {
                         <div className="min-w-0">
                           <p className="font-semibold text-sm text-slate-900 truncate">{pkg.document_title || pkg.document_number || pkg.document_id}</p>
                           <p className="text-xs text-slate-500 mt-1 truncate">{pkg.signer_name || pkg.client_name || 'Signer'} • {pkg.signer_email}</p>
-                          <p className="text-[11px] text-slate-400 mt-1 truncate">Next: {pkgNext ? `${pkgNext.role} (${pkgNext.status})` : '—'}</p>
+                          <p className="text-[11px] text-slate-400 mt-1 truncate">{pkg.document_type || 'document'} • Next: {pkgNext ? `${pkgNext.role} (${pkgNext.status})` : '—'}</p>
                         </div>
                         <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${statusClass(pkg.status)}`}>{pkg.status || 'draft'}</span>
                       </div>
@@ -427,12 +513,14 @@ export default function NexArtSign() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-xl font-bold text-slate-900">{selected?.document_title || 'Select a package'}</h3>
                     {selected && <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${statusClass(selected.status)}`}>{selected.status || 'draft'}</span>}
+                    {selectedCert && <span className="text-[10px] font-bold border rounded-full px-2 py-0.5 bg-emerald-50 text-emerald-700 border-emerald-200">certificate ready</span>}
                   </div>
                   {selected && <p className="text-sm text-slate-500 mt-1">{selected.document_type} #{selected.document_number || selected.document_id}</p>}
                 </div>
               </div>
               {selected && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4 text-sm">
+                  <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Document type</p><p className="font-medium mt-1 capitalize">{selected.document_type || 'unknown'}</p></div>
                   <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Primary signer</p><p className="font-medium mt-1 truncate">{selected.signer_name || selected.client_name || 'Signer'}</p></div>
                   <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Next signer</p><p className="font-medium mt-1 truncate">{nextSigner ? `${nextSigner.name || nextSigner.email} (${nextSigner.role})` : '—'}</p></div>
                   <div className="border border-slate-100 rounded-lg p-3"><p className="text-xs text-slate-400 uppercase font-semibold">Expires</p><p className="font-medium mt-1">{fmt(selected.expires_at)}</p></div>
