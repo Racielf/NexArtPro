@@ -80,6 +80,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const canAccessAdmin = user?.role === 'admin' || isAdmin();
   const visibleNavGroups = canAccessAdmin ? [...navGroups, adminNavGroup] : navGroups;
+  const appLogoUrl = cc.app_logo_url || appConfig.app.logo_url || '';
 
   return (
     <div
@@ -88,10 +89,10 @@ export default function Sidebar() {
     >
       <div className="px-4 pt-5 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-3">
-          {cc.logo_url ? (
+          {appLogoUrl ? (
             <div className="w-8 h-8 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
               style={{ background: 'rgba(255,255,255,0.08)' }}>
-              <img src={cc.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+              <img src={appLogoUrl} alt="App logo" className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
