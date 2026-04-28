@@ -72,7 +72,6 @@ export async function recordInvoicePayment(invoice, paymentInput = {}, actor = '
     amount_paid: derived.amount_paid,
     balance_due: derived.balance_due,
     payment_status: derived.payment_status,
-    status: derived.payment_status === 'paid' ? 'paid' : invoice.status,
     paid_at: derived.payment_status === 'paid' ? now : invoice?.paid_at || null,
     collection_timeline: timeline,
   };
@@ -90,7 +89,7 @@ export async function markInvoicePaid(invoice, actor = 'Admin', note = 'Full pay
   const { balance_due } = computeInvoiceDerivedFields(invoice);
   return recordInvoicePayment(invoice, {
     amount: balance_due,
-    method: 'manual',
+    method: 'other',
     note,
   }, actor);
 }
