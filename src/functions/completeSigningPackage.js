@@ -21,6 +21,23 @@ function getActiveParticipant(participants = []) {
   return ordered.find(p => p.status === 'active') || ordered.find(p => p.status === 'pending') || null;
 }
 
+function resolveParentEntity(base44, documentType) {
+  const entityNameMap = {
+    estimate: 'Estimate',
+    proposal: 'Proposal',
+    invoice: 'Invoice',
+    work_order: 'WorkOrder',
+  };
+  const entityName = entityNameMap[documentType];
+  return entityName ? base44.asServiceRole.entities[entityName] : null;
+}
+
+async function updateParentDocument(base44, pkg, patch) {
+  const entityApi = resolveParentEntity(base44, pkg.document_type);
+  if (!entityApi || !pkg.document_id) return;
+  await entityApi.update(pkg.document_id, patch).catch(() => {});
+}
+
 async function createCompletionCertificate(base44, pkg, signer, signerEmail, now, ip, ua) {
   const events = await base44.asServiceRole.entities.SigningEvent.filter({ signing_package_id: pkg.id }, 'created_at').catch(() => []);
   const cert = await base44.asServiceRole.entities.SigningCertificate.create({
@@ -41,10 +58,18 @@ async function createCompletionCertificate(base44, pkg, signer, signerEmail, now
       provider: 'nexartsign',
       package_id: pkg.id,
       document_id: pkg.document_id,
+      document_type: pkg.document_type,
+      document_title: pkg.document_title || '',
+      document_number: pkg.document_number || '',
       signer_name: signer,
       signer_email: signerEmail || pkg.signer_email,
       signed_at: now,
       ip_address: ip,
+      user_agent: ua,
+      hash_algorithm: pkg.hash_algorithm || 'SHA-256',
+      document_hash: pkg.source_pdf_hash || '',
+      final_pdf_hash: pkg.source_pdf_hash || '',
+      events: events || [],
       multi_signer: true,
     },
     company_id: pkg.company_id || 'rc-art',
@@ -65,19 +90,33 @@ async function closePackageAsSigned(base44, pkg, signer, signerEmail, now, ip, u
 
   const cert = await createCompletionCertificate(base44, pkg, signer, signerEmail, now, ip, ua);
 
-  if (pkg.document_type === 'estimate' && pkg.document_id) {
-    await base44.asServiceRole.entities.Estimate.update(pkg.document_id, {
+  const commonSignedPatch = {
+    signing_package_id: pkg.id,
+    signed_at: now,
+    signature_status: 'signed',
+    signature_provider: 'internal',
+    accepted_by: signer,
+    signature_name: signer,
+    terms_accepted: true,
+    locked_after_signature: true,
+  };
+
+  if (pkg.document_type === 'estimate') {
+    await updateParentDocument(base44, pkg, {
       status: 'signed',
-      signature_status: 'signed',
-      signed_at: now,
       approved_at: now,
-      accepted_by: signer,
-      signature_name: signer,
-      signature_provider: 'internal',
-      signing_package_id: pkg.id,
-      terms_accepted: true,
-      locked_after_signature: true,
-    }).catch(() => {});
+      ...commonSignedPatch,
+    });
+  } else if (pkg.document_type === 'proposal') {
+    await updateParentDocument(base44, pkg, {
+      status: 'accepted',
+      accepted_at: now,
+      accepted_by_name: signer,
+      signature_on_file: true,
+      ...commonSignedPatch,
+    });
+  } else {
+    await updateParentDocument(base44, pkg, commonSignedPatch);
   }
 
   return cert;
@@ -143,14 +182,28 @@ export default async (req) => {
         created_at: now,
       });
 
-      if (pkg.document_type === 'estimate' && pkg.document_id) {
-        await base44.asServiceRole.entities.Estimate.update(pkg.document_id, {
+      if (pkg.document_type === 'estimate') {
+        await updateParentDocument(base44, pkg, {
           status: 'declined',
           signature_status: 'declined',
           signing_package_id: pkg.id,
           declined_at: now,
           declined_reason: declined_reason || '',
-        }).catch(() => {});
+        });
+      } else if (pkg.document_type === 'proposal') {
+        await updateParentDocument(base44, pkg, {
+          status: 'declined',
+          declined_at: now,
+          declined_reason: declined_reason || pkg.declined_reason || '',
+          signature_status: 'declined',
+          signing_package_id: pkg.id,
+        });
+      } else {
+        await updateParentDocument(base44, pkg, {
+          signature_status: 'declined',
+          signing_package_id: pkg.id,
+          declined_at: now,
+        });
       }
 
       return response({ success: true, status: 'declined', document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
