@@ -1,3 +1,5 @@
+import { SIGNATURE_BRAND_LOGO } from '@/assets/signatureBrandLogo';
+
 /**
  * appConfig.js
  * Single source of truth for app and company branding.
@@ -13,7 +15,7 @@ export const APP_CONFIG = {
   app: {
     name: "NexArt Pro",
     description: "Professional Field Service Management",
-    logo_url: "",
+    logo_url: SIGNATURE_BRAND_LOGO,
   },
   appName: "NexArt Pro",
   appDescription: "Professional Field Service Management",
