@@ -1,23 +1,60 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { X, Copy, ExternalLink } from 'lucide-react';
 import { logComm, logCommFailed } from '@/lib/commTracking';
+import { generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
 
 export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [to, setTo] = useState(estimate?.client_email || '');
-  const clientLink = `${window.location.origin}/client-estimate?id=${estimate?.id}`;
   const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from FSM Pro`);
-  const [message, setMessage] = useState(
-    `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nThank you for choosing FSM Pro. Please review your estimate below:\n\n${clientLink}\n\nTotal: $${(estimate?.total || 0).toFixed(2)}\n\nPlease click the link to approve or decline.\n\nThank you!`
-  );
+  const [clientLink, setClientLink] = useState('');
+  const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const buildClientLink = async () => {
+      if (!estimate?.id) {
+        if (!cancelled) setClientLink('');
+        return;
+      }
+
+      try {
+        const token = estimate.public_share_token || await generatePublicShareToken(estimate);
+        if (!cancelled) {
+          setClientLink(`${window.location.origin}/client-estimate?token=${token}`);
+        }
+      } catch (err) {
+        console.warn('[SendEstimateModal] failed to resolve public token:', err?.message);
+        if (!cancelled) setClientLink('');
+      }
+    };
+
+    buildClientLink();
+    return () => {
+      cancelled = true;
+    };
+  }, [estimate]);
+
+  useEffect(() => {
+    setTo(estimate?.client_email || '');
+    setSubject(`Estimate #${estimate?.estimate_number} from FSM Pro`);
+  }, [estimate]);
+
+  useEffect(() => {
+    setMessage(
+      `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nThank you for choosing FSM Pro. Please review your estimate below:\n\n${clientLink}\n\nTotal: $${(estimate?.total || 0).toFixed(2)}\n\nPlease click the link to approve or decline.\n\nThank you!`
+    );
+  }, [estimate, clientLink]);
+
   const copyLink = () => {
+    if (!clientLink) return;
     navigator.clipboard.writeText(clientLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -143,7 +180,7 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
               <button onClick={copyLink} className="flex-shrink-0 text-xs text-slate-500 hover:text-slate-800 border border-slate-200 rounded px-2 py-1 bg-white flex items-center gap-1">
                 <Copy className="w-3 h-3" />{copied ? 'Copied!' : 'Copy'}
               </button>
-              <a href={clientLink} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-slate-400 hover:text-slate-700">
+              <a href={clientLink || '#'} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-slate-400 hover:text-slate-700">
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
