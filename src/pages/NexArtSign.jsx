@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import NexArtSignSettingsCard from '@/components/signing/NexArtSignSettingsCard';
 import { Button } from '@/components/ui/button';
-import { Copy, ExternalLink, FileSignature, FileText, PenSquare, Plus, RefreshCw } from 'lucide-react';
+import { Copy, ExternalLink, Eye, FileSignature, FileText, PenSquare, Plus, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { createSigningPackageForEstimate } from '@/lib/nexArtSign';
 import { generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
