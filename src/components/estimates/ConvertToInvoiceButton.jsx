@@ -8,6 +8,15 @@ import { getNextDocumentNumber } from '@/lib/documentNumbering';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
+function buildInitialPaymentState(total = 0) {
+  return {
+    payments: [],
+    amount_paid: 0,
+    balance_due: total || 0,
+    payment_status: 'unpaid',
+  };
+}
+
 /**
  * Only enabled when estimate.status === 'approved'.
  * Converts estimate → Invoice and navigates to the invoice detail page.
@@ -27,15 +36,14 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
     }
     setLoading(true);
     try {
-      // Check if invoice(s) already exist for this estimate
       const existing = await base44.entities.Invoice.filter({ estimate_id: estimate.id });
-      
+
       if (existing.length > 1) {
         toast.error(`Multiple invoices found (${existing.length}). Contact support to resolve.`);
         setLoading(false);
         return;
       }
-      
+
       if (existing.length === 1) {
         toast.info(`Invoice #${existing[0].invoice_number} already created`);
         navigate(`/invoice-detail?id=${existing[0].id}`);
@@ -43,12 +51,11 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
         return;
       }
 
-      // Create new invoice
       const invoiceNum = await getNextDocumentNumber('invoice');
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 30);
+      const total = estimate.total || 0;
 
-      // Resolve linked work_order_id if this estimate was converted to a WO
       let work_order_id = estimate.work_order_id || null;
       if (!work_order_id) {
         const woList = await base44.entities.WorkOrder.filter({ estimate_id: estimate.id });
@@ -59,7 +66,6 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
         invoice_number: invoiceNum,
         estimate_id: estimate.id,
         ...(work_order_id ? { work_order_id } : {}),
-        // Traceability snapshot fields
         ...(estimate.version_number != null ? { estimate_version: estimate.version_number } : {}),
         client_id: estimate.client_id || '',
         client_name: estimate.client_name,
@@ -75,9 +81,12 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
         discount_amount: estimate.discount_amount || 0,
         tax_rate: estimate.tax_rate || 0,
         tax_amount: estimate.tax_amount || 0,
-        total: estimate.total || 0,
+        total,
+        ...buildInitialPaymentState(total),
         due_date: dueDate.toISOString().split('T')[0],
         notes: estimate.notes || '',
+        payment_terms: estimate.payment_terms || '',
+        company_id: estimate.company_id || 'rc-art',
       });
 
       toast.success(`Invoice #${invoiceNum} created successfully`);
