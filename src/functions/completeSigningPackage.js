@@ -38,6 +38,13 @@ async function updateParentDocument(base44, pkg, patch) {
   await entityApi.update(pkg.document_id, patch).catch(() => {});
 }
 
+async function getParentDocument(base44, pkg) {
+  const entityApi = resolveParentEntity(base44, pkg.document_type);
+  if (!entityApi || !pkg.document_id) return null;
+  const rows = await entityApi.filter({ id: pkg.document_id }).catch(() => []);
+  return rows?.[0] || null;
+}
+
 async function createCompletionCertificate(base44, pkg, signer, signerEmail, now, ip, ua) {
   const events = await base44.asServiceRole.entities.SigningEvent.filter({ signing_package_id: pkg.id }, 'created_at').catch(() => []);
   const cert = await base44.asServiceRole.entities.SigningCertificate.create({
@@ -72,10 +79,190 @@ async function createCompletionCertificate(base44, pkg, signer, signerEmail, now
       events: events || [],
       multi_signer: true,
     },
-    company_id: pkg.company_id || 'rc-art',
+    company_id: pkg.company_id || '',
   });
   await base44.asServiceRole.entities.SigningPackage.update(pkg.id, { certificate_id: cert.id });
   return cert;
+}
+
+function buildGenericSignatureCertificate({ pkg, cert, document, signer, signerEmail, signedAt, finalPdfUrl, finalPdfName, finalPdfHash, ip, ua, events }) {
+  return {
+    certificate_type: 'electronic_signature_certificate',
+    generated_at: cert?.generated_at || signedAt,
+    provider: 'nexartsign',
+    signing_package_id: pkg.id,
+    signing_certificate_id: cert?.id || '',
+    document_id: pkg.document_id || document?.id || '',
+    document_type: pkg.document_type || '',
+    document_number: pkg.document_number || '',
+    document_title: pkg.document_title || document?.title || '',
+    signer_name: signer,
+    signer_email: signerEmail || pkg.signer_email || '',
+    signed_at: signedAt,
+    terms_accepted: true,
+    final_signed_pdf_url: finalPdfUrl,
+    final_signed_pdf_name: finalPdfName,
+    document_hash_algorithm: pkg.hash_algorithm || document?.document_hash_algorithm || 'SHA-256',
+    document_hash: pkg.source_pdf_hash || document?.document_hash || finalPdfHash || '',
+    signed_pdf_hash_algorithm: pkg.hash_algorithm || document?.signed_pdf_hash_algorithm || 'SHA-256',
+    signed_pdf_hash: finalPdfHash || pkg.final_pdf_hash || pkg.source_pdf_hash || '',
+    audit: {
+      certificate_id: cert?.id || '',
+      certificate_number: cert?.certificate_number || '',
+      ip_address: ip,
+      user_agent: ua,
+      audit_trail: events || [],
+    },
+    integrity_statement: 'This signing package was finalized by the NexArtSign backend. The signed copy and audit trail are locked to this completion event.',
+  };
+}
+
+async function finalizeGenericSignedState(base44, pkg, cert, signer, signerEmail, now, ip, ua) {
+  const document = await getParentDocument(base44, pkg);
+  if (!document) return null;
+
+  const events = await base44.asServiceRole.entities.SigningEvent.filter({ signing_package_id: pkg.id }, 'created_at').catch(() => []);
+  const finalPdfUrl = pkg.final_pdf_url || pkg.source_pdf_url || document.final_signed_pdf_url || '';
+  const finalPdfName = pkg.final_pdf_name || pkg.source_pdf_name || document.final_signed_pdf_name || '';
+  const finalPdfHash = pkg.final_pdf_hash || pkg.source_pdf_hash || document.signed_pdf_hash || document.document_hash || '';
+
+  const signatureCertificate = buildGenericSignatureCertificate({
+    pkg,
+    cert,
+    document,
+    signer,
+    signerEmail,
+    signedAt: now,
+    finalPdfUrl,
+    finalPdfName,
+    finalPdfHash,
+    ip,
+    ua,
+    events,
+  });
+
+  if (cert?.id) {
+    await base44.asServiceRole.entities.SigningCertificate.update(cert.id, {
+      final_pdf_hash: finalPdfHash,
+      certificate_pdf_url: finalPdfUrl || cert.certificate_pdf_url || '',
+      audit_trail: events || cert.audit_trail || [],
+      certificate_json: {
+        ...(cert.certificate_json || {}),
+        document_type: pkg.document_type,
+        document_title: pkg.document_title || document.title || '',
+        document_number: pkg.document_number || '',
+        final_pdf_url: finalPdfUrl,
+        final_pdf_name: finalPdfName,
+        final_pdf_hash: finalPdfHash,
+        finalized_in_backend: true,
+      },
+    }).catch(() => {});
+  }
+
+  await base44.asServiceRole.entities.SigningPackage.update(pkg.id, {
+    audit_summary: {
+      ...(pkg.audit_summary || {}),
+      certificate_id: cert?.id || '',
+      certificate_number: cert?.certificate_number || '',
+      final_pdf_hash: finalPdfHash,
+      finalized_at: now,
+      finalized_in_backend: true,
+    },
+  }).catch(() => {});
+
+  const commonPatch = {
+    signing_package_id: pkg.id,
+    signature_status: 'signed',
+    signature_provider: 'internal',
+    signed_at: now,
+    accepted_by: signer,
+    signature_name: signer,
+    terms_accepted: true,
+    locked_after_signature: true,
+    legal_package_locked: true,
+    final_signed_at: now,
+    final_signed_pdf_url: finalPdfUrl,
+    final_signed_pdf_name: finalPdfName,
+    signed_pdf_hash: finalPdfHash,
+    signed_pdf_hash_algorithm: pkg.hash_algorithm || document.signed_pdf_hash_algorithm || 'SHA-256',
+    signature_certificate: signatureCertificate,
+    certificate_generated_at: cert?.generated_at || now,
+    legal_audit: {
+      ...(document.legal_audit || {}),
+      signing_package_id: pkg.id,
+      certificate_id: cert?.id || '',
+      certificate_number: cert?.certificate_number || '',
+      last_signed_at: now,
+      ip_address: ip,
+      user_agent: ua,
+      backend_finalized: true,
+      events_recorded: Array.isArray(events) ? events.length : 0,
+    },
+  };
+
+  if (pkg.document_type === 'proposal') {
+    await base44.asServiceRole.entities.Proposal.update(pkg.document_id, {
+      ...commonPatch,
+      status: ['converted_to_invoice', 'converted_to_work_order'].includes(document.status) ? document.status : 'accepted',
+      accepted_at: document.accepted_at || now,
+      accepted_ip: ip,
+      accepted_user_agent: ua,
+      accepted_by_name: signer,
+      signature_on_file: true,
+      acceptance_proof: {
+        ...(document.acceptance_proof || {}),
+        signing_package_id: pkg.id,
+        certificate_id: cert?.id || '',
+        certificate_number: cert?.certificate_number || '',
+        signer_name: signer,
+        signer_email: signerEmail || pkg.signer_email || '',
+        signed_at: now,
+        ip_address: ip,
+        user_agent: ua,
+        final_pdf_hash: finalPdfHash,
+      },
+    }).catch(() => {});
+    return;
+  }
+
+  const entityApi = resolveParentEntity(base44, pkg.document_type);
+  if (!entityApi || !pkg.document_id) return;
+  await entityApi.update(pkg.document_id, commonPatch).catch(() => {});
+}
+
+async function finalizeGenericDeclineState(base44, pkg, now, ip, ua, declinedReason) {
+  const document = await getParentDocument(base44, pkg);
+  if (!document) return null;
+
+  const commonPatch = {
+    signing_package_id: pkg.id,
+    signature_status: 'declined',
+    declined_at: now,
+    declined_reason: declinedReason || '',
+    legal_audit: {
+      ...(document.legal_audit || {}),
+      signing_package_id: pkg.id,
+      declined_at: now,
+      declined_reason: declinedReason || '',
+      ip_address: ip,
+      user_agent: ua,
+      backend_finalized: true,
+    },
+  };
+
+  if (pkg.document_type === 'proposal') {
+    await base44.asServiceRole.entities.Proposal.update(pkg.document_id, {
+      ...commonPatch,
+      status: 'rejected',
+      rejected_at: now,
+      rejected_reason: declinedReason || '',
+    }).catch(() => {});
+    return;
+  }
+
+  const entityApi = resolveParentEntity(base44, pkg.document_type);
+  if (!entityApi || !pkg.document_id) return;
+  await entityApi.update(pkg.document_id, commonPatch).catch(() => {});
 }
 
 async function closePackageAsSigned(base44, pkg, signer, signerEmail, now, ip, ua) {
@@ -115,8 +302,20 @@ async function closePackageAsSigned(base44, pkg, signer, signerEmail, now, ip, u
       signature_on_file: true,
       ...commonSignedPatch,
     });
+    await finalizeGenericSignedState(base44, {
+      ...pkg,
+      final_pdf_url: pkg.source_pdf_url || pkg.final_pdf_url || '',
+      final_pdf_name: pkg.source_pdf_name || pkg.final_pdf_name || '',
+      final_pdf_hash: pkg.source_pdf_hash || pkg.final_pdf_hash || '',
+    }, cert, signer, signerEmail, now, ip, ua).catch(() => {});
   } else {
     await updateParentDocument(base44, pkg, commonSignedPatch);
+    await finalizeGenericSignedState(base44, {
+      ...pkg,
+      final_pdf_url: pkg.source_pdf_url || pkg.final_pdf_url || '',
+      final_pdf_name: pkg.source_pdf_name || pkg.final_pdf_name || '',
+      final_pdf_hash: pkg.source_pdf_hash || pkg.final_pdf_hash || '',
+    }, cert, signer, signerEmail, now, ip, ua).catch(() => {});
   }
 
   return cert;
@@ -191,19 +390,9 @@ export default async (req) => {
           declined_reason: declined_reason || '',
         });
       } else if (pkg.document_type === 'proposal') {
-        await updateParentDocument(base44, pkg, {
-          status: 'declined',
-          declined_at: now,
-          declined_reason: declined_reason || pkg.declined_reason || '',
-          signature_status: 'declined',
-          signing_package_id: pkg.id,
-        });
+        await finalizeGenericDeclineState(base44, pkg, now, ip, ua, declined_reason || pkg.declined_reason || '').catch(() => {});
       } else {
-        await updateParentDocument(base44, pkg, {
-          signature_status: 'declined',
-          signing_package_id: pkg.id,
-          declined_at: now,
-        });
+        await finalizeGenericDeclineState(base44, pkg, now, ip, ua, declined_reason || '').catch(() => {});
       }
 
       return response({ success: true, status: 'declined', document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
