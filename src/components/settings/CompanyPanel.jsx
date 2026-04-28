@@ -119,7 +119,7 @@ export default function CompanyPanel() {
     }
   };
 
-  const renderLogoUploader = ({ field, label, description, fileRef, previewUrl, error, last = false }) => {
+  const renderLogoUploader = ({ field, label, description, fileRef, previewUrl, error, helper, last = false }) => {
     const isUploading = uploadingField === field;
 
     return (
@@ -190,6 +190,10 @@ export default function CompanyPanel() {
             </button>
           )}
 
+          {helper && (
+            <p className="text-xs text-slate-500 max-w-md leading-relaxed">{helper}</p>
+          )}
+
           {error && (
             <div className="flex items-center gap-1.5 text-xs text-red-600 mt-1">
               <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
@@ -253,6 +257,7 @@ export default function CompanyPanel() {
           field: 'app_logo_url',
           label: 'App / Signing Credits Logo',
           description: 'Used in the app interface and in the signature credits shown at the end of the signing flow and shared signing document. It does not replace the main document header logo.',
+          helper: 'If you do not upload one here, the system now falls back to the embedded horizontal signing logo already connected in the repo.',
           fileRef: appLogoRef,
           previewUrl: previewUrls.app_logo_url,
           error: logoErrors.app_logo_url,
