@@ -58,14 +58,138 @@ function buildSignatureCertificate({ estimate, pkg, certificate, signerName, sig
   };
 }
 
+function buildPdfAuditPageData({ estimate, pkg, certificate, signerName, signedAt, finalPdfHash }) {
+  return {
+    packageId: pkg?.id || '',
+    certificateNumber: certificate?.certificate_number || '',
+    documentType: estimate?.document_type || pkg?.document_type || 'estimate',
+    documentTitle: estimate?.title || pkg?.document_title || '',
+    documentNumber: estimate?.estimate_number || pkg?.document_number || '',
+    signerName: signerName || estimate?.signature_name || estimate?.accepted_by || '',
+    signerEmail: pkg?.signer_email || estimate?.client_email || '',
+    signedAt: signedAt || certificate?.signed_at || '',
+    ipAddress: certificate?.ip_address || '',
+    userAgent: certificate?.user_agent || '',
+    hashAlgorithm: certificate?.hash_algorithm || pkg?.hash_algorithm || 'SHA-256',
+    documentHash: certificate?.document_hash || pkg?.source_pdf_hash || '',
+    finalPdfHash: finalPdfHash || certificate?.final_pdf_hash || pkg?.final_pdf_hash || pkg?.source_pdf_hash || '',
+    auditTrail: certificate?.audit_trail || [],
+  };
+}
+
 async function getFirstRow(entityName, query) {
   const rows = await base44.entities[entityName].filter(query).catch(() => []);
   return rows?.[0] || null;
 }
 
+function resolveEntityName(documentType) {
+  return {
+    estimate: 'Estimate',
+    proposal: 'Proposal',
+    invoice: 'Invoice',
+    work_order: 'WorkOrder',
+  }[documentType] || null;
+}
+
+function buildGenericSignatureCertificate({ document, pkg, certificate, signerName, signedAt }) {
+  return {
+    certificate_type: 'electronic_signature_certificate',
+    generated_at: certificate?.generated_at || new Date().toISOString(),
+    provider: 'nexartsign',
+    signing_package_id: pkg?.id || '',
+    signing_certificate_id: certificate?.id || '',
+    document_id: pkg?.document_id || document?.id || '',
+    document_type: pkg?.document_type || '',
+    signer_name: signerName || pkg?.signer_name || '',
+    signer_email: pkg?.signer_email || '',
+    signed_at: signedAt || pkg?.signed_at || '',
+    terms_accepted: true,
+    final_signed_pdf_url: pkg?.final_pdf_url || '',
+    final_signed_pdf_name: pkg?.final_pdf_name || '',
+    document_hash_algorithm: pkg?.hash_algorithm || 'SHA-256',
+    document_hash: certificate?.document_hash || pkg?.source_pdf_hash || '',
+    signed_pdf_hash_algorithm: pkg?.hash_algorithm || 'SHA-256',
+    signed_pdf_hash: certificate?.final_pdf_hash || pkg?.final_pdf_hash || pkg?.source_pdf_hash || '',
+    audit: {
+      certificate_id: certificate?.id || '',
+      certificate_number: certificate?.certificate_number || '',
+      ip_address: certificate?.ip_address || '',
+      user_agent: certificate?.user_agent || '',
+      audit_trail: certificate?.audit_trail || [],
+    },
+    audit_payload: certificate?.certificate_json || null,
+  };
+}
+
 async function sendFinalSignedCopyEmail(estimate, pkg) {
   if (!estimate?.client_email || !estimate?.final_signed_pdf_url || !pkg?.token) return;
   await base44.functions.invoke('sendSignedEstimateCopy', { token: pkg.token });
+}
+
+async function finalizeGenericSignedDocumentFromPackage({ packageId, documentType, documentId, signerName }) {
+  const entityName = resolveEntityName(documentType);
+  const [pkg, certificate, document] = await Promise.all([
+    getFirstRow('SigningPackage', { id: packageId }),
+    getFirstRow('SigningCertificate', { signing_package_id: packageId }),
+    entityName && documentId ? getFirstRow(entityName, { id: documentId }) : Promise.resolve(null),
+  ]);
+
+  if (!pkg) throw new Error('Signing package not found for finalization');
+
+  const signedAt = pkg.signed_at || new Date().toISOString();
+  const signer = (signerName || pkg.signer_name || '').trim();
+  const signatureCertificate = buildGenericSignatureCertificate({
+    document,
+    pkg,
+    certificate,
+    signerName: signer,
+    signedAt,
+  });
+
+  if (entityName && documentId && base44.entities[entityName]) {
+    await base44.entities[entityName].update(documentId, {
+      signing_package_id: packageId,
+      signature_status: 'signed',
+      signature_provider: 'internal',
+      signed_at: signedAt,
+      accepted_by: signer,
+      signature_name: signer,
+      terms_accepted: true,
+      locked_after_signature: true,
+      legal_package_locked: true,
+      final_signed_at: signedAt,
+      final_signed_pdf_url: pkg.final_pdf_url || '',
+      final_signed_pdf_name: pkg.final_pdf_name || '',
+      signed_pdf_hash: pkg.final_pdf_hash || certificate?.final_pdf_hash || '',
+      signed_pdf_hash_algorithm: pkg.hash_algorithm || 'SHA-256',
+      signature_certificate: signatureCertificate,
+      certificate_generated_at: signatureCertificate.generated_at,
+    }).catch(() => {});
+  }
+
+  return {
+    document: document ? { ...document, signature_status: 'signed', signed_at: signedAt } : null,
+    certificate: signatureCertificate,
+  };
+}
+
+async function finalizeGenericDeclinedDocumentFromPackage({ packageId, documentType, documentId }) {
+  const entityName = resolveEntityName(documentType);
+  const pkg = await getFirstRow('SigningPackage', { id: packageId });
+  if (!pkg) throw new Error('Signing package not found for decline finalization');
+
+  if (entityName && documentId && base44.entities[entityName]) {
+    await base44.entities[entityName].update(documentId, {
+      signing_package_id: packageId,
+      signature_status: 'declined',
+      declined_at: pkg.declined_at || new Date().toISOString(),
+      declined_reason: pkg.declined_reason || '',
+    }).catch(() => {});
+  }
+
+  return {
+    document: entityName && documentId ? await getFirstRow(entityName, { id: documentId }) : null,
+  };
 }
 
 export async function finalizeSignedEstimateFromPackage({ packageId, estimateId, signerName }) {
@@ -116,7 +240,14 @@ export async function finalizeSignedEstimateFromPackage({ packageId, estimateId,
         terms_accepted: true,
       },
       estimate?.document_config?.options,
-      estimate?.document_config?.template
+      estimate?.document_config?.template,
+      buildPdfAuditPageData({
+        estimate,
+        pkg,
+        certificate,
+        signerName: signer,
+        signedAt,
+      })
     );
     const pdfHash = await sha256HexFromBase64(pdf.base64);
     const blob = base64ToPdfBlob(pdf.base64);
@@ -153,6 +284,13 @@ export async function finalizeSignedEstimateFromPackage({ packageId, estimateId,
       certificate_id: certificate?.id || pkg.certificate_id || '',
       audit_summary: signatureCertificate.audit,
     }).catch(() => {});
+
+    if (certificate?.id) {
+      await base44.entities.SigningCertificate.update(certificate.id, {
+        final_pdf_hash: pdfHash,
+        certificate_pdf_url: finalSignedPdfUrl,
+      }).catch(() => {});
+    }
   } catch (err) {
     console.warn('[finalizeSignedEstimateFromPackage] final PDF freeze failed:', err?.message);
   }
@@ -192,6 +330,23 @@ export async function finalizeSignedEstimateFromPackage({ packageId, estimateId,
   return { estimate: updatedEstimate, workOrder: null };
 }
 
+export async function finalizeSignedDocumentFromPackage({ packageId, documentType, documentId, signerName }) {
+  if (documentType === 'estimate') {
+    return finalizeSignedEstimateFromPackage({
+      packageId,
+      estimateId: documentId,
+      signerName,
+    });
+  }
+
+  return finalizeGenericSignedDocumentFromPackage({
+    packageId,
+    documentType,
+    documentId,
+    signerName,
+  });
+}
+
 export async function finalizeDeclinedEstimateFromPackage({ packageId, estimateId }) {
   const [estimate, pkg] = await Promise.all([
     getFirstRow('Estimate', { id: estimateId }),
@@ -218,4 +373,19 @@ export async function finalizeDeclinedEstimateFromPackage({ packageId, estimateI
   });
 
   return updatedEstimate;
+}
+
+export async function finalizeDeclinedDocumentFromPackage({ packageId, documentType, documentId }) {
+  if (documentType === 'estimate') {
+    return finalizeDeclinedEstimateFromPackage({
+      packageId,
+      estimateId: documentId,
+    });
+  }
+
+  return finalizeGenericDeclinedDocumentFromPackage({
+    packageId,
+    documentType,
+    documentId,
+  });
 }
