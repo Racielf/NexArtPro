@@ -77,7 +77,7 @@ export default function SignDocumentView() {
       if (nextStatus === 'pending_next_signer') {
         toast.success('Your signature was saved. The next signer has been activated.');
       } else {
-        toast.success('Document signed successfully');
+        toast.success('Document completed successfully');
       }
 
       setPkg(p => ({
@@ -162,13 +162,28 @@ export default function SignDocumentView() {
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-8">
+
+      {/* 🔥 PROFESSIONAL HEADER */}
+      <div className="max-w-5xl mx-auto mb-6 text-center">
+        {pkg.company_logo_url && (
+          <img
+            src={pkg.company_logo_url}
+            alt="Company Logo"
+            className="mx-auto max-h-16 object-contain mb-2"
+          />
+        )}
+        <p className="text-xs text-slate-500">
+          Secure document signing powered by NexArtSign
+        </p>
+      </div>
+
       <div className="mx-auto max-w-5xl grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
         <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-200 flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-slate-900">
                 <FileSignature className="w-5 h-5" />
-                <h1 className="text-xl font-semibold">NexArtSign Secure Review</h1>
+                <h1 className="text-xl font-semibold">Secure Document Review</h1>
               </div>
               <p className="text-sm text-slate-500 mt-1">{pkg.document_title || 'Document ready for signature'}</p>
             </div>
@@ -216,7 +231,7 @@ export default function SignDocumentView() {
           {pkg.status === 'signed' ? (
             <div className="space-y-3">
               <div className="text-green-700 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5" /> Signed successfully
+                <CheckCircle className="w-5 h-5" /> Document completed successfully
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600 space-y-2">
                 <p>The signed file and verification certificate are now part of the NexArtSign record for this document.</p>
@@ -225,7 +240,7 @@ export default function SignDocumentView() {
                 {deliveryStatus === 'failed' && <p className="text-amber-700 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Signed copy email delivery needs review.</p>}
               </div>
               <Button variant="outline" onClick={openSignedPdf} className="w-full gap-2" disabled={!pkg?.final_pdf_url && !pkg?.source_pdf_url}>
-                <ExternalLink className="w-4 h-4" /> Open Signed PDF
+                <ExternalLink className="w-4 h-4" /> View Signed Document
               </Button>
               <Button variant="outline" onClick={openCertificateVerification} className="w-full gap-2" disabled={!certificateId && !certificateNumber}>
                 <ShieldCheck className="w-4 h-4" /> Verify Certificate
