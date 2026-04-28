@@ -43,7 +43,6 @@ export default function Customers() {
       base44.entities.Invoice.list('-created_date', 500),
     ]);
     setCustomers(filterActiveRecords(data));
-    // Build per-customer revenue map (paid invoices only)
     const map = {};
     for (const inv of invData) {
       if (inv.status === 'paid' && inv.client_id) {
@@ -108,7 +107,7 @@ export default function Customers() {
   const getTypeConfig = (type) => CUSTOMER_TYPES.find(t => t.value === type) || CUSTOMER_TYPES[0];
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
+    <div className="customers-page flex flex-col h-full">
 
       <DeleteReasonModal
         open={archiveModal.open}
@@ -124,7 +123,6 @@ export default function Customers() {
         entityLabel="Customer"
       />
 
-      {/* ── Header — firma visual consistente con Leads ── */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -138,10 +136,8 @@ export default function Customers() {
         </div>
       </div>
 
-      {/* ── Toolbar ── */}
       <div className="px-6 pt-4 pb-3 flex-shrink-0">
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Search */}
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
@@ -152,7 +148,6 @@ export default function Customers() {
               className="w-full h-9 pl-9 pr-4 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
             />
           </div>
-          {/* Type filter pills */}
           <div className="flex items-center gap-0.5 bg-white border border-slate-200 rounded-lg p-0.5">
             {[{ value: 'all', label: 'All' }, ...CUSTOMER_TYPES].map(t => (
               <button
@@ -166,7 +161,6 @@ export default function Customers() {
               </button>
             ))}
           </div>
-          {/* Selection bar */}
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
               <span className="text-sm font-semibold text-red-700">{selectedIds.size} selected</span>
@@ -179,7 +173,6 @@ export default function Customers() {
         </div>
       </div>
 
-      {/* ── List ── */}
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         {loading ? (
           <div className="flex justify-center py-16">
@@ -196,7 +189,6 @@ export default function Customers() {
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            {/* Table header */}
             <div className="grid items-center gap-4 px-4 py-3 border-b border-slate-100 bg-slate-50/80"
               style={{ gridTemplateColumns: '20px 40px 1fr 120px 100px 28px' }}>
               <input
@@ -212,7 +204,6 @@ export default function Customers() {
               <div />
             </div>
 
-            {/* Rows */}
             <div className="divide-y divide-slate-100">
               {filtered.map(customer => {
                 const typeConfig = getTypeConfig(customer.customer_type);
@@ -233,7 +224,6 @@ export default function Customers() {
                     onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = ''; }}
                     onClick={() => navigate(`/customer-profile?id=${customer.id}`)}
                   >
-                    {/* Checkbox */}
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -242,12 +232,10 @@ export default function Customers() {
                       className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
                     />
 
-                    {/* Avatar */}
                     <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-[12px] font-bold text-slate-500">{initials}</span>
                     </div>
 
-                    {/* Main info */}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-slate-800 text-[13px]">{displayName}</span>
@@ -274,14 +262,12 @@ export default function Customers() {
                       </div>
                     </div>
 
-                    {/* Type badge */}
                     <div>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${typeConfig.color}`}>
                         <TypeIcon className="w-2.5 h-2.5" />{typeConfig.label}
                       </span>
                     </div>
 
-                    {/* Revenue */}
                     <div>
                      {revenueMap[customer.id] ? (
                        <span className="text-[12px] font-bold text-green-600">
@@ -292,7 +278,6 @@ export default function Customers() {
                      )}
                     </div>
 
-                    {/* Actions — reveal on hover */}
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                      <button onClick={() => openEdit(customer)} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition-colors" title="Edit">
                        <Pencil className="w-3.5 h-3.5" />
@@ -303,7 +288,6 @@ export default function Customers() {
               })}
             </div>
 
-            {/* Footer */}
             <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50">
               <p className="text-[11px] text-slate-400">{filtered.length} customer{filtered.length !== 1 ? 's' : ''} shown</p>
             </div>
