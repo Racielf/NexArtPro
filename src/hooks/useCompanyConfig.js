@@ -17,6 +17,7 @@ const DEFAULTS = {
   city: APP_CONFIG.company.city || '',
   license: APP_CONFIG.company.license || '',
   logo_url: APP_CONFIG.company.logo_url || '',
+  app_logo_url: APP_CONFIG.app.logo_url || '',
   tagline: APP_CONFIG.company.tagline || '',
   payment_methods: '',
 };
@@ -35,6 +36,7 @@ export default function useCompanyConfig() {
           address: saved.address || DEFAULTS.address,
           license: saved.license || DEFAULTS.license,
           logo_url: saved.logo_url || DEFAULTS.logo_url,
+          app_logo_url: saved.app_logo_url || DEFAULTS.app_logo_url,
           payment_methods: saved.payment_methods || DEFAULTS.payment_methods,
         });
       })
