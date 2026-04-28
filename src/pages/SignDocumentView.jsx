@@ -4,6 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, AlertTriangle, FileSignature, ExternalLink, ShieldCheck, FileCheck, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
 
+function SignatureBrandCredit({ logoUrl }) {
+  if (!logoUrl) return null;
+
+  return (
+    <div className="pt-4 border-t border-slate-200">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Signature Credits</p>
+        <div className="mt-3 flex items-center justify-center">
+          <img src={logoUrl} alt="Signature brand" className="max-h-10 w-auto object-contain" />
+        </div>
+        <p className="mt-3 text-xs text-slate-500">This visual mark appears only in the secure signing experience and final signing credits.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function SignDocumentView() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
@@ -206,6 +222,8 @@ export default function SignDocumentView() {
             />
           </>
         )}
+
+        <SignatureBrandCredit logoUrl={pkg.signature_brand_logo_url} />
       </div>
     </div>
   );
