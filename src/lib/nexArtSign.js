@@ -7,8 +7,18 @@ function randomTokenPart() {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function resolveSignatureBrandLogoUrl(currentUser = null) {
+  const companySettings = currentUser?.company_settings;
+  if (companySettings && typeof companySettings === 'object') {
+    return companySettings.app_logo_url || '';
+  }
+  return '';
+}
+
 export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', pdfName = '', pdfHash = '', currentUser = null }) {
   if (!estimate?.id) throw new Error('Estimate is required');
+
+  const signatureBrandLogoUrl = resolveSignatureBrandLogoUrl(currentUser);
 
   const existing = await base44.entities.SigningPackage.filter({
     document_type: 'estimate',
@@ -21,6 +31,7 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     if (pdfUrl && !reusable.source_pdf_url) patch.source_pdf_url = pdfUrl;
     if (pdfName && !reusable.source_pdf_name) patch.source_pdf_name = pdfName;
     if (pdfHash && !reusable.source_pdf_hash) patch.source_pdf_hash = pdfHash;
+    if (signatureBrandLogoUrl && !reusable.signature_brand_logo_url) patch.signature_brand_logo_url = signatureBrandLogoUrl;
     if (Object.keys(patch).length > 0) {
       await base44.entities.SigningPackage.update(reusable.id, patch).catch(() => {});
       return { ...reusable, ...patch };
@@ -54,6 +65,7 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     source_pdf_name: pdfName || '',
     source_pdf_hash: pdfHash || '',
     hash_algorithm: 'SHA-256',
+    signature_brand_logo_url: signatureBrandLogoUrl,
     created_by: currentUser?.email || 'system',
     company_id: 'rc-art',
   });
