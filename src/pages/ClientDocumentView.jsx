@@ -7,7 +7,7 @@
  *
  * Authoritative public document routes:
  *   Proposals  → /proposal-view?id=<proposalId>
- *   Estimates  → /client-estimate?id=<estimateId>
+ *   Estimates  → /client-estimate?token=<publicShareToken>
  *
  * This file is kept as a safety net in case an old link is clicked.
  * It renders a clear redirect guide rather than a broken "not found" error.
@@ -23,10 +23,6 @@ export default function ClientDocumentView() {
   // Best-effort redirect: if caller passed ?type=proposal&id=xxx, send them there
   if (id && type === 'proposal') {
     window.location.replace(`/proposal-view?id=${id}`);
-    return null;
-  }
-  if (id && type === 'estimate') {
-    window.location.replace(`/client-estimate?id=${id}`);
     return null;
   }
 
