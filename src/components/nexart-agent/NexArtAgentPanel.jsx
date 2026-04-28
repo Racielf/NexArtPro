@@ -1,6 +1,7 @@
 import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { runSystemBrainV2 } from '@/brain/system/systemBrain';
+import { executeAgentAction } from '@/brain/core/executeAgentAction';
 
 function getBalance(invoice) {
   return Math.max((invoice?.total || 0) - (invoice?.amount_paid || 0), 0);
@@ -101,6 +102,9 @@ function buildSuggestedActions(business = {}) {
       label: 'Review overdue invoices',
       reason: `${business.overdueInvoices} invoice(s) are overdue.`,
       target: '/invoices',
+      actionType: 'follow_up',
+      payload: { count: business.overdueInvoices, target: '/invoices' },
+      riskLevel: 'medium',
       requiresConfirmation: true,
       safeMode: 'suggest_only',
     });
@@ -110,6 +114,9 @@ function buildSuggestedActions(business = {}) {
       label: 'Review unpaid balances',
       reason: `$${business.unpaidBalance.toLocaleString()} is unpaid.`,
       target: '/invoices',
+      actionType: 'navigate_review',
+      payload: { amount: business.unpaidBalance, target: '/invoices' },
+      riskLevel: 'low',
       requiresConfirmation: false,
       safeMode: 'navigate_only',
     });
@@ -121,6 +128,9 @@ function buildSuggestedActions(business = {}) {
       label: 'Review unassigned work orders',
       reason: `${business.unassignedWorkOrders} open work order(s) appear unassigned.`,
       target: '/work-orders',
+      actionType: 'operational_follow_up',
+      payload: { count: business.unassignedWorkOrders, target: '/work-orders' },
+      riskLevel: 'medium',
       requiresConfirmation: false,
       safeMode: 'navigate_only',
     });
@@ -132,6 +142,9 @@ function buildSuggestedActions(business = {}) {
       label: 'Review approved estimates for conversion',
       reason: `${business.approvedUnconverted} approved/signed estimate(s) may need work order conversion.`,
       target: '/estimates',
+      actionType: 'status_change',
+      payload: { count: business.approvedUnconverted, target: '/estimates' },
+      riskLevel: 'medium',
       requiresConfirmation: true,
       safeMode: 'suggest_only',
     });
@@ -143,6 +156,9 @@ function buildSuggestedActions(business = {}) {
       label: 'Review stale estimate follow-ups',
       reason: `${business.staleEstimates} sent/viewed estimate(s) are older than 7 days.`,
       target: '/estimates',
+      actionType: 'follow_up',
+      payload: { count: business.staleEstimates, target: '/estimates' },
+      riskLevel: 'medium',
       requiresConfirmation: false,
       safeMode: 'navigate_only',
     });
@@ -154,6 +170,9 @@ function buildSuggestedActions(business = {}) {
       label: 'Continue monitoring',
       reason: 'No immediate action is recommended by the read-only checks.',
       target: null,
+      actionType: 'suggest_only',
+      payload: {},
+      riskLevel: 'low',
       requiresConfirmation: false,
       safeMode: 'read_only',
     });
@@ -175,8 +194,105 @@ function priorityClasses(priority) {
   return 'border-slate-200 bg-slate-50 text-slate-700';
 }
 
+const RISK_BADGE = {
+  high:   'bg-red-100 text-red-700 border-red-200',
+  medium: 'bg-amber-100 text-amber-700 border-amber-200',
+  low:    'bg-slate-100 text-slate-500 border-slate-200',
+};
+
+function ActionButton({ action, onRequestExecute }) {
+  const decision = React.useMemo(() => executeAgentAction(action), [action]);
+
+  if (decision.blocked) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <button disabled className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-300 cursor-not-allowed">
+          Blocked
+        </button>
+        <span className="text-[10px] text-slate-400 max-w-[160px] text-right leading-tight">{decision.reason}</span>
+      </div>
+    );
+  }
+
+  if (decision.requiresConfirmation) {
+    return (
+      <button
+        onClick={() => onRequestExecute(action, decision)}
+        className="rounded-lg border border-amber-400 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors"
+      >
+        Confirm &amp; Execute
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => onRequestExecute(action, decision)}
+      className="rounded-lg border border-emerald-400 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
+    >
+      Execute
+    </button>
+  );
+}
+
+function ConfirmExecuteModal({ action, decision, onClose, onConfirm }) {
+  if (!action || !decision) return null;
+
+  const riskCls = RISK_BADGE[decision.riskLevel] || RISK_BADGE.low;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Phase 3.5 — Controlled Execution</p>
+            <h2 className="text-base font-bold text-slate-900">{action.label}</h2>
+          </div>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide flex-shrink-0 ${riskCls}`}>
+            {decision.riskLevel} risk
+          </span>
+        </div>
+
+        <p className="text-sm text-slate-600">{action.reason}</p>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Execution Plan (Simulation)</p>
+          <p className="text-sm font-medium text-slate-700">{decision.executionPlan.description}</p>
+          {decision.executionPlan.details.map((d, i) => (
+            <p key={i} className="text-xs text-slate-500">· {d}</p>
+          ))}
+          <p className="text-[10px] text-amber-600 font-semibold mt-2">⚠ {decision.executionPlan.note}</p>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+          <span className="font-semibold">Mode:</span> {decision.executionMode}
+          <span className="mx-1">·</span>
+          <span className="font-semibold">Reason:</span> {decision.reason}
+        </div>
+
+        <div className="flex gap-2 justify-end pt-1">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => { onConfirm(action, decision); onClose(); }}
+            className="px-4 py-2 text-sm font-semibold bg-slate-900 text-white rounded-lg hover:bg-black transition-colors"
+          >
+            Confirm (Simulation)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function NexArtAgentPanel() {
   const [state, setState] = React.useState({ loading: true, data: null, business: null, diagnostics: [], actions: [], error: '' });
+  const [confirmModal, setConfirmModal] = React.useState({ open: false, action: null, decision: null });
+  const [executionLog, setExecutionLog] = React.useState([]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -203,6 +319,27 @@ export default function NexArtAgentPanel() {
     loadAgent();
     return () => { mounted = false; };
   }, []);
+
+  const handleRequestExecute = (action, decision) => {
+    if (decision.requiresConfirmation) {
+      setConfirmModal({ open: true, action, decision });
+    } else {
+      handleConfirmExecution(action, decision);
+    }
+  };
+
+  const handleConfirmExecution = (action, decision) => {
+    const entry = {
+      id: Date.now(),
+      label: action.label,
+      actionType: action.actionType,
+      riskLevel: decision.riskLevel,
+      executionMode: decision.executionMode,
+      plan: decision.executionPlan.description,
+      simulatedAt: new Date().toLocaleTimeString(),
+    };
+    setExecutionLog(prev => [entry, ...prev].slice(0, 10));
+  };
 
   if (state.loading) return <div className="p-4 border rounded-xl bg-white">Loading NexArt Agent...</div>;
   if (state.error) return <div className="p-4 border rounded-xl bg-white text-red-600">{state.error}</div>;
@@ -273,27 +410,67 @@ export default function NexArtAgentPanel() {
       </div>
 
       <div className="p-4 border rounded-xl bg-white">
-        <h3 className="font-semibold mb-3">Suggested Actions</h3>
-        <div className="space-y-2">
-          {state.actions.map((action, index) => (
-            <div key={`${action.priority}-${index}`} className={`rounded-lg border p-3 ${priorityClasses(action.priority)}`}>
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="font-semibold">{action.label}</p>
-                  <p className="mt-1 text-sm">{action.reason}</p>
-                  <p className="mt-1 text-xs font-medium">Mode: {action.safeMode}{action.requiresConfirmation ? ' · requires confirmation before execution' : ''}</p>
-                </div>
-                {action.target ? (
-                  <a className="rounded-lg border border-current px-3 py-1 text-sm font-semibold hover:bg-white/70" href={action.target}>
-                    Open
-                  </a>
-                ) : null}
-              </div>
-            </div>
-          ))}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">Suggested Actions</h3>
+          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full uppercase tracking-wide">Phase 3.5 — Simulation</span>
         </div>
-        <p className="mt-3 text-xs text-slate-400">Suggested actions are navigation/review only. NexArt Agent does not execute changes in this phase.</p>
+        <div className="space-y-2">
+          {state.actions.map((action, index) => {
+            const riskCls = RISK_BADGE[action.riskLevel] || RISK_BADGE.low;
+            return (
+              <div key={`${action.priority}-${index}`} className={`rounded-lg border p-3 ${priorityClasses(action.priority)}`}>
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <p className="font-semibold">{action.label}</p>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide ${riskCls}`}>{action.riskLevel}</span>
+                    </div>
+                    <p className="text-sm">{action.reason}</p>
+                    <p className="mt-1 text-xs font-medium opacity-70">Type: {action.actionType} · Mode: {action.safeMode}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {action.target && (
+                      <a className="rounded-lg border border-current px-3 py-1 text-xs font-semibold hover:bg-white/70 transition-colors" href={action.target}>
+                        Open
+                      </a>
+                    )}
+                    <ActionButton action={action} onRequestExecute={handleRequestExecute} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-xs text-slate-400">Phase 3.5 — Simulation only. No data mutations occur. All actions run through riskClassifier → approvalPolicy → actionGuards.</p>
       </div>
+
+      {executionLog.length > 0 && (
+        <div className="p-4 border rounded-xl bg-white">
+          <h3 className="font-semibold mb-3 text-slate-700">Execution Log (Simulation)</h3>
+          <div className="space-y-1.5">
+            {executionLog.map(entry => (
+              <div key={entry.id} className="flex items-start gap-3 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm">
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase tracking-wide flex-shrink-0 mt-0.5 ${RISK_BADGE[entry.riskLevel] || RISK_BADGE.low}`}>{entry.riskLevel}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-800">{entry.label}</p>
+                  <p className="text-xs text-slate-500">{entry.plan}</p>
+                </div>
+                <span className="text-[10px] text-slate-400 flex-shrink-0">{entry.simulatedAt}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] text-slate-400">These are simulated executions — no actual changes were made to your data.</p>
+        </div>
+      )}
+
+      {confirmModal.open && (
+        <ConfirmExecuteModal
+          action={confirmModal.action}
+          decision={confirmModal.decision}
+          onClose={() => setConfirmModal({ open: false, action: null, decision: null })}
+          onConfirm={handleConfirmExecution}
+        />
+      )}
     </div>
   );
 }
