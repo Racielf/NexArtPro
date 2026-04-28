@@ -29,8 +29,75 @@ function randomTokenPart() {
   return crypto.randomUUID().replace(/-/g, '');
 }
 
+async function sha256HexFromBytes(bytes: Uint8Array) {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function buildParticipantToken(pkgId: string, participantId: string) {
   return `nsp_${pkgId}_${participantId}_${randomTokenPart()}`;
+}
+
+async function resolveReadableFileUrl(base44: any, fileUrl: string) {
+  if (!fileUrl) return '';
+  if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) return fileUrl;
+
+  try {
+    const signed = await base44.integrations.Core.CreateFileSignedUrl({
+      file_uri: fileUrl,
+      expires_in: 3600,
+    });
+    return signed?.signed_url || fileUrl;
+  } catch {
+    return fileUrl;
+  }
+}
+
+async function freezeSignedPdf(base44: any, pkg: any, now: string) {
+  const sourceUrl = pkg.source_pdf_url || pkg.final_pdf_url || '';
+  if (!sourceUrl) {
+    return {
+      final_pdf_url: pkg.final_pdf_url || '',
+      final_pdf_name: pkg.final_pdf_name || pkg.source_pdf_name || '',
+      final_pdf_hash: pkg.final_pdf_hash || pkg.source_pdf_hash || '',
+      frozen: false,
+    };
+  }
+
+  try {
+    const readableUrl = await resolveReadableFileUrl(base44, sourceUrl);
+    const fileResponse = await fetch(readableUrl);
+    if (!fileResponse.ok) throw new Error(`Could not fetch source PDF: ${fileResponse.status}`);
+
+    const arrayBuffer = await fileResponse.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    const hash = await sha256HexFromBytes(bytes);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+
+    const uploaded = await base44.integrations.Core.UploadFile({ file: blob });
+    const frozenUrl = uploaded?.file_url || pkg.final_pdf_url || sourceUrl;
+
+    const baseName = pkg.source_pdf_name || pkg.final_pdf_name || `signed-document-${pkg.document_number || pkg.id}.pdf`;
+    const finalName = baseName.toLowerCase().endsWith('.pdf')
+      ? baseName.replace(/\.pdf$/i, `-signed-${Date.now()}.pdf`)
+      : `${baseName}-signed-${Date.now()}.pdf`;
+
+    return {
+      final_pdf_url: frozenUrl,
+      final_pdf_name: finalName,
+      final_pdf_hash: hash,
+      frozen: true,
+      frozen_at: now,
+      frozen_from_source_pdf_url: sourceUrl,
+    };
+  } catch {
+    return {
+      final_pdf_url: pkg.final_pdf_url || sourceUrl,
+      final_pdf_name: pkg.final_pdf_name || pkg.source_pdf_name || '',
+      final_pdf_hash: pkg.final_pdf_hash || pkg.source_pdf_hash || '',
+      frozen: false,
+    };
+  }
 }
 
 function buildWorkOrderNumber() {
@@ -324,6 +391,7 @@ async function finalizeEstimateLegalState(base44: any, pkg: any, cert: any, sign
 
   await base44.asServiceRole.entities.SigningPackage.update(pkg.id, {
     audit_summary: {
+      ...(pkg.audit_summary || {}),
       certificate_id: cert?.id || '',
       certificate_number: cert?.certificate_number || '',
       final_pdf_hash: finalPdfHash,
@@ -442,14 +510,15 @@ async function createCompletionCertificate(base44: any, pkg: any, signer: string
 }
 
 async function closePackageAsSigned(base44: any, pkg: any, signer: string, signerEmail: string, now: string, ip: string, ua: string) {
+  const frozenPdf = await freezeSignedPdf(base44, pkg, now);
   const finalizedPackage = {
     ...pkg,
     status: 'signed',
     signed_at: now,
     signer_name: signer,
-    final_pdf_url: pkg.source_pdf_url || pkg.final_pdf_url || '',
-    final_pdf_name: pkg.source_pdf_name || pkg.final_pdf_name || '',
-    final_pdf_hash: pkg.source_pdf_hash || pkg.final_pdf_hash || '',
+    final_pdf_url: frozenPdf.final_pdf_url,
+    final_pdf_name: frozenPdf.final_pdf_name,
+    final_pdf_hash: frozenPdf.final_pdf_hash,
   };
 
   await base44.asServiceRole.entities.SigningPackage.update(pkg.id, {
@@ -459,6 +528,13 @@ async function closePackageAsSigned(base44: any, pkg: any, signer: string, signe
     final_pdf_url: finalizedPackage.final_pdf_url,
     final_pdf_name: finalizedPackage.final_pdf_name,
     final_pdf_hash: finalizedPackage.final_pdf_hash,
+    audit_summary: {
+      ...(pkg.audit_summary || {}),
+      final_pdf_hash: finalizedPackage.final_pdf_hash,
+      final_pdf_frozen: frozenPdf.frozen,
+      final_pdf_frozen_at: frozenPdf.frozen ? now : '',
+      final_pdf_source_url: frozenPdf.frozen_from_source_pdf_url || pkg.source_pdf_url || '',
+    },
   });
 
   const cert = await createCompletionCertificate(base44, finalizedPackage, signer, signerEmail, now, ip, ua);
@@ -467,7 +543,10 @@ async function closePackageAsSigned(base44: any, pkg: any, signer: string, signe
     await finalizeEstimateLegalState(base44, finalizedPackage, cert, signer, signerEmail, now, ip, ua).catch(() => null);
   }
 
-  return cert;
+  return {
+    cert,
+    finalizedPackage,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -606,14 +685,14 @@ Deno.serve(async (req) => {
         });
       }
 
-      const cert = await closePackageAsSigned(base44, pkg, signer, matchedParticipant.email, now, ip, ua);
+      const { cert, finalizedPackage } = await closePackageAsSigned(base44, pkg, signer, matchedParticipant.email, now, ip, ua);
       return response({
         success: true,
         status: 'signed',
         certificate_id: cert.id,
         certificate_number: cert.certificate_number || '',
-        final_pdf_url: pkg.source_pdf_url || pkg.final_pdf_url || '',
-        final_pdf_name: pkg.source_pdf_name || pkg.final_pdf_name || '',
+        final_pdf_url: finalizedPackage.final_pdf_url || '',
+        final_pdf_name: finalizedPackage.final_pdf_name || '',
         document_type: pkg.document_type,
         document_id: pkg.document_id,
         signing_package_id: pkg.id,
@@ -633,14 +712,14 @@ Deno.serve(async (req) => {
       created_at: now,
     });
 
-    const cert = await closePackageAsSigned(base44, pkg, signer, pkg.signer_email, now, ip, ua);
+    const { cert, finalizedPackage } = await closePackageAsSigned(base44, pkg, signer, pkg.signer_email, now, ip, ua);
     return response({
       success: true,
       status: 'signed',
       certificate_id: cert.id,
       certificate_number: cert.certificate_number || '',
-      final_pdf_url: pkg.source_pdf_url || pkg.final_pdf_url || '',
-      final_pdf_name: pkg.source_pdf_name || pkg.final_pdf_name || '',
+      final_pdf_url: finalizedPackage.final_pdf_url || '',
+      final_pdf_name: finalizedPackage.final_pdf_name || '',
       document_type: pkg.document_type,
       document_id: pkg.document_id,
       signing_package_id: pkg.id,
