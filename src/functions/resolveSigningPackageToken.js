@@ -70,6 +70,7 @@ export default async (req) => {
         provider: pkg.provider,
         signing_mode: pkg.signing_mode,
         viewed_at: resolvedViewedAt || '',
+        signature_brand_logo_url: pkg.signature_brand_logo_url || '',
       },
     });
   } catch (error) {
