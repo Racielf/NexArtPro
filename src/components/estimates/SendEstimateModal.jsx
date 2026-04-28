@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { X, Copy, ExternalLink } from 'lucide-react';
-import { logComm, logCommFailed } from '@/lib/commTracking';
 import { generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
+import { executeSend } from '@/lib/estimateSendOrchestrator';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
   const [emailEnabled, setEmailEnabled] = useState(true);
@@ -63,30 +63,21 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
   const handleSend = async () => {
     if (!to) { toast.error('Recipient email is required'); return; }
     setSending(true);
-    await base44.entities.Estimate.update(estimate.id, {
-      status: 'sent',
-      sent_at: new Date().toISOString()
-    });
     try {
-      await base44.integrations.Core.SendEmail({ to, subject, body: message });
-      await logComm({
-        event_type: 'estimate_sent',
-        client_id: estimate.client_id || '',
-        client_name: estimate.client_name,
-        client_email: to,
-        estimate_id: estimate.id,
-        appointment_id: estimate.appointment_id || '',
+      await executeSend({
+        estimate,
+        recipientEmail: to,
         subject,
-        preview: `Total: $${(estimate.total || 0).toFixed(2)}`
+        message,
+        currentTemplate: estimate?.document_config?.template || 'clean',
+        currentOptions: estimate?.document_config?.options || {},
+        includedAttachmentIds: estimate?.document_config?.included_attachment_ids || [],
+        appConfig,
       });
-    } catch {
-      await logCommFailed({
-        event_type: 'estimate_sent',
-        client_name: estimate.client_name,
-        client_email: to,
-        estimate_id: estimate.id,
-        subject
-      });
+    } catch (error) {
+      toast.error(error?.message || 'Failed to send estimate');
+      setSending(false);
+      return;
     }
     setSending(false);
     toast.success('Estimate sent!');
@@ -104,8 +95,6 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
         </DialogHeader>
 
         <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-
-          {/* Email Toggle */}
           <div className="flex items-center justify-between">
             <span className="font-semibold text-slate-800">Email</span>
             <button
@@ -118,7 +107,6 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
 
           {emailEnabled && (
             <div className="space-y-3">
-              {/* To */}
               <div className="border border-slate-200 rounded-lg px-3 py-2">
                 <div className="text-xs text-slate-400 mb-1">To</div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -139,7 +127,6 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
                 </div>
               </div>
 
-              {/* Subject */}
               <div className="border border-slate-200 rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs text-slate-400">Subject</span>
@@ -153,7 +140,6 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
                 />
               </div>
 
-              {/* Message */}
               <div className="border border-slate-200 rounded-lg px-3 py-2">
                 <div className="text-xs text-slate-400 mb-1">Message</div>
                 <textarea
@@ -164,7 +150,6 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
                 />
               </div>
 
-              {/* Attachments */}
               <div className="border border-slate-200 rounded-lg px-3 py-2">
                 <div className="text-xs text-slate-400 mb-1">Attachments</div>
                 <div className="text-sm text-slate-600">estimate-{estimate?.estimate_number}.pdf</div>
@@ -172,7 +157,6 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
             </div>
           )}
 
-          {/* Client View Link */}
           <div className="border border-slate-200 rounded-lg px-3 py-3 bg-blue-50/50">
             <div className="text-xs text-slate-400 mb-2 font-medium">Client View Link</div>
             <div className="flex items-center gap-2">
@@ -186,7 +170,6 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
             </div>
           </div>
 
-          {/* Text section (disabled) */}
           <div className="border border-slate-200 rounded-lg px-4 py-3 bg-slate-50/50">
             <div className="flex items-center justify-between">
               <span className="font-medium text-slate-400">Text</span>
@@ -197,7 +180,6 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
           <Button variant="outline" onClick={onClose} className="rounded-full px-5">Cancel</Button>
           <Button onClick={handleSend} disabled={sending} className="rounded-full px-6 bg-blue-600 hover:bg-blue-700 text-white">
