@@ -3,32 +3,49 @@ import SettingsSection from '@/components/settings/SettingsSection';
 import SettingsCard from '@/components/settings/SettingsCard';
 import SettingsRow from '@/components/settings/SettingsRow';
 import { Button } from '@/components/ui/button';
-import { Upload, Save, RefreshCw, Trash2, Loader2, CheckCircle, XCircle, ImageIcon } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { Upload, Save, RefreshCw, Trash2, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { loadCompanySettings, saveCompanySettings } from '@/lib/companySettings';
 import { validateImageFile, optimizeImage } from '@/lib/imageOptimizer';
 import { uploadLogoToStorage } from '@/lib/logoStorage';
 
 const inputCls = 'w-64 text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition';
+const EMPTY_LOGO_STATE = { logo_url: '', app_logo_url: '' };
 
 export default function CompanyPanel() {
-  const [state, setState] = useState({ name: '', email: '', phone: '', address: '', license: '', logo_url: '', payment_methods: '' });
+  const [state, setState] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    license: '',
+    logo_url: '',
+    app_logo_url: '',
+    payment_methods: '',
+  });
   const [original, setOriginal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [logoError, setLogoError] = useState('');
+  const [uploadingField, setUploadingField] = useState('');
+  const [previewUrls, setPreviewUrls] = useState(EMPTY_LOGO_STATE);
+  const [logoErrors, setLogoErrors] = useState(EMPTY_LOGO_STATE);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const fileRef = useRef(null);
+  const documentLogoRef = useRef(null);
+  const appLogoRef = useRef(null);
 
   useEffect(() => {
     loadCompanySettings().then(data => {
-      setState(data);
-      setOriginal(data);
-      setPreviewUrl(data.logo_url || '');
+      const nextState = {
+        ...data,
+        app_logo_url: data.app_logo_url || '',
+      };
+      setState(nextState);
+      setOriginal(nextState);
+      setPreviewUrls({
+        logo_url: nextState.logo_url || '',
+        app_logo_url: nextState.app_logo_url || '',
+      });
       setLoading(false);
     });
   }, []);
@@ -39,45 +56,50 @@ export default function CompanyPanel() {
     setState(prev => ({ ...prev, [field]: value }));
   };
 
+  const setLogoError = (field, value) => {
+    setLogoErrors(prev => ({ ...prev, [field]: value }));
+  };
+
+  const setPreviewUrl = (field, value) => {
+    setPreviewUrls(prev => ({ ...prev, [field]: value }));
+  };
+
   const isDirty = JSON.stringify(state) !== JSON.stringify(original);
 
-  // ── Logo upload ────────────────────────────────────────────
-  const handleFileSelect = async (e) => {
+  const handleFileSelect = (field, inputRef) => async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setLogoError('');
+    setLogoError(field, '');
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      setLogoError(validation.error);
-      if (fileRef.current) fileRef.current.value = '';
+      setLogoError(field, validation.error);
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
 
-    setUploading(true);
-    setLogoError('');
+    setUploadingField(field);
     try {
       const optimized = await optimizeImage(file);
       const publicUrl = await uploadLogoToStorage(optimized);
-      set('logo_url', publicUrl);
-      setPreviewUrl(publicUrl);
+      set(field, publicUrl);
+      setPreviewUrl(field, publicUrl);
     } catch (err) {
-      setLogoError('Failed to upload logo: ' + (err.message || 'Unknown error'));
+      setLogoError(field, 'Failed to upload logo: ' + (err.message || 'Unknown error'));
     } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
+      setUploadingField('');
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
-  const handleRemoveLogo = () => {
-    set('logo_url', '');
-    setPreviewUrl('');
-    setLogoError('');
+  const handleRemoveLogo = (field) => {
+    set(field, '');
+    setPreviewUrl(field, '');
+    setLogoError(field, '');
     setSaveSuccess(false);
     setSaveError('');
   };
 
-  // ── Save ───────────────────────────────────────────────────
   const handleSave = async () => {
     if (!state.name.trim()) {
       toast.error('Company name is required');
@@ -97,9 +119,91 @@ export default function CompanyPanel() {
     }
   };
 
+  const renderLogoUploader = ({ field, label, description, fileRef, previewUrl, error, last = false }) => {
+    const isUploading = uploadingField === field;
+
+    return (
+      <SettingsRow label={label} description={description} last={last}>
+        <div className="flex flex-col items-start gap-3">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+            className="hidden"
+            onChange={handleFileSelect(field, fileRef)}
+          />
+
+          {isUploading && !previewUrl && (
+            <div className="w-40 h-28 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 flex flex-col items-center justify-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              <span className="text-xs font-medium text-blue-600">Processing logo…</span>
+            </div>
+          )}
+
+          {previewUrl && (
+            <div className="flex flex-col items-start gap-3">
+              <div className="relative w-44 h-32 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-sm">
+                <img
+                  src={previewUrl}
+                  alt={label}
+                  className="max-w-full max-h-full object-contain p-2"
+                />
+                {isUploading && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-1.5 rounded-xl">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                    <span className="text-xs font-medium text-blue-600">Replacing…</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={Boolean(uploadingField)}
+                  className="gap-1.5 text-xs"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Replace Logo
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRemoveLogo(field)}
+                  disabled={Boolean(uploadingField)}
+                  className="gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Remove Logo
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!previewUrl && !isUploading && (
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-2 text-sm text-blue-500 font-medium hover:text-blue-600 transition border border-blue-200 rounded-lg px-4 py-2 bg-blue-50"
+              disabled={Boolean(uploadingField)}
+            >
+              <Upload className="w-4 h-4" /> Upload Logo
+            </button>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-1.5 text-xs text-red-600 mt-1">
+              <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+      </SettingsRow>
+    );
+  };
+
   if (loading) {
     return (
-      <SettingsSection title="Company" description="Your business information shown on documents and emails.">
+      <SettingsSection title="Company" description="Your business information shown across the app and documents.">
         <SettingsCard>
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
@@ -110,7 +214,7 @@ export default function CompanyPanel() {
   }
 
   return (
-    <SettingsSection title="Company" description="Your business information shown on documents and emails.">
+    <SettingsSection title="Company" description="Your business information shown across the app and documents.">
       <SettingsCard>
         <SettingsRow label="Company Name" description="Appears on all documents">
           <input className={inputCls} value={state.name} onChange={e => set('name', e.target.value)} placeholder="FSM Pro LLC" />
@@ -136,89 +240,26 @@ export default function CompanyPanel() {
           />
         </SettingsRow>
 
-        {/* Logo */}
-        <SettingsRow label="Logo" description="Upload your company logo (PNG, JPG, WEBP — max 5 MB)" last>
-          <div className="flex flex-col items-start gap-3">
-            {/* Hidden file input */}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+        {renderLogoUploader({
+          field: 'logo_url',
+          label: 'Document Logo',
+          description: 'Used in estimate, proposal, invoice, PDF and document headers.',
+          fileRef: documentLogoRef,
+          previewUrl: previewUrls.logo_url,
+          error: logoErrors.logo_url,
+        })}
 
-            {/* Uploading state — no preview yet */}
-            {uploading && !previewUrl && (
-              <div className="w-40 h-28 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 flex flex-col items-center justify-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                <span className="text-xs font-medium text-blue-600">Processing logo…</span>
-              </div>
-            )}
-
-            {/* Preview thumbnail */}
-            {previewUrl && (
-              <div className="flex flex-col items-start gap-3">
-                <div className="relative w-44 h-32 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-sm">
-                  <img
-                    src={previewUrl}
-                    alt="Company logo"
-                    className="max-w-full max-h-full object-contain p-2"
-                  />
-                  {uploading && (
-                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-1.5 rounded-xl">
-                      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                      <span className="text-xs font-medium text-blue-600">Replacing…</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploading}
-                    className="gap-1.5 text-xs"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Replace Logo
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRemoveLogo}
-                    disabled={uploading}
-                    className="gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Remove Logo
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Upload button — no preview and not uploading */}
-            {!previewUrl && !uploading && (
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="flex items-center gap-2 text-sm text-blue-500 font-medium hover:text-blue-600 transition border border-blue-200 rounded-lg px-4 py-2 bg-blue-50"
-              >
-                <Upload className="w-4 h-4" /> Upload Logo
-              </button>
-            )}
-
-            {/* Logo error */}
-            {logoError && (
-              <div className="flex items-center gap-1.5 text-xs text-red-600 mt-1">
-                <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>{logoError}</span>
-              </div>
-            )}
-          </div>
-        </SettingsRow>
+        {renderLogoUploader({
+          field: 'app_logo_url',
+          label: 'App Logo',
+          description: 'Used in the app interface. Does not replace the document header logo.',
+          fileRef: appLogoRef,
+          previewUrl: previewUrls.app_logo_url,
+          error: logoErrors.app_logo_url,
+          last: true,
+        })}
       </SettingsCard>
 
-      {/* Save button */}
       <div className="flex items-center gap-3 mt-4">
         <Button
           onClick={handleSave}
