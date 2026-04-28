@@ -1,5 +1,5 @@
 import { base44 } from '@/api/base44Client';
-import { generatePublicShareToken, markEstimateSent } from '@/lib/estimateSalesLifecycle';
+import { markEstimateSent } from '@/lib/estimateSalesLifecycle';
 import { createSigningPackageForEstimate } from '@/lib/nexArtSign';
 import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
 import { validateDocTypeFields } from '@/lib/documentTypeConfig';
@@ -94,8 +94,26 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
   try { currentUser = await base44.auth.me().catch(() => null); } catch {}
   currentUser = resolveAuthorizedSender(currentUser);
 
-  const shareToken = await generatePublicShareToken(estimate);
-  const finalLink = `${window.location.origin}/client-estimate?token=${shareToken}`;
+  let signingPackage = null;
+  let finalLink = '';
+  try {
+    signingPackage = await createSigningPackageForEstimate({
+      estimate,
+      pdfUrl: pdfUrl || '',
+      pdfName: pdfFilename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`,
+      pdfHash,
+      currentUser,
+    });
+
+    if (!signingPackage?.token) {
+      throw new Error('NexArtSign package was created without a signing token');
+    }
+
+    finalLink = `${window.location.origin}/sign-document?token=${signingPackage.token}`;
+  } catch (err) {
+    console.warn('[executeSend] NexArtSign signing link generation failed:', err?.message);
+    throw new Error('Failed to generate NexArtSign signing link');
+  }
 
   const emailAttachments = [];
   if (generatedPdf?.base64) {
@@ -120,13 +138,6 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
     throw new Error(`Email service error: ${err?.message}`);
   }
   if (emailRes.data?.error) throw new Error(emailRes.data.error);
-
-  let signingPackage = null;
-  try {
-    signingPackage = await createSigningPackageForEstimate({ estimate, pdfUrl: pdfUrl || '', pdfName: pdfFilename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`, pdfHash, currentUser });
-  } catch (err) {
-    console.warn('[executeSend] NexArtSign link step failed after email send:', err?.message);
-  }
 
   let snapshotId = null;
   try {
