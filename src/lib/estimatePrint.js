@@ -66,6 +66,127 @@ function createIframeDoc(estimate, rootId) {
   return { iframe, container: iframeDoc.getElementById(rootId) };
 }
 
+function buildAuditEventRows(auditTrail = []) {
+  return (Array.isArray(auditTrail) ? auditTrail : [])
+    .slice()
+    .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0))
+    .map((event) => ({
+      action: String(event.event_type || event.action || 'event').replace(/_/g, ' '),
+      actor: event.actor_name || event.actor_email || 'system',
+      stamp: event.created_at || '',
+      ip: event.ip_address || '',
+    }));
+}
+
+function appendAuditPage(pdf, auditData = {}) {
+  if (!auditData || Object.keys(auditData).length === 0) return;
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentWidth = pageWidth - (margin * 2);
+  let y = 18;
+
+  const drawLabelValue = (label, value, options = {}) => {
+    const safeValue = value || '—';
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(options.labelSize || 9);
+    pdf.setTextColor(71, 85, 105);
+    pdf.text(label, margin, y);
+    y += 4.5;
+
+    pdf.setFont(options.mono ? 'courier' : 'helvetica', 'normal');
+    pdf.setFontSize(options.valueSize || 10);
+    pdf.setTextColor(15, 23, 42);
+
+    const lines = pdf.splitTextToSize(String(safeValue), contentWidth);
+    pdf.text(lines, margin, y);
+    y += (lines.length * (options.lineHeight || 4.8)) + (options.after || 3.5);
+  };
+
+  const ensureSpace = (needed = 16) => {
+    if (y + needed <= pageHeight - margin) return;
+    pdf.addPage();
+    y = 18;
+  };
+
+  pdf.addPage();
+  pdf.setFillColor(248, 250, 252);
+  pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+  pdf.setDrawColor(203, 213, 225);
+  pdf.roundedRect(margin, 12, contentWidth, pageHeight - 24, 3, 3, 'S');
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(18);
+  pdf.setTextColor(15, 23, 42);
+  pdf.text('NexArtSign Audit Certificate', margin, y);
+  y += 7;
+
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(10);
+  pdf.setTextColor(71, 85, 105);
+  const subtitle = pdf.splitTextToSize(
+    'This page records the integrity and signature timeline for the finalized document. Any modification to the signed PDF changes its hash and invalidates this record.',
+    contentWidth
+  );
+  pdf.text(subtitle, margin, y);
+  y += (subtitle.length * 4.6) + 6;
+
+  drawLabelValue('Package ID', auditData.packageId, { mono: true });
+  drawLabelValue('Document', `${auditData.documentTitle || auditData.documentType || 'Document'}${auditData.documentNumber ? ` • ${auditData.documentNumber}` : ''}`);
+  drawLabelValue('Certificate Number', auditData.certificateNumber, { mono: true });
+  drawLabelValue('Signed At', auditData.signedAt);
+  drawLabelValue('Signer', `${auditData.signerName || '—'}${auditData.signerEmail ? ` <${auditData.signerEmail}>` : ''}`);
+  drawLabelValue('IP Address', auditData.ipAddress, { mono: true });
+  drawLabelValue('User Agent', auditData.userAgent);
+  drawLabelValue('Hash Algorithm', auditData.hashAlgorithm, { mono: true });
+  drawLabelValue('Original Document Hash', auditData.documentHash, { mono: true, valueSize: 9 });
+  drawLabelValue('Final Signed PDF Hash', auditData.finalPdfHash, { mono: true, valueSize: 9 });
+
+  ensureSpace(20);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(11);
+  pdf.setTextColor(15, 23, 42);
+  pdf.text('Audit Timeline', margin, y);
+  y += 6;
+
+  const rows = buildAuditEventRows(auditData.auditTrail);
+  if (!rows.length) {
+    drawLabelValue('Events', 'No audit events were recorded for this package.');
+  } else {
+    rows.forEach((row, index) => {
+      ensureSpace(18);
+      pdf.setDrawColor(226, 232, 240);
+      pdf.roundedRect(margin, y - 3.5, contentWidth, 15, 2, 2, 'S');
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text(`${index + 1}. ${row.action}`, margin + 3, y + 1);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(`Actor: ${row.actor}`, margin + 3, y + 5.5);
+      pdf.text(`Timestamp: ${row.stamp || '—'}`, margin + 3, y + 9.5);
+      if (row.ip) {
+        pdf.text(`IP: ${row.ip}`, margin + 82, y + 9.5);
+      }
+      y += 18;
+    });
+  }
+
+  ensureSpace(12);
+  pdf.setFont('courier', 'normal');
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 116, 139);
+  const verification = pdf.splitTextToSize(
+    `Verification Reference: ${auditData.packageId || '—'} | Certificate: ${auditData.certificateNumber || '—'} | Final Hash: ${auditData.finalPdfHash || '—'}`,
+    contentWidth
+  );
+  pdf.text(verification, margin, y);
+}
+
 /**
  * Renders document into a hidden iframe and triggers window.print().
  * @param {Object} estimate
@@ -145,7 +266,7 @@ export async function downloadEstimate(estimate, options, template) {
  * @param {string} [template] — Template override
  * @returns {Promise<{filename: string, base64: string}>}
  */
-export async function generateEstimatePdfBase64(estimate, options, template) {
+export async function generateEstimatePdfBase64(estimate, options, template, auditData = null) {
   return new Promise((resolve, reject) => {
     const { iframe, container } = createIframeDoc(estimate, 'pdf-email-root');
     const root = createRoot(container);
@@ -180,6 +301,8 @@ export async function generateEstimatePdfBase64(estimate, options, template) {
           pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
           heightLeft -= pageHeight;
         }
+
+        appendAuditPage(pdf, auditData);
 
         const filename = `${resolveDocLabel(estimate)}-${resolveDocNumber(estimate)}.pdf`;
         const base64 = pdf.output('dataurlstring').split(',')[1];
