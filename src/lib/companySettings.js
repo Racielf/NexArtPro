@@ -17,6 +17,7 @@ const DEFAULTS = {
   license: '',
   logo_url: '',
   app_logo_url: APP_CONFIG.app.logo_url || '',
+  nexartsign_logo_url: APP_CONFIG.app.logo_url || '',
   payment_methods: '',
 };
 
@@ -35,10 +36,6 @@ export async function saveCompanySettings(settings) {
   emitCompanyConfigChange();
 }
 
-/**
- * getCompanyConfig — returns merged company config for document renderers.
- * Synchronous fallback using cached value; async for fresh data.
- */
 let _cache = null;
 
 export async function refreshCompanyConfig() {
