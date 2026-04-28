@@ -169,6 +169,7 @@ Deno.serve(async (req) => {
         participant_id: matchedParticipant?.id || '',
         participant_role: matchedParticipant?.role || '',
         token_scope: hasParticipants ? 'participant' : 'package',
+        signature_brand_logo_url: pkg.signature_brand_logo_url || '',
       },
     });
   } catch (error: any) {
