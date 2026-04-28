@@ -2,6 +2,7 @@ import React from 'react';
 import EstimateTemplateRenderer from '@/components/estimates/EstimateTemplateRenderer';
 import BidDocumentRenderer from '@/components/documents/BidDocumentRenderer';
 import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
+import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 
 function formatSignedDate(value) {
   if (!value) return '';
@@ -25,12 +26,14 @@ function shortHash(hash) {
 
 function SignedApprovalStamp({ estimate }) {
   const signer = estimate?.signature_name || estimate?.accepted_by;
+  const companySigner = estimate?.company_signature_name;
   const signedAt = estimate?.signed_at || estimate?.approved_at;
+  const companySignedAt = estimate?.company_signed_at || estimate?.sent_at;
   const audit = estimate?.legal_audit || {};
-  const hash = estimate?.final_signed_pdf_sha256 || '';
+  const hash = estimate?.signed_pdf_hash || estimate?.final_signed_pdf_sha256 || '';
   const isLocked = estimate?.legal_package_locked || estimate?.locked_after_signature;
 
-  if (!signer || estimate?.status !== 'approved') return null;
+  if (!signer || !['approved', 'signed', 'converted'].includes(estimate?.status)) return null;
 
   return (
     <div style={{
@@ -77,9 +80,34 @@ function SignedApprovalStamp({ estimate }) {
         }}>
           Digitally Signed Approval
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.8fr', gap: 18 }}>
           <div>
-            <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Signed by</div>
+            <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Authorized representative</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{companySigner || 'Authorized Representative'}</div>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
+              {estimate?.company_signature_role || 'Authorized company signature'}
+            </div>
+            <div style={{
+              marginTop: 10,
+              background: 'white',
+              border: '1px solid #dcfce7',
+              borderRadius: 8,
+              padding: '12px 10px',
+              minHeight: 84,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-end',
+            }}>
+              <div style={{ fontSize: 28, lineHeight: 1, color: '#14532d', fontFamily: "'Times New Roman', serif", fontStyle: 'italic' }}>
+                {companySigner || appConfig.company.name}
+              </div>
+              <div style={{ fontSize: 10, color: '#64748b', marginTop: 8 }}>
+                {formatSignedDate(companySignedAt)}
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Client signature</div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#14532d' }}>{signer}</div>
             {estimate?.signature_image && (
               <div style={{ marginTop: 10, background: 'white', border: '1px solid #dcfce7', borderRadius: 8, padding: 10 }}>
@@ -116,10 +144,12 @@ function SignedApprovalStamp({ estimate }) {
                 Legal package locked
               </div>
             )}
-            {audit.timezone && <div style={{ fontSize: 10, color: '#64748b', marginTop: 10 }}>Timezone: {audit.timezone}</div>}
-            {audit.language && <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>Language: {audit.language}</div>}
-            {audit.screen && <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>Screen: {audit.screen}</div>}
           </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          {audit.timezone && <div style={{ fontSize: 10, color: '#64748b' }}>Timezone: {audit.timezone}</div>}
+          {audit.language && <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>Language: {audit.language}</div>}
+          {audit.screen && <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>Screen: {audit.screen}</div>}
         </div>
 
         {hash && (
@@ -150,14 +180,29 @@ function SignedApprovalStamp({ estimate }) {
             Audit device: {audit.user_agent}
           </p>
         )}
+        <div style={{
+          marginTop: 18,
+          paddingTop: 14,
+          borderTop: '1px solid #dcfce7',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+        }}>
+          <div>
+            <div style={{ fontSize: 10, color: '#166534', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Secured by NexArtSign Pro
+            </div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+              Dual-signature document package archived for client delivery and company records.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-/**
- * FinalDocumentRenderer — single final rendering entry point for print/PDF/client final documents.
- */
 export default function FinalDocumentRenderer({ estimate, options = {}, template, lang }) {
   if (!estimate) return null;
 
