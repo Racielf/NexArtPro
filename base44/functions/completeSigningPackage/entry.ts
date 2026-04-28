@@ -33,6 +33,64 @@ function buildParticipantToken(pkgId: string, participantId: string) {
   return `nsp_${pkgId}_${participantId}_${randomTokenPart()}`;
 }
 
+function buildWorkOrderNumber() {
+  return Date.now();
+}
+
+function buildTasksFromEstimate(estimate: any) {
+  const groups = Array.isArray(estimate?.groups) ? estimate.groups : [];
+  const tasks: any[] = [];
+
+  groups.forEach((group: any, groupIndex: number) => {
+    const items = Array.isArray(group?.items) ? group.items : [];
+    items.forEach((item: any, itemIndex: number) => {
+      tasks.push({
+        id: item?.id || `${groupIndex}-${itemIndex}`,
+        title: item?.name || item?.description || `Task ${tasks.length + 1}`,
+        description: item?.description || group?.name || '',
+        status: 'pending',
+        assigned_to: '',
+        order: tasks.length + 1,
+      });
+    });
+  });
+
+  return tasks;
+}
+
+function buildExecutionChecklist() {
+  return [
+    { id: 'materials_ready', item: 'Materials ready / verified', completed: false },
+    { id: 'site_prepared', item: 'Job site prepared', completed: false },
+    { id: 'work_completed', item: 'Work completed according to approved estimate', completed: false },
+    { id: 'photos_uploaded', item: 'Completion photos uploaded', completed: false },
+    { id: 'client_reviewed', item: 'Client reviewed completed work', completed: false },
+  ];
+}
+
+function buildEstimateSnapshot(estimate: any) {
+  return {
+    estimate_number: estimate?.estimate_number,
+    version: estimate?.version_number,
+    total: estimate?.total,
+    subtotal: estimate?.subtotal,
+    materials_subtotal: estimate?.materials_subtotal,
+    materials_cost: estimate?.materials_cost,
+    other_costs_total: estimate?.other_costs_total,
+    total_cost: estimate?.total_cost,
+    gross_margin: estimate?.gross_margin,
+    gross_margin_pct: estimate?.gross_margin_pct,
+    payment_terms: estimate?.payment_terms,
+    warranty_terms: estimate?.warranty_terms,
+    exclusions: estimate?.exclusions,
+    scope_summary: estimate?.scope_summary,
+    assumptions: estimate?.assumptions,
+    signed_at: estimate?.signed_at,
+    signature_name: estimate?.signature_name,
+    final_signed_pdf_url: estimate?.final_signed_pdf_url,
+  };
+}
+
 async function ensureParticipantToken(base44: any, pkgId: string, participant: any) {
   if (!participant) return '';
   if (participant.token) return participant.token;
@@ -88,6 +146,94 @@ async function resolveSigningContext(base44: any, token: string) {
     matchedParticipant,
     activeParticipant,
   };
+}
+
+async function convertSignedEstimateToWorkOrder(base44: any, estimate: any, actor: string, signedAt: string) {
+  if (!estimate?.id) return null;
+  if (!['approved', 'signed', 'converted'].includes(estimate?.status)) return null;
+  if (estimate?.converted_work_order_id) return estimate.converted_work_order_id;
+
+  const version = estimate.version_number || 1;
+  const existing = await base44.asServiceRole.entities.WorkOrder.filter({
+    estimate_id: estimate.id,
+    estimate_version: version,
+  }).catch(() => []);
+
+  if (existing?.[0]?.id) {
+    if (!estimate.converted_work_order_id) {
+      await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+        status: 'converted',
+        sales_stage: 'converted',
+        converted_to_work_order_at: signedAt,
+        converted_work_order_id: existing[0].id,
+      }).catch(() => {});
+    }
+    return existing[0].id;
+  }
+
+  const workOrder = await base44.asServiceRole.entities.WorkOrder.create({
+    work_order_number: buildWorkOrderNumber(),
+    estimate_id: estimate.id,
+    estimate_version: version,
+    source_estimate_id: estimate.id,
+    source_estimate_number: estimate.estimate_number,
+    source_estimate_version: version,
+    source_document_type: estimate.document_type,
+    source_estimate_status: estimate.status,
+    source_estimate_total: estimate.total || 0,
+    source_estimate_signed_at: estimate.signed_at || signedAt,
+    source_estimate_signed_by: estimate.signature_name || estimate.accepted_by || '',
+    source_estimate_final_pdf_url: estimate.final_signed_pdf_url || '',
+    source_estimate_snapshot: buildEstimateSnapshot(estimate),
+    client_id: estimate.client_id || '',
+    client_name: estimate.client_name || '',
+    client_email: estimate.client_email || '',
+    client_phone: estimate.client_phone || '',
+    client_address: estimate.client_address || '',
+    title: estimate.title || `Work Order from Estimate #${estimate.estimate_number || ''}`.trim(),
+    description: estimate.notes || estimate.title || '',
+    status: 'draft',
+    groups: estimate.groups || [],
+    line_items: estimate.line_items || [],
+    materials: estimate.materials || [],
+    other_costs: estimate.other_costs || [],
+    subtotal: estimate.subtotal || 0,
+    total: estimate.total || 0,
+    materials_subtotal: estimate.materials_subtotal || 0,
+    materials_cost: estimate.materials_cost || 0,
+    other_costs_total: estimate.other_costs_total || 0,
+    total_cost: estimate.total_cost || 0,
+    gross_margin: estimate.gross_margin || 0,
+    gross_margin_pct: estimate.gross_margin_pct || 0,
+    payment_terms: estimate.payment_terms || '',
+    warranty_terms: estimate.warranty_terms || '',
+    exclusions: estimate.exclusions || '',
+    scope_summary: estimate.scope_summary || '',
+    assumptions: estimate.assumptions || '',
+    notes: estimate.notes || '',
+    internal_notes: [
+      `Created automatically from approved estimate #${estimate.estimate_number || ''}.`,
+      `Converted by: ${actor}.`,
+      `Assignment source: none.`,
+      `Converted at: ${signedAt}.`,
+    ].filter(Boolean).join('\n'),
+    tasks: buildTasksFromEstimate(estimate),
+    execution_checklist: buildExecutionChecklist(),
+    field_notes: [],
+    assignment_source: 'none',
+    company_id: estimate.company_id || 'rc-art',
+  }).catch(() => null);
+
+  if (!workOrder?.id) return null;
+
+  await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+    status: 'converted',
+    sales_stage: 'converted',
+    converted_to_work_order_at: signedAt,
+    converted_work_order_id: workOrder.id,
+  }).catch(() => {});
+
+  return workOrder.id;
 }
 
 function buildEstimateSignatureCertificate({
@@ -186,7 +332,8 @@ async function finalizeEstimateLegalState(base44: any, pkg: any, cert: any, sign
     },
   }).catch(() => {});
 
-  await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+  const convertedWorkOrderId = await convertSignedEstimateToWorkOrder(base44, {
+    ...estimate,
     status: estimate.converted_work_order_id ? 'converted' : 'signed',
     signature_status: 'signed',
     signed_at: now,
@@ -211,6 +358,36 @@ async function finalizeEstimateLegalState(base44: any, pkg: any, cert: any, sign
     company_signed_at: estimate.company_signed_at || pkg.sent_at || estimate.sent_at || now,
     certificate_generated_at: cert?.generated_at || now,
     signature_certificate: signatureCertificate,
+  }, 'nexartsign-backend', now).catch(() => null);
+
+  await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+    status: convertedWorkOrderId ? 'converted' : 'signed',
+    signature_status: 'signed',
+    signed_at: now,
+    approved_at: estimate.approved_at || now,
+    accepted_by: signer,
+    signature_name: signer,
+    signature_provider: 'internal',
+    signing_package_id: pkg.id,
+    terms_accepted: true,
+    locked_after_signature: true,
+    legal_package_locked: true,
+    final_signed_at: now,
+    final_signed_pdf_url: finalPdfUrl,
+    final_signed_pdf_name: finalPdfName,
+    signed_pdf_hash: finalPdfHash,
+    signed_pdf_hash_algorithm: pkg.hash_algorithm || estimate.signed_pdf_hash_algorithm || 'SHA-256',
+    document_hash: estimate.document_hash || pkg.source_pdf_hash || finalPdfHash || '',
+    document_hash_algorithm: estimate.document_hash_algorithm || pkg.hash_algorithm || 'SHA-256',
+    company_signature_name: estimate.company_signature_name || COMPANY_NAME,
+    company_signature_email: estimate.company_signature_email || COMPANY_EMAIL,
+    company_signature_role: estimate.company_signature_role || COMPANY_ROLE,
+    company_signed_at: estimate.company_signed_at || pkg.sent_at || estimate.sent_at || now,
+    certificate_generated_at: cert?.generated_at || now,
+    signature_certificate: signatureCertificate,
+    converted_to_work_order_at: convertedWorkOrderId ? now : estimate.converted_to_work_order_at || '',
+    converted_work_order_id: convertedWorkOrderId || estimate.converted_work_order_id || '',
+    sales_stage: convertedWorkOrderId ? 'converted' : estimate.sales_stage,
     legal_audit: {
       ...(estimate.legal_audit || {}),
       signing_package_id: pkg.id,
@@ -220,11 +397,15 @@ async function finalizeEstimateLegalState(base44: any, pkg: any, cert: any, sign
       ip_address: ip,
       user_agent: ua,
       backend_finalized: true,
+      backend_work_order_conversion: Boolean(convertedWorkOrderId),
       events_recorded: Array.isArray(events) ? events.length : 0,
     },
   }).catch(() => {});
 
-  return signatureCertificate;
+  return {
+    signatureCertificate,
+    convertedWorkOrderId,
+  };
 }
 
 async function createCompletionCertificate(base44: any, pkg: any, signer: string, signerEmail: string, now: string, ip: string, ua: string) {
