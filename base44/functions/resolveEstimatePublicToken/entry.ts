@@ -29,6 +29,32 @@ function parseToken(token: string) {
   return null;
 }
 
+function sortParticipants(rows: any[] = []) {
+  return [...rows].sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
+}
+
+function getActiveParticipant(participants: any[] = []) {
+  const ordered = sortParticipants(participants);
+  return ordered.find(p => p.status === 'active') || ordered.find(p => p.status === 'pending') || null;
+}
+
+function randomTokenPart() {
+  return crypto.randomUUID().replace(/-/g, '');
+}
+
+function buildParticipantToken(pkgId: string, participantId: string) {
+  return `nsp_${pkgId}_${participantId}_${randomTokenPart()}`;
+}
+
+async function ensureParticipantToken(base44: any, pkgId: string, participant: any) {
+  if (!participant) return '';
+  if (participant.token) return participant.token;
+  const token = buildParticipantToken(pkgId, participant.id || 'participant');
+  await base44.asServiceRole.entities.SigningParticipant.update(participant.id, { token }).catch(() => {});
+  participant.token = token;
+  return token;
+}
+
 async function findEstimateByToken(base44: any, token: string) {
   const directRows = await base44.asServiceRole.entities.Estimate.filter({ public_share_token: token }).catch(() => []);
   if (directRows?.[0]) {
@@ -58,6 +84,29 @@ async function findEstimateByToken(base44: any, token: string) {
   return null;
 }
 
+async function resolveClientSigningToken(base44: any, estimate: any, signingPackage: any) {
+  if (!signingPackage || ['declined', 'expired', 'voided', 'signed'].includes(signingPackage.status)) {
+    return '';
+  }
+
+  const participants = await base44.asServiceRole.entities.SigningParticipant.filter({ signing_package_id: signingPackage.id }).catch(() => []);
+  if (!Array.isArray(participants) || participants.length === 0) {
+    return signingPackage.token || '';
+  }
+
+  const activeParticipant = getActiveParticipant(participants);
+  if (!activeParticipant) return '';
+
+  const isClientParticipant = activeParticipant.role === 'client'
+    || String(activeParticipant.email || '').toLowerCase() === String(estimate.client_email || '').toLowerCase();
+
+  if (!isClientParticipant) {
+    return '';
+  }
+
+  return ensureParticipantToken(base44, signingPackage.id, activeParticipant);
+}
+
 async function buildResponse(estimate: any, base44: any) {
   let snapshotData = null;
   let signingPackage = null;
@@ -75,6 +124,7 @@ async function buildResponse(estimate: any, base44: any) {
   } catch {}
 
   const sourceData = snapshotData?.estimate_data || estimate;
+  const signingToken = signingPackage ? await resolveClientSigningToken(base44, estimate, signingPackage) : '';
 
   return json({
     estimate: {
@@ -94,7 +144,7 @@ async function buildResponse(estimate: any, base44: any) {
       pdf_file_url: snapshotData?.pdf_file_url || estimate.pdf_file_url,
       signing_package_id: signingPackage?.id || estimate.signing_package_id || '',
       signing_package_status: signingPackage?.status || estimate.signature_status || '',
-      signing_package_token: signingPackage?.token || '',
+      signing_package_token: signingToken,
       signature_name: estimate.signature_name || '',
       signed_at: estimate.signed_at || '',
       final_signed_at: estimate.final_signed_at || '',
