@@ -12,6 +12,7 @@ import FinalDocumentRenderer from '@/components/documents/FinalDocumentRenderer'
 import DocumentViewerShell from '@/components/documents/DocumentViewerShell';
 import { downloadEstimate } from '@/lib/estimatePrint';
 import ClientAttachmentsSection from '@/components/estimates/ClientAttachmentsSection';
+import SignatureBrandCredit from '@/components/signing/SignatureBrandCredit';
 import { generateSignedPdfUrl, generateSignedAttachmentUrls } from '@/lib/estimateDocumentAccess';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
@@ -21,20 +22,6 @@ import {
 import {
   markEstimateViewed,
 } from '@/lib/estimateSalesLifecycle';
-
-function SignatureBrandCredit({ logoUrl }) {
-  if (!logoUrl) return null;
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 px-6 py-5 text-center">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Signature Credits</p>
-      <div className="mt-3 flex items-center justify-center">
-        <img src={logoUrl} alt="Signature brand" className="max-h-10 w-auto object-contain" />
-      </div>
-      <p className="mt-3 text-xs text-slate-500">This mark appears at the end of the shared signing document and inside the secure signing experience.</p>
-    </div>
-  );
-}
 
 export default function ClientEstimateView() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -219,7 +206,7 @@ export default function ClientEstimateView() {
         </div>
       )}
 
-      <SignatureBrandCredit logoUrl={estimate.signature_brand_logo_url} />
+      <SignatureBrandCredit logoUrl={estimate.signature_brand_logo_url} variant="document" />
 
       <p className="text-center text-[10px] text-slate-400 py-2">This estimate was issued by {appConfig.appName}. Questions? Contact us at {appConfig.company.email}</p>
     </div>
