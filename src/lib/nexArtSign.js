@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { APP_CONFIG } from '@/lib/appConfig';
 
 function randomTokenPart() {
   if (crypto?.randomUUID) return crypto.randomUUID().replace(/-/g, '');
@@ -10,9 +11,9 @@ function randomTokenPart() {
 function resolveSignatureBrandLogoUrl(currentUser = null) {
   const companySettings = currentUser?.company_settings;
   if (companySettings && typeof companySettings === 'object') {
-    return companySettings.app_logo_url || '';
+    return companySettings.app_logo_url || APP_CONFIG.app.logo_url || '';
   }
-  return '';
+  return APP_CONFIG.app.logo_url || '';
 }
 
 export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', pdfName = '', pdfHash = '', currentUser = null }) {
