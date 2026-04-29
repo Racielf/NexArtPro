@@ -5,6 +5,10 @@ import {
   runNexArtSignSecurityPreflight,
   writeSecurityAuditLog,
 } from '../_shared/nexartsignSecurity.ts';
+import {
+  otpStateFromContext,
+  otpVerificationStatus,
+} from '../_shared/nexartsignOtp.ts';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -171,6 +175,8 @@ Deno.serve(async (req) => {
     }
 
     const { pkg, hasParticipants, matchedParticipant, activeParticipant } = context;
+    const otpState = otpStateFromContext(context);
+    const otpVerified = otpVerificationStatus(otpState, preflight.tokenHash, preflight.fingerprint);
 
     if (pkg.expires_at && new Date(pkg.expires_at) < new Date()) {
       await base44.asServiceRole.entities.SigningPackage.update(pkg.id, { status: 'expired' });
@@ -284,6 +290,13 @@ Deno.serve(async (req) => {
         participant_role: matchedParticipant?.role || '',
         token_scope: hasParticipants ? 'participant' : 'package',
         signature_brand_logo_url: pkg.signature_brand_logo_url || '',
+        otp_required: true,
+        otp_verified: otpVerified,
+        otp_delivery_channel: otpState?.delivery_channel || 'email',
+        otp_masked_destination: otpState?.masked_destination || '',
+        otp_requested_at: otpState?.requested_at || '',
+        otp_expires_at: otpState?.expires_at || '',
+        otp_locked_until: otpState?.locked_until || '',
       },
     });
   } catch (error: any) {
