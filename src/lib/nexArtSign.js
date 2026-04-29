@@ -2,6 +2,9 @@ import { base44 } from '@/api/base44Client';
 import { APP_CONFIG } from '@/lib/appConfig';
 import { loadCompanySettings } from '@/lib/companySettings';
 
+const CLOSED_PACKAGE_STATUSES = new Set(['signed', 'declined', 'expired', 'voided']);
+const CLOSED_PARTICIPANT_STATUSES = new Set(['signed', 'declined', 'skipped', 'voided']);
+
 function randomTokenPart() {
   if (crypto?.randomUUID) return crypto.randomUUID().replace(/-/g, '');
   const bytes = new Uint8Array(24);
@@ -52,6 +55,25 @@ function normalizeParticipantRole(role, fallback = 'other') {
 
 function normalizeEmail(value = '') {
   return String(value || '').trim().toLowerCase();
+}
+
+function resolveCompanyId({ settings = {}, currentUser = null, estimate = null, pkg = null } = {}) {
+  const userCompanySettings = currentUser?.company_settings && typeof currentUser.company_settings === 'object'
+    ? currentUser.company_settings
+    : {};
+
+  return String(
+    pkg?.company_id
+      || estimate?.company_id
+      || settings?.company_id
+      || settings?.id
+      || userCompanySettings?.company_id
+      || userCompanySettings?.id
+      || currentUser?.company_id
+      || currentUser?.company?.id
+      || APP_CONFIG?.company?.id
+      || 'default-company'
+  ).trim();
 }
 
 function buildEstimateSigningParticipants({ estimate, currentUser }) {
@@ -132,7 +154,7 @@ async function issueSigningAccessForPackage({ pkg, participants = [] }) {
   const now = new Date().toISOString();
   const ordered = [...(participants || [])].sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
   const activeParticipant = ordered.find((participant) => participant.status === 'active')
-    || ordered.find((participant) => !['signed', 'declined', 'skipped', 'voided'].includes(participant.status));
+    || ordered.find((participant) => !CLOSED_PARTICIPANT_STATUSES.has(participant.status));
 
   if (activeParticipant?.id) {
     const token = buildParticipantToken(pkg.id, activeParticipant.id);
@@ -166,6 +188,7 @@ async function issueSigningAccessForPackage({ pkg, participants = [] }) {
 async function syncSigningParticipants({ pkg, estimate, currentUser }) {
   if (!pkg?.id) return [];
 
+  const companyId = resolveCompanyId({ currentUser, estimate, pkg });
   const desiredParticipants = buildEstimateSigningParticipants({ estimate, currentUser });
   if (desiredParticipants.length === 0) return [];
 
@@ -191,14 +214,14 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
       phone: participant.phone,
       signing_order: participant.signing_order,
       metadata: participant.metadata || {},
-      company_id: pkg.company_id || 'rc-art',
+      company_id: companyId,
     };
 
     if (existing?.id) {
       const legacyFields = existing.token && !existing.token_hash
         ? await buildTokenFields(existing.token, existing.token_created_at || pkg.sent_at || new Date().toISOString())
         : (existing.token ? { token: '' } : {});
-      const nextStatus = ['signed', 'declined', 'skipped', 'voided'].includes(existing.status)
+      const nextStatus = CLOSED_PARTICIPANT_STATUSES.has(existing.status)
         ? existing.status
         : participant.status;
       await base44.entities.SigningParticipant.update(existing.id, {
@@ -251,9 +274,8 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
   const orderedParticipants = [...(refreshedParticipants || [])]
     .sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
 
-  const signedOrClosed = new Set(['signed', 'declined', 'skipped', 'voided']);
   const activeParticipant = orderedParticipants.find((participant) => participant.status === 'active');
-  const nextPendingParticipant = orderedParticipants.find((participant) => !signedOrClosed.has(participant.status));
+  const nextPendingParticipant = orderedParticipants.find((participant) => !CLOSED_PARTICIPANT_STATUSES.has(participant.status));
 
   if (!activeParticipant && nextPendingParticipant?.id) {
     await base44.entities.SigningParticipant.update(nextPendingParticipant.id, {
@@ -264,11 +286,11 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
 
   const normalizedParticipants = (await base44.entities.SigningParticipant
     .filter({ signing_package_id: pkg.id })
-    .catch([]))
+    .catch(() => []))
     .sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
 
   const activeAfterSync = normalizedParticipants.find((participant) => participant.status === 'active')
-    || normalizedParticipants.find((participant) => !signedOrClosed.has(participant.status))
+    || normalizedParticipants.find((participant) => !CLOSED_PARTICIPANT_STATUSES.has(participant.status))
     || null;
 
   const packageStatus = activeAfterSync ? (pkg.status === 'draft' ? 'sent' : pkg.status || 'sent') : 'signed';
@@ -277,11 +299,13 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
 
   await base44.entities.SigningPackage.update(pkg.id, {
     status: packageStatus,
+    company_id: companyId,
     signer_name: packageSignerName,
     signer_email: packageSignerEmail,
     signer_phone: activeAfterSync?.phone || pkg.signer_phone || estimate?.client_phone || '',
     audit_summary: {
       ...(pkg.audit_summary || {}),
+      company_id: companyId,
       participants_count: normalizedParticipants.length,
       active_participant_id: activeAfterSync?.id || '',
       active_participant_role: activeAfterSync?.role || '',
@@ -309,7 +333,7 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
           status: participant.status,
         })),
       },
-      company_id: pkg.company_id || 'rc-art',
+      company_id: companyId,
     }).catch(() => {});
   }
 
@@ -337,7 +361,7 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
           role: activeAfterSync.role,
           signing_order: activeAfterSync.signing_order || 1,
         },
-        company_id: pkg.company_id || 'rc-art',
+        company_id: companyId,
       }).catch(() => {});
     }
   }
@@ -345,7 +369,7 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
   return normalizedParticipants;
 }
 
-async function resolveSigningBranding(currentUser = null) {
+async function resolveSigningBranding(currentUser = null, estimate = null) {
   let settings = {};
 
   try {
@@ -376,7 +400,10 @@ async function resolveSigningBranding(currentUser = null) {
     || APP_CONFIG?.company?.name
     || 'R.C Art Construction LLC';
 
+  const companyId = resolveCompanyId({ settings, currentUser, estimate });
+
   return {
+    companyId,
     companyLogoUrl,
     signatureBrandLogoUrl,
     companyName,
@@ -386,18 +413,19 @@ async function resolveSigningBranding(currentUser = null) {
 export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', pdfName = '', pdfHash = '', currentUser = null }) {
   if (!estimate?.id) throw new Error('Estimate is required');
 
-  const signingBranding = await resolveSigningBranding(currentUser);
+  const signingBranding = await resolveSigningBranding(currentUser, estimate);
 
   const existing = await base44.entities.SigningPackage.filter({
     document_type: 'estimate',
     document_id: estimate.id,
   }).catch(() => []);
 
-  const reusable = (existing || []).find((pkg) => !['signed', 'declined', 'expired', 'voided'].includes(pkg.status));
+  const reusable = (existing || []).find((pkg) => !CLOSED_PACKAGE_STATUSES.has(pkg.status));
   if (reusable?.id) {
     const normalizedReusable = await backfillLegacyToken(base44.entities.SigningPackage, reusable);
     const patch = {
       token: '',
+      company_id: signingBranding.companyId,
     };
     if (pdfUrl && !normalizedReusable.source_pdf_url) patch.source_pdf_url = pdfUrl;
     if (pdfName && !normalizedReusable.source_pdf_name) patch.source_pdf_name = pdfName;
@@ -407,6 +435,7 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     }
     const nextAuditSummary = {
       ...(normalizedReusable.audit_summary || {}),
+      company_id: signingBranding.companyId,
       company_logo_url: signingBranding.companyLogoUrl,
       company_name: signingBranding.companyName,
     };
@@ -459,11 +488,12 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     hash_algorithm: 'SHA-256',
     signature_brand_logo_url: signingBranding.signatureBrandLogoUrl,
     audit_summary: {
+      company_id: signingBranding.companyId,
       company_logo_url: signingBranding.companyLogoUrl,
       company_name: signingBranding.companyName,
     },
     created_by: currentUser?.email || 'system',
-    company_id: 'rc-art',
+    company_id: signingBranding.companyId,
   });
 
   await base44.entities.SigningEvent.create({
@@ -475,7 +505,7 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     actor_email: currentUser?.email || '',
     created_at: now,
     metadata: { source_pdf_hash: pdfHash || '' },
-    company_id: 'rc-art',
+    company_id: signingBranding.companyId,
   }).catch(() => {});
 
   const participants = await syncSigningParticipants({ pkg, estimate, currentUser });
