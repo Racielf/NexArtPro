@@ -27,6 +27,20 @@ export async function sha256Hex(value: string) {
   return Array.from(new Uint8Array(buffer)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+export function tokenLastFour(value: string) {
+  const token = String(value || '');
+  return token ? token.slice(-4) : '';
+}
+
+export async function buildIssuedTokenFields(rawToken: string, issuedAt = new Date().toISOString()) {
+  return {
+    token: '',
+    token_hash: await sha256Hex(rawToken),
+    token_last_four: tokenLastFour(rawToken),
+    token_created_at: issuedAt,
+  };
+}
+
 export function createSupabaseAdmin() {
   if (!SUPABASE_SERVICE_ROLE_KEY) return null;
 
