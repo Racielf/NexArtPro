@@ -1,4 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import {
+  createSupabaseAdmin,
+  recordTokenAttempt,
+  runNexArtSignSecurityPreflight,
+  writeSecurityAuditLog,
+} from '../_shared/nexartsignSecurity.ts';
 
 const COMPANY_NAME = 'R.C Art Construction LLC';
 const COMPANY_EMAIL = 'info@rcartconstruction.com';
@@ -11,18 +17,15 @@ function response(data: unknown, status = 200) {
   });
 }
 
-function getIp(req: Request) {
-  const xf = req.headers.get('x-forwarded-for') || '';
-  return req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || xf.split(',')[0].trim() || '';
-}
-
 function sortParticipants(rows: any[] = []) {
   return [...rows].sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
 }
 
 function getActiveParticipant(participants: any[] = []) {
   const ordered = sortParticipants(participants);
-  return ordered.find(p => p.status === 'active') || ordered.find(p => p.status === 'pending') || null;
+  return ordered.find((participant) => participant.status === 'active')
+    || ordered.find((participant) => participant.status === 'pending')
+    || null;
 }
 
 function randomTokenPart() {
@@ -31,7 +34,7 @@ function randomTokenPart() {
 
 async function sha256HexFromBytes(bytes: Uint8Array) {
   const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(hashBuffer)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function buildParticipantToken(pkgId: string, participantId: string) {
@@ -161,6 +164,7 @@ function buildEstimateSnapshot(estimate: any) {
 async function ensureParticipantToken(base44: any, pkgId: string, participant: any) {
   if (!participant) return '';
   if (participant.token) return participant.token;
+
   const token = buildParticipantToken(pkgId, participant.id || 'participant');
   await base44.asServiceRole.entities.SigningParticipant.update(participant.id, { token }).catch(() => {});
   participant.token = token;
@@ -200,7 +204,7 @@ async function resolveSigningContext(base44: any, token: string) {
   }
 
   if (matchedParticipant) {
-    matchedParticipant = orderedParticipants.find(p => p.id === matchedParticipant.id) || matchedParticipant;
+    matchedParticipant = orderedParticipants.find((participant) => participant.id === matchedParticipant.id) || matchedParticipant;
     if (!matchedParticipant.token) {
       await ensureParticipantToken(base44, pkg.id, matchedParticipant);
     }
@@ -549,37 +553,156 @@ async function closePackageAsSigned(base44: any, pkg: any, signer: string, signe
   };
 }
 
+async function deny(
+  supabase: any,
+  preflight: any,
+  {
+    status,
+    code,
+    message,
+    packageId = null,
+    reason,
+    severity = 'warning',
+    metadata = {},
+    replayBlocked = false,
+  }: {
+    status: number;
+    code: string;
+    message: string;
+    packageId?: string | null;
+    reason: string;
+    severity?: string;
+    metadata?: Record<string, unknown>;
+    replayBlocked?: boolean;
+  }
+) {
+  await recordTokenAttempt(supabase, {
+    tokenHash: preflight?.tokenHash || null,
+    packageId,
+    ipAddress: preflight?.ipAddress || null,
+    fingerprint: preflight?.fingerprint || null,
+    userAgent: preflight?.userAgent || '',
+    success: false,
+    reason,
+  });
+
+  if (replayBlocked) {
+    await writeSecurityAuditLog(supabase, {
+      action: 'nexartsign.replay_blocked',
+      resourceType: 'nexartsign_signing_package',
+      resourceId: packageId,
+      severity: 'warning',
+      metadata: {
+        stage: 'complete',
+        reason,
+        code,
+        ...(metadata || {}),
+      },
+      ipAddress: preflight?.ipAddress || null,
+      userAgent: preflight?.userAgent || '',
+      fingerprint: preflight?.fingerprint || null,
+    });
+  }
+
+  await writeSecurityAuditLog(supabase, {
+    action: 'nexartsign.access_denied',
+    resourceType: 'nexartsign_signing_package',
+    resourceId: packageId,
+    severity,
+    metadata: {
+      stage: 'complete',
+      reason,
+      code,
+      ...(metadata || {}),
+    },
+    ipAddress: preflight?.ipAddress || null,
+    userAgent: preflight?.userAgent || '',
+    fingerprint: preflight?.fingerprint || null,
+  });
+
+  return response({ error: message, code }, status);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { token, action, signer_name, declined_reason } = await req.json();
+    const supabase = createSupabaseAdmin();
+    const { token, action, signer_name, declined_reason, fingerprint } = await req.json();
 
-    if (!token || !action) return response({ error: 'Missing token or action' }, 400);
+    if (!token || !action) return response({ error: 'Missing token or action', code: 'invalid_request' }, 400);
+
+    const preflight = await runNexArtSignSecurityPreflight(supabase, {
+      req,
+      token,
+      fingerprint,
+      stage: 'complete',
+    });
+
+    if (!preflight.ok) {
+      return response({ error: preflight.message, code: preflight.code }, preflight.status);
+    }
 
     const context = await resolveSigningContext(base44, token);
-    if (!context?.pkg) return response({ error: 'Not found' }, 404);
+    if (!context?.pkg) {
+      return await deny(supabase, preflight, {
+        status: 404,
+        code: 'invalid_token',
+        message: 'Not found',
+        reason: 'invalid_token',
+      });
+    }
 
     const { pkg, hasParticipants, matchedParticipant, activeParticipant } = context;
     const now = new Date().toISOString();
-    const ip = getIp(req);
-    const ua = req.headers.get('user-agent') || '';
+    const ip = preflight.ipAddress || '';
+    const ua = preflight.userAgent || '';
 
     if (pkg.expires_at && new Date(pkg.expires_at) < new Date()) {
       await base44.asServiceRole.entities.SigningPackage.update(pkg.id, { status: 'expired' });
-      return response({ error: 'Expired' }, 410);
+      return await deny(supabase, preflight, {
+        status: 410,
+        code: 'package_expired',
+        message: 'Expired',
+        packageId: pkg.id,
+        reason: 'package_expired',
+      });
     }
 
     if (['signed', 'declined', 'expired', 'voided'].includes(pkg.status)) {
-      return response({ error: 'Package already closed' }, 409);
+      return await deny(supabase, preflight, {
+        status: 409,
+        code: 'package_closed',
+        message: 'Package already closed',
+        packageId: pkg.id,
+        reason: 'package_closed_replay',
+        replayBlocked: true,
+        metadata: { package_status: pkg.status },
+      });
     }
 
     if (hasParticipants) {
       if (!matchedParticipant) {
-        return response({ error: 'Participant signing token required', code: 'participant_token_required' }, 409);
+        return await deny(supabase, preflight, {
+          status: 409,
+          code: 'participant_token_required',
+          message: 'Participant signing token required',
+          packageId: pkg.id,
+          reason: 'participant_token_required',
+        });
       }
 
       if (!activeParticipant || matchedParticipant.id !== activeParticipant.id || matchedParticipant.status !== 'active') {
-        return response({ error: 'This signing link is not active for the current signer', code: 'participant_not_active' }, 409);
+        return await deny(supabase, preflight, {
+          status: 409,
+          code: 'participant_not_active',
+          message: 'This signing link is not active for the current signer',
+          packageId: pkg.id,
+          reason: 'participant_not_active',
+          metadata: {
+            participant_id: matchedParticipant.id,
+            participant_role: matchedParticipant.role,
+          },
+        });
       }
     }
 
@@ -623,10 +746,43 @@ Deno.serve(async (req) => {
         }).catch(() => {});
       }
 
-      return response({ success: true, status: 'declined', document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
+      await recordTokenAttempt(supabase, {
+        tokenHash: preflight.tokenHash,
+        packageId: pkg.id,
+        ipAddress: preflight.ipAddress || null,
+        fingerprint: preflight.fingerprint || null,
+        userAgent: ua,
+        success: true,
+        reason: 'declined',
+      });
+
+      await writeSecurityAuditLog(supabase, {
+        action: 'nexartsign.declined',
+        resourceType: 'nexartsign_signing_package',
+        resourceId: pkg.id,
+        severity: 'warning',
+        metadata: {
+          stage: 'complete',
+          document_type: pkg.document_type,
+          document_id: pkg.document_id,
+          participant_id: matchedParticipant?.id || '',
+          participant_role: matchedParticipant?.role || '',
+        },
+        ipAddress: preflight.ipAddress || null,
+        userAgent: ua,
+        fingerprint: preflight.fingerprint || null,
+      });
+
+      return response({
+        success: true,
+        status: 'declined',
+        document_type: pkg.document_type,
+        document_id: pkg.document_id,
+        signing_package_id: pkg.id,
+      });
     }
 
-    if (action !== 'approve') return response({ error: 'Invalid action' }, 400);
+    if (action !== 'approve') return response({ error: 'Invalid action', code: 'invalid_action' }, 400);
 
     if (hasParticipants && matchedParticipant) {
       const signer = signer_name || matchedParticipant.name || pkg.signer_name || pkg.client_name || '';
@@ -647,13 +803,27 @@ Deno.serve(async (req) => {
         actor_email: matchedParticipant.email,
         ip_address: ip,
         user_agent: ua,
-        metadata: { participant_id: matchedParticipant.id, role: matchedParticipant.role, signing_order: matchedParticipant.signing_order || 1 },
+        metadata: {
+          participant_id: matchedParticipant.id,
+          role: matchedParticipant.role,
+          signing_order: matchedParticipant.signing_order || 1,
+        },
         created_at: now,
       });
 
       const refreshed = await base44.asServiceRole.entities.SigningParticipant.filter({ signing_package_id: pkg.id }).catch(() => []);
-      const remaining = sortParticipants(refreshed).filter(p => !['signed', 'declined', 'skipped', 'voided'].includes(p.status));
+      const remaining = sortParticipants(refreshed).filter((participant) => !['signed', 'declined', 'skipped', 'voided'].includes(participant.status));
       const next = remaining[0] || null;
+
+      await recordTokenAttempt(supabase, {
+        tokenHash: preflight.tokenHash,
+        packageId: pkg.id,
+        ipAddress: preflight.ipAddress || null,
+        fingerprint: preflight.fingerprint || null,
+        userAgent: ua,
+        success: true,
+        reason: next ? 'participant_signed_next_pending' : 'package_signed',
+      });
 
       if (next) {
         const nextToken = await ensureParticipantToken(base44, pkg.id, next);
@@ -669,9 +839,14 @@ Deno.serve(async (req) => {
           event_type: 'participant_activated',
           actor_name: next.name || '',
           actor_email: next.email || '',
-          metadata: { participant_id: next.id, role: next.role, signing_order: next.signing_order || 1 },
+          metadata: {
+            participant_id: next.id,
+            role: next.role,
+            signing_order: next.signing_order || 1,
+          },
           created_at: now,
         }).catch(() => {});
+
         return response({
           success: true,
           status: 'pending_next_signer',
@@ -686,6 +861,26 @@ Deno.serve(async (req) => {
       }
 
       const { cert, finalizedPackage } = await closePackageAsSigned(base44, pkg, signer, matchedParticipant.email, now, ip, ua);
+
+      await writeSecurityAuditLog(supabase, {
+        action: 'nexartsign.signed',
+        resourceType: 'nexartsign_signing_package',
+        resourceId: pkg.id,
+        severity: 'info',
+        metadata: {
+          stage: 'complete',
+          document_type: pkg.document_type,
+          document_id: pkg.document_id,
+          certificate_id: cert.id,
+          certificate_number: cert.certificate_number || '',
+          participant_id: matchedParticipant.id,
+          participant_role: matchedParticipant.role,
+        },
+        ipAddress: preflight.ipAddress || null,
+        userAgent: ua,
+        fingerprint: preflight.fingerprint || null,
+      });
+
       return response({
         success: true,
         status: 'signed',
@@ -712,7 +907,35 @@ Deno.serve(async (req) => {
       created_at: now,
     });
 
+    await recordTokenAttempt(supabase, {
+      tokenHash: preflight.tokenHash,
+      packageId: pkg.id,
+      ipAddress: preflight.ipAddress || null,
+      fingerprint: preflight.fingerprint || null,
+      userAgent: ua,
+      success: true,
+      reason: 'package_signed',
+    });
+
     const { cert, finalizedPackage } = await closePackageAsSigned(base44, pkg, signer, pkg.signer_email, now, ip, ua);
+
+    await writeSecurityAuditLog(supabase, {
+      action: 'nexartsign.signed',
+      resourceType: 'nexartsign_signing_package',
+      resourceId: pkg.id,
+      severity: 'info',
+      metadata: {
+        stage: 'complete',
+        document_type: pkg.document_type,
+        document_id: pkg.document_id,
+        certificate_id: cert.id,
+        certificate_number: cert.certificate_number || '',
+      },
+      ipAddress: preflight.ipAddress || null,
+      userAgent: ua,
+      fingerprint: preflight.fingerprint || null,
+    });
+
     return response({
       success: true,
       status: 'signed',
@@ -725,6 +948,6 @@ Deno.serve(async (req) => {
       signing_package_id: pkg.id,
     });
   } catch (err: any) {
-    return response({ error: err.message || 'Server error' }, 500);
+    return response({ error: err.message || 'Server error', code: 'server_error' }, 500);
   }
 });
