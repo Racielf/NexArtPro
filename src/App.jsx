@@ -73,8 +73,35 @@ const PUBLIC_ROUTE_PREFIXES = [
   '/login',
 ];
 
+const ADMIN_ROLES = new Set(['admin', 'office_agent']);
+const FIELD_ROLES = new Set(['admin', 'field_agent']);
+
 function isPublicRoute(pathname) {
   return PUBLIC_ROUTE_PREFIXES.some(path => pathname === path || (path !== '/' && pathname.startsWith(path)));
+}
+
+function getLocalSession() {
+  const role = getUserRole();
+  const localAuth = sessionStorage.getItem('local_auth') === 'true';
+  const userId = sessionStorage.getItem('local_user_id');
+
+  return {
+    isValid: localAuth && Boolean(userId) && Boolean(role),
+    role,
+  };
+}
+
+function canAccessRoute({ access, isAuthenticated, localSession }) {
+  if (isAuthenticated) {
+    if (access === 'field') return localSession.role ? FIELD_ROLES.has(localSession.role) : true;
+    if (access === 'admin') return !localSession.role || ADMIN_ROLES.has(localSession.role);
+    return true;
+  }
+
+  if (!localSession.isValid) return false;
+  if (access === 'field') return FIELD_ROLES.has(localSession.role);
+  if (access === 'admin') return ADMIN_ROLES.has(localSession.role);
+  return true;
 }
 
 const LoadingScreen = () => (
@@ -86,12 +113,15 @@ const LoadingScreen = () => (
 const ProtectedRoute = ({ children, access = 'any' }) => {
   const { isLoadingAuth, isAuthenticated } = useAuth();
   if (isLoadingAuth) return <LoadingScreen />;
-  const localAuth = sessionStorage.getItem('local_auth') === 'true';
-  if (!isAuthenticated && !localAuth) return <Navigate to="/team-access" replace />;
+
+  const localSession = getLocalSession();
+
+  if (!canAccessRoute({ access, isAuthenticated, localSession })) {
+    if (localSession.role === 'field_agent') return <Navigate to="/field" replace />;
+    return <Navigate to="/team-access" replace />;
+  }
+
   if (isAuthenticated) sessionStorage.setItem('base44_authenticated', 'true');
-  const role = getUserRole() || 'admin';
-  if (access === 'admin' && role === 'field_agent') return <Navigate to="/field" replace />;
-  if (access === 'field' && role !== 'field_agent' && role !== 'admin') return <Navigate to="/team-access" replace />;
   return children;
 };
 
@@ -159,9 +189,8 @@ const AuthenticatedApp = () => {
   if (isLoadingPublicSettings || isLoadingAuth) return <LoadingScreen />;
   if (authError && !publicRoute) {
     if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
-    if (authError.type === 'auth_required') {
-      const localAuth = sessionStorage.getItem('local_auth') === 'true';
-      if (!localAuth) return <Navigate to="/team-access" replace />;
+    if (authError.type === 'auth_required' && !getLocalSession().isValid) {
+      return <Navigate to="/team-access" replace />;
     }
   }
   return <AppRoutes />;
