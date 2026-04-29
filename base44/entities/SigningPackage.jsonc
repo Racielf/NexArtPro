@@ -32,6 +32,8 @@
     "client_id": { "type": "string" },
     "client_name": { "type": "string" },
     "token": { "type": "string" },
+    "token_hash": { "type": "string" },
+    "token_last_four": { "type": "string" },
     "token_created_at": { "type": "string", "format": "date-time" },
     "expires_at": { "type": "string", "format": "date-time" },
     "sent_at": { "type": "string", "format": "date-time" },
