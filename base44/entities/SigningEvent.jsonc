@@ -7,7 +7,7 @@
     "document_id": { "type": "string" },
     "event_type": {
       "type": "string",
-      "enum": ["created", "sent", "viewed", "approved", "signed", "declined", "expired", "voided", "downloaded", "participants_created", "participant_activated"]
+      "enum": ["created", "sent", "viewed", "approved", "signed", "declined", "expired", "voided", "downloaded", "participants_created", "participant_activated", "otp_requested", "otp_verified", "otp_failed", "otp_locked"]
     },
     "actor_name": { "type": "string" },
     "actor_email": { "type": "string" },
