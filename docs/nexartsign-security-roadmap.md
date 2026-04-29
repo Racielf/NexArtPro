@@ -31,7 +31,6 @@ Still pending in Phase 1:
 
 Important files:
 
-- `src/lib/nexArtSign.js`
 - `base44/functions/resolveSigningPackageToken/entry.ts`
 - `base44/functions/completeSigningPackage/entry.ts`
 
@@ -62,8 +61,6 @@ Current behavior:
 
 Important files:
 
-- `src/lib/nexArtSign.js`
-- `base44/functions/resolveEstimatePublicToken/entry.ts`
 - `base44/functions/resolveSigningPackageToken/entry.ts`
 - `base44/functions/completeSigningPackage/entry.ts`
 
@@ -166,14 +163,10 @@ Residual note:
 
 ### Remaining important items outside the active phase line
 
-2. PDF finalization/certification can be hardened further.
-   - Current certificate path is functional and backend-driven.
-   - Target behavior: make final PDF hash the only certificate source of truth in every branch.
-
-3. Public PDF URLs can still be tightened later.
+2. Public PDF URLs can still be tightened later.
    - Target behavior: signed or temporary URLs with expiration and access logs.
 
-4. Public verification endpoint still needs minimization.
+3. Public verification endpoint still needs minimization.
    - Public verification should reveal minimum data only.
 
 ---
@@ -182,17 +175,23 @@ Residual note:
 
 ### Phase 5 - Final PDF lock + certificate integrity
 
+**Status:** Implemented in the active canonical backend path.
+
 Goal:
 
 Make certificate legally stronger by hashing the actual final signed PDF, not the source PDF, in every document branch.
 
-Checklist:
+Verified behavior:
 
-- Generate final PDF first.
-- Add signature or audit page.
-- Hash final PDF.
-- Store final PDF hash in package and certificate.
-- Prevent certificate generation if final PDF hashing fails.
+- `completeSigningPackage` freezes a final PDF copy before package close.
+- backend close now fails if the final PDF cannot be fetched, hashed, or uploaded.
+- certificate generation is blocked unless `final_pdf_url` and `final_pdf_hash` exist.
+- estimate legal finalization now reuses only frozen final PDF evidence and no longer falls back to source-PDF evidence.
+- package audit summary and certificate records now persist the frozen final PDF hash as the integrity reference.
+
+Important files:
+
+- `base44/functions/completeSigningPackage/entry.ts`
 
 ### Phase 6 - Public verification minimization
 
