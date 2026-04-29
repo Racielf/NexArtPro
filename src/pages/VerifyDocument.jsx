@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, XCircle, ShieldCheck, Upload, Hash, FileCheck, LockKeyhole, BadgeCheck } from 'lucide-react';
+import { CheckCircle, XCircle, ShieldCheck, Upload, Hash, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import { base44 } from '@/api/base44Client';
@@ -20,6 +20,19 @@ function getParams() {
   };
 }
 
+function safeCertificateSummary(data) {
+  const certificate = data?.certificate || {};
+  const verification = data?.verification || {};
+
+  return {
+    certificate_number: certificate.certificate_number || '',
+    status: certificate.status || verification.status || 'issued',
+    signed_at: certificate.signed_at || verification.signed_at || '',
+    document_type: certificate.document_type || verification.document_type || '',
+    expected_hash: (verification.expected_hash || certificate.final_pdf_hash || '').toLowerCase(),
+  };
+}
+
 export default function VerifyDocument() {
   const { hash: initialHash, certificate } = getParams();
 
@@ -36,10 +49,10 @@ export default function VerifyDocument() {
     const loadCertificate = async () => {
       try {
         const res = await base44.functions.invoke('resolveSigningCertificate', { certificate });
-        if (res.data?.certificate) {
-          setCertData(res.data);
-          const expected = (res.data.verification?.expected_hash || '').toLowerCase();
-          if (expected) setExpectedHash(expected);
+        if (res.data?.certificate || res.data?.verification) {
+          const summary = safeCertificateSummary(res.data);
+          setCertData(summary);
+          if (summary.expected_hash) setExpectedHash(summary.expected_hash);
         }
       } catch (err) {
         console.warn('Certificate lookup failed:', err?.message);
@@ -105,8 +118,11 @@ export default function VerifyDocument() {
 
           <div className="p-7 space-y-6">
             {certData && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700">
-                Certificate #{certData.certificate.certificate_number} • Signed by {certData.certificate.signer_name}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 space-y-1">
+                <div className="font-semibold">Certificate #{certData.certificate_number || certificate}</div>
+                <div className="text-xs text-slate-500">
+                  Status: {certData.status || 'issued'}{certData.signed_at ? ` • Signed: ${new Date(certData.signed_at).toLocaleString()}` : ''}
+                </div>
               </div>
             )}
 
@@ -154,7 +170,7 @@ export default function VerifyDocument() {
                   )}
                   <div>
                     <p className="font-bold">
-                      {status === 'verified' ? 'Verified — Document is authentic.' : 'Mismatch — Document may be altered.'}
+                      {status === 'verified' ? 'Verified — Document hash matches the official record.' : 'Mismatch — Document may be altered.'}
                     </p>
                     <p className="text-xs mt-2 font-mono break-all">{computedHash}</p>
                   </div>
