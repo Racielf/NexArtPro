@@ -1,9 +1,85 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, AlertTriangle, FileSignature, ExternalLink, ShieldCheck, FileCheck, Clock3, LockKeyhole, UserCheck, MailCheck } from 'lucide-react';
+import {
+  Loader2,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  FileSignature,
+  ExternalLink,
+  ShieldCheck,
+  FileCheck,
+  Clock3,
+  LockKeyhole,
+  UserCheck,
+  MailCheck,
+  ShieldAlert,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import SignatureBrandCredit from '@/components/signing/SignatureBrandCredit';
+import { getDeviceFingerprint } from '@/lib/deviceFingerprint';
+
+function extractFunctionError(error) {
+  const payload = error?.data || error?.response?.data || error?.body || error?.cause?.data || null;
+  return {
+    code: payload?.code || error?.code || '',
+    message: payload?.error || payload?.message || error?.message || 'Unexpected signing error',
+  };
+}
+
+function getAccessState(code, fallbackMessage = '') {
+  switch (code) {
+    case 'origin_blocked':
+      return {
+        title: 'Access blocked for security review',
+        message: 'This signing session is temporarily blocked because the origin or device was flagged by the security engine. Please contact the sender to continue.',
+        tone: 'critical',
+      };
+    case 'rate_limited':
+      return {
+        title: 'Too many invalid attempts',
+        message: 'This signing session was temporarily locked after repeated invalid requests. Please wait and try again later, or ask the sender for a fresh link.',
+        tone: 'warning',
+      };
+    case 'participant_not_active':
+      return {
+        title: 'This link is not active yet',
+        message: 'Another signer must complete their step before this signing link becomes active.',
+        tone: 'warning',
+      };
+    case 'participant_token_required':
+      return {
+        title: 'Participant-specific link required',
+        message: 'This document now uses signer-specific links. Please open the exact link sent to the active signer.',
+        tone: 'warning',
+      };
+    case 'package_expired':
+      return {
+        title: 'Signing link expired',
+        message: 'The secure signing window already expired. Please request a new signing link from the sender.',
+        tone: 'warning',
+      };
+    case 'package_closed':
+      return {
+        title: 'Signing session already closed',
+        message: 'This document was already signed, declined, or closed. The current link can no longer be used to sign again.',
+        tone: 'warning',
+      };
+    case 'invalid_token':
+      return {
+        title: 'Invalid or expired link',
+        message: 'Please contact the sender and request a new signing link.',
+        tone: 'warning',
+      };
+    default:
+      return {
+        title: 'Signing session unavailable',
+        message: fallbackMessage || 'The secure signing session could not be opened right now.',
+        tone: 'warning',
+      };
+  }
+}
 
 export default function SignDocumentView() {
   const params = new URLSearchParams(window.location.search);
@@ -19,24 +95,48 @@ export default function SignDocumentView() {
   const [certificateId, setCertificateId] = useState('');
   const [certificateNumber, setCertificateNumber] = useState('');
   const [deliveryStatus, setDeliveryStatus] = useState('');
+  const [deviceFingerprint, setDeviceFingerprint] = useState('');
+  const [accessError, setAccessError] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
-      if (!token) return setLoading(false);
+      if (!token) {
+        setAccessError(getAccessState('invalid_token'));
+        setLoading(false);
+        return;
+      }
+
       try {
-        const res = await base44.functions.invoke('resolveSigningPackageToken', { token });
+        const fingerprint = await getDeviceFingerprint();
+        if (!cancelled) setDeviceFingerprint(fingerprint);
+
+        const res = await base44.functions.invoke('resolveSigningPackageToken', { token, fingerprint });
+        if (cancelled) return;
+
         if (res.data?.package) {
           setPkg(res.data.package);
           setName(res.data.package.signer_name || '');
           setCertificateId(res.data.package.certificate_id || '');
+          setAccessError(null);
+          return;
         }
+
+        setAccessError(getAccessState('invalid_token'));
       } catch (err) {
-        console.warn('[SignDocumentView] resolve failed:', err?.message);
+        if (cancelled) return;
+        const resolved = extractFunctionError(err);
+        setAccessError(getAccessState(resolved.code, resolved.message));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const isComplete = pkg?.status === 'signed' || pkg?.status === 'declined' || pkg?.status === 'expired' || pkg?.status === 'voided';
@@ -67,6 +167,7 @@ export default function SignDocumentView() {
         token,
         action: 'approve',
         signer_name: name.trim(),
+        fingerprint: deviceFingerprint || await getDeviceFingerprint(),
       });
 
       const result = res?.data || {};
@@ -80,20 +181,24 @@ export default function SignDocumentView() {
         toast.success('Document completed successfully');
       }
 
-      setPkg(p => ({
-        ...p,
+      setPkg((currentPkg) => ({
+        ...currentPkg,
         status: nextStatus === 'pending_next_signer' ? 'viewed' : 'signed',
         signer_name: name.trim(),
-        final_pdf_url: result.final_pdf_url || p?.final_pdf_url || p?.source_pdf_url || '',
-        final_pdf_name: result.final_pdf_name || p?.final_pdf_name || p?.source_pdf_name || '',
+        final_pdf_url: result.final_pdf_url || currentPkg?.final_pdf_url || currentPkg?.source_pdf_url || '',
+        final_pdf_name: result.final_pdf_name || currentPkg?.final_pdf_name || currentPkg?.source_pdf_name || '',
       }));
 
       if (nextStatus === 'signed') {
         await deliverSignedCopy();
       }
     } catch (err) {
-      console.warn('[SignDocumentView] approve failed:', err?.message);
-      toast.error('Error approving document');
+      const resolved = extractFunctionError(err);
+      const state = getAccessState(resolved.code, resolved.message);
+      if (resolved.code === 'origin_blocked' || resolved.code === 'rate_limited') {
+        setAccessError(state);
+      }
+      toast.error(state.message);
     } finally {
       setActing(false);
     }
@@ -111,13 +216,18 @@ export default function SignDocumentView() {
         token,
         action: 'decline',
         declined_reason: declineReason.trim(),
+        fingerprint: deviceFingerprint || await getDeviceFingerprint(),
       });
 
       toast.success('Document declined');
-      setPkg(p => ({ ...p, status: 'declined', declined_reason: declineReason.trim() }));
+      setPkg((currentPkg) => ({ ...currentPkg, status: 'declined', declined_reason: declineReason.trim() }));
     } catch (err) {
-      console.warn('[SignDocumentView] decline failed:', err?.message);
-      toast.error('Error declining document');
+      const resolved = extractFunctionError(err);
+      const state = getAccessState(resolved.code, resolved.message);
+      if (resolved.code === 'origin_blocked' || resolved.code === 'rate_limited') {
+        setAccessError(state);
+      }
+      toast.error(state.message);
     } finally {
       setActing(false);
     }
@@ -141,29 +251,36 @@ export default function SignDocumentView() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
-      <div className="text-center space-y-3">
-        <Loader2 className="animate-spin mx-auto" />
-        <p className="text-sm text-slate-300">Preparing secure signing session...</p>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+        <div className="text-center space-y-3">
+          <Loader2 className="animate-spin mx-auto" />
+          <p className="text-sm text-slate-300">Preparing secure signing session...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  if (!pkg) return (
-    <div className="h-screen flex items-center justify-center bg-slate-50">
-      <div className="text-center bg-white border border-slate-200 rounded-xl p-8 shadow-sm max-w-md">
-        <AlertTriangle className="mx-auto mb-2 text-amber-500" />
-        <p className="font-semibold text-slate-800">Invalid or expired link</p>
-        <p className="text-sm text-slate-500 mt-2">Please contact the sender and request a new signing link.</p>
+  if (!pkg) {
+    const state = accessError || getAccessState('invalid_token');
+    const panelTone = state.tone === 'critical'
+      ? 'border-red-200 bg-red-50 text-red-800'
+      : 'border-amber-200 bg-amber-50 text-amber-800';
+
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className={`text-center border rounded-xl p-8 shadow-sm max-w-md w-full ${panelTone}`}>
+          <ShieldAlert className="mx-auto mb-3" />
+          <p className="font-semibold">{state.title}</p>
+          <p className="text-sm mt-2 opacity-90">{state.message}</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-8">
-
-      {/* 🔥 PROFESSIONAL HEADER */}
       <div className="max-w-5xl mx-auto mb-6 text-center">
         {pkg.company_logo_url && (
           <img
@@ -220,6 +337,9 @@ export default function SignDocumentView() {
               <p className="text-sm text-slate-300">
                 Review the document first. When you sign, NexArtSign records the event, locks the approved version, and creates a verification certificate for the audit trail.
               </p>
+              <div className="text-xs text-slate-400 bg-white/5 border border-white/10 rounded-xl p-3">
+                This session now includes risk-based protection for device origin, repeated invalid attempts, and replay prevention.
+              </div>
               <Button variant="secondary" onClick={openReviewPdf} className="w-full sm:w-auto gap-2" disabled={!pkg?.source_pdf_url && !pkg?.final_pdf_url}>
                 <ExternalLink className="w-4 h-4" /> Open Document Preview
               </Button>
@@ -275,7 +395,7 @@ export default function SignDocumentView() {
                 <span className="text-sm font-medium text-slate-700">Legal full name</span>
                 <input
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={(event) => setName(event.target.value)}
                   placeholder="Your full name"
                   className="w-full border border-slate-300 p-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                   disabled={isComplete}
@@ -283,12 +403,12 @@ export default function SignDocumentView() {
               </label>
 
               <label className="flex gap-3 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <input type="checkbox" checked={identityConfirmed} onChange={e => setIdentityConfirmed(e.target.checked)} disabled={isComplete} />
+                <input type="checkbox" checked={identityConfirmed} onChange={(event) => setIdentityConfirmed(event.target.checked)} disabled={isComplete} />
                 <span className="flex items-start gap-2"><UserCheck className="w-4 h-4 mt-0.5" /> I confirm I am the intended signer for this document.</span>
               </label>
 
               <label className="flex gap-3 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} disabled={isComplete} />
+                <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} disabled={isComplete} />
                 <span>I have opened, reviewed, and approve this document electronically.</span>
               </label>
 
@@ -301,7 +421,7 @@ export default function SignDocumentView() {
                   <span className="text-sm font-medium text-slate-700">Decline reason</span>
                   <textarea
                     value={declineReason}
-                    onChange={e => setDeclineReason(e.target.value)}
+                    onChange={(event) => setDeclineReason(event.target.value)}
                     placeholder="Required if you are declining"
                     className="w-full border border-slate-300 p-3 rounded-xl text-sm min-h-[88px] focus:outline-none focus:ring-2 focus:ring-slate-900"
                     disabled={isComplete}
