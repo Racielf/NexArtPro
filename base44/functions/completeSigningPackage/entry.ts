@@ -16,6 +16,10 @@ const COMPANY_NAME = 'R.C Art Construction LLC';
 const COMPANY_EMAIL = 'info@rcartconstruction.com';
 const COMPANY_ROLE = 'authorized_representative';
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function response(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -29,39 +33,41 @@ function sortParticipants(rows: any[] = []) {
 
 function getActiveParticipant(participants: any[] = []) {
   const ordered = sortParticipants(participants);
-  return ordered.find((participant) => participant.status === 'active')
-    || ordered.find((participant) => participant.status === 'pending')
+  return ordered.find((p) => p.status === 'active')
+    || ordered.find((p) => p.status === 'pending')
     || null;
-}
-
-function randomTokenPart() {
-  return crypto.randomUUID().replace(/-/g, '');
 }
 
 async function sha256HexFromBytes(bytes: Uint8Array) {
   const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(hashBuffer)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
-function buildParticipantToken(pkgId: string, participantId: string) {
-  return `nsp_${pkgId}_${participantId}_${randomTokenPart()}`;
-}
-
-async function resolveReadableFileUrl(base44: any, fileUrl: string) {
+// ---------------------------------------------------------------------------
+// FIX: resolveReadableFileUrl — si la URL interna falla al firmarse,
+// lanza error en lugar de devolver la URL original sin auth.
+// ---------------------------------------------------------------------------
+async function resolveReadableFileUrl(base44: any, fileUrl: string): Promise<string> {
   if (!fileUrl) return '';
   if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) return fileUrl;
 
-  try {
-    const signed = await base44.integrations.Core.CreateFileSignedUrl({
-      file_uri: fileUrl,
-      expires_in: 3600,
-    });
-    return signed?.signed_url || fileUrl;
-  } catch {
-    return fileUrl;
+  const signed = await base44.integrations.Core.CreateFileSignedUrl({
+    file_uri: fileUrl,
+    expires_in: 3600,
+  });
+
+  if (!signed?.signed_url) {
+    throw new Error(`resolveReadableFileUrl: could not obtain signed URL for internal file (${fileUrl}).`);
   }
+
+  return signed.signed_url;
 }
 
+// ---------------------------------------------------------------------------
+// freezeSignedPdf — sin cambios de lógica, ya lanzaba errores correctamente.
+// ---------------------------------------------------------------------------
 async function freezeSignedPdf(base44: any, pkg: any, now: string) {
   const sourceUrl = pkg.final_pdf_url || pkg.source_pdf_url || '';
   if (!sourceUrl) {
@@ -88,7 +94,10 @@ async function freezeSignedPdf(base44: any, pkg: any, now: string) {
     throw new Error('Final PDF lock failed: frozen PDF upload did not return a file URL.');
   }
 
-  const baseName = pkg.final_pdf_name || pkg.source_pdf_name || `signed-document-${pkg.document_number || pkg.id}.pdf`;
+  const baseName =
+    pkg.final_pdf_name ||
+    pkg.source_pdf_name ||
+    `signed-document-${pkg.document_number || pkg.id}.pdf`;
   const finalName = baseName.toLowerCase().endsWith('.pdf')
     ? baseName.replace(/\.pdf$/i, `-signed-${Date.now()}.pdf`)
     : `${baseName}-signed-${Date.now()}.pdf`;
@@ -102,6 +111,10 @@ async function freezeSignedPdf(base44: any, pkg: any, now: string) {
     frozen_from_source_pdf_url: sourceUrl,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Work Order helpers
+// ---------------------------------------------------------------------------
 
 function buildWorkOrderNumber() {
   return Date.now();
@@ -161,53 +174,46 @@ function buildEstimateSnapshot(estimate: any) {
   };
 }
 
-async function ensureParticipantToken(base44: any, pkgId: string, participant: any) {
-  if (!participant) return '';
-  if (participant.token) return participant.token;
+// ---------------------------------------------------------------------------
+// FIX: resolveSigningContext
+// — La activación de 'pending' → 'active' se ELIMINÓ de aquí.
+//   Ahora ocurre DESPUÉS de verificar OTP, en el handler de 'approve'.
+// — Se mantiene token_hash como campo de búsqueda (del _fixed).
+// ---------------------------------------------------------------------------
+async function resolveSigningContext(base44: any, tokenHash: string | null) {
+  if (!tokenHash) return null;
 
-  const token = buildParticipantToken(pkgId, participant.id || 'participant');
-  await base44.asServiceRole.entities.SigningParticipant.update(participant.id, { token }).catch(() => {});
-  participant.token = token;
-  return token;
-}
-
-async function resolveSigningContext(base44: any, token: string) {
-  const participantRows = await base44.asServiceRole.entities.SigningParticipant.filter({ token }).catch(() => []);
+  // FIX: errores de DB ahora lanzan — no se silencian con catch(() => [])
+  const participantRows = await base44.asServiceRole.entities.SigningParticipant
+    .filter({ token_hash: tokenHash });
   let matchedParticipant = participantRows?.[0] || null;
   let pkg = null;
 
   if (matchedParticipant?.signing_package_id) {
-    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ id: matchedParticipant.signing_package_id }).catch(() => []);
+    const pkgRows = await base44.asServiceRole.entities.SigningPackage
+      .filter({ id: matchedParticipant.signing_package_id });
     pkg = pkgRows?.[0] || null;
   }
 
   if (!pkg) {
-    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ token }).catch(() => []);
+    const pkgRows = await base44.asServiceRole.entities.SigningPackage
+      .filter({ token_hash: tokenHash });
     pkg = pkgRows?.[0] || null;
   }
 
   if (!pkg) return null;
 
-  const participants = await base44.asServiceRole.entities.SigningParticipant.filter({ signing_package_id: pkg.id }).catch(() => []);
+  const participants = await base44.asServiceRole.entities.SigningParticipant
+    .filter({ signing_package_id: pkg.id });
   const orderedParticipants = sortParticipants(participants);
   const hasParticipants = orderedParticipants.length > 0;
 
-  let activeParticipant = hasParticipants ? getActiveParticipant(orderedParticipants) : null;
-
-  if (activeParticipant && activeParticipant.status === 'pending') {
-    await base44.asServiceRole.entities.SigningParticipant.update(activeParticipant.id, { status: 'active' }).catch(() => {});
-    activeParticipant.status = 'active';
-  }
-
-  if (activeParticipant) {
-    await ensureParticipantToken(base44, pkg.id, activeParticipant);
-  }
+  // FIX: NO activamos el participant aquí. Solo lo identificamos.
+  const activeParticipant = hasParticipants ? getActiveParticipant(orderedParticipants) : null;
 
   if (matchedParticipant) {
-    matchedParticipant = orderedParticipants.find((participant) => participant.id === matchedParticipant.id) || matchedParticipant;
-    if (!matchedParticipant.token) {
-      await ensureParticipantToken(base44, pkg.id, matchedParticipant);
-    }
+    matchedParticipant =
+      orderedParticipants.find((p) => p.id === matchedParticipant.id) || matchedParticipant;
   }
 
   return {
@@ -219,12 +225,50 @@ async function resolveSigningContext(base44: any, token: string) {
   };
 }
 
-async function convertSignedEstimateToWorkOrder(base44: any, estimate: any, actor: string, signedAt: string) {
+// ---------------------------------------------------------------------------
+// revokeSigningTokens — sin cambios, está correcto en el _fixed.
+// ---------------------------------------------------------------------------
+async function revokeSigningTokens(base44: any, pkg: any, now: string) {
+  if (!pkg?.id) return;
+
+  await base44.asServiceRole.entities.SigningPackage.update(pkg.id, {
+    token: '',
+    token_hash: '',
+    token_last_four: '',
+    token_revoked_at: now,
+  }).catch(() => {});
+
+  const participants = await base44.asServiceRole.entities.SigningParticipant
+    .filter({ signing_package_id: pkg.id }).catch(() => []);
+  await Promise.all((participants || []).map((p: any) => {
+    if (!p?.id) return Promise.resolve();
+    return base44.asServiceRole.entities.SigningParticipant.update(p.id, {
+      token: '',
+      token_hash: '',
+      token_last_four: '',
+      token_revoked_at: now,
+    }).catch(() => {});
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// FIX: convertSignedEstimateToWorkOrder
+// — Si WorkOrder.create falla, ahora lanza error en lugar de retornar null
+//   silenciosamente. El caller decide si ignorarlo o propagarlo.
+// ---------------------------------------------------------------------------
+async function convertSignedEstimateToWorkOrder(
+  base44: any,
+  estimate: any,
+  actor: string,
+  signedAt: string,
+) {
   if (!estimate?.id) return null;
   if (!['approved', 'signed', 'converted'].includes(estimate?.status)) return null;
   if (estimate?.converted_work_order_id) return estimate.converted_work_order_id;
 
   const version = estimate.version_number || 1;
+
+  // FIX: errores de DB lanzan — catch solo para el filtro de búsqueda de existente
   const existing = await base44.asServiceRole.entities.WorkOrder.filter({
     estimate_id: estimate.id,
     estimate_version: version,
@@ -242,6 +286,7 @@ async function convertSignedEstimateToWorkOrder(base44: any, estimate: any, acto
     return existing[0].id;
   }
 
+  // FIX: sin .catch(() => null) — si falla, lanza y el caller lo registra
   const workOrder = await base44.asServiceRole.entities.WorkOrder.create({
     work_order_number: buildWorkOrderNumber(),
     estimate_id: estimate.id,
@@ -293,9 +338,11 @@ async function convertSignedEstimateToWorkOrder(base44: any, estimate: any, acto
     field_notes: [],
     assignment_source: 'none',
     company_id: estimate.company_id || 'rc-art',
-  }).catch(() => null);
+  });
 
-  if (!workOrder?.id) return null;
+  if (!workOrder?.id) {
+    throw new Error('WorkOrder.create returned no id — possible DB write failure.');
+  }
 
   await base44.asServiceRole.entities.Estimate.update(estimate.id, {
     status: 'converted',
@@ -307,6 +354,9 @@ async function convertSignedEstimateToWorkOrder(base44: any, estimate: any, acto
   return workOrder.id;
 }
 
+// ---------------------------------------------------------------------------
+// buildEstimateSignatureCertificate — sin cambios
+// ---------------------------------------------------------------------------
 function buildEstimateSignatureCertificate({
   estimate,
   pkg,
@@ -354,18 +404,42 @@ function buildEstimateSignatureCertificate({
       user_agent: ua,
       audit_trail: events || [],
     },
-    integrity_statement: 'This signing package was finalized by the NexArtSign backend. The frozen final PDF hash is the only certificate source of truth from the signing event onward.',
+    integrity_statement:
+      'This signing package was finalized by the NexArtSign backend. The frozen final PDF hash is the only certificate source of truth from the signing event onward.',
   };
 }
 
-async function finalizeEstimateLegalState(base44: any, pkg: any, cert: any, signer: string, signerEmail: string, now: string, ip: string, ua: string) {
+// ---------------------------------------------------------------------------
+// FIX: finalizeEstimateLegalState
+// — Ya no silencia errores con .catch(() => {}) en la escritura del Estimate.
+//   Si el estimate no se puede actualizar, lanza para que closePackageAsSigned
+//   lo registre en el catch global con contexto real.
+// — convertSignedEstimateToWorkOrder se llama sin .catch(() => null).
+//   Si falla, se registra en el audit log pero NO detiene la finalización.
+// ---------------------------------------------------------------------------
+async function finalizeEstimateLegalState(
+  base44: any,
+  pkg: any,
+  cert: any,
+  signer: string,
+  signerEmail: string,
+  now: string,
+  ip: string,
+  ua: string,
+) {
   if (!pkg.document_id) return null;
 
-  const estimateRows = await base44.asServiceRole.entities.Estimate.filter({ id: pkg.document_id }).catch(() => []);
+  // FIX: sin catch — si no encontramos el estimate, lanzamos
+  const estimateRows = await base44.asServiceRole.entities.Estimate
+    .filter({ id: pkg.document_id });
   const estimate = estimateRows?.[0] || null;
-  if (!estimate) return null;
+  if (!estimate) {
+    throw new Error(`finalizeEstimateLegalState: Estimate ${pkg.document_id} not found.`);
+  }
 
-  const events = await base44.asServiceRole.entities.SigningEvent.filter({ signing_package_id: pkg.id }, 'created_at').catch(() => []);
+  const events = await base44.asServiceRole.entities.SigningEvent
+    .filter({ signing_package_id: pkg.id }, 'created_at').catch(() => []);
+
   const finalPdfUrl = pkg.final_pdf_url || cert?.certificate_pdf_url || estimate.final_signed_pdf_url || '';
   const finalPdfName = pkg.final_pdf_name || estimate.final_signed_pdf_name || '';
   const finalPdfHash = pkg.final_pdf_hash || cert?.final_pdf_hash || '';
@@ -408,34 +482,48 @@ async function finalizeEstimateLegalState(base44: any, pkg: any, cert: any, sign
     },
   }).catch(() => {});
 
-  const convertedWorkOrderId = await convertSignedEstimateToWorkOrder(base44, {
-    ...estimate,
-    status: estimate.converted_work_order_id ? 'converted' : 'signed',
-    signature_status: 'signed',
-    signed_at: now,
-    approved_at: estimate.approved_at || now,
-    accepted_by: signer,
-    signature_name: signer,
-    signature_provider: 'internal',
-    signing_package_id: pkg.id,
-    terms_accepted: true,
-    locked_after_signature: true,
-    legal_package_locked: true,
-    final_signed_at: now,
-    final_signed_pdf_url: finalPdfUrl,
-    final_signed_pdf_name: finalPdfName,
-    signed_pdf_hash: finalPdfHash,
-    signed_pdf_hash_algorithm: pkg.hash_algorithm || estimate.signed_pdf_hash_algorithm || 'SHA-256',
-    document_hash: estimate.document_hash || pkg.source_pdf_hash || finalPdfHash || '',
-    document_hash_algorithm: estimate.document_hash_algorithm || pkg.hash_algorithm || 'SHA-256',
-    company_signature_name: estimate.company_signature_name || COMPANY_NAME,
-    company_signature_email: estimate.company_signature_email || COMPANY_EMAIL,
-    company_signature_role: estimate.company_signature_role || COMPANY_ROLE,
-    company_signed_at: estimate.company_signed_at || pkg.sent_at || estimate.sent_at || now,
-    certificate_generated_at: cert?.generated_at || now,
-    signature_certificate: signatureCertificate,
-  }, 'nexartsign-backend', now).catch(() => null);
+  // FIX: si falla crear el WorkOrder, lo registramos pero NO abortamos.
+  // El estimate igual debe quedar en 'signed'. El WO puede re-intentarse.
+  let convertedWorkOrderId: string | null = null;
+  try {
+    convertedWorkOrderId = await convertSignedEstimateToWorkOrder(
+      base44,
+      {
+        ...estimate,
+        status: estimate.converted_work_order_id ? 'converted' : 'signed',
+        signature_status: 'signed',
+        signed_at: now,
+        approved_at: estimate.approved_at || now,
+        accepted_by: signer,
+        signature_name: signer,
+        signature_provider: 'internal',
+        signing_package_id: pkg.id,
+        terms_accepted: true,
+        locked_after_signature: true,
+        legal_package_locked: true,
+        final_signed_at: now,
+        final_signed_pdf_url: finalPdfUrl,
+        final_signed_pdf_name: finalPdfName,
+        signed_pdf_hash: finalPdfHash,
+        signed_pdf_hash_algorithm: pkg.hash_algorithm || estimate.signed_pdf_hash_algorithm || 'SHA-256',
+        document_hash: estimate.document_hash || pkg.source_pdf_hash || finalPdfHash || '',
+        document_hash_algorithm: estimate.document_hash_algorithm || pkg.hash_algorithm || 'SHA-256',
+        company_signature_name: estimate.company_signature_name || COMPANY_NAME,
+        company_signature_email: estimate.company_signature_email || COMPANY_EMAIL,
+        company_signature_role: estimate.company_signature_role || COMPANY_ROLE,
+        company_signed_at: estimate.company_signed_at || pkg.sent_at || estimate.sent_at || now,
+        certificate_generated_at: cert?.generated_at || now,
+        signature_certificate: signatureCertificate,
+      },
+      'nexartsign-backend',
+      now,
+    );
+  } catch (woErr: any) {
+    console.error('[nexartsign-complete] WorkOrder conversion failed (non-fatal):', woErr?.message);
+  }
 
+  // FIX: la escritura del Estimate es CRÍTICA — sin .catch(() => {})
+  // Si falla, el error sube a closePackageAsSigned y queda registrado.
   await base44.asServiceRole.entities.Estimate.update(estimate.id, {
     status: convertedWorkOrderId ? 'converted' : 'signed',
     signature_status: 'signed',
@@ -476,20 +564,30 @@ async function finalizeEstimateLegalState(base44: any, pkg: any, cert: any, sign
       backend_work_order_conversion: Boolean(convertedWorkOrderId),
       events_recorded: Array.isArray(events) ? events.length : 0,
     },
-  }).catch(() => {});
+  });
 
-  return {
-    signatureCertificate,
-    convertedWorkOrderId,
-  };
+  return { signatureCertificate, convertedWorkOrderId };
 }
 
-async function createCompletionCertificate(base44: any, pkg: any, signer: string, signerEmail: string, now: string, ip: string, ua: string) {
+// ---------------------------------------------------------------------------
+// createCompletionCertificate — sin cambios
+// ---------------------------------------------------------------------------
+async function createCompletionCertificate(
+  base44: any,
+  pkg: any,
+  signer: string,
+  signerEmail: string,
+  now: string,
+  ip: string,
+  ua: string,
+) {
   if (!pkg?.final_pdf_url || !pkg?.final_pdf_hash) {
     throw new Error('Certificate generation blocked: final PDF hash evidence is missing.');
   }
 
-  const events = await base44.asServiceRole.entities.SigningEvent.filter({ signing_package_id: pkg.id }, 'created_at').catch(() => []);
+  const events = await base44.asServiceRole.entities.SigningEvent
+    .filter({ signing_package_id: pkg.id }, 'created_at').catch(() => []);
+
   const cert = await base44.asServiceRole.entities.SigningCertificate.create({
     signing_package_id: pkg.id,
     document_type: pkg.document_type,
@@ -520,11 +618,25 @@ async function createCompletionCertificate(base44: any, pkg: any, signer: string
     },
     company_id: pkg.company_id || 'rc-art',
   });
+
   await base44.asServiceRole.entities.SigningPackage.update(pkg.id, { certificate_id: cert.id });
   return cert;
 }
 
-async function closePackageAsSigned(base44: any, pkg: any, signer: string, signerEmail: string, now: string, ip: string, ua: string) {
+// ---------------------------------------------------------------------------
+// FIX: closePackageAsSigned
+// — finalizeEstimateLegalState ya NO tiene .catch(() => null).
+//   Si falla, el error sube al handler principal y queda en el catch global.
+// ---------------------------------------------------------------------------
+async function closePackageAsSigned(
+  base44: any,
+  pkg: any,
+  signer: string,
+  signerEmail: string,
+  now: string,
+  ip: string,
+  ua: string,
+) {
   const frozenPdf = await freezeSignedPdf(base44, pkg, now);
   if (!frozenPdf.final_pdf_url || !frozenPdf.final_pdf_hash) {
     throw new Error('Final PDF lock failed: finalized PDF evidence is incomplete.');
@@ -547,27 +659,35 @@ async function closePackageAsSigned(base44: any, pkg: any, signer: string, signe
     final_pdf_url: finalizedPackage.final_pdf_url,
     final_pdf_name: finalizedPackage.final_pdf_name,
     final_pdf_hash: finalizedPackage.final_pdf_hash,
+    token: '',
+    token_hash: '',
+    token_last_four: '',
+    token_revoked_at: now,
     audit_summary: {
       ...(pkg.audit_summary || {}),
       final_pdf_hash: finalizedPackage.final_pdf_hash,
       final_pdf_frozen: frozenPdf.frozen,
       final_pdf_frozen_at: frozenPdf.frozen ? now : '',
       final_pdf_source_url: frozenPdf.frozen_from_source_pdf_url || pkg.source_pdf_url || '',
+      token_revoked_at: now,
     },
   });
 
+  await revokeSigningTokens(base44, pkg, now);
+
   const cert = await createCompletionCertificate(base44, finalizedPackage, signer, signerEmail, now, ip, ua);
 
+  // FIX: sin .catch(() => null) — si falla, el error se propaga arriba
   if (finalizedPackage.document_type === 'estimate' && finalizedPackage.document_id) {
-    await finalizeEstimateLegalState(base44, finalizedPackage, cert, signer, signerEmail, now, ip, ua).catch(() => null);
+    await finalizeEstimateLegalState(base44, finalizedPackage, cert, signer, signerEmail, now, ip, ua);
   }
 
-  return {
-    cert,
-    finalizedPackage,
-  };
+  return { cert, finalizedPackage };
 }
 
+// ---------------------------------------------------------------------------
+// deny — sin cambios
+// ---------------------------------------------------------------------------
 async function deny(
   supabase: any,
   preflight: any,
@@ -589,7 +709,7 @@ async function deny(
     severity?: string;
     metadata?: Record<string, unknown>;
     replayBlocked?: boolean;
-  }
+  },
 ) {
   await recordTokenAttempt(supabase, {
     tokenHash: preflight?.tokenHash || null,
@@ -607,12 +727,7 @@ async function deny(
       resourceType: 'nexartsign_signing_package',
       resourceId: packageId,
       severity: 'warning',
-      metadata: {
-        stage: 'complete',
-        reason,
-        code,
-        ...(metadata || {}),
-      },
+      metadata: { stage: 'complete', reason, code, ...(metadata || {}) },
       ipAddress: preflight?.ipAddress || null,
       userAgent: preflight?.userAgent || '',
       fingerprint: preflight?.fingerprint || null,
@@ -624,12 +739,7 @@ async function deny(
     resourceType: 'nexartsign_signing_package',
     resourceId: packageId,
     severity,
-    metadata: {
-      stage: 'complete',
-      reason,
-      code,
-      ...(metadata || {}),
-    },
+    metadata: { stage: 'complete', reason, code, ...(metadata || {}) },
     ipAddress: preflight?.ipAddress || null,
     userAgent: preflight?.userAgent || '',
     fingerprint: preflight?.fingerprint || null,
@@ -638,13 +748,18 @@ async function deny(
   return response({ error: message, code }, status);
 }
 
+// ---------------------------------------------------------------------------
+// Deno.serve — handler principal
+// ---------------------------------------------------------------------------
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const supabase = createSupabaseAdmin();
     const { token, action, signer_name, declined_reason, fingerprint } = await req.json();
 
-    if (!token || !action) return response({ error: 'Missing token or action', code: 'invalid_request' }, 400);
+    if (!token || !action) {
+      return response({ error: 'Missing token or action', code: 'invalid_request' }, 400);
+    }
 
     const preflight = await runNexArtSignSecurityPreflight(supabase, {
       req,
@@ -657,7 +772,7 @@ Deno.serve(async (req) => {
       return response({ error: preflight.message, code: preflight.code }, preflight.status);
     }
 
-    const context = await resolveSigningContext(base44, token);
+    const context = await resolveSigningContext(base44, preflight.tokenHash);
     if (!context?.pkg) {
       return await deny(supabase, preflight, {
         status: 404,
@@ -673,8 +788,16 @@ Deno.serve(async (req) => {
     const ip = preflight.ipAddress || '';
     const ua = preflight.userAgent || '';
 
+    // Paquete expirado
     if (pkg.expires_at && new Date(pkg.expires_at) < new Date()) {
-      await base44.asServiceRole.entities.SigningPackage.update(pkg.id, { status: 'expired' });
+      await base44.asServiceRole.entities.SigningPackage.update(pkg.id, {
+        status: 'expired',
+        token: '',
+        token_hash: '',
+        token_last_four: '',
+        token_revoked_at: now,
+      });
+      await revokeSigningTokens(base44, pkg, now);
       return await deny(supabase, preflight, {
         status: 410,
         code: 'package_expired',
@@ -684,6 +807,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Paquete ya cerrado
     if (['signed', 'declined', 'expired', 'voided'].includes(pkg.status)) {
       return await deny(supabase, preflight, {
         status: 409,
@@ -696,6 +820,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Validaciones de participante
     if (hasParticipants) {
       if (!matchedParticipant) {
         return await deny(supabase, preflight, {
@@ -707,7 +832,11 @@ Deno.serve(async (req) => {
         });
       }
 
-      if (!activeParticipant || matchedParticipant.id !== activeParticipant.id || matchedParticipant.status !== 'active') {
+      if (
+        !activeParticipant ||
+        matchedParticipant.id !== activeParticipant.id ||
+        matchedParticipant.status !== 'active' && matchedParticipant.status !== 'pending'
+      ) {
         return await deny(supabase, preflight, {
           status: 409,
           code: 'participant_not_active',
@@ -722,6 +851,9 @@ Deno.serve(async (req) => {
       }
     }
 
+    // -----------------------------------------------------------------------
+    // DECLINE
+    // -----------------------------------------------------------------------
     if (action === 'decline') {
       if (otpState) {
         await persistOtpState(base44, context, null);
@@ -734,6 +866,10 @@ Deno.serve(async (req) => {
           declined_reason: declined_reason || '',
           ip_address: ip,
           user_agent: ua,
+          token: '',
+          token_hash: '',
+          token_last_four: '',
+          token_revoked_at: now,
         });
       }
 
@@ -741,7 +877,13 @@ Deno.serve(async (req) => {
         status: 'declined',
         declined_at: now,
         declined_reason: declined_reason || '',
+        token: '',
+        token_hash: '',
+        token_last_four: '',
+        token_revoked_at: now,
       });
+
+      await revokeSigningTokens(base44, pkg, now);
 
       await base44.asServiceRole.entities.SigningEvent.create({
         signing_package_id: pkg.id,
@@ -752,7 +894,9 @@ Deno.serve(async (req) => {
         actor_email: matchedParticipant?.email || pkg.signer_email,
         ip_address: ip,
         user_agent: ua,
-        metadata: hasParticipants ? { participant_id: matchedParticipant?.id, role: matchedParticipant?.role } : {},
+        metadata: hasParticipants
+          ? { participant_id: matchedParticipant?.id, role: matchedParticipant?.role, token_revoked_at: now }
+          : { token_revoked_at: now },
         created_at: now,
       });
 
@@ -802,8 +946,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (action !== 'approve') return response({ error: 'Invalid action', code: 'invalid_action' }, 400);
+    if (action !== 'approve') {
+      return response({ error: 'Invalid action', code: 'invalid_action' }, 400);
+    }
 
+    // -----------------------------------------------------------------------
+    // APPROVE — primero OTP, luego activar participant
+    // -----------------------------------------------------------------------
+
+    // FIX: verificamos OTP ANTES de activar el participant
     if (!otpVerificationStatus(otpState, preflight.tokenHash, preflight.fingerprint)) {
       const scope = otpScopeFromContext(context);
       await writeSecurityAuditLog(supabase, {
@@ -823,20 +974,33 @@ Deno.serve(async (req) => {
         fingerprint: preflight.fingerprint || null,
       });
 
-      return response({
-        error: 'Verification code required before signing',
-        code: 'otp_required',
-      }, 409);
+      return response({ error: 'Verification code required before signing', code: 'otp_required' }, 409);
     }
 
+    // FIX: activamos el participant AQUÍ, solo cuando OTP ya fue verificado
+    if (hasParticipants && matchedParticipant && matchedParticipant.status === 'pending') {
+      await base44.asServiceRole.entities.SigningParticipant.update(matchedParticipant.id, {
+        status: 'active',
+      }).catch(() => {});
+      matchedParticipant.status = 'active';
+    }
+
+    // -----------------------------------------------------------------------
+    // Flujo con participantes múltiples
+    // -----------------------------------------------------------------------
     if (hasParticipants && matchedParticipant) {
       const signer = signer_name || matchedParticipant.name || pkg.signer_name || pkg.client_name || '';
+
       await base44.asServiceRole.entities.SigningParticipant.update(matchedParticipant.id, {
         status: 'signed',
         signed_at: now,
         name: signer,
         ip_address: ip,
         user_agent: ua,
+        token: '',
+        token_hash: '',
+        token_last_four: '',
+        token_revoked_at: now,
       });
 
       await base44.asServiceRole.entities.SigningEvent.create({
@@ -852,12 +1016,16 @@ Deno.serve(async (req) => {
           participant_id: matchedParticipant.id,
           role: matchedParticipant.role,
           signing_order: matchedParticipant.signing_order || 1,
+          token_revoked_at: now,
         },
         created_at: now,
       });
 
-      const refreshed = await base44.asServiceRole.entities.SigningParticipant.filter({ signing_package_id: pkg.id }).catch(() => []);
-      const remaining = sortParticipants(refreshed).filter((participant) => !['signed', 'declined', 'skipped', 'voided'].includes(participant.status));
+      const refreshed = await base44.asServiceRole.entities.SigningParticipant
+        .filter({ signing_package_id: pkg.id }).catch(() => []);
+      const remaining = sortParticipants(refreshed).filter(
+        (p) => !['signed', 'declined', 'skipped', 'voided'].includes(p.status),
+      );
       const next = remaining[0] || null;
 
       await recordTokenAttempt(supabase, {
@@ -870,8 +1038,8 @@ Deno.serve(async (req) => {
         reason: next ? 'participant_signed_next_pending' : 'package_signed',
       });
 
+      // Hay más firmantes pendientes
       if (next) {
-        const nextToken = await ensureParticipantToken(base44, pkg.id, next);
         await base44.asServiceRole.entities.SigningParticipant.update(next.id, {
           status: 'active',
           sent_at: next.sent_at || now,
@@ -898,15 +1066,17 @@ Deno.serve(async (req) => {
           next_participant_id: next.id,
           next_participant_name: next.name || '',
           next_participant_email: next.email || '',
-          next_participant_token: nextToken || '',
           document_type: pkg.document_type,
           document_id: pkg.document_id,
           signing_package_id: pkg.id,
         });
       }
 
+      // Todos firmaron — cerrar el paquete
       await persistOtpState(base44, context, null);
-      const { cert, finalizedPackage } = await closePackageAsSigned(base44, pkg, signer, matchedParticipant.email, now, ip, ua);
+      const { cert, finalizedPackage } = await closePackageAsSigned(
+        base44, pkg, signer, matchedParticipant.email, now, ip, ua,
+      );
 
       await writeSecurityAuditLog(supabase, {
         action: 'nexartsign.signed',
@@ -940,7 +1110,11 @@ Deno.serve(async (req) => {
       });
     }
 
+    // -----------------------------------------------------------------------
+    // Flujo sin participantes (firmante único directo)
+    // -----------------------------------------------------------------------
     const signer = signer_name || pkg.signer_name || pkg.client_name || '';
+
     await base44.asServiceRole.entities.SigningEvent.create({
       signing_package_id: pkg.id,
       document_type: pkg.document_type,
@@ -964,7 +1138,9 @@ Deno.serve(async (req) => {
     });
 
     await persistOtpState(base44, context, null);
-    const { cert, finalizedPackage } = await closePackageAsSigned(base44, pkg, signer, pkg.signer_email, now, ip, ua);
+    const { cert, finalizedPackage } = await closePackageAsSigned(
+      base44, pkg, signer, pkg.signer_email, now, ip, ua,
+    );
 
     await writeSecurityAuditLog(supabase, {
       action: 'nexartsign.signed',
@@ -994,7 +1170,17 @@ Deno.serve(async (req) => {
       document_id: pkg.document_id,
       signing_package_id: pkg.id,
     });
+
   } catch (err: any) {
-    return response({ error: err.message || 'Server error', code: 'server_error' }, 500);
+    // FIX: catch global con logging real — el error ya no desaparece
+    console.error('[nexartsign-complete] Unhandled error:', {
+      message: err?.message,
+      stack: err?.stack,
+      cause: err?.cause,
+    });
+    return response({
+      error: err?.message || 'Server error',
+      code: err?.code || 'server_error',
+    }, 500);
   }
 });
