@@ -28,26 +28,10 @@ function getActiveParticipant(participants: any[] = []) {
     || null;
 }
 
-function randomTokenPart() {
-  return crypto.randomUUID().replace(/-/g, '');
-}
+async function resolveSigningContext(base44: any, tokenHash: string | null) {
+  if (!tokenHash) return null;
 
-function buildParticipantToken(pkgId: string, participantId: string) {
-  return `nsp_${pkgId}_${participantId}_${randomTokenPart()}`;
-}
-
-async function ensureParticipantToken(base44: any, pkgId: string, participant: any) {
-  if (!participant) return '';
-  if (participant.token) return participant.token;
-
-  const token = buildParticipantToken(pkgId, participant.id || 'participant');
-  await base44.asServiceRole.entities.SigningParticipant.update(participant.id, { token }).catch(() => {});
-  participant.token = token;
-  return token;
-}
-
-async function resolveSigningContext(base44: any, token: string) {
-  const participantRows = await base44.asServiceRole.entities.SigningParticipant.filter({ token }).catch(() => []);
+  const participantRows = await base44.asServiceRole.entities.SigningParticipant.filter({ token_hash: tokenHash }).catch(() => []);
   let matchedParticipant = participantRows?.[0] || null;
   let pkg = null;
 
@@ -57,7 +41,7 @@ async function resolveSigningContext(base44: any, token: string) {
   }
 
   if (!pkg) {
-    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ token }).catch(() => []);
+    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ token_hash: tokenHash }).catch(() => []);
     pkg = pkgRows?.[0] || null;
   }
 
@@ -73,15 +57,8 @@ async function resolveSigningContext(base44: any, token: string) {
     activeParticipant.status = 'active';
   }
 
-  if (activeParticipant) {
-    await ensureParticipantToken(base44, pkg.id, activeParticipant);
-  }
-
   if (matchedParticipant) {
     matchedParticipant = orderedParticipants.find((participant) => participant.id === matchedParticipant.id) || matchedParticipant;
-    if (!matchedParticipant.token) {
-      await ensureParticipantToken(base44, pkg.id, matchedParticipant);
-    }
   }
 
   return {
@@ -164,7 +141,7 @@ Deno.serve(async (req) => {
       return json({ error: preflight.message, code: preflight.code }, preflight.status);
     }
 
-    const context = await resolveSigningContext(base44, token);
+    const context = await resolveSigningContext(base44, preflight.tokenHash);
     if (!context?.pkg) {
       return await deny(supabase, preflight, {
         status: 404,
