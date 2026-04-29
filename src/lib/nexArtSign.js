@@ -9,6 +9,269 @@ function randomTokenPart() {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function buildParticipantToken(pkgId, participantId) {
+  return `nsp_${pkgId}_${participantId}_${randomTokenPart()}`;
+}
+
+function normalizeParticipantRole(role, fallback = 'other') {
+  const allowed = new Set(['client', 'owner', 'office', 'technician', 'witness', 'other']);
+  const normalized = String(role || '').trim().toLowerCase().replace(/\s+/g, '_');
+  return allowed.has(normalized) ? normalized : fallback;
+}
+
+function normalizeEmail(value = '') {
+  return String(value || '').trim().toLowerCase();
+}
+
+function buildEstimateSigningParticipants({ estimate, currentUser }) {
+  const configuredParticipants = Array.isArray(estimate?.document_config?.signing_participants)
+    ? estimate.document_config.signing_participants
+    : [];
+
+  const participants = [];
+  const seenKeys = new Set();
+
+  const pushParticipant = (participant) => {
+    const name = String(participant?.name || '').trim();
+    const email = normalizeEmail(participant?.email);
+    if (!email) return;
+
+    const role = normalizeParticipantRole(participant?.role, participant?.fallbackRole || 'other');
+    const signingOrder = Number(participant?.signing_order);
+    const metadata = participant?.metadata && typeof participant.metadata === 'object' ? participant.metadata : undefined;
+    const key = `${email}::${role}::${Number.isFinite(signingOrder) ? signingOrder : participants.length + 1}`;
+
+    if (seenKeys.has(key)) return;
+    seenKeys.add(key);
+
+    participants.push({
+      role,
+      name,
+      email,
+      phone: String(participant?.phone || '').trim(),
+      signing_order: Number.isFinite(signingOrder) && signingOrder > 0 ? signingOrder : participants.length + 1,
+      metadata,
+    });
+  };
+
+  pushParticipant({
+    role: 'client',
+    name: estimate?.client_name || '',
+    email: estimate?.client_email || '',
+    phone: estimate?.client_phone || '',
+    signing_order: 1,
+    metadata: { source: 'estimate_client' },
+  });
+
+  configuredParticipants.forEach((participant, index) => {
+    pushParticipant({
+      ...participant,
+      signing_order: Number.isFinite(Number(participant?.signing_order))
+        ? Number(participant.signing_order)
+        : index + 2,
+      metadata: {
+        ...(participant?.metadata && typeof participant.metadata === 'object' ? participant.metadata : {}),
+        source: participant?.metadata?.source || 'document_config',
+      },
+    });
+  });
+
+  if (participants.length === 0 && currentUser?.email) {
+    pushParticipant({
+      role: 'owner',
+      name: currentUser?.full_name || currentUser?.email,
+      email: currentUser?.email,
+      signing_order: 1,
+      metadata: { source: 'fallback_owner' },
+    });
+  }
+
+  return participants
+    .sort((a, b) => a.signing_order - b.signing_order)
+    .map((participant, index) => ({
+      ...participant,
+      signing_order: index + 1,
+      status: index === 0 ? 'active' : 'pending',
+    }));
+}
+
+async function syncSigningParticipants({ pkg, estimate, currentUser }) {
+  if (!pkg?.id) return [];
+
+  const desiredParticipants = buildEstimateSigningParticipants({ estimate, currentUser });
+  if (desiredParticipants.length === 0) return [];
+
+  const existingParticipants = await base44.entities.SigningParticipant
+    .filter({ signing_package_id: pkg.id })
+    .catch(() => []);
+
+  const existingByEmail = new Map(
+    (existingParticipants || []).map((participant) => [normalizeEmail(participant.email), participant])
+  );
+
+  const touchedParticipantIds = [];
+  const newlyCreated = [];
+
+  for (const participant of desiredParticipants) {
+    const existing = existingByEmail.get(participant.email);
+    const patch = {
+      document_type: pkg.document_type,
+      document_id: pkg.document_id,
+      role: participant.role,
+      name: participant.name,
+      email: participant.email,
+      phone: participant.phone,
+      signing_order: participant.signing_order,
+      metadata: participant.metadata || {},
+      company_id: pkg.company_id || 'rc-art',
+    };
+
+    if (existing?.id) {
+      const nextStatus = ['signed', 'declined', 'skipped', 'voided'].includes(existing.status)
+        ? existing.status
+        : participant.status;
+      const token = existing.token || buildParticipantToken(pkg.id, existing.id);
+      await base44.entities.SigningParticipant.update(existing.id, {
+        ...patch,
+        status: nextStatus,
+        token,
+      }).catch(() => {});
+      touchedParticipantIds.push(existing.id);
+      continue;
+    }
+
+    const created = await base44.entities.SigningParticipant.create({
+      signing_package_id: pkg.id,
+      ...patch,
+      status: participant.status,
+      sent_at: pkg.sent_at || new Date().toISOString(),
+      token: `pending_${randomTokenPart()}`,
+    });
+
+    if (created?.id) {
+      const token = buildParticipantToken(pkg.id, created.id);
+      await base44.entities.SigningParticipant.update(created.id, { token }).catch(() => {});
+      touchedParticipantIds.push(created.id);
+      newlyCreated.push({ ...created, token });
+    }
+  }
+
+  const staleParticipants = (existingParticipants || []).filter(
+    (participant) => participant?.id && !touchedParticipantIds.includes(participant.id)
+  );
+
+  for (const participant of staleParticipants) {
+    if (['signed', 'declined', 'voided'].includes(participant.status)) continue;
+    await base44.entities.SigningParticipant.update(participant.id, {
+      status: 'voided',
+      metadata: {
+        ...(participant.metadata || {}),
+        voided_reason: 'removed_from_current_signing_configuration',
+      },
+    }).catch(() => {});
+  }
+
+  const refreshedParticipants = await base44.entities.SigningParticipant
+    .filter({ signing_package_id: pkg.id })
+    .catch(() => []);
+
+  const orderedParticipants = [...(refreshedParticipants || [])]
+    .sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
+
+  const signedOrClosed = new Set(['signed', 'declined', 'skipped', 'voided']);
+  const activeParticipant = orderedParticipants.find((participant) => participant.status === 'active');
+  const nextPendingParticipant = orderedParticipants.find((participant) => !signedOrClosed.has(participant.status));
+
+  if (!activeParticipant && nextPendingParticipant?.id) {
+    await base44.entities.SigningParticipant.update(nextPendingParticipant.id, {
+      status: 'active',
+      sent_at: nextPendingParticipant.sent_at || pkg.sent_at || new Date().toISOString(),
+    }).catch(() => {});
+  }
+
+  const normalizedParticipants = (await base44.entities.SigningParticipant
+    .filter({ signing_package_id: pkg.id })
+    .catch(() => []))
+    .sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
+
+  const activeAfterSync = normalizedParticipants.find((participant) => participant.status === 'active')
+    || normalizedParticipants.find((participant) => !signedOrClosed.has(participant.status))
+    || null;
+
+  const packageStatus = activeAfterSync ? (pkg.status === 'draft' ? 'sent' : pkg.status || 'sent') : 'signed';
+  const packageSignerName = activeAfterSync?.name || pkg.signer_name || estimate?.client_name || '';
+  const packageSignerEmail = activeAfterSync?.email || pkg.signer_email || estimate?.client_email || '';
+
+  await base44.entities.SigningPackage.update(pkg.id, {
+    status: packageStatus,
+    signer_name: packageSignerName,
+    signer_email: packageSignerEmail,
+    signer_phone: activeAfterSync?.phone || pkg.signer_phone || estimate?.client_phone || '',
+    audit_summary: {
+      ...(pkg.audit_summary || {}),
+      participants_count: normalizedParticipants.length,
+      active_participant_id: activeAfterSync?.id || '',
+      active_participant_role: activeAfterSync?.role || '',
+      signing_sequence_enabled: normalizedParticipants.length > 1,
+    },
+  }).catch(() => {});
+
+  if (newlyCreated.length > 0) {
+    await base44.entities.SigningEvent.create({
+      signing_package_id: pkg.id,
+      document_type: pkg.document_type,
+      document_id: pkg.document_id,
+      event_type: 'participants_created',
+      actor_name: currentUser?.full_name || currentUser?.email || 'system',
+      actor_email: currentUser?.email || '',
+      created_at: new Date().toISOString(),
+      metadata: {
+        participants_count: normalizedParticipants.length,
+        created_count: newlyCreated.length,
+        signing_orders: normalizedParticipants.map((participant) => ({
+          id: participant.id,
+          email: participant.email,
+          role: participant.role,
+          signing_order: participant.signing_order,
+          status: participant.status,
+        })),
+      },
+      company_id: pkg.company_id || 'rc-art',
+    }).catch(() => {});
+  }
+
+  if (activeAfterSync?.id) {
+    const alreadyActivated = await base44.entities.SigningEvent
+      .filter({ signing_package_id: pkg.id, event_type: 'participant_activated' })
+      .catch(() => []);
+
+    const activeAlreadyLogged = (alreadyActivated || []).some((event) => {
+      const participantId = event?.metadata?.participant_id || event?.metadata?.participantId;
+      return participantId === activeAfterSync.id;
+    });
+
+    if (!activeAlreadyLogged) {
+      await base44.entities.SigningEvent.create({
+        signing_package_id: pkg.id,
+        document_type: pkg.document_type,
+        document_id: pkg.document_id,
+        event_type: 'participant_activated',
+        actor_name: activeAfterSync.name || '',
+        actor_email: activeAfterSync.email || '',
+        created_at: new Date().toISOString(),
+        metadata: {
+          participant_id: activeAfterSync.id,
+          role: activeAfterSync.role,
+          signing_order: activeAfterSync.signing_order || 1,
+        },
+        company_id: pkg.company_id || 'rc-art',
+      }).catch(() => {});
+    }
+  }
+
+  return normalizedParticipants;
+}
+
 async function resolveSigningBranding(currentUser = null) {
   let settings = {};
 
@@ -76,9 +339,11 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     }
     if (Object.keys(patch).length > 0) {
       await base44.entities.SigningPackage.update(reusable.id, patch).catch(() => {});
-      return { ...reusable, ...patch };
     }
-    return reusable;
+
+    const refreshedReusable = Object.keys(patch).length > 0 ? { ...reusable, ...patch } : reusable;
+    await syncSigningParticipants({ pkg: refreshedReusable, estimate, currentUser });
+    return refreshedReusable;
   }
 
   const token = `ns_${estimate.id}_${randomTokenPart()}`;
@@ -127,6 +392,8 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     metadata: { source_pdf_hash: pdfHash || '' },
     company_id: 'rc-art',
   }).catch(() => {});
+
+  await syncSigningParticipants({ pkg, estimate, currentUser });
 
   return pkg;
 }
