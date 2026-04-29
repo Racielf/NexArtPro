@@ -63,50 +63,44 @@ async function resolveReadableFileUrl(base44: any, fileUrl: string) {
 }
 
 async function freezeSignedPdf(base44: any, pkg: any, now: string) {
-  const sourceUrl = pkg.source_pdf_url || pkg.final_pdf_url || '';
+  const sourceUrl = pkg.final_pdf_url || pkg.source_pdf_url || '';
   if (!sourceUrl) {
-    return {
-      final_pdf_url: pkg.final_pdf_url || '',
-      final_pdf_name: pkg.final_pdf_name || pkg.source_pdf_name || '',
-      final_pdf_hash: pkg.final_pdf_hash || pkg.source_pdf_hash || '',
-      frozen: false,
-    };
+    throw new Error('Final PDF lock failed: source PDF is not available for freezing.');
   }
 
-  try {
-    const readableUrl = await resolveReadableFileUrl(base44, sourceUrl);
-    const fileResponse = await fetch(readableUrl);
-    if (!fileResponse.ok) throw new Error(`Could not fetch source PDF: ${fileResponse.status}`);
-
-    const arrayBuffer = await fileResponse.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    const hash = await sha256HexFromBytes(bytes);
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-
-    const uploaded = await base44.integrations.Core.UploadFile({ file: blob });
-    const frozenUrl = uploaded?.file_url || pkg.final_pdf_url || sourceUrl;
-
-    const baseName = pkg.source_pdf_name || pkg.final_pdf_name || `signed-document-${pkg.document_number || pkg.id}.pdf`;
-    const finalName = baseName.toLowerCase().endsWith('.pdf')
-      ? baseName.replace(/\.pdf$/i, `-signed-${Date.now()}.pdf`)
-      : `${baseName}-signed-${Date.now()}.pdf`;
-
-    return {
-      final_pdf_url: frozenUrl,
-      final_pdf_name: finalName,
-      final_pdf_hash: hash,
-      frozen: true,
-      frozen_at: now,
-      frozen_from_source_pdf_url: sourceUrl,
-    };
-  } catch {
-    return {
-      final_pdf_url: pkg.final_pdf_url || sourceUrl,
-      final_pdf_name: pkg.final_pdf_name || pkg.source_pdf_name || '',
-      final_pdf_hash: pkg.final_pdf_hash || pkg.source_pdf_hash || '',
-      frozen: false,
-    };
+  const readableUrl = await resolveReadableFileUrl(base44, sourceUrl);
+  const fileResponse = await fetch(readableUrl);
+  if (!fileResponse.ok) {
+    throw new Error(`Final PDF lock failed: could not fetch source PDF (${fileResponse.status}).`);
   }
+
+  const arrayBuffer = await fileResponse.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  const hash = await sha256HexFromBytes(bytes);
+  if (!hash) {
+    throw new Error('Final PDF lock failed: final PDF hash could not be generated.');
+  }
+
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const uploaded = await base44.integrations.Core.UploadFile({ file: blob });
+  const frozenUrl = uploaded?.file_url || '';
+  if (!frozenUrl) {
+    throw new Error('Final PDF lock failed: frozen PDF upload did not return a file URL.');
+  }
+
+  const baseName = pkg.final_pdf_name || pkg.source_pdf_name || `signed-document-${pkg.document_number || pkg.id}.pdf`;
+  const finalName = baseName.toLowerCase().endsWith('.pdf')
+    ? baseName.replace(/\.pdf$/i, `-signed-${Date.now()}.pdf`)
+    : `${baseName}-signed-${Date.now()}.pdf`;
+
+  return {
+    final_pdf_url: frozenUrl,
+    final_pdf_name: finalName,
+    final_pdf_hash: hash,
+    frozen: true,
+    frozen_at: now,
+    frozen_from_source_pdf_url: sourceUrl,
+  };
 }
 
 function buildWorkOrderNumber() {
@@ -352,7 +346,7 @@ function buildEstimateSignatureCertificate({
     document_hash_algorithm: pkg.hash_algorithm || estimate.document_hash_algorithm || 'SHA-256',
     document_hash: estimate.document_hash || pkg.source_pdf_hash || finalPdfHash || '',
     signed_pdf_hash_algorithm: pkg.hash_algorithm || estimate.signed_pdf_hash_algorithm || 'SHA-256',
-    signed_pdf_hash: finalPdfHash || pkg.final_pdf_hash || pkg.source_pdf_hash || '',
+    signed_pdf_hash: finalPdfHash || '',
     audit: {
       certificate_id: cert?.id || '',
       certificate_number: cert?.certificate_number || '',
@@ -360,7 +354,7 @@ function buildEstimateSignatureCertificate({
       user_agent: ua,
       audit_trail: events || [],
     },
-    integrity_statement: 'This signing package was finalized by the NexArtSign backend. The estimate is legally locked from the signing event onward.',
+    integrity_statement: 'This signing package was finalized by the NexArtSign backend. The frozen final PDF hash is the only certificate source of truth from the signing event onward.',
   };
 }
 
@@ -372,9 +366,13 @@ async function finalizeEstimateLegalState(base44: any, pkg: any, cert: any, sign
   if (!estimate) return null;
 
   const events = await base44.asServiceRole.entities.SigningEvent.filter({ signing_package_id: pkg.id }, 'created_at').catch(() => []);
-  const finalPdfUrl = pkg.final_pdf_url || pkg.source_pdf_url || estimate.final_signed_pdf_url || '';
-  const finalPdfName = pkg.final_pdf_name || pkg.source_pdf_name || estimate.final_signed_pdf_name || '';
-  const finalPdfHash = pkg.final_pdf_hash || pkg.source_pdf_hash || estimate.signed_pdf_hash || estimate.document_hash || '';
+  const finalPdfUrl = pkg.final_pdf_url || cert?.certificate_pdf_url || estimate.final_signed_pdf_url || '';
+  const finalPdfName = pkg.final_pdf_name || estimate.final_signed_pdf_name || '';
+  const finalPdfHash = pkg.final_pdf_hash || cert?.final_pdf_hash || '';
+
+  if (!finalPdfUrl || !finalPdfHash) {
+    throw new Error('Final PDF certificate integrity failed: finalized PDF evidence is incomplete.');
+  }
 
   const signatureCertificate = buildEstimateSignatureCertificate({
     estimate,
@@ -487,6 +485,10 @@ async function finalizeEstimateLegalState(base44: any, pkg: any, cert: any, sign
 }
 
 async function createCompletionCertificate(base44: any, pkg: any, signer: string, signerEmail: string, now: string, ip: string, ua: string) {
+  if (!pkg?.final_pdf_url || !pkg?.final_pdf_hash) {
+    throw new Error('Certificate generation blocked: final PDF hash evidence is missing.');
+  }
+
   const events = await base44.asServiceRole.entities.SigningEvent.filter({ signing_package_id: pkg.id }, 'created_at').catch(() => []);
   const cert = await base44.asServiceRole.entities.SigningCertificate.create({
     signing_package_id: pkg.id,
@@ -500,7 +502,7 @@ async function createCompletionCertificate(base44: any, pkg: any, signer: string
     ip_address: ip,
     user_agent: ua,
     document_hash: pkg.source_pdf_hash || '',
-    final_pdf_hash: pkg.final_pdf_hash || pkg.source_pdf_hash || '',
+    final_pdf_hash: pkg.final_pdf_hash,
     audit_trail: events || [],
     certificate_json: {
       provider: 'nexartsign',
@@ -512,6 +514,9 @@ async function createCompletionCertificate(base44: any, pkg: any, signer: string
       ip_address: ip,
       multi_signer: true,
       finalized_in_backend: true,
+      integrity_source: 'final_pdf_hash',
+      final_pdf_url: pkg.final_pdf_url,
+      final_pdf_hash: pkg.final_pdf_hash,
     },
     company_id: pkg.company_id || 'rc-art',
   });
@@ -521,6 +526,10 @@ async function createCompletionCertificate(base44: any, pkg: any, signer: string
 
 async function closePackageAsSigned(base44: any, pkg: any, signer: string, signerEmail: string, now: string, ip: string, ua: string) {
   const frozenPdf = await freezeSignedPdf(base44, pkg, now);
+  if (!frozenPdf.final_pdf_url || !frozenPdf.final_pdf_hash) {
+    throw new Error('Final PDF lock failed: finalized PDF evidence is incomplete.');
+  }
+
   const finalizedPackage = {
     ...pkg,
     status: 'signed',
