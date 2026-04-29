@@ -32,6 +32,7 @@ import TimeTracking from './pages/TimeTracking';
 import ClientEstimateView from './pages/ClientEstimateView';
 import SignDocumentView from './pages/SignDocumentView';
 import NexArtSign from './pages/NexArtSign';
+import NexArtSignFieldEditor from './pages/NexArtSignFieldEditor';
 import WorkOrderDetail from './pages/WorkOrderDetail';
 import Customers from './pages/Customers';
 import Assignments from './pages/Assignments';
@@ -171,6 +172,7 @@ const AppRoutes = () => (
       <Route path="/recovery-center" element={<RecoveryCenter />} />
       <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
       <Route path="/nexartsign" element={<NexArtSign />} />
+      <Route path="/nexartsign-field-editor" element={<NexArtSignFieldEditor />} />
       <Route path="/agent" element={<NexArtAgent />} />
     </Route>
 
