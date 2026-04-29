@@ -21,7 +21,17 @@ async function sha256HexFromBase64(base64) {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function assertFinalPdfEvidence({ finalPdfUrl, finalPdfName, pdfHash }) {
+  if (!finalPdfUrl) throw new Error('NexArtSign finalization blocked: final signed PDF URL is missing.');
+  if (!finalPdfName) throw new Error('NexArtSign finalization blocked: final signed PDF name is missing.');
+  if (!/^[a-f0-9]{64}$/i.test(pdfHash || '')) {
+    throw new Error('NexArtSign finalization blocked: final signed PDF SHA-256 hash is missing or invalid.');
+  }
+}
+
 function buildSignatureCertificate({ estimate, pkg, certificate, signerName, signedAt, pdfHash, finalPdfUrl, finalPdfName }) {
+  assertFinalPdfEvidence({ finalPdfUrl, finalPdfName, pdfHash });
+
   return {
     certificate_type: 'electronic_signature_certificate',
     generated_at: certificate?.generated_at || new Date().toISOString(),
@@ -41,12 +51,12 @@ function buildSignatureCertificate({ estimate, pkg, certificate, signerName, sig
     signature_method: estimate.signature_method || 'typed_name',
     terms_accepted: true,
     document_total: estimate.total || 0,
-    final_signed_pdf_url: finalPdfUrl || '',
-    final_signed_pdf_name: finalPdfName || '',
+    final_signed_pdf_url: finalPdfUrl,
+    final_signed_pdf_name: finalPdfName,
     document_hash_algorithm: 'SHA-256',
-    document_hash: pdfHash || '',
+    document_hash: pdfHash,
     signed_pdf_hash_algorithm: 'SHA-256',
-    signed_pdf_hash: pdfHash || '',
+    signed_pdf_hash: pdfHash,
     audit: {
       certificate_id: certificate?.id || '',
       certificate_number: certificate?.certificate_number || '',
@@ -72,7 +82,7 @@ function buildPdfAuditPageData({ estimate, pkg, certificate, signerName, signedA
     userAgent: certificate?.user_agent || '',
     hashAlgorithm: certificate?.hash_algorithm || pkg?.hash_algorithm || 'SHA-256',
     documentHash: certificate?.document_hash || pkg?.source_pdf_hash || '',
-    finalPdfHash: finalPdfHash || certificate?.final_pdf_hash || pkg?.final_pdf_hash || pkg?.source_pdf_hash || '',
+    finalPdfHash: finalPdfHash || certificate?.final_pdf_hash || pkg?.final_pdf_hash || '',
     auditTrail: certificate?.audit_trail || [],
   };
 }
@@ -92,6 +102,11 @@ function resolveEntityName(documentType) {
 }
 
 function buildGenericSignatureCertificate({ document, pkg, certificate, signerName, signedAt }) {
+  const finalPdfUrl = pkg?.final_pdf_url || '';
+  const finalPdfName = pkg?.final_pdf_name || '';
+  const finalPdfHash = certificate?.final_pdf_hash || pkg?.final_pdf_hash || '';
+  assertFinalPdfEvidence({ finalPdfUrl, finalPdfName, pdfHash: finalPdfHash });
+
   return {
     certificate_type: 'electronic_signature_certificate',
     generated_at: certificate?.generated_at || new Date().toISOString(),
@@ -104,12 +119,12 @@ function buildGenericSignatureCertificate({ document, pkg, certificate, signerNa
     signer_email: pkg?.signer_email || '',
     signed_at: signedAt || pkg?.signed_at || '',
     terms_accepted: true,
-    final_signed_pdf_url: pkg?.final_pdf_url || '',
-    final_signed_pdf_name: pkg?.final_pdf_name || '',
+    final_signed_pdf_url: finalPdfUrl,
+    final_signed_pdf_name: finalPdfName,
     document_hash_algorithm: pkg?.hash_algorithm || 'SHA-256',
     document_hash: certificate?.document_hash || pkg?.source_pdf_hash || '',
     signed_pdf_hash_algorithm: pkg?.hash_algorithm || 'SHA-256',
-    signed_pdf_hash: certificate?.final_pdf_hash || pkg?.final_pdf_hash || pkg?.source_pdf_hash || '',
+    signed_pdf_hash: finalPdfHash,
     audit: {
       certificate_id: certificate?.id || '',
       certificate_number: certificate?.certificate_number || '',
@@ -122,8 +137,8 @@ function buildGenericSignatureCertificate({ document, pkg, certificate, signerNa
 }
 
 async function sendFinalSignedCopyEmail(estimate, pkg) {
-  if (!estimate?.client_email || !estimate?.final_signed_pdf_url || !pkg?.token) return;
-  await base44.functions.invoke('sendSignedEstimateCopy', { token: pkg.token });
+  if (!estimate?.client_email || !estimate?.final_signed_pdf_url || !pkg?.id) return;
+  await base44.functions.invoke('sendSignedEstimateCopy', { packageId: pkg.id });
 }
 
 async function finalizeGenericSignedDocumentFromPackage({ packageId, documentType, documentId, signerName }) {
@@ -146,6 +161,8 @@ async function finalizeGenericSignedDocumentFromPackage({ packageId, documentTyp
     signedAt,
   });
 
+  const finalPdfHash = certificate?.final_pdf_hash || pkg.final_pdf_hash || '';
+
   if (entityName && documentId && base44.entities[entityName]) {
     await base44.entities[entityName].update(documentId, {
       signing_package_id: packageId,
@@ -158,9 +175,9 @@ async function finalizeGenericSignedDocumentFromPackage({ packageId, documentTyp
       locked_after_signature: true,
       legal_package_locked: true,
       final_signed_at: signedAt,
-      final_signed_pdf_url: pkg.final_pdf_url || '',
-      final_signed_pdf_name: pkg.final_pdf_name || '',
-      signed_pdf_hash: pkg.final_pdf_hash || certificate?.final_pdf_hash || '',
+      final_signed_pdf_url: pkg.final_pdf_url,
+      final_signed_pdf_name: pkg.final_pdf_name,
+      signed_pdf_hash: finalPdfHash,
       signed_pdf_hash_algorithm: pkg.hash_algorithm || 'SHA-256',
       signature_certificate: signatureCertificate,
       certificate_generated_at: signatureCertificate.generated_at,
@@ -225,81 +242,96 @@ export async function finalizeSignedEstimateFromPackage({ packageId, estimateId,
     company_signed_at: estimate.company_signed_at || pkg.sent_at || estimate.sent_at || signedAt,
   };
 
-  try {
-    const pdf = await generateEstimatePdfBase64(
-      {
-        ...estimate,
-        status: 'signed',
-        signature_name: signer,
-        accepted_by: signer,
-        signed_at: signedAt,
-        company_signature_name: finalFields.company_signature_name,
-        company_signature_email: finalFields.company_signature_email,
-        company_signature_role: finalFields.company_signature_role,
-        company_signed_at: finalFields.company_signed_at,
-        terms_accepted: true,
-      },
-      estimate?.document_config?.options,
-      estimate?.document_config?.template,
-      buildPdfAuditPageData({
-        estimate,
-        pkg,
-        certificate,
-        signerName: signer,
-        signedAt,
-      })
-    );
-    const pdfHash = await sha256HexFromBase64(pdf.base64);
-    const blob = base64ToPdfBlob(pdf.base64);
-    const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
-    const finalSignedPdfUrl = uploadRes?.file_url || pkg.final_pdf_url || '';
-    const finalSignedPdfName = pdf.filename || pkg.final_pdf_name || `Signed-Estimate-${estimate.estimate_number}.pdf`;
-    const signatureCertificate = buildSignatureCertificate({
+  const pdf = await generateEstimatePdfBase64(
+    {
+      ...estimate,
+      status: 'signed',
+      signature_name: signer,
+      accepted_by: signer,
+      signed_at: signedAt,
+      company_signature_name: finalFields.company_signature_name,
+      company_signature_email: finalFields.company_signature_email,
+      company_signature_role: finalFields.company_signature_role,
+      company_signed_at: finalFields.company_signed_at,
+      terms_accepted: true,
+    },
+    estimate?.document_config?.options,
+    estimate?.document_config?.template,
+    buildPdfAuditPageData({
       estimate,
-      pkg: { ...pkg, final_pdf_url: finalSignedPdfUrl, final_pdf_name: finalSignedPdfName },
+      pkg,
       certificate,
       signerName: signer,
       signedAt,
-      pdfHash,
-      finalPdfUrl: finalSignedPdfUrl,
-      finalPdfName: finalSignedPdfName,
-    });
+    })
+  );
 
-    finalFields = {
-      ...finalFields,
-      final_signed_pdf_url: finalSignedPdfUrl,
-      final_signed_pdf_name: finalSignedPdfName,
-      document_hash: pdfHash,
-      document_hash_algorithm: 'SHA-256',
-      signed_pdf_hash: pdfHash,
-      signed_pdf_hash_algorithm: 'SHA-256',
-      signature_certificate: signatureCertificate,
-      certificate_generated_at: signatureCertificate.generated_at,
-    };
+  if (!pdf?.base64) throw new Error('NexArtSign finalization blocked: signed PDF generation returned no content.');
 
-    await base44.entities.SigningPackage.update(pkg.id, {
-      final_pdf_url: finalSignedPdfUrl,
-      final_pdf_name: finalSignedPdfName,
+  const pdfHash = await sha256HexFromBase64(pdf.base64);
+  const blob = base64ToPdfBlob(pdf.base64);
+  const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
+  const finalSignedPdfUrl = uploadRes?.file_url || '';
+  const finalSignedPdfName = pdf.filename || `Signed-Estimate-${estimate.estimate_number}.pdf`;
+
+  assertFinalPdfEvidence({ finalPdfUrl: finalSignedPdfUrl, finalPdfName: finalSignedPdfName, pdfHash });
+
+  const signatureCertificate = buildSignatureCertificate({
+    estimate,
+    pkg: { ...pkg, final_pdf_url: finalSignedPdfUrl, final_pdf_name: finalSignedPdfName },
+    certificate,
+    signerName: signer,
+    signedAt,
+    pdfHash,
+    finalPdfUrl: finalSignedPdfUrl,
+    finalPdfName: finalSignedPdfName,
+  });
+
+  finalFields = {
+    ...finalFields,
+    final_signed_pdf_url: finalSignedPdfUrl,
+    final_signed_pdf_name: finalSignedPdfName,
+    document_hash: pdfHash,
+    document_hash_algorithm: 'SHA-256',
+    signed_pdf_hash: pdfHash,
+    signed_pdf_hash_algorithm: 'SHA-256',
+    signature_certificate: signatureCertificate,
+    certificate_generated_at: signatureCertificate.generated_at,
+  };
+
+  await base44.entities.SigningPackage.update(pkg.id, {
+    final_pdf_url: finalSignedPdfUrl,
+    final_pdf_name: finalSignedPdfName,
+    final_pdf_hash: pdfHash,
+    certificate_id: certificate?.id || pkg.certificate_id || '',
+    audit_summary: {
+      ...(signatureCertificate.audit || {}),
       final_pdf_hash: pdfHash,
-      certificate_id: certificate?.id || pkg.certificate_id || '',
-      audit_summary: signatureCertificate.audit,
-    }).catch(() => {});
+      final_pdf_required: true,
+      finalized_in_frontend_completion: true,
+    },
+  });
 
-    if (certificate?.id) {
-      await base44.entities.SigningCertificate.update(certificate.id, {
+  if (certificate?.id) {
+    await base44.entities.SigningCertificate.update(certificate.id, {
+      final_pdf_hash: pdfHash,
+      certificate_pdf_url: finalSignedPdfUrl,
+      certificate_json: {
+        ...(certificate.certificate_json || {}),
         final_pdf_hash: pdfHash,
-        certificate_pdf_url: finalSignedPdfUrl,
-      }).catch(() => {});
-    }
-  } catch (err) {
-    console.warn('[finalizeSignedEstimateFromPackage] final PDF freeze failed:', err?.message);
+        final_pdf_url: finalSignedPdfUrl,
+        final_pdf_required: true,
+      },
+    });
+  } else {
+    throw new Error('NexArtSign finalization blocked: signing certificate record is missing.');
   }
 
   await base44.entities.Estimate.update(estimate.id, finalFields);
 
   const updatedEstimate = { ...estimate, ...finalFields };
 
-  await sendFinalSignedCopyEmail(updatedEstimate, pkg).catch(err => {
+  await sendFinalSignedCopyEmail(updatedEstimate, { ...pkg, final_pdf_url: finalSignedPdfUrl }).catch(err => {
     console.warn('[finalizeSignedEstimateFromPackage] signed copy email failed:', err?.message);
   });
 
