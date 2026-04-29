@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,10 @@ import {
   UserCheck,
   MailCheck,
   ShieldAlert,
+  CheckSquare,
+  PenLine,
+  Type,
+  CalendarDays,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SignatureBrandCredit from '@/components/signing/SignatureBrandCredit';
@@ -26,6 +30,71 @@ function extractFunctionError(error) {
     code: payload?.code || error?.code || '',
     message: payload?.error || payload?.message || error?.message || 'Unexpected signing error',
   };
+}
+
+function normalizeFields(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.fields)) return raw.fields;
+  return [];
+}
+
+function getFieldConfig(pkg) {
+  return pkg?.field_config || pkg?.audit_summary?.field_config || { fields: pkg?.document_fields || [] };
+}
+
+function fieldIcon(type) {
+  switch (type) {
+    case 'signature': return PenLine;
+    case 'initials': return FileSignature;
+    case 'date': return CalendarDays;
+    case 'checkbox': return CheckSquare;
+    default: return Type;
+  }
+}
+
+function getInitials(value = '') {
+  return String(value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(part => part[0]?.toUpperCase())
+    .join('')
+    .slice(0, 4);
+}
+
+function makeFieldValue(field, rawValue, signerName) {
+  const now = new Date().toISOString();
+  let value = rawValue;
+
+  if (field.type === 'date') value = new Date().toLocaleDateString();
+  if (field.type === 'name' && !value) value = signerName;
+  if (field.type === 'initials' && !value) value = getInitials(signerName);
+  if (field.type === 'signature' && !value) value = signerName;
+
+  return {
+    field_id: field.id,
+    type: field.type,
+    label: field.label || field.placeholder || field.type,
+    value,
+    completed_at: now,
+    page: Number(field.page || 1),
+    x: Number(field.x || 0),
+    y: Number(field.y || 0),
+    width: Number(field.width || 0),
+    height: Number(field.height || 0),
+    participant_id: field.participant_id || '',
+    required: Boolean(field.required),
+  };
+}
+
+function isFieldComplete(field, values, signerName) {
+  const value = values[field.id];
+  if (field.type === 'date') return true;
+  if (field.type === 'name') return Boolean(value || signerName?.trim());
+  if (field.type === 'initials') return Boolean(value || getInitials(signerName));
+  if (field.type === 'signature') return Boolean(value || signerName?.trim());
+  if (field.type === 'checkbox') return value === true;
+  return Boolean(String(value || '').trim());
 }
 
 function getAccessState(code, fallbackMessage = '') {
@@ -111,6 +180,57 @@ function getAccessState(code, fallbackMessage = '') {
   }
 }
 
+function SigningFieldInput({ field, value, signerName, onChange, disabled }) {
+  const Icon = fieldIcon(field.type);
+  const label = field.label || field.placeholder || field.type;
+
+  if (field.type === 'checkbox') {
+    return (
+      <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        <input type="checkbox" checked={value === true} onChange={(event) => onChange(field.id, event.target.checked)} disabled={disabled} />
+        <span>
+          <span className="font-semibold text-slate-900">{label}</span>
+          {field.required && <span className="text-red-500"> *</span>}
+        </span>
+      </label>
+    );
+  }
+
+  const autoValue = field.type === 'date'
+    ? new Date().toLocaleDateString()
+    : field.type === 'name'
+      ? (value || signerName)
+      : field.type === 'initials'
+        ? (value || getInitials(signerName))
+        : field.type === 'signature'
+          ? (value || signerName)
+          : value || '';
+
+  const isAuto = ['date', 'name', 'initials', 'signature'].includes(field.type);
+
+  return (
+    <label className="block rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+      <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+        <Icon className="w-4 h-4" />
+        {label}{field.required && <span className="text-red-500">*</span>}
+      </span>
+      <input
+        value={autoValue}
+        onChange={(event) => onChange(field.id, event.target.value)}
+        placeholder={field.placeholder || label}
+        className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+        disabled={disabled || field.type === 'date'}
+      />
+      {field.type === 'signature' && (
+        <p className="text-xs text-slate-500">Typed electronic signature. Drawing capture and final PDF stamping are handled in the next PDF generation layer.</p>
+      )}
+      {isAuto && field.type !== 'date' && (
+        <p className="text-xs text-slate-500">You may edit this value before approving.</p>
+      )}
+    </label>
+  );
+}
+
 export default function SignDocumentView() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
@@ -130,6 +250,21 @@ export default function SignDocumentView() {
   const [otpCode, setOtpCode] = useState('');
   const [otpStatus, setOtpStatus] = useState('');
   const [otpBusy, setOtpBusy] = useState(false);
+  const [fieldValues, setFieldValues] = useState({});
+
+  const signingFields = useMemo(() => {
+    const fields = normalizeFields(getFieldConfig(pkg));
+    const activeParticipantId = pkg?.active_participant_id || pkg?.audit_summary?.active_participant_id || pkg?.participant_id || '';
+    return fields
+      .filter(field => !field.participant_id || !activeParticipantId || field.participant_id === activeParticipantId)
+      .sort((a, b) => (Number(a.page || 1) - Number(b.page || 1)) || (Number(a.y || 0) - Number(b.y || 0)) || (Number(a.x || 0) - Number(b.x || 0)));
+  }, [pkg]);
+
+  const missingRequiredFields = useMemo(() => signingFields
+    .filter(field => field.required !== false)
+    .filter(field => !isFieldComplete(field, fieldValues, name)), [signingFields, fieldValues, name]);
+
+  const completedFieldCount = useMemo(() => signingFields.filter(field => isFieldComplete(field, fieldValues, name)).length, [signingFields, fieldValues, name]);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,10 +307,40 @@ export default function SignDocumentView() {
     };
   }, [token]);
 
+  useEffect(() => {
+    if (!pkg) return;
+    const nextValues = {};
+    signingFields.forEach(field => {
+      if (field.type === 'date') nextValues[field.id] = new Date().toLocaleDateString();
+      if (field.type === 'name') nextValues[field.id] = name || pkg.signer_name || '';
+      if (field.type === 'initials') nextValues[field.id] = getInitials(name || pkg.signer_name || '');
+      if (field.type === 'signature') nextValues[field.id] = name || pkg.signer_name || '';
+    });
+    setFieldValues(current => ({ ...nextValues, ...current }));
+  }, [pkg, signingFields.length]);
+
+  useEffect(() => {
+    setFieldValues(current => {
+      const next = { ...current };
+      signingFields.forEach(field => {
+        if (field.type === 'name' && !next[field.id]) next[field.id] = name;
+        if (field.type === 'initials' && (!next[field.id] || next[field.id] === getInitials(pkg?.signer_name || ''))) next[field.id] = getInitials(name);
+        if (field.type === 'signature' && (!next[field.id] || next[field.id] === pkg?.signer_name)) next[field.id] = name;
+      });
+      return next;
+    });
+  }, [name]);
+
   const isComplete = pkg?.status === 'signed' || pkg?.status === 'declined' || pkg?.status === 'expired' || pkg?.status === 'voided';
   const otpRequired = Boolean(pkg?.otp_required);
   const otpVerified = Boolean(pkg?.otp_verified);
   const otpLocked = Boolean(pkg?.otp_locked_until && new Date(pkg.otp_locked_until) > new Date());
+
+  const updateFieldValue = (fieldId, value) => {
+    setFieldValues(current => ({ ...current, [fieldId]: value }));
+  };
+
+  const buildFieldPayload = () => signingFields.map(field => makeFieldValue(field, fieldValues[field.id], name.trim()));
 
   const requestOtpCode = async () => {
     if (!token) return;
@@ -266,6 +431,13 @@ export default function SignDocumentView() {
       return;
     }
 
+    if (missingRequiredFields.length > 0) {
+      toast.error(`Complete all required fields before signing (${missingRequiredFields.length} remaining)`);
+      return;
+    }
+
+    const fieldPayload = buildFieldPayload();
+
     setActing(true);
     try {
       const res = await base44.functions.invoke('completeSigningPackage', {
@@ -273,7 +445,29 @@ export default function SignDocumentView() {
         action: 'approve',
         signer_name: name.trim(),
         fingerprint: deviceFingerprint || await getDeviceFingerprint(),
+        field_values: fieldPayload,
+        field_config_version: getFieldConfig(pkg)?.version || 1,
       });
+
+      await base44.entities.SigningEvent.create({
+        signing_package_id: pkg.id,
+        document_type: pkg.document_type,
+        document_id: pkg.document_id,
+        event_type: 'fields_completed',
+        actor_name: name.trim(),
+        actor_email: pkg.signer_email || '',
+        created_at: new Date().toISOString(),
+        metadata: {
+          field_count: fieldPayload.length,
+          required_count: signingFields.filter(field => field.required !== false).length,
+          completed_count: fieldPayload.length,
+          field_types: fieldPayload.reduce((acc, field) => {
+            acc[field.type] = (acc[field.type] || 0) + 1;
+            return acc;
+          }, {}),
+        },
+        company_id: pkg.company_id || pkg.audit_summary?.company_id || '',
+      }).catch(() => {});
 
       const result = res?.data || {};
       const nextStatus = result.status || 'signed';
@@ -290,6 +484,7 @@ export default function SignDocumentView() {
         ...currentPkg,
         status: nextStatus === 'pending_next_signer' ? 'viewed' : 'signed',
         signer_name: name.trim(),
+        completed_field_values: fieldPayload,
         final_pdf_url: result.final_pdf_url || currentPkg?.final_pdf_url || currentPkg?.source_pdf_url || '',
         final_pdf_name: result.final_pdf_name || currentPkg?.final_pdf_name || currentPkg?.source_pdf_name || '',
       }));
@@ -443,12 +638,41 @@ export default function SignDocumentView() {
                 Review the document first. When you sign, NexArtSign records the event, locks the approved version, and creates a verification certificate for the audit trail.
               </p>
               <div className="text-xs text-slate-400 bg-white/5 border border-white/10 rounded-xl p-3">
-                This session now includes risk-based protection for device origin, repeated invalid attempts, and replay prevention.
+                This session now includes risk-based protection for device origin, repeated invalid attempts, field completion, and replay prevention.
               </div>
               <Button variant="secondary" onClick={openReviewPdf} className="w-full sm:w-auto gap-2" disabled={!pkg?.source_pdf_url && !pkg?.final_pdf_url}>
                 <ExternalLink className="w-4 h-4" /> Open Document Preview
               </Button>
             </div>
+
+            {signingFields.length > 0 && (
+              <div className="bg-white border border-blue-200 rounded-2xl p-5 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold text-slate-900 flex items-center gap-2"><FileCheck className="w-4 h-4 text-blue-600" /> Required signing fields</h2>
+                    <p className="text-sm text-slate-500 mt-1">Complete every required field before approving this document.</p>
+                  </div>
+                  <span className="text-xs font-bold border border-blue-200 bg-blue-50 text-blue-700 rounded-full px-2 py-1">{completedFieldCount}/{signingFields.length}</span>
+                </div>
+                <div className="space-y-3">
+                  {signingFields.map(field => (
+                    <SigningFieldInput
+                      key={field.id}
+                      field={field}
+                      value={fieldValues[field.id]}
+                      signerName={name}
+                      onChange={updateFieldValue}
+                      disabled={isComplete || acting}
+                    />
+                  ))}
+                </div>
+                {missingRequiredFields.length > 0 && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    {missingRequiredFields.length} required field{missingRequiredFields.length === 1 ? '' : 's'} remaining.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
@@ -459,7 +683,7 @@ export default function SignDocumentView() {
                 <CheckCircle className="w-5 h-5" /> Document completed successfully
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600 space-y-2">
-                <p>The signed file and verification certificate are now part of the NexArtSign record for this document.</p>
+                <p>The signed file, completed fields, and verification certificate are now part of the NexArtSign record for this document.</p>
                 {deliveryStatus === 'sending' && <p className="text-slate-500 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Sending signed copies...</p>}
                 {deliveryStatus === 'sent' && <p className="text-green-700 flex items-center gap-2"><MailCheck className="w-4 h-4" /> Signed copies were sent to the client and company archive.</p>}
                 {deliveryStatus === 'failed' && <p className="text-amber-700 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Signed copy email delivery needs review.</p>}
@@ -543,7 +767,7 @@ export default function SignDocumentView() {
 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 flex items-start gap-2">
                 <FileCheck className="w-4 h-4 mt-0.5" />
-                <span>Your signature will lock this document, generate a NexArtSign certificate, and preserve the signed record for verification.</span>
+                <span>Your signature will lock this document, generate a NexArtSign certificate, preserve completed field values, and keep the record for verification.</span>
               </div>
 
               <label className="block space-y-1">
@@ -564,10 +788,10 @@ export default function SignDocumentView() {
 
               <label className="flex gap-3 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-4">
                 <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} disabled={isComplete} />
-                <span>I have opened, reviewed, and approve this document electronically.</span>
+                <span>I have opened, reviewed, completed all required fields, and approve this document electronically.</span>
               </label>
 
-              <Button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !identityConfirmed || (otpRequired && !otpVerified)} className="w-full h-11">
+              <Button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !identityConfirmed || missingRequiredFields.length > 0 || (otpRequired && !otpVerified)} className="w-full h-11">
                 {acting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign & Approve Document'}
               </Button>
 
