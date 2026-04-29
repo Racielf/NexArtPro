@@ -34,90 +34,99 @@ Still pending in Phase 1:
 Important files:
 
 - `src/lib/nexArtSign.js`
-- `src/functions/resolveSigningPackageToken.js`
-- `src/functions/completeSigningPackage.js`
+- `base44/functions/resolveSigningPackageToken/entry.ts`
+- `base44/functions/completeSigningPackage/entry.ts`
 
 ---
 
-### Phase 2 - OTP before signing
+### Phase 2 - Sequential multi-signer flow
 
 **Status:** Implemented.
 
-Added:
+Added / verified:
 
-- `base44/entities/SigningOtpChallenge.jsonc`
-- `src/functions/requestSigningOtp.js`
-- OTP validation in `src/functions/completeSigningPackage.js`
+- real participant creation during package issuance and package reuse
+- participant synchronization from signing configuration
+- first participant activation on package preparation
+- participant-scoped token flow already enforced by canonical backend
+- sequential completion already enforced by canonical backend
+- signing events for:
+  - `participants_created`
+  - `participant_activated`
 
 Current behavior:
 
-- Signing and declining now require a 6-digit OTP.
-- OTP is stored as a SHA-256 hash, not plain text.
-- OTP expires.
-- OTP has attempt limits.
-- OTP status transitions:
-  - `pending`
-  - `verified`
-  - `used`
-  - `expired`
-  - `failed`
-- Signing events now include:
-  - `otp_verified`
-  - `otp_failed`
-- Completed signature/decline stores `otp_challenge_id` in metadata.
-
-Known limitations:
-
-- `requestSigningOtp.js` currently logs OTP to server console for development.
-- Email/SMS delivery provider is not connected yet.
-- Frontend UI still needs full polished OTP UX.
-- OTP is not yet risk-based.
-- OTP is not yet bound to fingerprint/IP.
+- estimates can now issue real `SigningParticipant` records
+- the first signer becomes `active`
+- later signers remain `pending`
+- only the active participant token can advance the signing flow
+- package closes only after the final signer completes
 
 Important files:
 
-- `src/functions/requestSigningOtp.js`
-- `src/functions/completeSigningPackage.js`
-- `src/pages/SignDocumentView.jsx`
+- `src/lib/nexArtSign.js`
+- `base44/functions/resolveEstimatePublicToken/entry.ts`
+- `base44/functions/resolveSigningPackageToken/entry.ts`
+- `base44/functions/completeSigningPackage/entry.ts`
 
 ---
 
-## Post-Phase-2 audit findings
+### Phase 3 - OTP before signing
+
+**Status:** Explicitly deferred / disabled.
+
+Decision:
+
+OTP is not part of the active NexArtSign flow until it can be implemented end-to-end.
+
+Why:
+
+- there is no production-ready OTP delivery path connected in the canonical backend
+- the signing UI does not implement a complete OTP UX
+- leaving partial OTP scaffolding in place creates false security expectations
+
+Current behavior:
+
+- NexArtSign signing does **not** require OTP in the active canonical flow
+- incomplete OTP scaffolding has been removed from the active repo path
+- OTP should only return when request, delivery, verify, enforcement, retry limits, and audit are all implemented together
+
+Rule going forward:
+
+- do not reintroduce OTP partially
+- OTP comes back only as a full closed phase with backend, UX, delivery, and audit all verified together
+
+---
+
+## Post-Phase-3 audit findings
 
 ### Critical
 
-1. Plain token lookup still exists in legacy functions.
+1. Plain token lookup still exists in canonical functions.
    - Current pattern: `SigningPackage.filter({ token })`
    - Target pattern: hash token, then lookup by `token_hash`.
 
-2. OTP delivery is not production-ready.
-   - Current behavior: OTP is generated and logged in dev.
-   - Target behavior: deliver via email/SMS provider and audit delivery status.
-
-3. PDF finalization/certification still needs hardening.
-   - Current certificate path can use `source_pdf_hash` as `final_pdf_hash`.
+2. PDF finalization/certification still needs hardening.
+   - Current certificate path can still depend on package/source hash fallbacks.
    - Target behavior: generate final locked PDF first, hash final PDF, then issue certificate.
 
-4. Public PDF URLs may still expose documents.
+3. Public PDF URLs may still expose documents.
    - Target behavior: signed/temporary URLs with expiration and access logs.
 
 ### Important
 
-5. NexArtSign is not yet fully connected to the global risk engine.
+4. NexArtSign is not yet fully connected to the global risk engine.
    - Should use `is_origin_blocked(...)` before resolving/signing.
    - Should write to `security_audit_logs` for all signing security events.
 
-6. OTP request rate limit is not fully enforced yet.
-   - Add IP/token/fingerprint-based throttling.
-
-7. Certificate verification endpoint exposes too much.
+5. Certificate verification endpoint exposes too much.
    - Public verification should reveal minimum data only.
 
 ---
 
 ## Next phase
 
-### Phase 3 - Risk-based NexArtSign security
+### Phase 4 - Risk-based NexArtSign security
 
 **Status:** Not implemented yet.
 
@@ -128,52 +137,38 @@ Connect NexArtSign to the existing global security engine so signing flows react
 Planned behavior:
 
 - Low risk: normal flow.
-- Medium risk: OTP required.
-- High risk: OTP required + stricter attempt limits.
+- Medium risk: stronger logging and throttling.
+- High risk: stricter attempt limits or stepped verification.
 - Critical risk: block access.
 
 Implementation checklist:
 
-1. In `resolveSigningPackageToken.js`:
+1. In `base44/functions/resolveSigningPackageToken/entry.ts`:
    - Read IP and fingerprint.
    - Check `is_origin_blocked(ip, fingerprint)`.
    - Log successful/failed token attempts.
    - Enforce token/IP rate limit.
 
-2. In `requestSigningOtp.js`:
-   - Check IP/fingerprint block status.
-   - Limit OTP requests per token/IP/fingerprint.
-   - Log:
-     - `nexartsign.otp_requested`
-     - `nexartsign.otp_rate_limited`
-     - `nexartsign.otp_delivery_failed`
+2. In signing/security helpers:
+   - log:
+     - `nexartsign.access_requested`
+     - `nexartsign.access_denied`
+     - `nexartsign.origin_blocked`
+     - `nexartsign.rate_limited`
 
-3. In `completeSigningPackage.js`:
-   - Log OTP failures to global audit.
-   - Block after repeated OTP failures.
-   - Apply stricter behavior when origin risk is high.
+3. In `base44/functions/completeSigningPackage/entry.ts`:
+   - block or tighten behavior after repeated failures
+   - integrate with global security audit
 
 4. In `SignDocumentView.jsx`:
-   - Generate/send device fingerprint.
-   - Show risk-based error messages.
-   - Add OTP UX:
-     - send code
-     - resend cooldown
-     - enter code
-     - error states
-
-5. Add security events to risk weights if missing:
-   - `nexartsign.otp_requested`
-   - `nexartsign.otp_failed`
-   - `nexartsign.otp_verified`
-   - `nexartsign.access_denied`
-   - `nexartsign.origin_blocked`
+   - generate/send device fingerprint when phase 4 requires it
+   - show clearer security/risk error states
 
 ---
 
 ## Later phases
 
-### Phase 4 - Final PDF lock + certificate integrity
+### Phase 5 - Final PDF lock + certificate integrity
 
 Goal:
 
@@ -187,7 +182,7 @@ Checklist:
 - Store final PDF hash in package and certificate.
 - Prevent certificate generation if final PDF hashing fails.
 
-### Phase 5 - Public verification minimization
+### Phase 6 - Public verification minimization
 
 Goal:
 
@@ -205,7 +200,7 @@ Checklist:
   - hash verification result
   - provider
 
-### Phase 6 - Supabase/RLS migration for NexArtSign
+### Phase 7 - Supabase/RLS migration for NexArtSign
 
 Goal:
 
@@ -213,7 +208,7 @@ Move NexArtSign packages/events/certificates from Base44 entity calls to Supabas
 
 Checklist:
 
-- Create Supabase tables for signing packages, participants, events, certificates, OTP challenges.
+- Create Supabase tables for signing packages, participants, events, certificates.
 - Apply RLS policies using `has_app_permission(...)`.
 - Replace admin panel reads in `NexArtSign.jsx`.
 - Replace public signing functions with Supabase Edge Functions.
@@ -225,7 +220,7 @@ Checklist:
 When ready to continue, use:
 
 ```text
-fase 3 implementa risk NexArtSign
+fase 4 implementa risk NexArtSign
 ```
 
-Start with `resolveSigningPackageToken.js`, then `requestSigningOtp.js`, then `completeSigningPackage.js`, and finish with `SignDocumentView.jsx`.
+Start with `base44/functions/resolveSigningPackageToken/entry.ts`, then `base44/functions/completeSigningPackage/entry.ts`, and finish with the signing UI only where needed.
