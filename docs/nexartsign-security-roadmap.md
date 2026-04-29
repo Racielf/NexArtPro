@@ -27,9 +27,7 @@ Still pending in Phase 1:
 - Replace plain token lookup with token hash lookup.
 - Stop storing new tokens in plain text.
 - Add fallback migration path for legacy tokens.
-- Add direct calls to `record_nexartsign_token_attempt(...)` from Base44/Supabase functions.
-- Add rate-limit enforcement before resolving signing links.
-- Kill/revoke token after final signature or decline.
+- Kill or revoke token after final signature or decline.
 
 Important files:
 
@@ -98,86 +96,88 @@ Rule going forward:
 
 ---
 
-## Post-Phase-3 audit findings
+### Phase 4 - Risk-based NexArtSign security
 
-### Critical
+**Status:** Implemented.
+
+Added / verified:
+
+- Base44 signing functions now open a Supabase service-role client to reach the canonical security engine
+- `resolveSigningPackageToken` now performs:
+  - `nexartsign.access_requested` audit
+  - origin block check through `is_origin_blocked(...)`
+  - recent failure check through `nexartsign_recent_failed_attempts(...)`
+  - automatic temporary block creation after rate-limit abuse
+  - success and failure logging through `record_nexartsign_token_attempt(...)`
+  - explicit `nexartsign.access_denied` audit for security denials
+- `completeSigningPackage` now performs the same risk preflight before signature or decline
+- replay attempts against already-closed packages now emit `nexartsign.replay_blocked`
+- final sign and decline events now emit `nexartsign.signed` and `nexartsign.declined` into the global audit layer
+- public signing UI now sends a deterministic device fingerprint and shows explicit states for:
+  - `origin_blocked`
+  - `rate_limited`
+  - `participant_token_required`
+  - `participant_not_active`
+  - `package_closed`
+  - `package_expired`
+- Supabase migration added to let `write_security_audit_log(...)` persist:
+  - `ip_address`
+  - `user_agent`
+  - `fingerprint`
+- Phase 4 event weights were added for:
+  - `nexartsign.access_requested`
+  - `nexartsign.access_denied`
+  - `nexartsign.origin_blocked`
+
+Important files:
+
+- `base44/functions/_shared/nexartsignSecurity.ts`
+- `base44/functions/resolveSigningPackageToken/entry.ts`
+- `base44/functions/completeSigningPackage/entry.ts`
+- `src/pages/SignDocumentView.jsx`
+- `src/lib/deviceFingerprint.js`
+- `supabase/migrations/20260429_nexartsign_phase4_risk_integration.sql`
+
+Residual note:
+
+- Phase 4 is now closed on the active signing path, but Phase 1 token hashing migration is still pending as a separate hardening step.
+
+---
+
+## Post-Phase-4 audit findings
+
+### Remaining critical item outside Phase 4
 
 1. Plain token lookup still exists in canonical functions.
    - Current pattern: `SigningPackage.filter({ token })`
    - Target pattern: hash token, then lookup by `token_hash`.
 
-2. PDF finalization/certification still needs hardening.
-   - Current certificate path can still depend on package/source hash fallbacks.
-   - Target behavior: generate final locked PDF first, hash final PDF, then issue certificate.
+### Remaining important items outside Phase 4
 
-3. Public PDF URLs may still expose documents.
-   - Target behavior: signed/temporary URLs with expiration and access logs.
+2. PDF finalization/certification can be hardened further.
+   - Current certificate path is functional and backend-driven.
+   - Target behavior: make final PDF hash the only certificate source of truth in every branch.
 
-### Important
+3. Public PDF URLs can still be tightened later.
+   - Target behavior: signed or temporary URLs with expiration and access logs.
 
-4. NexArtSign is not yet fully connected to the global risk engine.
-   - Should use `is_origin_blocked(...)` before resolving/signing.
-   - Should write to `security_audit_logs` for all signing security events.
-
-5. Certificate verification endpoint exposes too much.
+4. Public verification endpoint still needs minimization.
    - Public verification should reveal minimum data only.
 
 ---
 
-## Next phase
-
-### Phase 4 - Risk-based NexArtSign security
-
-**Status:** Not implemented yet.
-
-Goal:
-
-Connect NexArtSign to the existing global security engine so signing flows react to user/IP/device risk.
-
-Planned behavior:
-
-- Low risk: normal flow.
-- Medium risk: stronger logging and throttling.
-- High risk: stricter attempt limits or stepped verification.
-- Critical risk: block access.
-
-Implementation checklist:
-
-1. In `base44/functions/resolveSigningPackageToken/entry.ts`:
-   - Read IP and fingerprint.
-   - Check `is_origin_blocked(ip, fingerprint)`.
-   - Log successful/failed token attempts.
-   - Enforce token/IP rate limit.
-
-2. In signing/security helpers:
-   - log:
-     - `nexartsign.access_requested`
-     - `nexartsign.access_denied`
-     - `nexartsign.origin_blocked`
-     - `nexartsign.rate_limited`
-
-3. In `base44/functions/completeSigningPackage/entry.ts`:
-   - block or tighten behavior after repeated failures
-   - integrate with global security audit
-
-4. In `SignDocumentView.jsx`:
-   - generate/send device fingerprint when phase 4 requires it
-   - show clearer security/risk error states
-
----
-
-## Later phases
+## Next phases
 
 ### Phase 5 - Final PDF lock + certificate integrity
 
 Goal:
 
-Make certificate legally stronger by hashing the actual final signed PDF, not the source PDF.
+Make certificate legally stronger by hashing the actual final signed PDF, not the source PDF, in every document branch.
 
 Checklist:
 
 - Generate final PDF first.
-- Add signature/audit page.
+- Add signature or audit page.
 - Hash final PDF.
 - Store final PDF hash in package and certificate.
 - Prevent certificate generation if final PDF hashing fails.
@@ -191,7 +191,7 @@ Make `/verify-document` safe for public use.
 Checklist:
 
 - Do not expose full signer email publicly.
-- Do not expose IP/user-agent publicly.
+- Do not expose IP or user-agent publicly.
 - Do not expose full audit trail publicly.
 - Show only:
   - certificate number
@@ -204,7 +204,7 @@ Checklist:
 
 Goal:
 
-Move NexArtSign packages/events/certificates from Base44 entity calls to Supabase tables protected by RLS.
+Move NexArtSign packages, participants, events, and certificates from Base44 entity calls to Supabase tables protected by RLS.
 
 Checklist:
 
@@ -212,15 +212,3 @@ Checklist:
 - Apply RLS policies using `has_app_permission(...)`.
 - Replace admin panel reads in `NexArtSign.jsx`.
 - Replace public signing functions with Supabase Edge Functions.
-
----
-
-## Recommended next command
-
-When ready to continue, use:
-
-```text
-fase 4 implementa risk NexArtSign
-```
-
-Start with `base44/functions/resolveSigningPackageToken/entry.ts`, then `base44/functions/completeSigningPackage/entry.ts`, and finish with the signing UI only where needed.
