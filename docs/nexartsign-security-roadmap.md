@@ -71,28 +71,40 @@ Important files:
 
 ### Phase 3 - OTP before signing
 
-**Status:** Explicitly deferred / disabled.
+**Status:** Implemented.
 
-Decision:
+Added / verified:
 
-OTP is not part of the active NexArtSign flow until it can be implemented end-to-end.
-
-Why:
-
-- there is no production-ready OTP delivery path connected in the canonical backend
-- the signing UI does not implement a complete OTP UX
-- leaving partial OTP scaffolding in place creates false security expectations
+- OTP is now enforced before `approve` on the active signing session
+- public signing UI can request and verify a one-time code for the active signer
+- OTP delivery runs through email to the active signer destination
+- OTP state includes expiration, retry counter, and temporary lock after repeated failures
+- OTP verification is bound to the active token hash prefix and device fingerprint used in the public session
+- OTP audit events now include:
+  - `otp_requested`
+  - `otp_verified`
+  - `otp_failed`
+  - `otp_locked`
+- global security audit now records:
+  - `nexartsign.otp_requested`
+  - `nexartsign.otp_verified`
+  - `nexartsign.otp_failed`
+  - `nexartsign.otp_locked`
 
 Current behavior:
 
-- NexArtSign signing does **not** require OTP in the active canonical flow
-- incomplete OTP scaffolding has been removed from the active repo path
-- OTP should only return when request, delivery, verify, enforcement, retry limits, and audit are all implemented together
+- the signer can still open and review the document before OTP
+- signing approval is blocked until OTP verification succeeds
+- expired or locked OTP states block signing until a new valid verification path exists
+- decline can still close the package without OTP because it is not a signature approval event
 
-Rule going forward:
+Important files:
 
-- do not reintroduce OTP partially
-- OTP comes back only as a full closed phase with backend, UX, delivery, and audit all verified together
+- `src/pages/SignDocumentView.jsx`
+- `base44/functions/requestSigningOtp/entry.ts`
+- `base44/functions/verifySigningOtp/entry.ts`
+- `base44/functions/completeSigningPackage/entry.ts`
+- `base44/functions/_shared/nexartsignOtp.ts`
 
 ---
 
@@ -140,19 +152,19 @@ Important files:
 
 Residual note:
 
-- Phase 4 is now closed on the active signing path, but Phase 1 token hashing migration is still pending as a separate hardening step.
+- Phase 4 is closed on the active signing path, but Phase 1 token hashing migration is still pending as a separate hardening step.
 
 ---
 
 ## Post-Phase-4 audit findings
 
-### Remaining critical item outside Phase 4
+### Remaining critical item outside the active phase line
 
 1. Plain token lookup still exists in canonical functions.
    - Current pattern: `SigningPackage.filter({ token })`
    - Target pattern: hash token, then lookup by `token_hash`.
 
-### Remaining important items outside Phase 4
+### Remaining important items outside the active phase line
 
 2. PDF finalization/certification can be hardened further.
    - Current certificate path is functional and backend-driven.
