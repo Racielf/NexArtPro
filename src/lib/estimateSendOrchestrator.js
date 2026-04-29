@@ -63,6 +63,19 @@ async function sha256HexFromBase64(base64) {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function assertNexArtSignPrerequisites({ estimate, recipientEmail, generatedPdf, pdfUrl, pdfHash }) {
+  const missing = [];
+  if (!estimate?.id) missing.push('estimate.id');
+  if (!recipientEmail) missing.push('recipientEmail');
+  if (!generatedPdf?.base64) missing.push('generatedPdf.base64');
+  if (!pdfUrl) missing.push('pdfUrl');
+  if (!pdfHash) missing.push('pdfHash');
+
+  if (missing.length > 0) {
+    throw new Error(`NexArtSign package prerequisites missing: ${missing.join(', ')}`);
+  }
+}
+
 export async function executeSend({ estimate, recipientEmail, subject, message, currentTemplate, currentOptions, includedAttachmentIds = [], appConfig }) {
   if (!recipientEmail) throw new Error('Recipient email is required');
 
@@ -90,6 +103,8 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
     }
   }
 
+  assertNexArtSignPrerequisites({ estimate, recipientEmail, generatedPdf, pdfUrl, pdfHash });
+
   let currentUser = null;
   try { currentUser = await base44.auth.me().catch(() => null); } catch {}
   currentUser = resolveAuthorizedSender(currentUser);
@@ -99,7 +114,7 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
   try {
     signingPackage = await createSigningPackageForEstimate({
       estimate,
-      pdfUrl: pdfUrl || '',
+      pdfUrl,
       pdfName: pdfFilename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`,
       pdfHash,
       currentUser,
