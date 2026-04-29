@@ -20,11 +20,6 @@ function statusClass(status) {
   }
 }
 
-function signingUrl(pkg) {
-  if (!pkg?.token) return '';
-  return `${window.location.origin}/sign-document?token=${pkg.token}`;
-}
-
 function StatCard({ label, value }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4">
@@ -75,7 +70,6 @@ export default function NexArtSign() {
   const selected = useMemo(() => packages.find(pkg => pkg.id === selectedId) || packages[0] || null, [packages, selectedId]);
   const selectedEvents = useMemo(() => events.filter(event => event.signing_package_id === selected?.id), [events, selected]);
   const selectedCert = useMemo(() => certificates.find(cert => cert.signing_package_id === selected?.id), [certificates, selected]);
-  const selectedSigningUrl = useMemo(() => signingUrl(selected), [selected]);
 
   const counts = useMemo(() => packages.reduce((acc, pkg) => {
     const key = pkg.status || 'draft';
@@ -104,10 +98,42 @@ export default function NexArtSign() {
     return { total, linked, missing: total - linked };
   }, [estimatesReadyForSigning]);
 
-  const copyLink = async (url) => {
-    if (!url) return toast.error('No signing link available');
-    await navigator.clipboard.writeText(url);
-    toast.success('Signing link copied');
+  const issueSigningUrl = async (pkg) => {
+    if (!pkg?.id) throw new Error('No signing package selected');
+
+    if (pkg.status && ['signed', 'declined', 'expired', 'voided'].includes(pkg.status)) {
+      throw new Error('This signing package is already closed');
+    }
+
+    const response = await base44.functions.invoke('issueSigningAccessLink', {
+      signing_package_id: pkg.id,
+    });
+
+    const url = response?.data?.signing_url || '';
+    if (!url) {
+      throw new Error(response?.data?.error || 'Could not issue a signing link');
+    }
+
+    return url;
+  };
+
+  const copyLink = async (pkg) => {
+    try {
+      const url = await issueSigningUrl(pkg);
+      await navigator.clipboard.writeText(url);
+      toast.success('Signing link copied');
+    } catch (err) {
+      toast.error(err?.message || 'No signing link available');
+    }
+  };
+
+  const openSigningPage = async (pkg) => {
+    try {
+      const url = await issueSigningUrl(pkg);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      toast.error(err?.message || 'Could not open signing link');
+    }
   };
 
   const openEstimateEditor = (estimateId) => {
@@ -210,7 +236,7 @@ export default function NexArtSign() {
                         </span>
                       </div>
                       <p className="text-sm text-slate-500 mt-1">{estimate.client_name || 'No client'} • #{estimate.estimate_number} • ${Number(estimate.total || 0).toLocaleString()}</p>
-                      <p className="text-[11px] text-slate-400 mt-1">Estimate status: {estimate.status || 'draft'}{signingPackage ? ' • NexArtSign token ready' : ' • Pending NexArtSign package'}</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Estimate status: {estimate.status || 'draft'}{signingPackage ? ' • NexArtSign package ready' : ' • Pending NexArtSign package'}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEstimateEditor(estimate.id)}><PenSquare className="w-3.5 h-3.5" />Open Estimate</Button>
@@ -279,8 +305,8 @@ export default function NexArtSign() {
             <div className="bg-white border border-slate-200 rounded-xl p-5">
               <h3 className="font-bold text-slate-900 mb-3">Actions</h3>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => copyLink(selectedSigningUrl)} disabled={!selectedSigningUrl}><Copy className="w-4 h-4" />Copy signing link</Button>
-                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selectedSigningUrl && window.open(selectedSigningUrl, '_blank')} disabled={!selectedSigningUrl}><ExternalLink className="w-4 h-4" />Open signing page</Button>
+                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => copyLink(selected)} disabled={!selected}><Copy className="w-4 h-4" />Copy signing link</Button>
+                <Button variant="outline" className="w-full justify-start gap-2" onClick={() => openSigningPage(selected)} disabled={!selected}><ExternalLink className="w-4 h-4" />Open signing page</Button>
                 <Button variant="outline" className="w-full justify-start gap-2" onClick={() => selected && openDocument(selected)} disabled={!selected}><ExternalLink className="w-4 h-4" />Open document</Button>
                 <Button variant="outline" className="w-full justify-start gap-2" disabled={!selected}><Eye className="w-4 h-4" />Preview package</Button>
               </div>
