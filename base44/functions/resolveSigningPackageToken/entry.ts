@@ -1,4 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import {
+  createSupabaseAdmin,
+  recordTokenAttempt,
+  runNexArtSignSecurityPreflight,
+  writeSecurityAuditLog,
+} from '../_shared/nexartsignSecurity.ts';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -13,7 +19,9 @@ function sortParticipants(rows: any[] = []) {
 
 function getActiveParticipant(participants: any[] = []) {
   const ordered = sortParticipants(participants);
-  return ordered.find(p => p.status === 'active') || ordered.find(p => p.status === 'pending') || null;
+  return ordered.find((participant) => participant.status === 'active')
+    || ordered.find((participant) => participant.status === 'pending')
+    || null;
 }
 
 function randomTokenPart() {
@@ -27,6 +35,7 @@ function buildParticipantToken(pkgId: string, participantId: string) {
 async function ensureParticipantToken(base44: any, pkgId: string, participant: any) {
   if (!participant) return '';
   if (participant.token) return participant.token;
+
   const token = buildParticipantToken(pkgId, participant.id || 'participant');
   await base44.asServiceRole.entities.SigningParticipant.update(participant.id, { token }).catch(() => {});
   participant.token = token;
@@ -65,7 +74,7 @@ async function resolveSigningContext(base44: any, token: string) {
   }
 
   if (matchedParticipant) {
-    matchedParticipant = orderedParticipants.find(p => p.id === matchedParticipant.id) || matchedParticipant;
+    matchedParticipant = orderedParticipants.find((participant) => participant.id === matchedParticipant.id) || matchedParticipant;
     if (!matchedParticipant.token) {
       await ensureParticipantToken(base44, pkg.id, matchedParticipant);
     }
@@ -80,35 +89,124 @@ async function resolveSigningContext(base44: any, token: string) {
   };
 }
 
+async function deny(
+  supabase: any,
+  preflight: any,
+  {
+    status,
+    code,
+    message,
+    packageId = null,
+    reason,
+    severity = 'warning',
+    metadata = {},
+  }: {
+    status: number;
+    code: string;
+    message: string;
+    packageId?: string | null;
+    reason: string;
+    severity?: string;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  await recordTokenAttempt(supabase, {
+    tokenHash: preflight?.tokenHash || null,
+    packageId,
+    ipAddress: preflight?.ipAddress || null,
+    fingerprint: preflight?.fingerprint || null,
+    userAgent: preflight?.userAgent || '',
+    success: false,
+    reason,
+  });
+
+  await writeSecurityAuditLog(supabase, {
+    action: 'nexartsign.access_denied',
+    resourceType: 'nexartsign_signing_package',
+    resourceId: packageId,
+    severity,
+    metadata: {
+      stage: 'resolve',
+      reason,
+      code,
+      ...(metadata || {}),
+    },
+    ipAddress: preflight?.ipAddress || null,
+    userAgent: preflight?.userAgent || '',
+    fingerprint: preflight?.fingerprint || null,
+  });
+
+  return json({ error: message, code }, status);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { token } = await req.json();
+    const supabase = createSupabaseAdmin();
+    const { token, fingerprint } = await req.json();
 
     if (!token || typeof token !== 'string') {
-      return json({ error: 'Invalid or missing token' }, 400);
+      return json({ error: 'Invalid or missing token', code: 'invalid_token' }, 400);
+    }
+
+    const preflight = await runNexArtSignSecurityPreflight(supabase, {
+      req,
+      token,
+      fingerprint,
+      stage: 'resolve',
+    });
+
+    if (!preflight.ok) {
+      return json({ error: preflight.message, code: preflight.code }, preflight.status);
     }
 
     const context = await resolveSigningContext(base44, token);
     if (!context?.pkg) {
-      return json({ error: 'Signing package not found' }, 404);
+      return await deny(supabase, preflight, {
+        status: 404,
+        code: 'invalid_token',
+        message: 'Signing package not found',
+        reason: 'invalid_token',
+      });
     }
 
     const { pkg, hasParticipants, matchedParticipant, activeParticipant } = context;
 
     if (pkg.expires_at && new Date(pkg.expires_at) < new Date()) {
       await base44.asServiceRole.entities.SigningPackage.update(pkg.id, { status: 'expired' });
-      return json({ error: 'Signing package expired' }, 410);
+      return await deny(supabase, preflight, {
+        status: 410,
+        code: 'package_expired',
+        message: 'Signing package expired',
+        packageId: pkg.id,
+        reason: 'package_expired',
+      });
     }
 
     if (hasParticipants) {
       if (!matchedParticipant) {
-        return json({ error: 'Participant signing link required', code: 'participant_token_required' }, 409);
+        return await deny(supabase, preflight, {
+          status: 409,
+          code: 'participant_token_required',
+          message: 'Participant signing link required',
+          packageId: pkg.id,
+          reason: 'participant_token_required',
+        });
       }
 
       if (!['signed', 'declined', 'expired', 'voided'].includes(pkg.status)) {
         if (!activeParticipant || matchedParticipant.id !== activeParticipant.id || matchedParticipant.status !== 'active') {
-          return json({ error: 'This signing link is not active for the current signer', code: 'participant_not_active' }, 409);
+          return await deny(supabase, preflight, {
+            status: 409,
+            code: 'participant_not_active',
+            message: 'This signing link is not active for the current signer',
+            packageId: pkg.id,
+            reason: 'participant_not_active',
+            metadata: {
+              participant_id: matchedParticipant.id,
+              participant_role: matchedParticipant.role,
+            },
+          });
         }
       }
     }
@@ -140,11 +238,27 @@ Deno.serve(async (req) => {
         actor_name: matchedParticipant?.name || pkg.signer_name || pkg.client_name || '',
         actor_email: matchedParticipant?.email || pkg.signer_email || '',
         user_agent: req.headers.get('user-agent') || '',
-        ip_address: req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || (req.headers.get('x-forwarded-for') || '').split(',')[0].trim(),
-        metadata: hasParticipants && matchedParticipant ? { participant_id: matchedParticipant.id, role: matchedParticipant.role, signing_order: matchedParticipant.signing_order || 1 } : {},
+        ip_address: preflight.ipAddress || '',
+        metadata: hasParticipants && matchedParticipant
+          ? {
+              participant_id: matchedParticipant.id,
+              role: matchedParticipant.role,
+              signing_order: matchedParticipant.signing_order || 1,
+            }
+          : {},
         created_at: viewedAt,
       });
     }
+
+    await recordTokenAttempt(supabase, {
+      tokenHash: preflight.tokenHash,
+      packageId: pkg.id,
+      ipAddress: preflight.ipAddress || null,
+      fingerprint: preflight.fingerprint || null,
+      userAgent: preflight.userAgent || '',
+      success: true,
+      reason: 'token_resolved',
+    });
 
     return json({
       package: {
@@ -173,6 +287,6 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error: any) {
-    return json({ error: error.message || 'Server error' }, 500);
+    return json({ error: error.message || 'Server error', code: 'server_error' }, 500);
   }
 });
