@@ -1,10 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import crypto from 'crypto';
 
 function response(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+function hash(value) {
+  return crypto.createHash('sha256').update(String(value || '')).digest('hex');
 }
 
 function getIp(req) {
@@ -36,6 +41,73 @@ async function updateParentDocument(base44, pkg, patch) {
   const entityApi = resolveParentEntity(base44, pkg.document_type);
   if (!entityApi || !pkg.document_id) return;
   await entityApi.update(pkg.document_id, patch).catch(() => {});
+}
+
+async function requireOtp(base44, { token, otpCode, pkg, ip, ua }) {
+  const code = String(otpCode || '').trim();
+  if (!/^\d{6}$/.test(code)) return { ok: false, status: 403, error: 'OTP required' };
+
+  const rows = await base44.asServiceRole.entities.SigningOtpChallenge
+    .filter({ signing_package_id: pkg.id, token_hash: hash(token), status: 'pending' })
+    .catch(() => []);
+  const challenge = (rows || []).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+
+  if (!challenge) return { ok: false, status: 403, error: 'OTP challenge required' };
+  if (challenge.expires_at && new Date(challenge.expires_at) < new Date()) {
+    await base44.asServiceRole.entities.SigningOtpChallenge.update(challenge.id, { status: 'expired' }).catch(() => {});
+    return { ok: false, status: 410, error: 'OTP expired' };
+  }
+  if ((challenge.attempts || 0) >= (challenge.max_attempts || 5)) {
+    await base44.asServiceRole.entities.SigningOtpChallenge.update(challenge.id, { status: 'failed' }).catch(() => {});
+    return { ok: false, status: 429, error: 'Too many OTP attempts' };
+  }
+  if (hash(code) !== challenge.otp_hash) {
+    await base44.asServiceRole.entities.SigningOtpChallenge.update(challenge.id, {
+      attempts: (challenge.attempts || 0) + 1,
+      ip_address: ip,
+      user_agent: ua,
+    }).catch(() => {});
+    await base44.asServiceRole.entities.SigningEvent.create({
+      signing_package_id: pkg.id,
+      document_type: pkg.document_type,
+      document_id: pkg.document_id,
+      event_type: 'otp_failed',
+      actor_name: pkg.signer_name || pkg.client_name || '',
+      actor_email: pkg.signer_email || '',
+      ip_address: ip,
+      user_agent: ua,
+      created_at: new Date().toISOString(),
+    }).catch(() => {});
+    return { ok: false, status: 401, error: 'Invalid OTP' };
+  }
+
+  await base44.asServiceRole.entities.SigningOtpChallenge.update(challenge.id, {
+    status: 'verified',
+    verified_at: new Date().toISOString(),
+    ip_address: ip,
+    user_agent: ua,
+  }).catch(() => {});
+  await base44.asServiceRole.entities.SigningEvent.create({
+    signing_package_id: pkg.id,
+    document_type: pkg.document_type,
+    document_id: pkg.document_id,
+    event_type: 'otp_verified',
+    actor_name: pkg.signer_name || pkg.client_name || '',
+    actor_email: pkg.signer_email || '',
+    ip_address: ip,
+    user_agent: ua,
+    created_at: new Date().toISOString(),
+  }).catch(() => {});
+
+  return { ok: true, challenge };
+}
+
+async function markOtpUsed(base44, challenge) {
+  if (!challenge?.id) return;
+  await base44.asServiceRole.entities.SigningOtpChallenge.update(challenge.id, {
+    status: 'used',
+    used_at: new Date().toISOString(),
+  }).catch(() => {});
 }
 
 async function createCompletionCertificate(base44, pkg, signer, signerEmail, now, ip, ua) {
@@ -71,6 +143,7 @@ async function createCompletionCertificate(base44, pkg, signer, signerEmail, now
       final_pdf_hash: pkg.source_pdf_hash || '',
       events: events || [],
       multi_signer: true,
+      otp_verified: true,
     },
     company_id: pkg.company_id || 'rc-art',
   });
@@ -102,19 +175,9 @@ async function closePackageAsSigned(base44, pkg, signer, signerEmail, now, ip, u
   };
 
   if (pkg.document_type === 'estimate') {
-    await updateParentDocument(base44, pkg, {
-      status: 'signed',
-      approved_at: now,
-      ...commonSignedPatch,
-    });
+    await updateParentDocument(base44, pkg, { status: 'signed', approved_at: now, ...commonSignedPatch });
   } else if (pkg.document_type === 'proposal') {
-    await updateParentDocument(base44, pkg, {
-      status: 'accepted',
-      accepted_at: now,
-      accepted_by_name: signer,
-      signature_on_file: true,
-      ...commonSignedPatch,
-    });
+    await updateParentDocument(base44, pkg, { status: 'accepted', accepted_at: now, accepted_by_name: signer, signature_on_file: true, ...commonSignedPatch });
   } else {
     await updateParentDocument(base44, pkg, commonSignedPatch);
   }
@@ -125,7 +188,7 @@ async function closePackageAsSigned(base44, pkg, signer, signerEmail, now, ip, u
 export default async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { token, action, signer_name, declined_reason } = await req.json();
+    const { token, action, signer_name, declined_reason, otp_code } = await req.json();
 
     if (!token || !action) return response({ error: 'Missing token or action' }, 400);
 
@@ -146,6 +209,11 @@ export default async (req) => {
       return response({ error: 'Package already closed' }, 409);
     }
 
+    if (!['approve', 'decline'].includes(action)) return response({ error: 'Invalid action' }, 400);
+
+    const otp = await requireOtp(base44, { token, otpCode: otp_code, pkg, ip, ua });
+    if (!otp.ok) return response({ error: otp.error }, otp.status);
+
     const participants = await base44.asServiceRole.entities.SigningParticipant
       .filter({ signing_package_id: pkg.id })
       .catch(() => []);
@@ -155,20 +223,10 @@ export default async (req) => {
 
     if (action === 'decline') {
       if (hasParticipants && activeParticipant) {
-        await base44.asServiceRole.entities.SigningParticipant.update(activeParticipant.id, {
-          status: 'declined',
-          declined_at: now,
-          ip_address: ip,
-          user_agent: ua,
-        });
+        await base44.asServiceRole.entities.SigningParticipant.update(activeParticipant.id, { status: 'declined', declined_at: now, ip_address: ip, user_agent: ua });
       }
 
-      await base44.asServiceRole.entities.SigningPackage.update(pkg.id, {
-        status: 'declined',
-        declined_at: now,
-        declined_reason: declined_reason || '',
-      });
-
+      await base44.asServiceRole.entities.SigningPackage.update(pkg.id, { status: 'declined', declined_at: now, declined_reason: declined_reason || '' });
       await base44.asServiceRole.entities.SigningEvent.create({
         signing_package_id: pkg.id,
         document_type: pkg.document_type,
@@ -178,51 +236,26 @@ export default async (req) => {
         actor_email: activeParticipant?.email || pkg.signer_email,
         ip_address: ip,
         user_agent: ua,
-        metadata: hasParticipants ? { participant_id: activeParticipant?.id, role: activeParticipant?.role } : {},
+        metadata: { otp_challenge_id: otp.challenge.id, participant_id: activeParticipant?.id || '' },
         created_at: now,
       });
 
       if (pkg.document_type === 'estimate') {
-        await updateParentDocument(base44, pkg, {
-          status: 'declined',
-          signature_status: 'declined',
-          signing_package_id: pkg.id,
-          declined_at: now,
-          declined_reason: declined_reason || '',
-        });
+        await updateParentDocument(base44, pkg, { status: 'declined', signature_status: 'declined', signing_package_id: pkg.id, declined_at: now, declined_reason: declined_reason || '' });
       } else if (pkg.document_type === 'proposal') {
-        await updateParentDocument(base44, pkg, {
-          status: 'declined',
-          declined_at: now,
-          declined_reason: declined_reason || pkg.declined_reason || '',
-          signature_status: 'declined',
-          signing_package_id: pkg.id,
-        });
+        await updateParentDocument(base44, pkg, { status: 'declined', declined_at: now, declined_reason: declined_reason || pkg.declined_reason || '', signature_status: 'declined', signing_package_id: pkg.id });
       } else {
-        await updateParentDocument(base44, pkg, {
-          signature_status: 'declined',
-          signing_package_id: pkg.id,
-          declined_at: now,
-        });
+        await updateParentDocument(base44, pkg, { signature_status: 'declined', signing_package_id: pkg.id, declined_at: now });
       }
 
+      await markOtpUsed(base44, otp.challenge);
       return response({ success: true, status: 'declined', document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
     }
 
-    if (action !== 'approve') return response({ error: 'Invalid action' }, 400);
-
     if (hasParticipants) {
       if (!activeParticipant) return response({ error: 'No active participant found' }, 409);
-
       const signer = signer_name || activeParticipant.name || pkg.signer_name || pkg.client_name || '';
-      await base44.asServiceRole.entities.SigningParticipant.update(activeParticipant.id, {
-        status: 'signed',
-        signed_at: now,
-        name: signer,
-        ip_address: ip,
-        user_agent: ua,
-      });
-
+      await base44.asServiceRole.entities.SigningParticipant.update(activeParticipant.id, { status: 'signed', signed_at: now, name: signer, ip_address: ip, user_agent: ua });
       await base44.asServiceRole.entities.SigningEvent.create({
         signing_package_id: pkg.id,
         document_type: pkg.document_type,
@@ -232,7 +265,7 @@ export default async (req) => {
         actor_email: activeParticipant.email,
         ip_address: ip,
         user_agent: ua,
-        metadata: { participant_id: activeParticipant.id, role: activeParticipant.role, signing_order: activeParticipant.signing_order || 1 },
+        metadata: { participant_id: activeParticipant.id, role: activeParticipant.role, signing_order: activeParticipant.signing_order || 1, otp_challenge_id: otp.challenge.id },
         created_at: now,
       });
 
@@ -243,37 +276,20 @@ export default async (req) => {
       if (next) {
         await base44.asServiceRole.entities.SigningParticipant.update(next.id, { status: 'active' });
         await base44.asServiceRole.entities.SigningPackage.update(pkg.id, { status: 'viewed' });
-        await base44.asServiceRole.entities.SigningEvent.create({
-          signing_package_id: pkg.id,
-          document_type: pkg.document_type,
-          document_id: pkg.document_id,
-          event_type: 'participant_activated',
-          actor_name: next.name || '',
-          actor_email: next.email || '',
-          metadata: { participant_id: next.id, role: next.role, signing_order: next.signing_order || 1 },
-          created_at: now,
-        }).catch(() => {});
+        await base44.asServiceRole.entities.SigningEvent.create({ signing_package_id: pkg.id, document_type: pkg.document_type, document_id: pkg.document_id, event_type: 'participant_activated', actor_name: next.name || '', actor_email: next.email || '', metadata: { participant_id: next.id, role: next.role, signing_order: next.signing_order || 1 }, created_at: now }).catch(() => {});
+        await markOtpUsed(base44, otp.challenge);
         return response({ success: true, status: 'pending_next_signer', next_participant_id: next.id, document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
       }
 
       const cert = await closePackageAsSigned(base44, pkg, signer, activeParticipant.email, now, ip, ua);
+      await markOtpUsed(base44, otp.challenge);
       return response({ success: true, status: 'signed', certificate_id: cert.id, document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
     }
 
     const signer = signer_name || pkg.signer_name || pkg.client_name || '';
-    await base44.asServiceRole.entities.SigningEvent.create({
-      signing_package_id: pkg.id,
-      document_type: pkg.document_type,
-      document_id: pkg.document_id,
-      event_type: 'signed',
-      actor_name: signer,
-      actor_email: pkg.signer_email,
-      ip_address: ip,
-      user_agent: ua,
-      created_at: now,
-    });
-
+    await base44.asServiceRole.entities.SigningEvent.create({ signing_package_id: pkg.id, document_type: pkg.document_type, document_id: pkg.document_id, event_type: 'signed', actor_name: signer, actor_email: pkg.signer_email, ip_address: ip, user_agent: ua, metadata: { otp_challenge_id: otp.challenge.id }, created_at: now });
     const cert = await closePackageAsSigned(base44, pkg, signer, pkg.signer_email, now, ip, ua);
+    await markOtpUsed(base44, otp.challenge);
     return response({ success: true, status: 'signed', certificate_id: cert.id, document_type: pkg.document_type, document_id: pkg.document_id, signing_package_id: pkg.id });
   } catch (err) {
     return response({ error: err.message || 'Server error' }, 500);
