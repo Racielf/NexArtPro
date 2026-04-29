@@ -30,8 +30,10 @@ function getActiveParticipant(participants: any[] = []) {
     || null;
 }
 
-async function resolveSigningContext(base44: any, token: string) {
-  const participantRows = await base44.asServiceRole.entities.SigningParticipant.filter({ token }).catch(() => []);
+async function resolveSigningContext(base44: any, tokenHash: string | null) {
+  if (!tokenHash) return null;
+
+  const participantRows = await base44.asServiceRole.entities.SigningParticipant.filter({ token_hash: tokenHash }).catch(() => []);
   let matchedParticipant = participantRows?.[0] || null;
   let pkg = null;
 
@@ -41,7 +43,7 @@ async function resolveSigningContext(base44: any, token: string) {
   }
 
   if (!pkg) {
-    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ token }).catch(() => []);
+    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ token_hash: tokenHash }).catch(() => []);
     pkg = pkgRows?.[0] || null;
   }
 
@@ -86,7 +88,7 @@ Deno.serve(async (req) => {
       return json({ error: preflight.message, code: preflight.code }, preflight.status);
     }
 
-    const context = await resolveSigningContext(base44, token);
+    const context = await resolveSigningContext(base44, preflight.tokenHash);
     if (!context?.pkg) {
       return json({ error: 'Signing package not found', code: 'invalid_token' }, 404);
     }
