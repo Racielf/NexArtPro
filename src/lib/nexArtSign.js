@@ -6,11 +6,42 @@ function randomTokenPart() {
   if (crypto?.randomUUID) return crypto.randomUUID().replace(/-/g, '');
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function sha256Hex(value = '') {
+  const bytes = new TextEncoder().encode(String(value || ''));
+  const buffer = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(buffer)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function buildParticipantToken(pkgId, participantId) {
   return `nsp_${pkgId}_${participantId}_${randomTokenPart()}`;
+}
+
+function buildPackageToken(documentId) {
+  return `ns_${documentId}_${randomTokenPart()}`;
+}
+
+function buildSigningUrl(rawToken) {
+  if (!rawToken) return '';
+  return `${window.location.origin}/sign-document?token=${encodeURIComponent(rawToken)}`;
+}
+
+async function buildTokenFields(rawToken, issuedAt = new Date().toISOString()) {
+  return {
+    token: '',
+    token_hash: await sha256Hex(rawToken),
+    token_last_four: rawToken.slice(-4),
+    token_created_at: issuedAt,
+  };
+}
+
+async function backfillLegacyToken(entityApi, record) {
+  if (!record?.id || !record?.token || record?.token_hash) return record;
+  const fields = await buildTokenFields(record.token, record.token_created_at || new Date().toISOString());
+  await entityApi.update(record.id, fields).catch(() => {});
+  return { ...record, ...fields };
 }
 
 function normalizeParticipantRole(role, fallback = 'other') {
@@ -95,6 +126,43 @@ function buildEstimateSigningParticipants({ estimate, currentUser }) {
     }));
 }
 
+async function issueSigningAccessForPackage({ pkg, participants = [] }) {
+  if (!pkg?.id) return { token: '', signing_url: '', scope: 'package' };
+
+  const now = new Date().toISOString();
+  const ordered = [...(participants || [])].sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
+  const activeParticipant = ordered.find((participant) => participant.status === 'active')
+    || ordered.find((participant) => !['signed', 'declined', 'skipped', 'voided'].includes(participant.status));
+
+  if (activeParticipant?.id) {
+    const token = buildParticipantToken(pkg.id, activeParticipant.id);
+    const fields = await buildTokenFields(token, now);
+    await base44.entities.SigningParticipant.update(activeParticipant.id, {
+      ...fields,
+      status: activeParticipant.status === 'pending' ? 'active' : activeParticipant.status,
+      sent_at: activeParticipant.sent_at || pkg.sent_at || now,
+    }).catch(() => {});
+
+    return {
+      token,
+      signing_url: buildSigningUrl(token),
+      scope: 'participant',
+      participant_id: activeParticipant.id,
+    };
+  }
+
+  const token = buildPackageToken(pkg.document_id || pkg.id);
+  const fields = await buildTokenFields(token, now);
+  await base44.entities.SigningPackage.update(pkg.id, fields).catch(() => {});
+
+  return {
+    token,
+    signing_url: buildSigningUrl(token),
+    scope: 'package',
+    participant_id: '',
+  };
+}
+
 async function syncSigningParticipants({ pkg, estimate, currentUser }) {
   if (!pkg?.id) return [];
 
@@ -127,14 +195,16 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
     };
 
     if (existing?.id) {
+      const legacyFields = existing.token && !existing.token_hash
+        ? await buildTokenFields(existing.token, existing.token_created_at || pkg.sent_at || new Date().toISOString())
+        : (existing.token ? { token: '' } : {});
       const nextStatus = ['signed', 'declined', 'skipped', 'voided'].includes(existing.status)
         ? existing.status
         : participant.status;
-      const token = existing.token || buildParticipantToken(pkg.id, existing.id);
       await base44.entities.SigningParticipant.update(existing.id, {
         ...patch,
+        ...legacyFields,
         status: nextStatus,
-        token,
       }).catch(() => {});
       touchedParticipantIds.push(existing.id);
       continue;
@@ -145,14 +215,14 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
       ...patch,
       status: participant.status,
       sent_at: pkg.sent_at || new Date().toISOString(),
-      token: `pending_${randomTokenPart()}`,
+      token: '',
+      token_hash: '',
+      token_last_four: '',
     });
 
     if (created?.id) {
-      const token = buildParticipantToken(pkg.id, created.id);
-      await base44.entities.SigningParticipant.update(created.id, { token }).catch(() => {});
       touchedParticipantIds.push(created.id);
-      newlyCreated.push({ ...created, token });
+      newlyCreated.push(created);
     }
   }
 
@@ -164,6 +234,9 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
     if (['signed', 'declined', 'voided'].includes(participant.status)) continue;
     await base44.entities.SigningParticipant.update(participant.id, {
       status: 'voided',
+      token: '',
+      token_hash: '',
+      token_last_four: '',
       metadata: {
         ...(participant.metadata || {}),
         voided_reason: 'removed_from_current_signing_configuration',
@@ -191,7 +264,7 @@ async function syncSigningParticipants({ pkg, estimate, currentUser }) {
 
   const normalizedParticipants = (await base44.entities.SigningParticipant
     .filter({ signing_package_id: pkg.id })
-    .catch(() => []))
+    .catch([]))
     .sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
 
   const activeAfterSync = normalizedParticipants.find((participant) => participant.status === 'active')
@@ -320,33 +393,43 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     document_id: estimate.id,
   }).catch(() => []);
 
-  const reusable = (existing || []).find(p => !['signed', 'declined', 'expired', 'voided'].includes(p.status));
-  if (reusable?.token) {
-    const patch = {};
-    if (pdfUrl && !reusable.source_pdf_url) patch.source_pdf_url = pdfUrl;
-    if (pdfName && !reusable.source_pdf_name) patch.source_pdf_name = pdfName;
-    if (pdfHash && !reusable.source_pdf_hash) patch.source_pdf_hash = pdfHash;
-    if (signingBranding.signatureBrandLogoUrl && reusable.signature_brand_logo_url !== signingBranding.signatureBrandLogoUrl) {
+  const reusable = (existing || []).find((pkg) => !['signed', 'declined', 'expired', 'voided'].includes(pkg.status));
+  if (reusable?.id) {
+    const normalizedReusable = await backfillLegacyToken(base44.entities.SigningPackage, reusable);
+    const patch = {
+      token: '',
+    };
+    if (pdfUrl && !normalizedReusable.source_pdf_url) patch.source_pdf_url = pdfUrl;
+    if (pdfName && !normalizedReusable.source_pdf_name) patch.source_pdf_name = pdfName;
+    if (pdfHash && !normalizedReusable.source_pdf_hash) patch.source_pdf_hash = pdfHash;
+    if (signingBranding.signatureBrandLogoUrl && normalizedReusable.signature_brand_logo_url !== signingBranding.signatureBrandLogoUrl) {
       patch.signature_brand_logo_url = signingBranding.signatureBrandLogoUrl;
     }
     const nextAuditSummary = {
-      ...(reusable.audit_summary || {}),
+      ...(normalizedReusable.audit_summary || {}),
       company_logo_url: signingBranding.companyLogoUrl,
       company_name: signingBranding.companyName,
     };
-    if (JSON.stringify(nextAuditSummary) !== JSON.stringify(reusable.audit_summary || {})) {
+    if (JSON.stringify(nextAuditSummary) !== JSON.stringify(normalizedReusable.audit_summary || {})) {
       patch.audit_summary = nextAuditSummary;
     }
     if (Object.keys(patch).length > 0) {
-      await base44.entities.SigningPackage.update(reusable.id, patch).catch(() => {});
+      await base44.entities.SigningPackage.update(normalizedReusable.id, patch).catch(() => {});
     }
 
-    const refreshedReusable = Object.keys(patch).length > 0 ? { ...reusable, ...patch } : reusable;
-    await syncSigningParticipants({ pkg: refreshedReusable, estimate, currentUser });
-    return refreshedReusable;
+    const refreshedReusable = Object.keys(patch).length > 0 ? { ...normalizedReusable, ...patch } : normalizedReusable;
+    const participants = await syncSigningParticipants({ pkg: refreshedReusable, estimate, currentUser });
+    const issuedAccess = await issueSigningAccessForPackage({ pkg: refreshedReusable, participants });
+
+    return {
+      ...refreshedReusable,
+      token: issuedAccess.token,
+      signing_url: issuedAccess.signing_url,
+      access_scope: issuedAccess.scope,
+      access_participant_id: issuedAccess.participant_id || '',
+    };
   }
 
-  const token = `ns_${estimate.id}_${randomTokenPart()}`;
   const now = new Date().toISOString();
   const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
 
@@ -364,7 +447,9 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     signer_phone: estimate.client_phone || '',
     client_id: estimate.client_id || '',
     client_name: estimate.client_name || '',
-    token,
+    token: '',
+    token_hash: '',
+    token_last_four: '',
     token_created_at: now,
     expires_at: expires,
     sent_at: now,
@@ -393,7 +478,14 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     company_id: 'rc-art',
   }).catch(() => {});
 
-  await syncSigningParticipants({ pkg, estimate, currentUser });
+  const participants = await syncSigningParticipants({ pkg, estimate, currentUser });
+  const issuedAccess = await issueSigningAccessForPackage({ pkg, participants });
 
-  return pkg;
+  return {
+    ...pkg,
+    token: issuedAccess.token,
+    signing_url: issuedAccess.signing_url,
+    access_scope: issuedAccess.scope,
+    access_participant_id: issuedAccess.participant_id || '',
+  };
 }
