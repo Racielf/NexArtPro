@@ -66,6 +66,36 @@ function getAccessState(code, fallbackMessage = '') {
         message: 'This document was already signed, declined, or closed. The current link can no longer be used to sign again.',
         tone: 'warning',
       };
+    case 'otp_required':
+      return {
+        title: 'Verification required before signing',
+        message: 'Request and verify the one-time code for this signing session before approving the document.',
+        tone: 'warning',
+      };
+    case 'otp_locked':
+      return {
+        title: 'Verification temporarily locked',
+        message: 'Too many invalid verification attempts were detected. Please wait before trying again.',
+        tone: 'warning',
+      };
+    case 'otp_invalid':
+      return {
+        title: 'Invalid verification code',
+        message: 'The code does not match the active signing session. Check the latest code and try again.',
+        tone: 'warning',
+      };
+    case 'otp_not_requested':
+      return {
+        title: 'Verification code not requested',
+        message: 'Request a verification code before trying to validate the signing session.',
+        tone: 'warning',
+      };
+    case 'otp_expired':
+      return {
+        title: 'Verification code expired',
+        message: 'The last verification code expired. Request a new one to continue.',
+        tone: 'warning',
+      };
     case 'invalid_token':
       return {
         title: 'Invalid or expired link',
@@ -97,6 +127,9 @@ export default function SignDocumentView() {
   const [deliveryStatus, setDeliveryStatus] = useState('');
   const [deviceFingerprint, setDeviceFingerprint] = useState('');
   const [accessError, setAccessError] = useState(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpStatus, setOtpStatus] = useState('');
+  const [otpBusy, setOtpBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,6 +173,78 @@ export default function SignDocumentView() {
   }, [token]);
 
   const isComplete = pkg?.status === 'signed' || pkg?.status === 'declined' || pkg?.status === 'expired' || pkg?.status === 'voided';
+  const otpRequired = Boolean(pkg?.otp_required);
+  const otpVerified = Boolean(pkg?.otp_verified);
+  const otpLocked = Boolean(pkg?.otp_locked_until && new Date(pkg.otp_locked_until) > new Date());
+
+  const requestOtpCode = async () => {
+    if (!token) return;
+    setOtpBusy(true);
+    try {
+      const fingerprint = deviceFingerprint || await getDeviceFingerprint();
+      const res = await base44.functions.invoke('requestSigningOtp', { token, fingerprint });
+      const data = res?.data || {};
+      setOtpStatus(data?.masked_destination ? `Verification code sent to ${data.masked_destination}` : 'Verification code sent');
+      setPkg((currentPkg) => ({
+        ...currentPkg,
+        otp_required: true,
+        otp_verified: false,
+        otp_delivery_channel: data.delivery_channel || currentPkg?.otp_delivery_channel || 'email',
+        otp_masked_destination: data.masked_destination || currentPkg?.otp_masked_destination || '',
+        otp_expires_at: data.expires_at || currentPkg?.otp_expires_at || '',
+        otp_locked_until: data.locked_until || '',
+      }));
+      toast.success('Verification code sent');
+    } catch (err) {
+      const resolved = extractFunctionError(err);
+      const state = getAccessState(resolved.code, resolved.message);
+      if (resolved.code === 'origin_blocked' || resolved.code === 'rate_limited') {
+        setAccessError(state);
+      }
+      toast.error(state.message || resolved.message);
+    } finally {
+      setOtpBusy(false);
+    }
+  };
+
+  const verifyOtpCode = async () => {
+    if (!token || !otpCode.trim()) {
+      toast.error('Enter the verification code first');
+      return;
+    }
+
+    setOtpBusy(true);
+    try {
+      const fingerprint = deviceFingerprint || await getDeviceFingerprint();
+      const res = await base44.functions.invoke('verifySigningOtp', {
+        token,
+        otp_code: otpCode.trim(),
+        fingerprint,
+      });
+      const data = res?.data || {};
+      setPkg((currentPkg) => ({
+        ...currentPkg,
+        otp_required: true,
+        otp_verified: true,
+        otp_locked_until: '',
+        otp_verified_at: data.verified_at || '',
+      }));
+      setOtpStatus('Verification complete');
+      setOtpCode('');
+      toast.success('Verification completed');
+    } catch (err) {
+      const resolved = extractFunctionError(err);
+      if (resolved.code === 'otp_locked') {
+        setPkg((currentPkg) => ({
+          ...currentPkg,
+          otp_locked_until: err?.data?.locked_until || currentPkg?.otp_locked_until || '',
+        }));
+      }
+      toast.error(resolved.message || 'Verification failed');
+    } finally {
+      setOtpBusy(false);
+    }
+  };
 
   const deliverSignedCopy = async () => {
     if (!token) return;
@@ -386,6 +491,56 @@ export default function SignDocumentView() {
                 <p className="text-sm text-slate-500 mt-1">Complete the required confirmations to legally approve this document.</p>
               </div>
 
+              {otpRequired && (
+                <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50">
+                  <div className="flex items-center gap-2 text-slate-900">
+                    <ShieldCheck className="w-4 h-4" />
+                    <p className="font-semibold text-sm">Identity verification</p>
+                  </div>
+                  <p className="text-sm text-slate-600">
+                    Before signing, NexArtSign sends a verification code to {pkg?.otp_masked_destination || 'the active signer email'}.
+                  </p>
+                  {pkg?.otp_expires_at && !otpVerified && (
+                    <p className="text-xs text-slate-500">Current code expires on {new Date(pkg.otp_expires_at).toLocaleString()}.</p>
+                  )}
+                  {pkg?.otp_locked_until && (
+                    <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">
+                      Verification is locked until {new Date(pkg.otp_locked_until).toLocaleString()}.
+                    </div>
+                  )}
+                  {otpStatus && (
+                    <div className="text-sm text-slate-600 bg-white border border-slate-200 rounded-xl p-3">
+                      {otpStatus}
+                    </div>
+                  )}
+                  {otpVerified ? (
+                    <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" /> Verification complete. You can now sign this document.
+                    </div>
+                  ) : (
+                    <>
+                      <Button variant="outline" onClick={requestOtpCode} disabled={otpBusy || otpLocked} className="w-full gap-2">
+                        {otpBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MailCheck className="w-4 h-4" />}
+                        Send Verification Code
+                      </Button>
+                      <label className="block space-y-1">
+                        <span className="text-sm font-medium text-slate-700">Verification code</span>
+                        <input
+                          value={otpCode}
+                          onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="Enter 6-digit code"
+                          className="w-full border border-slate-300 p-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                          disabled={isComplete || otpBusy || otpLocked}
+                        />
+                      </label>
+                      <Button onClick={verifyOtpCode} disabled={otpBusy || otpCode.trim().length !== 6 || otpLocked} className="w-full h-11">
+                        {otpBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify Code'}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 flex items-start gap-2">
                 <FileCheck className="w-4 h-4 mt-0.5" />
                 <span>Your signature will lock this document, generate a NexArtSign certificate, and preserve the signed record for verification.</span>
@@ -412,7 +567,7 @@ export default function SignDocumentView() {
                 <span>I have opened, reviewed, and approve this document electronically.</span>
               </label>
 
-              <Button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !identityConfirmed} className="w-full h-11">
+              <Button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !identityConfirmed || (otpRequired && !otpVerified)} className="w-full h-11">
                 {acting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign & Approve Document'}
               </Button>
 
