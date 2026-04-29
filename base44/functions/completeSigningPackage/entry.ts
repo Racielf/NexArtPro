@@ -5,6 +5,12 @@ import {
   runNexArtSignSecurityPreflight,
   writeSecurityAuditLog,
 } from '../_shared/nexartsignSecurity.ts';
+import {
+  otpScopeFromContext,
+  otpStateFromContext,
+  otpVerificationStatus,
+  persistOtpState,
+} from '../_shared/nexartsignOtp.ts';
 
 const COMPANY_NAME = 'R.C Art Construction LLC';
 const COMPANY_EMAIL = 'info@rcartconstruction.com';
@@ -653,6 +659,7 @@ Deno.serve(async (req) => {
     }
 
     const { pkg, hasParticipants, matchedParticipant, activeParticipant } = context;
+    const otpState = otpStateFromContext(context);
     const now = new Date().toISOString();
     const ip = preflight.ipAddress || '';
     const ua = preflight.userAgent || '';
@@ -707,6 +714,10 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'decline') {
+      if (otpState) {
+        await persistOtpState(base44, context, null);
+      }
+
       if (hasParticipants && matchedParticipant) {
         await base44.asServiceRole.entities.SigningParticipant.update(matchedParticipant.id, {
           status: 'declined',
@@ -784,6 +795,31 @@ Deno.serve(async (req) => {
 
     if (action !== 'approve') return response({ error: 'Invalid action', code: 'invalid_action' }, 400);
 
+    if (!otpVerificationStatus(otpState, preflight.tokenHash, preflight.fingerprint)) {
+      const scope = otpScopeFromContext(context);
+      await writeSecurityAuditLog(supabase, {
+        action: 'nexartsign.access_denied',
+        resourceType: 'nexartsign_signing_package',
+        resourceId: pkg.id,
+        severity: 'warning',
+        metadata: {
+          stage: 'complete',
+          reason: 'otp_required',
+          code: 'otp_required',
+          otp_scope: scope?.type || 'package',
+          participant_id: matchedParticipant?.id || '',
+        },
+        ipAddress: preflight.ipAddress || null,
+        userAgent: ua,
+        fingerprint: preflight.fingerprint || null,
+      });
+
+      return response({
+        error: 'Verification code required before signing',
+        code: 'otp_required',
+      }, 409);
+    }
+
     if (hasParticipants && matchedParticipant) {
       const signer = signer_name || matchedParticipant.name || pkg.signer_name || pkg.client_name || '';
       await base44.asServiceRole.entities.SigningParticipant.update(matchedParticipant.id, {
@@ -860,6 +896,7 @@ Deno.serve(async (req) => {
         });
       }
 
+      await persistOtpState(base44, context, null);
       const { cert, finalizedPackage } = await closePackageAsSigned(base44, pkg, signer, matchedParticipant.email, now, ip, ua);
 
       await writeSecurityAuditLog(supabase, {
@@ -917,6 +954,7 @@ Deno.serve(async (req) => {
       reason: 'package_signed',
     });
 
+    await persistOtpState(base44, context, null);
     const { cert, finalizedPackage } = await closePackageAsSigned(base44, pkg, signer, pkg.signer_email, now, ip, ua);
 
     await writeSecurityAuditLog(supabase, {
