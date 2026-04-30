@@ -85,6 +85,8 @@ export default function NexArtSign() {
   const [visiblePackages, setVisiblePackages] = useState(PACKAGE_PAGE_SIZE);
   const [actioning, setActioning] = useState('');
   const [connectResult, setConnectResult] = useState(null);
+  const [showEstimateSearch, setShowEstimateSearch] = useState(false);
+  const [allEstimatesSearch, setAllEstimatesSearch] = useState('');
   const [estimateSearch, setEstimateSearch] = useState('');
 
   const load = async () => {
@@ -434,7 +436,12 @@ export default function NexArtSign() {
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-4">
             <div>
-              <h3 className="font-bold text-slate-900">Estimate signature coverage</h3>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h3 className="font-bold text-slate-900">Estimate signature coverage</h3>
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowEstimateSearch(true)}>
+                  <Search className="w-3.5 h-3.5" /> Find & Connect Estimate
+                </Button>
+              </div>
               <p className="text-sm text-slate-500 mt-1">Sent estimates connected to NexArtSign signing packages.</p>
             </div>
             <div className="text-right">
@@ -447,19 +454,7 @@ export default function NexArtSign() {
             <p className="text-sm text-slate-500">No estimates are in a signable stage yet.</p>
           ) : (
             <div className="space-y-3">
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  value={estimateSearch}
-                  onChange={e => setEstimateSearch(e.target.value)}
-                  placeholder="Search by client, estimate #, or email..."
-                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-              </div>
-              {filteredEstimatesForSigning.length === 0 && (
-                <p className="text-sm text-slate-500">No estimates match your search.</p>
-              )}
-              {filteredEstimatesForSigning.map(({ estimate, signingPackage }) => {
+              {estimatesReadyForSigning.slice(0, 8).map(({ estimate, signingPackage }) => {
                 const hasEmail = Boolean(estimate.client_email);
                 const hasPdf = Boolean(estimate.pdf_file_url || estimate.document_hash);
                 const readiness = !hasEmail ? 'no-email' : !hasPdf ? 'no-pdf' : 'ready';
@@ -651,6 +646,78 @@ export default function NexArtSign() {
           </div>
         </div>
       </div>
+
+      {showEstimateSearch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="font-bold text-slate-900">Find estimate to connect</h2>
+              <button onClick={() => { setShowEstimateSearch(false); setAllEstimatesSearch(''); }}
+                className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div className="p-4 border-b border-slate-100">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  autoFocus
+                  value={allEstimatesSearch}
+                  onChange={e => setAllEstimatesSearch(e.target.value)}
+                  placeholder="Search by client name, estimate #, or email..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+            </div>
+            <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-100">
+              {estimates
+                .filter(est => {
+                  const q = allEstimatesSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return [est.client_name, est.title, String(est.estimate_number), est.client_email]
+                    .filter(Boolean).join(' ').toLowerCase().includes(q);
+                })
+                .filter(est => !packageByEstimateId.has(est.id))
+                .slice(0, 20)
+                .map(est => {
+                  const hasEmail = Boolean(est.client_email);
+                  return (
+                    <div key={est.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-slate-900">
+                            {est.client_name || 'No client'} — #{est.estimate_number}
+                          </span>
+                          <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${statusClass(est.status)}`}>
+                            {est.status || 'draft'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          ${Number(est.total || 0).toLocaleString()}
+                          {est.client_email ? ` • ${est.client_email}` : ' • No email'}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="gap-1.5 shrink-0"
+                        disabled={!hasEmail || creatingEstimateId === est.id}
+                        onClick={async () => {
+                          await connectEstimateToNexArtSign(est);
+                          setShowEstimateSearch(false);
+                          setAllEstimatesSearch('');
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {!hasEmail ? 'No email' : creatingEstimateId === est.id ? 'Connecting...' : 'Connect'}
+                      </Button>
+                    </div>
+                  );
+                })}
+              {estimates.filter(est => !packageByEstimateId.has(est.id)).length === 0 && (
+                <p className="text-sm text-slate-500 text-center py-8">All estimates are already connected to NexArtSign.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
