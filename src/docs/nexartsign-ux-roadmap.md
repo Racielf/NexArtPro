@@ -43,6 +43,45 @@
 - Counter-signature: la empresa siempre aparece como co-firmante
 - NexArtSign ya tiene: OTP, hash SHA-256, certificado, audit trail ✅
 
+## Flujo completo lead → firma (benchmark HouseCall Pro / Jobber)
+
+### Lo que tienen los líderes del mercado:
+
+PASO 1 — Lead capture
+- Form en la web que crea el lead automáticamente
+- Asignación de técnico desde el panel
+- TODO: conectar Leads con Estimates en NexArtPro ✅ (ya existe)
+
+PASO 2 — Visita y diagnóstico
+- App móvil para crear estimado en campo
+- Fotos del problema adjuntas al estimado
+- TODO: mejorar EstimateEditor para móvil
+
+PASO 3 — Estimado con opciones (FALTA)
+- Good / Better / Best — 3 opciones de precio
+- El cliente compara y elige desde su teléfono
+- Auto-reminder a las 24h si no responde
+- TODO: agregar MultiOption a EstimateEditor
+
+PASO 4 — Firma (PARCIALMENTE IMPLEMENTADO)
+- ✅ Online: email → link → firma digital (NexArtSign)
+- ❌ En persona: firma en pantalla del técnico (falta)
+- ✅ PDF firmado con timestamp y hash
+- ❌ Auto-reminder si no firma en 24/48h (falta)
+
+PASO 5 — Post-firma (FALTA)
+- ❌ Conversión automática a Work Order al firmar
+- ❌ Agendado automático del trabajo
+- ✅ Copia PDF al cliente por email (funciona)
+- ❌ Notificación push/email a la empresa cuando el cliente firma
+
+### Prioridad de implementación:
+1. Auto-reminder si no firma en 24/48h
+2. Notificación a la empresa cuando el cliente firma
+3. Multi-option estimates (Good/Better/Best)
+4. Conversión automática a Work Order post-firma
+5. Firma en persona desde móvil del técnico
+
 ## Estado actual de NexArtSign
 - Fases 1-5 de seguridad: ✅ Completas
 - Templates + Field Editor: ✅ Completo
