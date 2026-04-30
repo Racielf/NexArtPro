@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { applySigningTemplateToPackage } from '@/lib/signingTemplates';
+import { listSigningTemplates, applySigningTemplateToPackage } from '@/lib/signingTemplates';
 
 const FIELD_TYPES = [
   { type: 'signature', label: 'Signature', icon: PenLine, width: 180, height: 54 },
