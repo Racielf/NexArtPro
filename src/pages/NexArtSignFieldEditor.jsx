@@ -91,6 +91,7 @@ export default function NexArtSignFieldEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [draggingId, setDraggingId] = useState('');
+  const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
 
