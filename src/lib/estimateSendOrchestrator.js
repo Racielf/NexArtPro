@@ -106,11 +106,11 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
     });
 
     finalLink = signingPackage?.signing_url || '';
-    if (!finalLink) {
-      throw new Error('NexArtSign package was created without a signing link');
-    }
   } catch (err) {
     console.warn('[executeSend] NexArtSign signing link generation failed:', err?.message);
+    throw new Error('Failed to generate NexArtSign signing link');
+  }
+  if (!finalLink) {
     throw new Error('Failed to generate NexArtSign signing link');
   }
 
