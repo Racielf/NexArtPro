@@ -155,7 +155,8 @@ export default function NexArtSignFieldEditor() {
       if (!result?.package) throw new Error('Invalid response applying template');
       setPkg(result.package);
       setFields(result.package.document_fields ?? []);
-      toast.success('Template applied');
+      setPageCount(Number(result.package.field_config?.page_count || pageCount));
+      toast.success('Template applied successfully');
     } catch (error) {
       console.error('[handleApplyTemplate] Failed to apply template', error);
       toast.error(error?.message || 'Could not apply template');
