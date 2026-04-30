@@ -1,9 +1,47 @@
 import { base44 } from '@/api/base44Client';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getPackageFields(pkg) {
+  const fieldsFromConfig = pkg.field_config?.fields;
+  const fieldsFromDoc = pkg.document_fields;
+  if (fieldsFromConfig && fieldsFromDoc) {
+    console.warn('[signing-templates] Both field_config.fields and document_fields exist — using field_config.fields');
+  }
+  return fieldsFromConfig ?? fieldsFromDoc ?? [];
+}
+
+function normalizeRole(value) {
+  return (value || 'client').trim().toLowerCase();
+}
+
+function buildParticipantRoleMap(participants) {
+  return participants
+    .filter((p) => p.role)
+    .reduce((acc, p) => {
+      const role = normalizeRole(p.role);
+      if (!acc.has(role)) acc.set(role, []);
+      acc.get(role).push(p);
+      return acc;
+    }, new Map());
+}
+
+async function safeLoadParticipants(packageId) {
+  try {
+    const rows = await base44.entities.SigningParticipant.filter({ signing_package_id: packageId });
+    return rows ?? [];
+  } catch (error) {
+    console.warn('[signing-templates] Failed loading participants', { packageId, error });
+    return [];
+  }
+}
+
 const toTimestamp = (value) => {
   const time = new Date(value ?? 0).getTime();
   return Number.isNaN(time) ? 0 : time;
 };
+
+// ─── Listar templates ─────────────────────────────────────────────────────────
 
 export async function listSigningTemplates({ documentType = 'estimate' } = {}) {
   try {
@@ -19,46 +57,34 @@ export async function listSigningTemplates({ documentType = 'estimate' } = {}) {
   }
 }
 
+// ─── Crear template desde paquete ─────────────────────────────────────────────
+
 export async function createSigningTemplateFromPackage({ packageId, name }) {
   if (!packageId) throw new Error('packageId required');
   if (!name?.trim()) throw new Error('Template name required');
 
   const [pkgRows, participantRows] = await Promise.all([
     base44.entities.SigningPackage.filter({ id: packageId }),
-    base44.entities.SigningParticipant.filter({ signing_package_id: packageId }).catch(() => []),
+    safeLoadParticipants(packageId),
   ]);
 
   const pkg = pkgRows?.[0] ?? null;
   if (!pkg) throw new Error('Package not found');
 
-  // Prioridad: field_config.fields > document_fields
-  const fieldsFromConfig = pkg.field_config?.fields;
-  const fieldsFromDoc = pkg.document_fields;
+  const fields = getPackageFields(pkg);
 
-  if (fieldsFromConfig && fieldsFromDoc) {
-    console.warn('[createSigningTemplateFromPackage] Both field_config.fields and document_fields exist — using field_config.fields');
-  }
-
-  const fields = fieldsFromConfig ?? fieldsFromDoc ?? [];
-
-  // Roles desde participantes
-  const roles = (participantRows).map((p, i) => ({
-    role: p.role || 'client',
+  const roles = participantRows.map((p, i) => ({
+    role: normalizeRole(p.role),
     signing_order: p.signing_order ?? i + 1,
   }));
 
-  // Mapear participant_id → role
   const participantRoleMap = new Map(
-    (participantRows)
-      .filter((p) => p.id && p.role)
-      .map((p) => [p.id, p.role]),
+    participantRows.filter((p) => p.id && p.role).map((p) => [String(p.id), normalizeRole(p.role)]),
   );
 
-  // Transformar fields para template
   const templateFields = fields.map((f) => {
-    const resolvedRole = f.participant_id ? participantRoleMap.get(f.participant_id) ?? '' : '';
-    const finalRole = resolvedRole || f.role || 'client';
-
+    const resolvedRole = f.participant_id ? participantRoleMap.get(String(f.participant_id)) ?? '' : '';
+    const finalRole = normalizeRole(resolvedRole || String(f.role || ''));
     return {
       ...f,
       id: `tpl_${crypto.randomUUID()}`,
@@ -68,20 +94,24 @@ export async function createSigningTemplateFromPackage({ packageId, name }) {
     };
   });
 
-  const template = await base44.entities.SigningTemplate.create({
+  const now = new Date().toISOString();
+
+  return base44.entities.SigningTemplate.create({
     name: name.trim(),
     document_type: pkg.document_type || 'estimate',
+    status: 'active',
     company_id: pkg.company_id || 'rc-art',
     roles,
     field_config: {
       page_count: pkg.page_count ?? 1,
       fields: templateFields,
     },
-    created_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
   });
-
-  return template;
 }
+
+// ─── Aplicar template a paquete ───────────────────────────────────────────────
 
 export async function applySigningTemplateToPackage({ packageId, templateId }) {
   if (!packageId) throw new Error('packageId required');
@@ -90,7 +120,7 @@ export async function applySigningTemplateToPackage({ packageId, templateId }) {
   const [pkgRows, templateRows, participantRows] = await Promise.all([
     base44.entities.SigningPackage.filter({ id: packageId }),
     base44.entities.SigningTemplate.filter({ id: templateId }),
-    base44.entities.SigningParticipant.filter({ signing_package_id: packageId }).catch(() => []),
+    safeLoadParticipants(packageId),
   ]);
 
   const pkg = pkgRows?.[0] ?? null;
@@ -98,16 +128,18 @@ export async function applySigningTemplateToPackage({ packageId, templateId }) {
 
   if (!pkg) throw new Error('Package not found');
   if (!template) throw new Error('Template not found');
-
-  const participantByRole = new Map(
-    participantRows.filter((p) => p.role).map((p) => [String(p.role), p]),
-  );
+  if (template.status && template.status !== 'active') throw new Error('Template is not active');
 
   const templateFields = template.field_config?.fields ?? [];
+  const participantGroups = buildParticipantRoleMap(participantRows);
+  const roleCursor = new Map();
 
   const appliedFields = templateFields.map((field, index) => {
-    const role = String(field.participant_role || field.role || 'client');
-    const participant = participantByRole.get(role);
+    const role = normalizeRole(String(field.participant_role || field.role || 'client'));
+    const group = participantGroups.get(role) ?? [];
+    const cursor = roleCursor.get(role) ?? 0;
+    const participant = group[cursor] ?? group[0];
+    roleCursor.set(role, cursor + 1);
     return {
       ...field,
       id: `field_${crypto.randomUUID()}`,
@@ -118,6 +150,7 @@ export async function applySigningTemplateToPackage({ packageId, templateId }) {
     };
   });
 
+  const updatedAt = new Date().toISOString();
   const nextFieldConfig = {
     version: Number(pkg.field_config?.version || 0) + 1,
     page_count: template.field_config?.page_count || pkg.page_count || 1,
@@ -125,7 +158,7 @@ export async function applySigningTemplateToPackage({ packageId, templateId }) {
     fields: appliedFields,
     applied_template_id: template.id,
     applied_template_name: template.name || '',
-    updated_at: new Date().toISOString(),
+    updated_at: updatedAt,
   };
 
   await base44.entities.SigningPackage.update(pkg.id, {
@@ -138,7 +171,7 @@ export async function applySigningTemplateToPackage({ packageId, templateId }) {
       applied_template_name: template.name || '',
       field_count: appliedFields.length,
       field_config_version: nextFieldConfig.version,
-      template_applied_at: nextFieldConfig.updated_at,
+      template_applied_at: updatedAt,
     },
   });
 
