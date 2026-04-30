@@ -36,8 +36,10 @@ export default function SignatureBrandCredit({ logoUrl, variant = 'signing' }) {
         </div>
 
         <div className={style.logoWrap}>
-          <div className="flex items-center justify-center">
-            <img src={logoUrl} alt="Signature brand" className="max-h-11 w-auto object-contain" />
+          <div className="flex flex-col items-center justify-center">
+            <img src={logoUrl} alt="Signature brand" className="max-h-16 w-auto object-contain" />
+            <p className="text-xs font-bold text-slate-700 mt-2 tracking-wide">NexArtSign Pro</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Digital Signature, Limitless</p>
           </div>
         </div>
       </div>

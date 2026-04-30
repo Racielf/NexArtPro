@@ -213,6 +213,24 @@ export default function NexArtSignSettingsCard() {
               placeholder="info@company.com"
             />
           </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Authorized representative name</label>
+            <input
+              value={state.authorized_rep_name || ''}
+              onChange={e => setField('authorized_rep_name', e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              placeholder="e.g. John Smith"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Representative title</label>
+            <input
+              value={state.authorized_rep_title || ''}
+              onChange={e => setField('authorized_rep_title', e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              placeholder="e.g. Project Manager"
+            />
+          </div>
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700 flex gap-2">
             <CheckCircle className="h-4 w-4 shrink-0" />
             <span>New estimates sent after saving will embed this branding in their NexArtSign package.</span>
