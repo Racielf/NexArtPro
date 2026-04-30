@@ -189,7 +189,9 @@ export default function NexArtSign() {
 
   const filteredEstimatesForSigning = useMemo(() => {
     const q = estimateSearch.trim().toLowerCase();
-    return estimatesReadyForSigning.filter(({ estimate }) => {
+    return estimatesReadyForSigning
+      .filter(row => row.signingPackage !== null)
+      .filter(({ estimate }) => {
       if (!q) return true;
       return [
         estimate.title,
@@ -450,8 +452,10 @@ export default function NexArtSign() {
             </div>
           </div>
 
-          {estimatesReadyForSigning.length === 0 ? (
-            <p className="text-sm text-slate-500">No estimates are in a signable stage yet.</p>
+          {filteredEstimatesForSigning.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              No estimates connected yet. Use "Find & Connect Estimate" to link one.
+            </p>
           ) : (
             <div className="space-y-3">
               {estimatesReadyForSigning.slice(0, 8).map(({ estimate, signingPackage }) => {
