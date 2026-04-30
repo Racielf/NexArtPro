@@ -350,9 +350,7 @@ export default function NexArtSign() {
       <div className="bg-white border-b border-slate-200 px-8 py-5 flex-shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {nexartLogoUrl ? (
-            <div className="bg-slate-900 rounded-xl p-1.5 w-10 h-10 flex items-center justify-center shrink-0">
-              <img src={nexartLogoUrl} alt="NexArtSign Pro" className="w-full h-full object-contain" />
-            </div>
+            <img src={nexartLogoUrl} alt="NexArtSign Pro" className="w-10 h-10 object-contain shrink-0" />
           ) : (
             <ShieldCheck className="w-8 h-8 text-slate-500 shrink-0" />
           )}
