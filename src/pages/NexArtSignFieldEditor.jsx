@@ -125,6 +125,14 @@ export default function NexArtSignFieldEditor() {
       setFields(savedFields);
       setPageCount(Number(savedConfig.page_count || currentPackage.page_count || currentPackage.audit_summary?.page_count || 1));
       setSelectedFieldId(savedFields?.[0]?.id || '');
+
+      const availableTemplates = await listSigningTemplates({
+        documentType: currentPackage.document_type || 'estimate',
+      });
+      setTemplates(availableTemplates);
+      if (availableTemplates.length > 0) {
+        setSelectedTemplateId(availableTemplates[0].id);
+      }
     } catch (err) {
       toast.error(err?.message || 'Could not load signing package');
     } finally {
