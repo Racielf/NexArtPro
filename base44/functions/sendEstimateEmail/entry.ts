@@ -31,41 +31,49 @@ function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, 
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0">
 <tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.10)">
 
   <!-- Header -->
-  <tr><td style="background:#0f172a;padding:28px 32px;text-align:center">
-    <h1 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.3px">RC Art Construction</h1>
-    <p style="margin:6px 0 0;font-size:12px;color:#94a3b8;letter-spacing:0.04em">Professional Estimates &amp; Proposals</p>
+  <tr><td style="background:#0f172a;padding:32px 32px 24px;text-align:center">
+    <p style="margin:0 0 14px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.12em">Official Document</p>
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:900;color:#ffffff;letter-spacing:-0.4px">R.C Art Construction LLC</h1>
+    <p style="margin:0;font-size:13px;color:#94a3b8;letter-spacing:0.03em">Professional Construction Estimates &amp; Proposals</p>
+  </td></tr>
+
+  <!-- Document title band -->
+  <tr><td style="background:#1e293b;padding:12px 32px;text-align:center">
+    <p style="margin:0;font-size:13px;font-weight:700;color:#e2e8f0;letter-spacing:0.02em">
+      ${estimateNumber ? `Estimate #${estimateNumber} · ` : ''}Document ready for signature
+    </p>
   </td></tr>
 
   <!-- Body -->
-  <tr><td style="padding:32px 32px 0">
-    <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:#0f172a">${greeting}</p>
-    <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#475569;white-space:pre-line">${message}</p>
+  <tr><td style="padding:36px 32px 0">
+    <p style="margin:0 0 10px;font-size:19px;font-weight:700;color:#0f172a">${greeting}</p>
+    <p style="margin:0 0 28px;font-size:15px;line-height:1.75;color:#475569;white-space:pre-line">${message}</p>
   </td></tr>
 
   <!-- Info card -->
   <tr><td style="padding:0 32px">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-      <tr><td style="padding:16px 20px">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+      <tr><td style="padding:18px 22px">
         <table width="100%" cellpadding="0" cellspacing="0">
-          ${estimateNumber ? `<tr><td style="font-size:13px;color:#64748b;padding:4px 0">Estimate #</td><td style="font-size:13px;font-weight:700;color:#0f172a;text-align:right;padding:4px 0">${estimateNumber}</td></tr>` : ''}
-          ${clientName ? `<tr><td style="font-size:13px;color:#64748b;padding:4px 0">Client</td><td style="font-size:13px;font-weight:600;color:#0f172a;text-align:right;padding:4px 0">${clientName}</td></tr>` : ''}
+          ${estimateNumber ? `<tr><td style="font-size:13px;color:#64748b;padding:5px 0">Document #</td><td style="font-size:13px;font-weight:700;color:#0f172a;text-align:right;padding:5px 0">${estimateNumber}</td></tr>` : ''}
+          ${clientName ? `<tr><td style="font-size:13px;color:#64748b;padding:5px 0">Client</td><td style="font-size:13px;font-weight:600;color:#0f172a;text-align:right;padding:5px 0">${clientName}</td></tr>` : ''}
         </table>
       </td></tr>
     </table>
   </td></tr>
 
   <!-- CTA Button -->
-  <tr><td style="padding:28px 32px" align="center">
-    <a href="${clientLink}" style="display:inline-block;background:#2563eb;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:0.02em">View Full Estimate</a>
+  <tr><td style="padding:32px 32px 8px" align="center">
+    <a href="${clientLink}" style="display:inline-block;background:#2563eb;color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;padding:16px 48px;border-radius:10px;letter-spacing:0.02em;box-shadow:0 4px 14px rgba(37,99,235,0.35)">Review &amp; Sign Document</a>
   </td></tr>
 
   <!-- Fallback link -->
-  <tr><td style="padding:0 32px 8px" align="center">
+  <tr><td style="padding:12px 32px 8px" align="center">
     <p style="margin:0;font-size:12px;color:#94a3b8">Or copy this link into your browser:</p>
-    <p style="margin:4px 0 0;font-size:12px;word-break:break-all"><a href="${clientLink}" style="color:#2563eb;text-decoration:none">${clientLink}</a></p>
+    <p style="margin:4px 0 0;font-size:11px;word-break:break-all"><a href="${clientLink}" style="color:#2563eb;text-decoration:none">${clientLink}</a></p>
   </td></tr>
 
   <!-- Inline Attachments -->
@@ -75,7 +83,7 @@ function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, 
   ${fallbackHtml}
 
   <!-- Reply note -->
-  <tr><td style="padding:24px 32px 0">
+  <tr><td style="padding:28px 32px 0">
     <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 16px">
     <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6">
       Have questions? Reply directly to this email or contact us at
@@ -83,9 +91,14 @@ function buildHtml({ greeting, message, clientLink, estimateNumber, clientName, 
     </p>
   </td></tr>
 
-  <!-- Footer -->
+  <!-- NexArtSign Footer -->
   <tr><td style="padding:24px 32px 28px;text-align:center">
-    <p style="margin:0;font-size:11px;color:#94a3b8">© ${new Date().getFullYear()} RC Art Construction · All rights reserved</p>
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 20px">
+    <div style="display:inline-block;background:#0f172a;border-radius:10px;padding:12px 20px">
+      <img src="https://media.base44.com/images/public/69cc888bb34befdf803a06b0/6ffc5cf7b_LoGo.png" alt="NexArtSign Pro" style="max-width:120px;height:auto;display:block;margin:0 auto" />
+    </div>
+    <p style="margin:10px 0 0;font-size:11px;color:#94a3b8;letter-spacing:0.03em">Secured by NexArtSign Pro · Digital Signature, Limitless</p>
+    <p style="margin:6px 0 0;font-size:11px;color:#cbd5e1">© ${new Date().getFullYear()} R.C Art Construction LLC · All rights reserved</p>
   </td></tr>
 
 </table>
