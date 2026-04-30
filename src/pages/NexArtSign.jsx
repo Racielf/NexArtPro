@@ -328,7 +328,13 @@ export default function NexArtSign() {
         signature_provider: 'internal',
       }).catch(() => {});
 
-      toast.success('Estimate connected to NexArtSign');
+      if (!pkg.token && !pkg.audit_summary?.token_hash) {
+        toast.warning('Package created but no signing link was generated');
+      } else if (estimate.client_email) {
+        toast.success('Estimate connected — signing email sent to ' + estimate.client_email);
+      } else {
+        toast.success('Estimate connected to NexArtSign ✓');
+      }
       await load();
       setSelectedId(pkg.id);
     } catch (err) {
