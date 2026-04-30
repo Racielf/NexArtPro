@@ -332,6 +332,34 @@ export default function NexArtSignFieldEditor() {
             </div>
           </div>
 
+          {templates.length > 0 && (
+            <div>
+              <h2 className="font-bold text-slate-900 mb-3">Apply template</h2>
+              <select
+                value={selectedTemplateId}
+                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm mb-2"
+              >
+                {templates.map(tpl => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.name || tpl.id}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                disabled={!selectedTemplateId || isApplyingTemplate}
+                onClick={handleApplyTemplate}
+              >
+                {isApplyingTemplate
+                  ? <><Loader2 className="w-4 h-4 animate-spin" />Applying...</>
+                  : <><FileSignature className="w-4 h-4" />Apply template</>
+                }
+              </Button>
+            </div>
+          )}
+
           <div>
             <h2 className="font-bold text-slate-900 mb-3">Pages</h2>
             <div className="flex items-center gap-2">
