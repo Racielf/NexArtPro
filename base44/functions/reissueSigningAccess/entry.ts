@@ -386,6 +386,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
             documentTitle: pkg.document_title || pkg.document_number || 'Document',
             signingUrl,
             expiresAt,
+            companyLogoUrl: (pkg.audit_summary?.logo_url as string) || Deno.env.get('COMPANY_LOGO_URL') || '',
+            nexartLogoUrl: (pkg.audit_summary?.nexartsign_logo_url as string) || Deno.env.get('NEXARTSIGN_LOGO_URL') || '',
+            companyName: (pkg.audit_summary?.company_name as string) || COMPANY_NAME,
           })
         : { sent: false, reason: send_email ? 'missing_recipient_email' : 'send_email_false' };
 

@@ -814,17 +814,16 @@ export default function SignDocumentView() {
         </section>
       </div>
       {/* NexArtSign Pro badge — centered at page bottom */}
-      <div className="max-w-5xl mx-auto mt-8 pb-8 flex justify-center">
-        <div className="flex items-center gap-2.5 rounded-xl px-4 py-2.5 shadow-md border border-slate-700" style={{ background: '#0f172a' }}>
-          <img
-            src="https://media.base44.com/images/public/69cc888bb34befdf803a06b0/6ffc5cf7b_LoGo.png"
-            alt="NexArtSign Pro"
-            style={{ width: 72, height: 'auto' }}
-          />
-          <div>
-            <p className="text-[11px] font-bold text-white leading-none">Secured by NexArtSign Pro</p>
-            <p className="text-[10px] text-slate-400 leading-none mt-1">Digital Signature, Limitless</p>
-          </div>
+      <div className="mt-8 pb-8 flex justify-center">
+        <div className="flex items-center gap-2 bg-slate-900 rounded-xl px-4 py-2">
+          {(pkg?.signature_brand_logo_url || pkg?.audit_summary?.nexartsign_logo_url) && (
+            <img
+              src={pkg.signature_brand_logo_url || pkg.audit_summary?.nexartsign_logo_url}
+              alt="NexArtSign Pro"
+              className="h-6 object-contain"
+            />
+          )}
+          <span className="text-white text-xs font-semibold">Secured by NexArtSign Pro</span>
         </div>
       </div>
     </div>
