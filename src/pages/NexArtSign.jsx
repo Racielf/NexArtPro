@@ -357,6 +357,9 @@ export default function NexArtSign() {
       setConnectResult({ success: true, pkgId: pkg.id, signerEmail: estimate.client_email || '' });
       await load();
       setSelectedId(pkg.id);
+      setTimeout(async () => {
+        await load();
+      }, 1500);
     } catch (err) {
       console.warn('[NexArtSign] connect estimate failed:', err?.message);
       toast.error(err?.message || 'Could not connect this estimate to NexArtSign');
