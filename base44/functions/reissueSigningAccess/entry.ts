@@ -146,15 +146,96 @@ interface EmailResult {
   reason: string;
 }
 
+const NEXARTSIGN_LOGO = 'https://media.base44.com/images/public/69cc888bb34befdf803a06b0/6ffc5cf7b_LoGo.png';
+const COMPANY_NAME = 'R.C Art Construction LLC';
+
+function buildSigningEmailHtml(opts: { signerName: string; documentTitle: string; signingUrl: string; expiresAt: string; companyLogoUrl?: string; nexartLogoUrl?: string; companyName?: string }): string {
+  const firstName = (opts.signerName || 'there').split(' ')[0];
+  const company = opts.companyName || COMPANY_NAME;
+  const nexartLogo = opts.nexartLogoUrl || NEXARTSIGN_LOGO;
+  const companyLogoBlock = opts.companyLogoUrl
+    ? `<img src="${opts.companyLogoUrl}" alt="${company}" style="max-height:48px;max-width:180px;object-fit:contain;display:block;margin:0 auto 12px" />`
+    : '';
+  const expiryLine = opts.expiresAt
+    ? `<p style="margin:16px 0 0;font-size:13px;color:#94a3b8;text-align:center">This link expires on ${new Date(opts.expiresAt).toLocaleDateString()}.</p>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.10)">
+
+  <!-- Header -->
+  <tr><td style="background:#0f172a;padding:32px 32px 24px;text-align:center">
+    ${companyLogoBlock}
+    <h1 style="margin:0 0 6px;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.3px">${company}</h1>
+    <p style="margin:0;font-size:13px;color:#94a3b8">${opts.documentTitle || 'Document ready for signature'}</p>
+  </td></tr>
+
+  <!-- Body -->
+  <tr><td style="padding:36px 36px 0">
+    <p style="margin:0 0 10px;font-size:19px;font-weight:700;color:#0f172a">Hello ${firstName},</p>
+    <p style="margin:0 0 28px;font-size:15px;line-height:1.75;color:#475569">
+      Your document <strong>${opts.documentTitle || 'Document'}</strong> is ready for your secure electronic signature.
+      Please review it carefully and click the button below to sign.
+    </p>
+  </td></tr>
+
+  <!-- CTA -->
+  <tr><td style="padding:0 36px 12px" align="center">
+    <a href="${opts.signingUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;padding:16px 52px;border-radius:10px;letter-spacing:0.02em;box-shadow:0 4px 14px rgba(37,99,235,0.35)">Review &amp; Sign Document</a>
+  </td></tr>
+
+  <!-- Expiry + fallback -->
+  <tr><td style="padding:0 36px 28px" align="center">
+    ${expiryLine}
+    <p style="margin:12px 0 0;font-size:11px;color:#94a3b8">Or copy this link: <a href="${opts.signingUrl}" style="color:#2563eb;text-decoration:none;word-break:break-all">${opts.signingUrl}</a></p>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="padding:20px 36px 28px;text-align:center;border-top:1px solid #e2e8f0">
+    <div style="display:inline-block;background:#1e293b;border-radius:10px;padding:12px 20px;margin-bottom:10px">
+      <img src="${nexartLogo}" alt="NexArtSign Pro" style="max-width:100px;height:auto;display:block;margin:0 auto" />
+    </div>
+    <p style="margin:0;font-size:11px;color:#94a3b8;letter-spacing:0.03em">Secured by NexArtSign Pro · Digital Signature, Limitless</p>
+    <p style="margin:6px 0 0;font-size:11px;color:#cbd5e1">© ${new Date().getFullYear()} ${company} · All rights reserved</p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 async function sendReminderEmail(opts: {
   to: string;
   signerName: string;
   documentTitle: string;
   signingUrl: string;
   expiresAt: string;
+  companyLogoUrl?: string;
+  nexartLogoUrl?: string;
+  companyName?: string;
 }): Promise<EmailResult> {
   const resendApiKey = Deno.env.get('RESEND_API_KEY');
   if (!resendApiKey) return { sent: false, reason: 'RESEND_API_KEY not configured' };
+
+  const firstName = (opts.signerName || 'there').split(' ')[0];
+  const plainText = [
+    `Hello ${firstName},`,
+    '',
+    `Your document "${opts.documentTitle || 'Document'}" is ready for secure signature.`,
+    '',
+    opts.signingUrl,
+    '',
+    opts.expiresAt ? `This link expires on ${new Date(opts.expiresAt).toLocaleDateString()}.` : '',
+    '',
+    'Secured by NexArtSign Pro · Digital Signature, Limitless',
+  ].filter(v => v !== undefined).join('\n');
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -163,33 +244,11 @@ async function sendReminderEmail(opts: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'NexArtSign <estimates@rcartconstruction.com>',
+      from: `${opts.companyName || COMPANY_NAME} <estimates@rcartconstruction.com>`,
       to: [opts.to],
-      subject: `Reminder: ${opts.documentTitle || 'Document'} is ready for signature`,
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#0f172a;">
-          <h2>Signature reminder</h2>
-          <p>Hello ${opts.signerName || 'there'},</p>
-          <p>Your document is ready for secure signature.</p>
-          <p>
-            <a href="${opts.signingUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;">
-              Review and sign document
-            </a>
-          </p>
-          ${opts.expiresAt ? `<p style="font-size:12px;color:#64748b;">This link expires on ${new Date(opts.expiresAt).toLocaleDateString()}.</p>` : ''}
-          <p style="font-size:12px;color:#64748b;">Powered by NexArtSign.</p>
-        </div>
-      `,
-      text: [
-        `Hello ${opts.signerName || 'there'},`,
-        '',
-        'Your document is ready for secure signature.',
-        '',
-        opts.signingUrl,
-        '',
-        opts.expiresAt ? `This link expires on ${new Date(opts.expiresAt).toLocaleDateString()}.` : '',
-        'Powered by NexArtSign.',
-      ].filter(Boolean).join('\n'),
+      subject: `${opts.documentTitle || 'Document'} is ready for your signature`,
+      html: buildSigningEmailHtml(opts),
+      text: plainText,
     }),
   });
 

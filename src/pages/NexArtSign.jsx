@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import NexArtSignSettingsCard from '@/components/signing/NexArtSignSettingsCard';
 import { Button } from '@/components/ui/button';
+import { loadCompanySettings } from '@/lib/companySettings';
 import {
   Ban,
   CheckCircle,
@@ -76,6 +77,7 @@ export default function NexArtSign() {
   const [estimates, setEstimates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [nexartLogoUrl, setNexartLogoUrl] = useState('');
   const [creatingEstimateId, setCreatingEstimateId] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -85,6 +87,9 @@ export default function NexArtSign() {
 
   const load = async () => {
     setLoading(true);
+    loadCompanySettings().then(s => {
+      setNexartLogoUrl(s?.nexartsign_logo_url || '');
+    }).catch(() => {});
     try {
       const [pkgRows, eventRows, certRows, participantRows, estimateRows] = await Promise.all([
         base44.entities.SigningPackage.list('-created_date').catch(() => []),
@@ -343,10 +348,19 @@ export default function NexArtSign() {
   return (
     <div className="flex flex-col h-full">
       <div className="bg-white border-b border-slate-200 px-8 py-5 flex-shrink-0 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">NEXARTSIGN</p>
-          <h1 className="text-xl font-bold text-slate-900">NexArtSign</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Signing packages, participants, audit trail, certificates, and secure signing links</p>
+        <div className="flex items-center gap-3">
+          {nexartLogoUrl ? (
+            <div className="bg-slate-900 rounded-xl p-1.5 w-10 h-10 flex items-center justify-center shrink-0">
+              <img src={nexartLogoUrl} alt="NexArtSign Pro" className="w-full h-full object-contain" />
+            </div>
+          ) : (
+            <ShieldCheck className="w-8 h-8 text-slate-500 shrink-0" />
+          )}
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">NEXARTSIGN</p>
+            <h1 className="text-xl font-bold text-slate-900">NexArtSign</h1>
+            <p className="text-sm text-slate-400 mt-0.5">Signing packages, participants, audit trail, certificates, and secure signing links</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => setShowSettings(value => !value)} variant="outline" className="gap-2">
