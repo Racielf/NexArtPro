@@ -88,13 +88,13 @@ Deno.serve(async (req) => {
     if (!RESEND_API_KEY) return json({ error: 'RESEND_API_KEY not configured' }, 500);
 
     const base44 = createClientFromRequest(req);
-    const { packageId } = await req.json();
+    const { package_id } = await req.json();
 
-    if (!packageId || typeof packageId !== 'string') {
-      return json({ error: 'Missing packageId' }, 400);
+    if (!package_id || typeof package_id !== 'string') {
+      return json({ error: 'Missing package_id' }, 400);
     }
 
-    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ id: packageId }).catch(() => []);
+    const pkgRows = await base44.asServiceRole.entities.SigningPackage.filter({ id: package_id }).catch(() => []);
     const pkg = pkgRows?.[0];
     if (!pkg) return json({ error: 'Signing package not found' }, 404);
     if (pkg.status !== 'signed') return json({ error: 'Signing package is not finalized' }, 409);
