@@ -28,7 +28,6 @@ function safeCertificateSummary(data) {
     certificate_number: certificate.certificate_number || '',
     status: certificate.status || verification.status || 'issued',
     signed_at: certificate.signed_at || verification.signed_at || '',
-    document_type: certificate.document_type || verification.document_type || '',
     expected_hash: (verification.expected_hash || certificate.final_pdf_hash || '').toLowerCase(),
   };
 }
@@ -144,10 +143,14 @@ export default function VerifyDocument() {
               </label>
               <textarea
                 value={expectedHash}
-                onChange={(e) => setExpectedHash(e.target.value)}
+                onChange={(e) => !certData && setExpectedHash(e.target.value)}
+                readOnly={Boolean(certData)}
                 rows={3}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono"
+                className={`w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono ${certData ? 'bg-slate-50 text-slate-500 cursor-default' : ''}`}
               />
+              {certData && (
+                <p className="text-xs text-slate-400">Hash loaded from official certificate — read only.</p>
+              )}
             </div>
 
             {error && (
