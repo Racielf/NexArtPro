@@ -84,6 +84,7 @@ export default function NexArtSign() {
   const [showSettings, setShowSettings] = useState(false);
   const [visiblePackages, setVisiblePackages] = useState(PACKAGE_PAGE_SIZE);
   const [actioning, setActioning] = useState('');
+  const [connectResult, setConnectResult] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -335,11 +336,13 @@ export default function NexArtSign() {
       } else {
         toast.success('Estimate connected to NexArtSign ✓');
       }
+      setConnectResult({ success: true, pkgId: pkg.id, signerEmail: estimate.client_email || '' });
       await load();
       setSelectedId(pkg.id);
     } catch (err) {
       console.warn('[NexArtSign] connect estimate failed:', err?.message);
       toast.error(err?.message || 'Could not connect this estimate to NexArtSign');
+      setConnectResult({ success: false, message: err?.message || 'Could not connect estimate' });
     } finally {
       setCreatingEstimateId('');
     }
@@ -386,6 +389,33 @@ export default function NexArtSign() {
           <StatCard label="Closed" value={(counts.declined || 0) + (counts.expired || 0) + (counts.voided || 0)} />
           <StatCard label="Missing Package" value={coverage.missing} />
         </div>
+
+        {connectResult && (
+          <div className={`rounded-xl border px-5 py-4 flex items-start justify-between gap-4 ${
+            connectResult.success
+              ? 'bg-emerald-50 border-emerald-200'
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              {connectResult.success
+                ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                : <Ban className="w-5 h-5 text-red-600 shrink-0" />
+              }
+              <div>
+                <p className={`font-semibold text-sm ${connectResult.success ? 'text-emerald-800' : 'text-red-800'}`}>
+                  {connectResult.success ? 'Estimate connected to NexArtSign' : 'Connection failed'}
+                </p>
+                <p className={`text-xs mt-0.5 ${connectResult.success ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {connectResult.success
+                    ? `Signing link sent to ${connectResult.signerEmail}`
+                    : connectResult.message
+                  }
+                </p>
+              </div>
+            </div>
+            <button onClick={() => setConnectResult(null)} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
+          </div>
+        )}
 
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-4">
