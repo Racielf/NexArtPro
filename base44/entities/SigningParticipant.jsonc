@@ -2,36 +2,73 @@
   "name": "SigningParticipant",
   "type": "object",
   "properties": {
-    "signing_package_id": { "type": "string" },
-    "document_type": { "type": "string" },
-    "document_id": { "type": "string" },
+    "signing_package_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
     "role": {
       "type": "string",
-      "enum": ["client", "owner", "office", "technician", "witness", "other"],
-      "default": "client"
+      "default": "signer"
     },
-    "name": { "type": "string" },
-    "email": { "type": "string" },
-    "phone": { "type": "string" },
-    "signing_order": { "type": "number", "default": 1 },
     "status": {
       "type": "string",
-      "enum": ["pending", "active", "signed", "declined", "skipped", "voided"],
+      "enum": [
+        "pending",
+        "active",
+        "signed",
+        "declined",
+        "skipped",
+        "voided"
+      ],
       "default": "pending"
     },
-    "token": { "type": "string" },
-    "token_hash": { "type": "string" },
-    "token_last_four": { "type": "string" },
-    "token_created_at": { "type": "string", "format": "date-time" },
-    "sent_at": { "type": "string", "format": "date-time" },
-    "viewed_at": { "type": "string", "format": "date-time" },
-    "signed_at": { "type": "string", "format": "date-time" },
-    "declined_at": { "type": "string", "format": "date-time" },
-    "declined_reason": { "type": "string" },
-    "ip_address": { "type": "string" },
-    "user_agent": { "type": "string" },
-    "metadata": { "type": "object" },
-    "company_id": { "type": "string", "default": "rc-art" }
+    "signing_order": {
+      "type": "number",
+      "default": 1
+    },
+    "token": {
+      "type": "string"
+    },
+    "token_hash": {
+      "type": "string"
+    },
+    "token_last_four": {
+      "type": "string"
+    },
+    "token_created_at": {
+      "type": "string"
+    },
+    "token_revoked_at": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string"
+    },
+    "signed_at": {
+      "type": "string"
+    },
+    "reminder_last_sent_at": {
+      "type": "string"
+    },
+    "reminder_count": {
+      "type": "number",
+      "default": 0
+    },
+    "company_id": {
+      "type": "string",
+      "default": "rc-art"
+    },
+    "metadata": {
+      "type": "object"
+    }
   },
-  "required": ["signing_package_id", "email"]
+  "required": [
+    "signing_package_id",
+    "email"
+  ]
 }

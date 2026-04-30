@@ -2,23 +2,57 @@
   "name": "SigningCertificate",
   "type": "object",
   "properties": {
-    "signing_package_id": { "type": "string" },
-    "document_type": { "type": "string" },
-    "document_id": { "type": "string" },
-    "certificate_number": { "type": "string" },
-    "generated_at": { "type": "string", "format": "date-time" },
-    "signer_name": { "type": "string" },
-    "signer_email": { "type": "string" },
-    "signed_at": { "type": "string", "format": "date-time" },
-    "ip_address": { "type": "string" },
-    "user_agent": { "type": "string" },
-    "document_hash": { "type": "string" },
-    "final_pdf_hash": { "type": "string" },
-    "hash_algorithm": { "type": "string", "default": "SHA-256" },
-    "audit_trail": { "type": "array", "items": { "type": "object" } },
-    "certificate_json": { "type": "object" },
-    "certificate_pdf_url": { "type": "string" },
-    "company_id": { "type": "string", "default": "rc-art" }
+    "signing_package_id": {
+      "type": "string"
+    },
+    "certificate_number": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "default": "issued"
+    },
+    "document_type": {
+      "type": "string"
+    },
+    "document_id": {
+      "type": "string"
+    },
+    "document_hash": {
+      "type": "string"
+    },
+    "final_pdf_url": {
+      "type": "string"
+    },
+    "final_pdf_hash": {
+      "type": "string"
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signer_name": {
+      "type": "string"
+    },
+    "signer_email": {
+      "type": "string"
+    },
+    "company_id": {
+      "type": "string",
+      "default": "rc-art"
+    },
+    "audit_trail": {
+      "type": "object"
+    },
+    "metadata": {
+      "type": "object"
+    }
   },
-  "required": ["signing_package_id", "document_id", "signer_email"]
+  "required": [
+    "signing_package_id"
+  ]
 }
