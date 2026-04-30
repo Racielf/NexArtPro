@@ -28,7 +28,7 @@
       "type": "string"
     },
     "package_number": {
-      "type": "string"
+      "type": "number"
     },
     "signer_name": {
       "type": "string"
