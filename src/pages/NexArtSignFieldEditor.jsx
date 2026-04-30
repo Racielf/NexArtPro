@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { applySigningTemplateToPackage } from '@/lib/signingTemplates';
 
 const FIELD_TYPES = [
   { type: 'signature', label: 'Signature', icon: PenLine, width: 180, height: 54 },
@@ -90,6 +91,8 @@ export default function NexArtSignFieldEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [draggingId, setDraggingId] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
 
   const participantsById = useMemo(() => new Map(participants.map(item => [item.id, item])), [participants]);
   const visibleFields = useMemo(() => fields.filter(field => Number(field.page || 1) === page), [fields, page]);
@@ -132,6 +135,24 @@ export default function NexArtSignFieldEditor() {
 
   const updateField = (fieldId, patch) => {
     setFields(current => current.map(field => field.id === fieldId ? { ...field, ...patch } : field));
+  };
+
+  const handleApplyTemplate = async () => {
+    if (!pkg?.id || !selectedTemplateId) return;
+    if (isApplyingTemplate) return;
+    setIsApplyingTemplate(true);
+    try {
+      const result = await applySigningTemplateToPackage({ packageId: pkg.id, templateId: selectedTemplateId });
+      if (!result?.package) throw new Error('Invalid response applying template');
+      setPkg(result.package);
+      setFields(result.package.document_fields ?? []);
+      toast.success('Template applied');
+    } catch (error) {
+      console.error('[handleApplyTemplate] Failed to apply template', error);
+      toast.error(error?.message || 'Could not apply template');
+    } finally {
+      setIsApplyingTemplate(false);
+    }
   };
 
   const addField = (type) => {
