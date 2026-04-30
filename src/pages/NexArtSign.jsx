@@ -85,6 +85,7 @@ export default function NexArtSign() {
   const [visiblePackages, setVisiblePackages] = useState(PACKAGE_PAGE_SIZE);
   const [actioning, setActioning] = useState('');
   const [connectResult, setConnectResult] = useState(null);
+  const [estimateSearch, setEstimateSearch] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -183,6 +184,19 @@ export default function NexArtSign() {
     const linked = estimatesReadyForSigning.filter(row => row.signingPackage).length;
     return { total, linked, missing: total - linked };
   }, [estimatesReadyForSigning]);
+
+  const filteredEstimatesForSigning = useMemo(() => {
+    const q = estimateSearch.trim().toLowerCase();
+    return estimatesReadyForSigning.filter(({ estimate }) => {
+      if (!q) return true;
+      return [
+        estimate.title,
+        estimate.client_name,
+        String(estimate.estimate_number),
+        estimate.client_email,
+      ].filter(Boolean).join(' ').toLowerCase().includes(q);
+    });
+  }, [estimatesReadyForSigning, estimateSearch]);
 
   const issueSigningUrl = async (pkg) => {
     if (!pkg?.id) throw new Error('No signing package selected');
@@ -433,31 +447,52 @@ export default function NexArtSign() {
             <p className="text-sm text-slate-500">No estimates are in a signable stage yet.</p>
           ) : (
             <div className="space-y-3">
-              {estimatesReadyForSigning.slice(0, 8).map(({ estimate, signingPackage }) => (
-                <div key={estimate.id} className="border border-slate-100 rounded-xl p-4">
-                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-slate-900">{estimate.title || `Estimate #${estimate.estimate_number}`}</p>
-                        <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${statusClass(signingPackage?.status || estimate.signature_status || 'draft')}`}>
-                          {signingPackage ? signingPackage.status : 'not linked'}
-                        </span>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  value={estimateSearch}
+                  onChange={e => setEstimateSearch(e.target.value)}
+                  placeholder="Search by client, estimate #, or email..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+              {filteredEstimatesForSigning.length === 0 && (
+                <p className="text-sm text-slate-500">No estimates match your search.</p>
+              )}
+              {filteredEstimatesForSigning.map(({ estimate, signingPackage }) => {
+                const hasEmail = Boolean(estimate.client_email);
+                const hasPdf = Boolean(estimate.pdf_file_url || estimate.document_hash);
+                const readiness = !hasEmail ? 'no-email' : !hasPdf ? 'no-pdf' : 'ready';
+                return (
+                  <div key={estimate.id} className="border border-slate-100 rounded-xl p-4">
+                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-slate-900">{estimate.title || `Estimate #${estimate.estimate_number}`}</p>
+                          <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${statusClass(signingPackage?.status || estimate.signature_status || 'draft')}`}>
+                            {signingPackage ? signingPackage.status : 'not linked'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-500 mt-1">{estimate.client_name || 'No client'} • #{estimate.estimate_number} • ${Number(estimate.total || 0).toLocaleString()}</p>
+                        <p className="text-[11px] text-slate-400 mt-1">Estimate status: {estimate.status || 'draft'}{signingPackage ? ' • NexArtSign package ready' : ' • Pending NexArtSign package'}</p>
                       </div>
-                      <p className="text-sm text-slate-500 mt-1">{estimate.client_name || 'No client'} • #{estimate.estimate_number} • ${Number(estimate.total || 0).toLocaleString()}</p>
-                      <p className="text-[11px] text-slate-400 mt-1">Estimate status: {estimate.status || 'draft'}{signingPackage ? ' • NexArtSign package ready' : ' • Pending NexArtSign package'}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEstimateEditor(estimate.id)}><PenSquare className="w-3.5 h-3.5" />Open Estimate</Button>
-                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEstimateClientView(estimate)}><FileText className="w-3.5 h-3.5" />Client View</Button>
-                      {signingPackage ? (
-                        <Button size="sm" className="gap-1.5" onClick={() => setSelectedId(signingPackage.id)}><FileSignature className="w-3.5 h-3.5" />Open Package</Button>
-                      ) : (
-                        <Button size="sm" className="gap-1.5" disabled={creatingEstimateId === estimate.id} onClick={() => connectEstimateToNexArtSign(estimate)}><Plus className="w-3.5 h-3.5" />{creatingEstimateId === estimate.id ? 'Connecting...' : 'Connect to NexArtSign'}</Button>
-                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEstimateEditor(estimate.id)}><PenSquare className="w-3.5 h-3.5" />Open Estimate</Button>
+                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEstimateClientView(estimate)}><FileText className="w-3.5 h-3.5" />Client View</Button>
+                        {signingPackage ? (
+                          <Button size="sm" className="gap-1.5" onClick={() => setSelectedId(signingPackage.id)}><FileSignature className="w-3.5 h-3.5" />Open Package</Button>
+                        ) : (
+                          <>
+                            {readiness === 'no-email' && <span className="text-xs text-red-500 font-medium">Missing client email</span>}
+                            {readiness === 'no-pdf' && <span className="text-xs text-amber-500 font-medium">No PDF yet</span>}
+                            <Button size="sm" className="gap-1.5" disabled={creatingEstimateId === estimate.id || !hasEmail} onClick={() => connectEstimateToNexArtSign(estimate)}><Plus className="w-3.5 h-3.5" />{creatingEstimateId === estimate.id ? 'Connecting...' : 'Connect to NexArtSign'}</Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
