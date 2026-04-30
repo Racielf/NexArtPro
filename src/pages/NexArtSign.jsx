@@ -85,6 +85,7 @@ export default function NexArtSign() {
   const [visiblePackages, setVisiblePackages] = useState(PACKAGE_PAGE_SIZE);
   const [actioning, setActioning] = useState('');
   const [connectResult, setConnectResult] = useState(null);
+  const [estimateSearch, setEstimateSearch] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -184,7 +185,18 @@ export default function NexArtSign() {
     return { total, linked, missing: total - linked };
   }, [estimatesReadyForSigning]);
 
-
+  const filteredEstimatesForSigning = useMemo(() => {
+    const q = estimateSearch.trim().toLowerCase();
+    return estimatesReadyForSigning.filter(({ estimate }) => {
+      if (!q) return true;
+      return [
+        estimate.title,
+        estimate.client_name,
+        String(estimate.estimate_number),
+        estimate.client_email,
+      ].filter(Boolean).join(' ').toLowerCase().includes(q);
+    });
+  }, [estimatesReadyForSigning, estimateSearch]);
 
   const issueSigningUrl = async (pkg) => {
     if (!pkg?.id) throw new Error('No signing package selected');
@@ -361,7 +373,7 @@ export default function NexArtSign() {
       <div className="bg-white border-b border-slate-200 px-8 py-5 flex-shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {nexartLogoUrl ? (
-            <img src={nexartLogoUrl} alt="NexArtSign Pro" className="w-10 h-10 rounded-xl bg-slate-900 p-1 object-contain" />
+            <img src={nexartLogoUrl} alt="NexArtSign Pro" className="w-32 h-32 object-contain shrink-0" />
           ) : (
             <ShieldCheck className="w-8 h-8 text-slate-500 shrink-0" />
           )}
@@ -422,12 +434,7 @@ export default function NexArtSign() {
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-4">
             <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h3 className="font-bold text-slate-900">Estimate signature coverage</h3>
-                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/estimates')}>
-                  <FileText className="w-3.5 h-3.5" /> Go to Estimates
-                </Button>
-              </div>
+              <h3 className="font-bold text-slate-900">Estimate signature coverage</h3>
               <p className="text-sm text-slate-500 mt-1">Sent estimates connected to NexArtSign signing packages.</p>
             </div>
             <div className="text-right">
@@ -440,7 +447,19 @@ export default function NexArtSign() {
             <p className="text-sm text-slate-500">No estimates are in a signable stage yet.</p>
           ) : (
             <div className="space-y-3">
-              {estimatesReadyForSigning.slice(0, 8).map(({ estimate, signingPackage }) => {
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  value={estimateSearch}
+                  onChange={e => setEstimateSearch(e.target.value)}
+                  placeholder="Search by client, estimate #, or email..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+              {filteredEstimatesForSigning.length === 0 && (
+                <p className="text-sm text-slate-500">No estimates match your search.</p>
+              )}
+              {filteredEstimatesForSigning.map(({ estimate, signingPackage }) => {
                 const hasEmail = Boolean(estimate.client_email);
                 const hasPdf = Boolean(estimate.pdf_file_url || estimate.document_hash);
                 const readiness = !hasEmail ? 'no-email' : !hasPdf ? 'no-pdf' : 'ready';

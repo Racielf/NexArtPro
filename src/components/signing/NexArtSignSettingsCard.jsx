@@ -187,16 +187,10 @@ export default function NexArtSignSettingsCard() {
             Branding used by the signing page, signing credits, and new signing packages. The NexArtSign footer logo is separate from the main app sidebar logo.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Button onClick={handleSave} disabled={saving || !isDirty} className="gap-2">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save NexArtSign Settings
-          </Button>
-          <p className="text-xs text-slate-400 mt-2">
-            Este logo aparece en: emails de firma enviados a clientes,
-            página pública /sign-document, y documentos firmados.
-          </p>
-        </div>
+        <Button onClick={handleSave} disabled={saving || !isDirty} className="gap-2">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Save NexArtSign Settings
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -235,7 +229,7 @@ export default function NexArtSignSettingsCard() {
           <LogoUploader
             field="nexartsign_logo_url"
             label="NexArtSign footer logo"
-            description="Usado en emails de firma (100px), página de firma (72px) y footer del PDF (80px). Sube el logo sobre fondo transparente o negro. Tamaño recomendado: 300x100px PNG."
+            description="Shown in Signature Credits at the bottom of the signing experience and signed document footer. This will not change the sidebar logo."
             inputRef={signingLogoRef}
           />
         </div>
