@@ -1,5 +1,24 @@
 import { base44 } from '@/api/base44Client';
 
+const toTimestamp = (value) => {
+  const time = new Date(value ?? 0).getTime();
+  return Number.isNaN(time) ? 0 : time;
+};
+
+export async function listSigningTemplates({ documentType = 'estimate' } = {}) {
+  try {
+    const rows = await base44.entities.SigningTemplate.filter({
+      document_type: documentType,
+      status: 'active',
+    });
+    return (rows ?? []).sort((a, b) =>
+      toTimestamp(b.updated_at || b.created_at) - toTimestamp(a.updated_at || a.created_at)
+    );
+  } catch {
+    return [];
+  }
+}
+
 export async function createSigningTemplateFromPackage({ packageId, name }) {
   if (!packageId) throw new Error('packageId required');
   if (!name?.trim()) throw new Error('Template name required');
