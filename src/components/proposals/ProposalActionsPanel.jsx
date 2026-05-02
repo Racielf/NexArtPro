@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getNextDocumentNumber } from '@/lib/documentNumbering';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import {
@@ -59,8 +60,7 @@ function ConvertToInvoiceBtn({ proposal, onConverted }) {
     }
     setWarnAdjust(false);
     setLoading(true);
-    const list = await base44.entities.Invoice.list('-created_date', 20);
-    const nextNum = list.length ? Math.max(...list.map(i => i.invoice_number || 0)) + 1 : 1001;
+    const nextNum = await getNextDocumentNumber('invoice');
 
     // Build closing context note: include selected option and close note if available
     const closingContext = [
@@ -124,8 +124,7 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
     }
     setWarnAdjust(false);
     setLoading(true);
-    const list = await base44.entities.WorkOrder.list('-created_date', 20);
-    const nextNum = list.length ? Math.max(...list.map(w => w.work_order_number || 0)) + 1 : 1001;
+    const nextNum = await getNextDocumentNumber('work_order');
     const scopeItems = (proposal.items || []).map(it => ({
       id: it.id,
       service_name: it.service_name,
@@ -164,6 +163,7 @@ function ConvertToWorkOrderBtn({ proposal, onConverted }) {
 
     const wo = await base44.entities.WorkOrder.create({
       work_order_number: nextNum,
+      origin_type: 'estimate',
       client_id: proposal.client_id,
       client_name: proposal.client_name,
       client_email: proposal.client_email,
