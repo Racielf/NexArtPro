@@ -9,9 +9,14 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
 /**
- * Shows only when estimate is in an approved state.
- * Valid trigger statuses: approved (strict lifecycle — no 'signed', no 'converted').
- * Converts estimate → WorkOrder with full version traceability.
+ * ConvertToWorkOrderButton — Converts an approved or signed Estimate → WorkOrder.
+ *
+ * FIX (May 2025):
+ * - Now accepts BOTH 'approved' AND 'signed' statuses (was blocking signed estimates)
+ * - Sets origin_type: 'estimate' on the created WorkOrder
+ * - Marks source estimate as status: 'converted' after successful WO creation
+ * - Copies full traceability fields (source_estimate_number, etc.)
+ * - Creates execution_checklist and field_notes on the new WO
  */
 export default function ConvertToWorkOrderButton({ estimate, onConverted, asDropdownItem = false }) {
   const [loading, setLoading] = useState(false);
@@ -19,12 +24,12 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
 
   if (!estimate) return null;
 
-  // Strict lifecycle: only 'approved' is valid. 'signed' and 'converted' are NOT valid estimate statuses.
-  const isApproved = estimate.status === 'approved';
+  // FIX: Accept both 'approved' and 'signed' — signed estimates were getting stuck
+  const canConvert = ['approved', 'signed'].includes(estimate.status);
 
   const handleConvert = async () => {
-    if (!isApproved) {
-      toast.error('Estimate must be approved before converting to a Work Order.');
+    if (!canConvert) {
+      toast.error('Estimate must be approved or signed before converting to a Work Order.');
       return;
     }
 
@@ -46,7 +51,7 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
       const user = await base44.auth.me();
       const woNum = await getNextDocumentNumber('work_order');
 
-      // Generate tasks from estimate groups (stable — preserves service_name + description)
+      // Generate tasks from estimate groups
       const tasks = [];
       let order = 0;
       (estimate.groups || []).forEach(group => {
@@ -64,35 +69,76 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
         });
       });
 
-      // Create WorkOrder — totals are COPIED not recalculated, groups preserved
+      // Create WorkOrder with full traceability
       const wo = await base44.entities.WorkOrder.create({
         work_order_number: woNum,
+        // FIX: Set origin_type
+        origin_type: 'estimate',
         estimate_id: estimate.id,
-        estimate_version: estimateVersion,           // version traceability
+        estimate_version: estimateVersion,
+        // Source traceability
+        source_estimate_id: estimate.id,
+        source_estimate_number: estimate.estimate_number,
+        source_estimate_version: estimateVersion,
+        source_document_type: estimate.document_type,
+        source_estimate_status: estimate.status,
+        source_estimate_total: estimate.total || 0,
+        source_estimate_signed_at: estimate.signed_at || null,
+        source_estimate_signed_by: estimate.signature_name || null,
+        source_estimate_final_pdf_url: estimate.final_signed_pdf_url || null,
+        // Client
         appointment_id: estimate.appointment_id || '',
         client_id: estimate.client_id || '',
         client_name: estimate.client_name,
         client_email: estimate.client_email || '',
         client_address: estimate.client_address || '',
         client_phone: estimate.client_phone || '',
+        // Content
         title: estimate.title || `Work Order from Estimate #${estimate.estimate_number}`,
         description: estimate.notes || '',
         status: 'draft',
-        // Copy services — normalize groups + populate canonical flat line_items
         ...prepareDownstreamDocument(estimate.groups || []),
+        // Financials
         subtotal: estimate.subtotal || 0,
         total: estimate.total || 0,
+        materials_subtotal: estimate.materials_subtotal || 0,
+        materials_cost: estimate.materials_cost || 0,
+        other_costs_total: estimate.other_costs_total || 0,
+        total_cost: estimate.total_cost || 0,
+        gross_margin: estimate.gross_margin || 0,
+        gross_margin_pct: estimate.gross_margin_pct || 0,
+        // Terms
+        payment_terms: estimate.payment_terms || '',
+        warranty_terms: estimate.warranty_terms || '',
+        exclusions: estimate.exclusions || '',
+        scope_summary: estimate.scope_summary || '',
+        assumptions: estimate.assumptions || '',
+        // Notes
         notes: estimate.notes || '',
         internal_notes: estimate.internal_notes || '',
+        // Tasks & execution
         tasks,
-        task_statuses: {},                           // legacy compat field
+        task_statuses: {},
+        execution_checklist: [
+          { id: 'materials_ready', item: 'Materials ready / verified', completed: false },
+          { id: 'site_prepared', item: 'Job site prepared', completed: false },
+          { id: 'work_completed', item: 'Work completed according to approved estimate', completed: false },
+          { id: 'photos_uploaded', item: 'Completion photos uploaded', completed: false },
+          { id: 'client_reviewed', item: 'Client reviewed completed work', completed: false },
+        ],
+        field_notes: [],
+        // Assignment
         assigned_by: user?.full_name || user?.email || 'Admin',
         assigned_at: new Date().toISOString(),
         company_id: estimate.company_id || 'rc-art',
       });
 
-      // INTENTIONALLY NOT mutating estimate status — lifecycle stays at 'approved'
-      // Estimate tracks its own lifecycle independently from WO creation
+      // FIX: Mark estimate as converted
+      await base44.entities.Estimate.update(estimate.id, {
+        status: 'converted',
+        converted_to_work_order_at: new Date().toISOString(),
+        converted_work_order_id: wo.id,
+      });
 
       toast.success(`Work Order #${woNum} created successfully`);
       onConverted?.();
@@ -102,11 +148,11 @@ export default function ConvertToWorkOrderButton({ estimate, onConverted, asDrop
     }
   };
 
-  const enabled = !!estimate.client_name && !loading && isApproved;
+  const enabled = !!estimate.client_name && !loading && canConvert;
   const disabledTitle = !estimate.client_name
     ? 'Customer required'
-    : !isApproved
-      ? 'Estimate must be approved first'
+    : !canConvert
+      ? 'Estimate must be approved or signed first'
       : 'Convert to Work Order';
 
   if (asDropdownItem) {

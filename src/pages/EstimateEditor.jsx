@@ -122,11 +122,8 @@ export default function EstimateEditor() {
     if (sanitized.materials && Array.isArray(sanitized.materials)) {
       sanitized.materials = normalizeMaterials(sanitized.materials).map(sanitizeMaterialForPersistence);
     }
-    if (sanitized.document_type !== 'ESTIMATE') {
-      sanitized.document_type = 'ESTIMATE';
-    }
     try {
-      await base44.entities.Estimate.update(estimateId, { ...sanitized, updated_by: 'Admin' });
+      await base44.entities.Estimate.update(estimateId, { ...sanitized, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
       setEstimate(sanitized);
       setSavedAt(Date.now());
       toast.success(`Estimate #${sanitized.estimate_number} saved`);
@@ -160,7 +157,7 @@ export default function EstimateEditor() {
           finalData.document_language = autoLang;
         }
       }
-      await base44.entities.Estimate.update(estimate.id, { ...finalData, updated_by: 'Admin' });
+      await base44.entities.Estimate.update(estimate.id, { ...finalData, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
       const updated = { ...estimate, ...finalData };
       setEstimate(updated);
       if (clientRecord) setClient(clientRecord);
@@ -175,18 +172,18 @@ export default function EstimateEditor() {
 
   const handleTemplateChange = async (templateKey) => {
     const updatedConfig = { ...(estimate.document_config || {}), template: templateKey };
-    await base44.entities.Estimate.update(estimate.id, { document_config: updatedConfig, updated_by: 'Admin' });
+    await base44.entities.Estimate.update(estimate.id, { document_config: updatedConfig, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
     setEstimate(e => ({ ...e, document_config: updatedConfig }));
   };
 
   const handleDocumentOptionsSave = async (newOptions) => {
     const updatedConfig = { ...(estimate.document_config || {}), options: newOptions };
-    await base44.entities.Estimate.update(estimate.id, { document_config: updatedConfig, updated_by: 'Admin' });
+    await base44.entities.Estimate.update(estimate.id, { document_config: updatedConfig, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
     setEstimate(e => ({ ...e, document_config: updatedConfig }));
   };
 
   const handleLanguageChange = async (lang) => {
-    await base44.entities.Estimate.update(estimate.id, { document_language: lang, updated_by: 'Admin' });
+    await base44.entities.Estimate.update(estimate.id, { document_language: lang, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
     setEstimate(e => ({ ...e, document_language: lang }));
   };
 
@@ -429,7 +426,7 @@ export default function EstimateEditor() {
                 client={client}
                 onCustomerChange={handleCustomerChange}
                 onAttachmentsUpdate={async (newAttachments) => {
-                  await base44.entities.Estimate.update(estimate.id, { attachments: newAttachments, updated_by: 'Admin' });
+                  await base44.entities.Estimate.update(estimate.id, { attachments: newAttachments, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
                   setEstimate(e => ({ ...e, attachments: newAttachments }));
                 }}
               />
@@ -470,8 +467,8 @@ export default function EstimateEditor() {
           <div className="flex items-center gap-3 mb-5 flex-wrap">
             {estimate.document_type === 'BID' && (
               <div className="flex items-center gap-2">
-                <input type="text" value={jobNumber} onChange={e => setJobNumber(e.target.value)} onBlur={() => { base44.entities.Estimate.update(estimate.id, { job_number: jobNumber, updated_by: 'Admin' }).then(() => setEstimate(e => ({ ...e, job_number: jobNumber }))).catch(err => console.error('[jobNumber onBlur] failed:', err)); }} placeholder="Job #" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
-                <input type="text" value={planReference} onChange={e => setPlanReference(e.target.value)} onBlur={() => { base44.entities.Estimate.update(estimate.id, { plan_reference: planReference, updated_by: 'Admin' }).then(() => setEstimate(e => ({ ...e, plan_reference: planReference }))).catch(err => console.error('[planReference onBlur] failed:', err)); }} placeholder="Plan Ref" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
+                <input type="text" value={jobNumber} onChange={e => setJobNumber(e.target.value)} onBlur={() => { base44.entities.Estimate.update(estimate.id, { job_number: jobNumber, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' }).then(() => setEstimate(e => ({ ...e, job_number: jobNumber }))).catch(err => console.error('[jobNumber onBlur] failed:', err)); }} placeholder="Job #" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
+                <input type="text" value={planReference} onChange={e => setPlanReference(e.target.value)} onBlur={() => { base44.entities.Estimate.update(estimate.id, { plan_reference: planReference, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' }).then(() => setEstimate(e => ({ ...e, plan_reference: planReference }))).catch(err => console.error('[planReference onBlur] failed:', err)); }} placeholder="Plan Ref" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
               </div>
             )}
             <button onClick={() => setIsPreview(!isPreview)} className={`inline-flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-full border transition-colors ${isPreview ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
