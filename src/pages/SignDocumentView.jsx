@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   FileCheck,
   Clock3,
-  LockKeyhole,
   UserCheck,
   MailCheck,
   ShieldAlert,
@@ -19,9 +18,14 @@ import {
   PenLine,
   Type,
   CalendarDays,
+  Download,
+  ArrowRight,
+  ArrowLeft,
+  Eye,
+  Mail,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import SignatureBrandCredit from '@/components/signing/SignatureBrandCredit';
+import NexArtSignBrandHeader from '@/components/signing/NexArtSignBrandHeader';
 import { getDeviceFingerprint } from '@/lib/deviceFingerprint';
 
 function extractFunctionError(error) {
@@ -30,7 +34,7 @@ function extractFunctionError(error) {
   const payload = error?.context || error?.data || error?.response?.data || error?.body || error?.cause?.data || null;
   // If context is a Response object (Supabase SDK), try to read its parsed JSON
   if (payload && typeof payload === 'object' && typeof payload.json === 'function') {
-    // Already consumed — fallback to message
+    // Already consumed â€” fallback to message
     return {
       code: error?.code || 'server_error',
       message: error?.message || 'Unexpected signing error',
@@ -42,11 +46,11 @@ function extractFunctionError(error) {
   };
 }
 
-// Edge Functions return data directly — unwrap consistently
+// Edge Functions return data directly â€” unwrap consistently
 function unwrapFnResult(res) {
   if (!res) return {};
   // supabase.functions.invoke wraps in { data, error }
-  // base44Client functionsProxy also wraps — handle both shapes
+  // base44Client functionsProxy also wraps â€” handle both shapes
   return res?.data ?? res;
 }
 
@@ -269,6 +273,7 @@ export default function SignDocumentView() {
   const [otpStatus, setOtpStatus] = useState('');
   const [otpBusy, setOtpBusy] = useState(false);
   const [fieldValues, setFieldValues] = useState({});
+  const [step, setStep] = useState(0);
 
   const signingFields = useMemo(() => {
     const fields = normalizeFields(getFieldConfig(pkg));
@@ -570,15 +575,32 @@ export default function SignDocumentView() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const STEPS = ['welcome','identity','review','fields','consent','sign','success'];
+  const currentStep = STEPS[step] || 'welcome';
+  const canGoBack = step > 0 && currentStep !== 'success' && currentStep !== 'welcome';
+  const goNext = () => setStep(s => Math.min(s + 1, STEPS.length - 1));
+  const goBack = () => setStep(s => Math.max(s - 1, 0));
+  const skipToStep = (name) => setStep(STEPS.indexOf(name));
+
+  const headerStatus = isComplete ? pkg?.status : (otpVerified ? 'verified' : (pkg?.status === 'sent' ? 'viewed' : pkg?.status));
+  const pdfUrl = pkg?.source_pdf_url || pkg?.final_pdf_url || '';
+  const signerFirstName = (pkg?.signer_name || name || '').split(' ')[0] || 'there';
+
+  // Auto-skip identity step if OTP not required
+  const nextFromWelcome = () => {
+    if (!otpRequired || otpVerified) skipToStep('review');
+    else goNext();
+  };
+
+  const S = { page: { minHeight:'100vh', background:'#f1f5f9', fontFamily:"'Inter','system-ui',sans-serif" }, card: { background:'#fff', borderRadius:'16px', border:'1px solid #e2e8f0', padding:'32px', maxWidth:'640px', margin:'0 auto', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }, btn: { display:'inline-flex', alignItems:'center', justifyContent:'center', gap:'8px', padding:'12px 24px', borderRadius:'12px', fontSize:'14px', fontWeight:600, cursor:'pointer', border:'none', transition:'all 0.2s' }, primary: { background:'#1e40af', color:'#fff' }, success: { background:'#059669', color:'#fff' }, outline: { background:'#fff', color:'#475569', border:'1px solid #cbd5e1' }, disabled: { opacity:0.5, cursor:'not-allowed' }, input: { width:'100%', padding:'12px 16px', borderRadius:'12px', border:'1px solid #cbd5e1', fontSize:'14px', outline:'none', background:'#fff' }, label: { fontSize:'13px', fontWeight:600, color:'#334155', marginBottom:'6px', display:'block' }, check: { display:'flex', gap:'12px', padding:'16px', borderRadius:'12px', border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:'14px', color:'#334155' }, trust: { fontSize:'13px', color:'#64748b', lineHeight:1.6 }, stepBadge: (active) => ({ display:'inline-flex', alignItems:'center', gap:'6px', padding:'4px 12px', borderRadius:'20px', fontSize:'12px', fontWeight:600, background: active ? '#dbeafe' : '#f1f5f9', color: active ? '#1e40af' : '#94a3b8' }) };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #020617 0%, #0f172a 40%, #1e293b 100%)' }}>
-        <div className="text-center space-y-4">
-          <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)' }}>
-            <FileSignature className="w-7 h-7 text-white/80" />
-          </div>
-          <Loader2 className="animate-spin mx-auto text-white/60 w-5 h-5" />
-          <p className="text-sm text-slate-400 tracking-wide">Preparing secure signing session…</p>
+      <div style={{ ...S.page, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ textAlign:'center' }}>
+          <ShieldCheck style={{ width:48, height:48, color:'#1e40af', margin:'0 auto 16px' }} />
+          <Loader2 className="animate-spin" style={{ width:24, height:24, color:'#94a3b8', margin:'0 auto 12px' }} />
+          <p style={{ fontSize:14, color:'#64748b' }}>Preparing your secure signing sessionâ€¦</p>
         </div>
       </div>
     );
@@ -586,263 +608,311 @@ export default function SignDocumentView() {
 
   if (!pkg) {
     const state = accessError || getAccessState('invalid_token');
-    const isCritical = state.tone === 'critical';
-
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'linear-gradient(145deg, #020617 0%, #0f172a 40%, #1e293b 100%)' }}>
-        <div className="w-full max-w-md">
-          <div
-            className="rounded-2xl p-8 text-center"
-            style={{
-              background: isCritical
-                ? 'linear-gradient(180deg, rgba(127,29,29,0.3) 0%, rgba(15,23,42,0.8) 100%)'
-                : 'linear-gradient(180deg, rgba(146,64,14,0.2) 0%, rgba(15,23,42,0.8) 100%)',
-              border: `1px solid ${isCritical ? 'rgba(239,68,68,0.3)' : 'rgba(234,179,8,0.3)'}`,
-              backdropFilter: 'blur(20px)',
-            }}
-          >
-            <ShieldAlert className="mx-auto mb-4 w-10 h-10" style={{ color: isCritical ? '#ef4444' : '#f59e0b' }} />
-            <p className="font-bold text-lg text-white">{state.title}</p>
-            <p className="text-sm mt-3 text-slate-300 leading-relaxed">{state.message}</p>
-          </div>
-          <div className="mt-8 text-center">
-            <p className="text-[11px] text-slate-500 tracking-widest uppercase font-semibold">NexArtSign™ Secure Signing</p>
+      <div style={{ ...S.page, display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
+        <div style={S.card}>
+          <div style={{ textAlign:'center' }}>
+            <ShieldAlert style={{ width:48, height:48, color: state.tone === 'critical' ? '#dc2626' : '#d97706', margin:'0 auto 16px' }} />
+            <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a', marginBottom:8 }}>{state.title}</h2>
+            <p style={{ ...S.trust, marginBottom:24 }}>{state.message}</p>
+            <p style={{ fontSize:11, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em', fontWeight:600 }}>NexArtSignâ„¢ Secure Signing</p>
           </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(145deg, #020617 0%, #0f172a 30%, #1e293b 70%, #0f172a 100%)' }}>
-      {/* Header bar */}
-      <header
-        className="sticky top-0 z-20"
-        style={{ background: 'rgba(2,6,23,0.75)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(148,163,184,0.1)' }}
-      >
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {pkg.company_logo_url && (
-              <img src={pkg.company_logo_url} alt="Company" className="h-8 w-auto object-contain rounded" />
-            )}
-            <div>
-              <p className="text-white text-sm font-bold tracking-wide">{pkg.document_title || 'Secure Document'}</p>
-              <p className="text-slate-400 text-[11px] uppercase tracking-widest">NexArtSign™</p>
-            </div>
-          </div>
-          <div
-            className="text-[11px] px-3 py-1.5 rounded-full font-bold uppercase tracking-wider"
-            style={{
-              background: pkg.status === 'signed' ? 'rgba(34,197,94,0.15)' : pkg.status === 'declined' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)',
-              color: pkg.status === 'signed' ? '#4ade80' : pkg.status === 'declined' ? '#f87171' : '#60a5fa',
-              border: `1px solid ${pkg.status === 'signed' ? 'rgba(34,197,94,0.3)' : pkg.status === 'declined' ? 'rgba(239,68,68,0.3)' : 'rgba(59,130,246,0.3)'}`,
-            }}
-          >
-            {pkg.status || 'sent'}
-          </div>
+  // â”€â”€ Step renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const renderWelcome = () => (
+    <div style={S.card}>
+      <div style={{ textAlign:'center', marginBottom:24 }}>
+        <div style={{ width:64, height:64, borderRadius:16, background:'linear-gradient(135deg,#dbeafe,#eff6ff)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+          <FileSignature style={{ width:32, height:32, color:'#1e40af' }} />
         </div>
-      </header>
+        <h1 style={{ fontSize:22, fontWeight:700, color:'#0f172a', marginBottom:8 }}>
+          Hello {signerFirstName}, you have a document to sign
+        </h1>
+        <p style={{ fontSize:15, color:'#475569', lineHeight:1.6 }}>
+          You have been invited to review and sign:<br/>
+          <strong style={{ color:'#0f172a' }}>{pkg.document_title || `Estimate #${pkg.document_id || ''}`}</strong>
+        </p>
+      </div>
+      {pkg.expires_at && (
+        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 16px', borderRadius:12, background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', fontSize:13, marginBottom:16 }}>
+          <Clock3 style={{ width:16, height:16, flexShrink:0 }} /> This link expires on {new Date(pkg.expires_at).toLocaleDateString()}.
+        </div>
+      )}
+      <div style={{ padding:16, borderRadius:12, background:'#f0f9ff', border:'1px solid #bae6fd', marginBottom:24 }}>
+        <p style={{ fontSize:13, color:'#0c4a6e', lineHeight:1.6 }}>
+          <ShieldCheck style={{ width:14, height:14, display:'inline', verticalAlign:'-2px', marginRight:4 }} />
+          Your document is protected by NexArtSignâ„¢ secure signing. A signed copy will be emailed to you after completion.
+        </p>
+      </div>
+      <button onClick={nextFromWelcome} style={{ ...S.btn, ...S.primary, width:'100%' }}>
+        Start Secure Review <ArrowRight style={{ width:16, height:16 }} />
+      </button>
+    </div>
+  );
 
-      <div className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
-        {/* Left panel */}
-        <section className="rounded-2xl overflow-hidden" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(148,163,184,0.12)', backdropFilter: 'blur(12px)' }}>
-          <div className="p-5 flex items-start justify-between gap-4" style={{ borderBottom: '1px solid rgba(148,163,184,0.1)' }}>
-            <div>
-              <div className="flex items-center gap-2">
-                <FileSignature className="w-5 h-5 text-blue-400" />
-                <h1 className="text-lg font-bold text-white">Secure Document Review</h1>
-              </div>
-              <p className="text-sm text-slate-400 mt-1">{pkg.document_title || 'Document ready for signature'}</p>
-            </div>
+  const renderIdentity = () => (
+    <div style={S.card}>
+      <div style={{ marginBottom:24 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+          <Mail style={{ width:20, height:20, color:'#1e40af' }} />
+          <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Verify your identity</h2>
+        </div>
+        <p style={S.trust}>For your protection, we'll send a verification code to {pkg?.otp_masked_destination || 'your email'}.</p>
+      </div>
+      {otpVerified ? (
+        <>
+          <div style={{ display:'flex', alignItems:'center', gap:8, padding:16, borderRadius:12, background:'#ecfdf5', border:'1px solid #a7f3d0', color:'#065f46', fontSize:14, marginBottom:16 }}>
+            <CheckCircle style={{ width:18, height:18 }} /> Identity verified successfully
           </div>
-
-          <div className="p-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl p-4" style={{ background: 'rgba(30,41,59,0.5)', border: '1px solid rgba(148,163,184,0.1)' }}>
-                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Signer</p>
-                <p className="font-semibold text-white mt-1.5">{pkg.signer_name || name || 'Required signer'}</p>
-                <p className="text-slate-400 text-xs mt-1">{pkg.signer_email}</p>
-              </div>
-              <div className="rounded-xl p-4" style={{ background: 'rgba(30,41,59,0.5)', border: '1px solid rgba(148,163,184,0.1)' }}>
-                <p className="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Document</p>
-                <p className="font-semibold text-white mt-1.5 capitalize">{pkg.document_type || 'document'}</p>
-                <p className="text-slate-400 text-xs mt-1">#{pkg.document_id || 'N/A'}</p>
-              </div>
-            </div>
-
-            {pkg.expires_at && (
-              <div className="text-sm rounded-xl p-4 flex items-center gap-2" style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)', color: '#fbbf24' }}>
-                <Clock3 className="w-4 h-4" /> This signing link expires on {new Date(pkg.expires_at).toLocaleString()}.
-              </div>
-            )}
-
-            <div className="rounded-2xl p-5 space-y-3" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(15,23,42,0.4) 100%)', border: '1px solid rgba(59,130,246,0.2)' }}>
-              <div className="flex items-center gap-2">
-                <LockKeyhole className="w-5 h-5 text-blue-400" />
-                <h2 className="font-bold text-white">Legal signing checkpoint</h2>
-              </div>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Review the document before signing. NexArtSign records the event, locks the approved version, and creates a verification certificate for the audit trail.
-              </p>
-              <div className="text-xs text-slate-400 rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(148,163,184,0.1)' }}>
-                This session includes risk-based protection for device origin, repeated invalid attempts, field completion, and replay prevention.
-              </div>
-              <Button variant="secondary" onClick={openReviewPdf} className="w-full sm:w-auto gap-2" disabled={!pkg?.source_pdf_url && !pkg?.final_pdf_url} style={{ background: 'rgba(59,130,246,0.15)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.3)' }}>
-                <ExternalLink className="w-4 h-4" /> Open Document Preview
-              </Button>
-            </div>
-
-            {signingFields.length > 0 && (
-              <div className="rounded-2xl p-5 space-y-4" style={{ background: 'rgba(30,41,59,0.4)', border: '1px solid rgba(59,130,246,0.15)' }}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-bold text-white flex items-center gap-2"><FileCheck className="w-4 h-4 text-blue-400" /> Required signing fields</h2>
-                    <p className="text-sm text-slate-400 mt-1">Complete every required field before approving.</p>
-                  </div>
-                  <span className="text-xs font-bold rounded-full px-2.5 py-1" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)' }}>
-                    {completedFieldCount}/{signingFields.length}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {signingFields.map(field => (
-                    <SigningFieldInput key={field.id} field={field} value={fieldValues[field.id]} signerName={name} onChange={updateFieldValue} disabled={isComplete || acting} />
-                  ))}
-                </div>
-                {missingRequiredFields.length > 0 && (
-                  <div className="rounded-xl p-3 text-sm" style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)', color: '#fbbf24' }}>
-                    {missingRequiredFields.length} required field{missingRequiredFields.length === 1 ? '' : 's'} remaining.
-                  </div>
-                )}
-              </div>
-            )}
+          <button onClick={() => skipToStep('review')} style={{ ...S.btn, ...S.primary, width:'100%' }}>
+            Continue <ArrowRight style={{ width:16, height:16 }} />
+          </button>
+        </>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {otpStatus && <div style={{ padding:12, borderRadius:10, background:'#f0f9ff', border:'1px solid #bae6fd', color:'#0369a1', fontSize:13 }}>{otpStatus}</div>}
+          {pkg?.otp_locked_until && <div style={{ padding:12, borderRadius:10, background:'#fef2f2', border:'1px solid #fecaca', color:'#991b1b', fontSize:13 }}>Locked until {new Date(pkg.otp_locked_until).toLocaleString()}</div>}
+          <button onClick={requestOtpCode} disabled={otpBusy || otpLocked} style={{ ...S.btn, ...S.outline, width:'100%', ...(otpBusy || otpLocked ? S.disabled : {}) }}>
+            {otpBusy ? <Loader2 className="animate-spin" style={{ width:16, height:16 }} /> : <Mail style={{ width:16, height:16 }} />} Send Verification Code
+          </button>
+          <div>
+            <label style={S.label}>Verification code</label>
+            <input value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="Enter 6-digit code" style={S.input} disabled={otpBusy || otpLocked} />
           </div>
-        </section>
+          <button onClick={verifyOtpCode} disabled={otpBusy || otpCode.trim().length !== 6 || otpLocked} style={{ ...S.btn, ...S.primary, width:'100%', ...(otpBusy || otpCode.trim().length !== 6 ? S.disabled : {}) }}>
+            {otpBusy ? <Loader2 className="animate-spin" style={{ width:16, height:16 }} /> : 'Verify Code'}
+          </button>
+        </div>
+      )}
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:20 }}>
+        <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
+      </div>
+    </div>
+  );
 
-        {/* Right panel */}
-        <section className="rounded-2xl p-5 space-y-4 h-fit lg:sticky lg:top-20" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(148,163,184,0.12)', backdropFilter: 'blur(12px)' }}>
-          {pkg.status === 'signed' ? (
-            <div className="space-y-3">
-              <div className="rounded-xl p-4 flex items-center gap-2" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
-                <CheckCircle className="w-5 h-5" /> Document completed successfully
-              </div>
-              <div className="rounded-xl p-4 text-sm text-slate-300 space-y-2" style={{ background: 'rgba(30,41,59,0.5)', border: '1px solid rgba(148,163,184,0.1)' }}>
-                <p>The signed file, completed fields, and verification certificate are now part of the NexArtSign record.</p>
-                {deliveryStatus === 'sending' && <p className="text-slate-400 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Sending signed copies…</p>}
-                {deliveryStatus === 'sent' && <p className="flex items-center gap-2" style={{ color: '#4ade80' }}><MailCheck className="w-4 h-4" /> Signed copies sent to client and company.</p>}
-                {deliveryStatus === 'failed' && <p className="flex items-center gap-2" style={{ color: '#fbbf24' }}><AlertTriangle className="w-4 h-4" /> Email delivery needs review.</p>}
-              </div>
-              <Button variant="outline" onClick={openSignedPdf} className="w-full gap-2" disabled={!pkg?.final_pdf_url && !pkg?.source_pdf_url} style={{ background: 'transparent', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.3)' }}>
-                <ExternalLink className="w-4 h-4" /> View Signed Document
-              </Button>
-              <Button variant="outline" onClick={openCertificateVerification} className="w-full gap-2" disabled={!certificateId && !certificateNumber} style={{ background: 'transparent', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.3)' }}>
-                <ShieldCheck className="w-4 h-4" /> Verify Certificate
-              </Button>
-            </div>
-          ) : pkg.status === 'declined' ? (
-            <div className="space-y-3">
-              <div className="rounded-xl p-4 flex items-center gap-2" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}><XCircle className="w-5 h-5" /> Declined</div>
-              {(pkg.declined_reason || declineReason) && (
-                <div className="text-sm rounded-xl p-4" style={{ background: 'rgba(30,41,59,0.5)', border: '1px solid rgba(148,163,184,0.1)', color: '#cbd5e1' }}>
-                  Reason: {pkg.declined_reason || declineReason}
-                </div>
-              )}
-            </div>
-          ) : pkg.status === 'expired' || pkg.status === 'voided' ? (
-            <div className="rounded-xl p-4 flex items-center gap-2" style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)', color: '#fbbf24' }}>
-              <AlertTriangle className="w-5 h-5" /> This signing package is {pkg.status}.
-            </div>
-          ) : (
-            <>
-              <div>
-                <h2 className="text-lg font-bold text-white">Sign & approve</h2>
-                <p className="text-sm text-slate-400 mt-1">Complete the required confirmations to legally approve this document.</p>
-              </div>
+  const renderReview = () => (
+    <div style={{ ...S.card, maxWidth:800 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+        <Eye style={{ width:20, height:20, color:'#1e40af' }} />
+        <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Review your document</h2>
+      </div>
+      <p style={{ ...S.trust, marginBottom:16 }}>Please review the complete document before proceeding to sign.</p>
+      {pdfUrl ? (
+        <div style={{ borderRadius:12, overflow:'hidden', border:'1px solid #e2e8f0', marginBottom:20, background:'#f8fafc' }}>
+          <iframe src={pdfUrl} title="Document Preview" style={{ width:'100%', height:500, border:'none' }} />
+        </div>
+      ) : (
+        <div style={{ textAlign:'center', padding:'40px 20px', background:'#f8fafc', borderRadius:12, border:'1px solid #e2e8f0', marginBottom:20 }}>
+          <FileCheck style={{ width:40, height:40, color:'#94a3b8', margin:'0 auto 12px' }} />
+          <p style={{ fontSize:14, color:'#64748b', marginBottom:12 }}>Document preview not available</p>
+          <button onClick={openReviewPdf} disabled={!pdfUrl} style={{ ...S.btn, ...S.outline, ...(pdfUrl ? {} : S.disabled) }}>
+            <ExternalLink style={{ width:14, height:14 }} /> Open Document
+          </button>
+        </div>
+      )}
+      <div style={{ display:'flex', justifyContent:'space-between' }}>
+        <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
+        <button onClick={() => signingFields.length > 0 ? goNext() : skipToStep('consent')} style={{ ...S.btn, ...S.primary }}>
+          Continue <ArrowRight style={{ width:16, height:16 }} />
+        </button>
+      </div>
+    </div>
+  );
 
-              {otpRequired && (
-                <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(30,41,59,0.5)', border: '1px solid rgba(148,163,184,0.1)' }}>
-                  <div className="flex items-center gap-2 text-white">
-                    <ShieldCheck className="w-4 h-4 text-blue-400" />
-                    <p className="font-bold text-sm">Identity verification</p>
-                  </div>
-                  <p className="text-sm text-slate-400">Before signing, NexArtSign sends a verification code to {pkg?.otp_masked_destination || 'the signer email'}.</p>
-                  {pkg?.otp_expires_at && !otpVerified && <p className="text-xs text-slate-500">Code expires {new Date(pkg.otp_expires_at).toLocaleString()}.</p>}
-                  {pkg?.otp_locked_until && (
-                    <div className="text-sm rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
-                      Locked until {new Date(pkg.otp_locked_until).toLocaleString()}.
-                    </div>
-                  )}
-                  {otpStatus && <div className="text-sm rounded-xl p-3" style={{ background: 'rgba(30,41,59,0.6)', border: '1px solid rgba(148,163,184,0.1)', color: '#94a3b8' }}>{otpStatus}</div>}
-                  {otpVerified ? (
-                    <div className="text-sm rounded-xl p-3 flex items-center gap-2" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}>
-                      <CheckCircle className="w-4 h-4" /> Verified. You can now sign.
-                    </div>
-                  ) : (
-                    <>
-                      <Button variant="outline" onClick={requestOtpCode} disabled={otpBusy || otpLocked} className="w-full gap-2" style={{ background: 'transparent', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.3)' }}>
-                        {otpBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MailCheck className="w-4 h-4" />} Send Verification Code
-                      </Button>
-                      <label className="block space-y-1">
-                        <span className="text-sm font-medium text-slate-300">Verification code</span>
-                        <input value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Enter 6-digit code" className="w-full p-3 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(148,163,184,0.2)' }} disabled={isComplete || otpBusy || otpLocked} />
-                      </label>
-                      <Button onClick={verifyOtpCode} disabled={otpBusy || otpCode.trim().length !== 6 || otpLocked} className="w-full h-11" style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff' }}>
-                        {otpBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify Code'}
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
+  const renderFields = () => (
+    <div style={S.card}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <FileCheck style={{ width:20, height:20, color:'#1e40af' }} />
+          <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Complete required fields</h2>
+        </div>
+        <span style={S.stepBadge(true)}>{completedFieldCount}/{signingFields.length}</span>
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:20 }}>
+        {signingFields.map(field => (
+          <SigningFieldInput key={field.id} field={field} value={fieldValues[field.id]} signerName={name} onChange={updateFieldValue} disabled={isComplete || acting} />
+        ))}
+      </div>
+      {missingRequiredFields.length > 0 && (
+        <div style={{ padding:12, borderRadius:10, background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', fontSize:13, marginBottom:16 }}>
+          {missingRequiredFields.length} required field{missingRequiredFields.length === 1 ? '' : 's'} remaining
+        </div>
+      )}
+      <div style={{ display:'flex', justifyContent:'space-between' }}>
+        <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
+        <button onClick={goNext} disabled={missingRequiredFields.length > 0} style={{ ...S.btn, ...S.primary, ...(missingRequiredFields.length > 0 ? S.disabled : {}) }}>
+          Continue <ArrowRight style={{ width:16, height:16 }} />
+        </button>
+      </div>
+    </div>
+  );
 
-              <div className="rounded-xl p-4 text-sm flex items-start gap-2" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', color: '#93c5fd' }}>
-                <FileCheck className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>Your signature will lock this document, generate a NexArtSign certificate, and keep the record for verification.</span>
-              </div>
+  const renderConsent = () => (
+    <div style={S.card}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+        <UserCheck style={{ width:20, height:20, color:'#1e40af' }} />
+        <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Legal consent</h2>
+      </div>
+      <p style={{ ...S.trust, marginBottom:20 }}>Please confirm the following before signing.</p>
+      <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:20 }}>
+        <label style={S.check}>
+          <input type="checkbox" checked={identityConfirmed} onChange={e => setIdentityConfirmed(e.target.checked)} style={{ marginTop:2, accentColor:'#1e40af', width:18, height:18 }} />
+          <span>I confirm I am the intended signer for this document.</span>
+        </label>
+        <label style={S.check}>
+          <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} style={{ marginTop:2, accentColor:'#1e40af', width:18, height:18 }} />
+          <span>I have reviewed, completed all required fields, and approve this document electronically.</span>
+        </label>
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between' }}>
+        <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
+        <button onClick={goNext} disabled={!identityConfirmed || !accepted} style={{ ...S.btn, ...S.primary, ...(!identityConfirmed || !accepted ? S.disabled : {}) }}>
+          Continue to Sign <ArrowRight style={{ width:16, height:16 }} />
+        </button>
+      </div>
+    </div>
+  );
 
-              <label className="block space-y-1">
-                <span className="text-sm font-medium text-slate-300">Legal full name</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="w-full p-3 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(148,163,184,0.2)' }} disabled={isComplete} />
-              </label>
+  const renderSign = () => (
+    <div style={S.card}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+        <PenLine style={{ width:20, height:20, color:'#1e40af' }} />
+        <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Sign your document</h2>
+      </div>
+      <div>
+        <label style={S.label}>Legal full name</label>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Your full legal name" style={{ ...S.input, marginBottom:16 }} disabled={isComplete} />
+      </div>
+      {name.trim() && (
+        <div style={{ padding:20, borderRadius:12, background:'#fafafa', border:'1px solid #e2e8f0', textAlign:'center', marginBottom:20 }}>
+          <p style={{ fontSize:11, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Electronic Signature Preview</p>
+          <p style={{ fontFamily:'cursive, serif', fontSize:28, color:'#1e40af' }}>{name}</p>
+        </div>
+      )}
+      <div style={{ padding:12, borderRadius:10, background:'#f0f9ff', border:'1px solid #bae6fd', color:'#0c4a6e', fontSize:13, marginBottom:20, lineHeight:1.6 }}>
+        <ShieldCheck style={{ width:14, height:14, display:'inline', verticalAlign:'-2px', marginRight:4 }} />
+        Your signature will lock this document, generate a NexArtSignâ„¢ certificate, and keep the record for verification.
+      </div>
+      <button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !identityConfirmed || missingRequiredFields.length > 0 || (otpRequired && !otpVerified)} style={{ ...S.btn, ...S.success, width:'100%', fontSize:15, padding:'14px 24px', ...(acting || !name.trim() ? S.disabled : {}) }}>
+        {acting ? <Loader2 className="animate-spin" style={{ width:18, height:18 }} /> : <><CheckCircle style={{ width:18, height:18 }} /> Sign & Approve Document</>}
+      </button>
+      <div style={{ borderTop:'1px solid #e2e8f0', marginTop:24, paddingTop:20 }}>
+        <p style={{ fontSize:13, fontWeight:600, color:'#64748b', marginBottom:8 }}>Need to decline?</p>
+        <textarea value={declineReason} onChange={e => setDeclineReason(e.target.value)} placeholder="Provide a reason for declining" style={{ ...S.input, minHeight:80, resize:'vertical', marginBottom:8 }} disabled={isComplete} />
+        <button onClick={handleDecline} disabled={acting || !declineReason.trim()} style={{ ...S.btn, background:'#fff', color:'#dc2626', border:'1px solid #fecaca', width:'100%', ...(acting || !declineReason.trim() ? S.disabled : {}) }}>
+          Decline Document
+        </button>
+      </div>
+      <div style={{ display:'flex', justifyContent:'flex-start', marginTop:16 }}>
+        <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
+      </div>
+    </div>
+  );
 
-              <label className="flex gap-3 text-sm rounded-xl p-4 cursor-pointer" style={{ background: 'rgba(30,41,59,0.5)', border: '1px solid rgba(148,163,184,0.1)', color: '#cbd5e1' }}>
-                <input type="checkbox" checked={identityConfirmed} onChange={(e) => setIdentityConfirmed(e.target.checked)} disabled={isComplete} className="mt-0.5 accent-blue-500" />
-                <span className="flex items-start gap-2"><UserCheck className="w-4 h-4 mt-0.5 text-blue-400 flex-shrink-0" /> I confirm I am the intended signer for this document.</span>
-              </label>
+  const renderSuccess = () => (
+    <div style={S.card}>
+      <div style={{ textAlign:'center', marginBottom:24 }}>
+        <div style={{ width:72, height:72, borderRadius:'50%', background:'#ecfdf5', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+          <CheckCircle style={{ width:36, height:36, color:'#059669' }} />
+        </div>
+        <h2 style={{ fontSize:22, fontWeight:700, color:'#0f172a', marginBottom:8 }}>Document signed successfully</h2>
+        <p style={S.trust}>Your signed copy has been sent to your email.</p>
+        {certificateNumber && <p style={{ fontSize:13, color:'#475569', marginTop:8 }}>Certificate <strong>#{certificateNumber}</strong> was generated.</p>}
+      </div>
+      {deliveryStatus === 'sending' && <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, color:'#64748b', fontSize:14, marginBottom:16 }}><Loader2 className="animate-spin" style={{ width:16, height:16 }} /> Sending signed copiesâ€¦</div>}
+      {deliveryStatus === 'sent' && <div style={{ display:'flex', alignItems:'center', gap:8, padding:12, borderRadius:10, background:'#ecfdf5', border:'1px solid #a7f3d0', color:'#065f46', fontSize:13, marginBottom:16 }}><MailCheck style={{ width:16, height:16 }} /> Signed copies sent to client and company.</div>}
+      {deliveryStatus === 'failed' && <div style={{ display:'flex', alignItems:'center', gap:8, padding:12, borderRadius:10, background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', fontSize:13, marginBottom:16 }}><AlertTriangle style={{ width:16, height:16 }} /> Email delivery needs review.</div>}
+      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+        <button onClick={openSignedPdf} disabled={!pkg?.final_pdf_url && !pkg?.source_pdf_url} style={{ ...S.btn, ...S.primary, width:'100%', ...(!pkg?.final_pdf_url && !pkg?.source_pdf_url ? S.disabled : {}) }}>
+          <Eye style={{ width:16, height:16 }} /> View Signed Document
+        </button>
+        <button onClick={openCertificateVerification} disabled={!certificateId && !certificateNumber} style={{ ...S.btn, ...S.outline, width:'100%', ...(!certificateId && !certificateNumber ? S.disabled : {}) }}>
+          <ShieldCheck style={{ width:16, height:16 }} /> Verify Certificate
+        </button>
+      </div>
+      <p style={{ textAlign:'center', fontSize:12, color:'#94a3b8', marginTop:24 }}>This document has been securely archived by NexArtSignâ„¢.</p>
+    </div>
+  );
 
-              <label className="flex gap-3 text-sm rounded-xl p-4 cursor-pointer" style={{ background: 'rgba(30,41,59,0.5)', border: '1px solid rgba(148,163,184,0.1)', color: '#cbd5e1' }}>
-                <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} disabled={isComplete} className="mt-0.5 accent-blue-500" />
-                <span>I have reviewed, completed all required fields, and approve this document electronically.</span>
-              </label>
+  const renderDeclined = () => (
+    <div style={S.card}>
+      <div style={{ textAlign:'center' }}>
+        <XCircle style={{ width:48, height:48, color:'#dc2626', margin:'0 auto 16px' }} />
+        <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a', marginBottom:8 }}>Document declined</h2>
+        {(pkg.declined_reason || declineReason) && <p style={S.trust}>Reason: {pkg.declined_reason || declineReason}</p>}
+      </div>
+    </div>
+  );
 
-              <Button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !identityConfirmed || missingRequiredFields.length > 0 || (otpRequired && !otpVerified)} className="w-full h-12 text-sm font-bold tracking-wide" style={{ background: (acting || !name.trim() || !accepted || !identityConfirmed) ? 'rgba(100,116,139,0.3)' : 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', border: 'none' }}>
-                {acting ? <Loader2 className="w-4 h-4 animate-spin" /> : '✓ Sign & Approve Document'}
-              </Button>
+  const renderExpired = () => (
+    <div style={S.card}>
+      <div style={{ textAlign:'center' }}>
+        <AlertTriangle style={{ width:48, height:48, color:'#d97706', margin:'0 auto 16px' }} />
+        <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a', marginBottom:8 }}>This signing package is {pkg.status}</h2>
+        <p style={S.trust}>Please contact the sender if you need a new signing link.</p>
+      </div>
+    </div>
+  );
 
-              <div className="pt-4 space-y-2" style={{ borderTop: '1px solid rgba(148,163,184,0.1)' }}>
-                <label className="block space-y-1">
-                  <span className="text-sm font-medium text-slate-400">Decline reason</span>
-                  <textarea value={declineReason} onChange={(e) => setDeclineReason(e.target.value)} placeholder="Required if you are declining" className="w-full p-3 rounded-xl text-sm text-white placeholder-slate-500 min-h-[88px] focus:outline-none focus:ring-2 focus:ring-red-400" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(148,163,184,0.2)' }} disabled={isComplete} />
-                </label>
-                <Button variant="outline" onClick={handleDecline} disabled={acting || !declineReason.trim()} className="w-full" style={{ background: 'transparent', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
-                  Decline Document
-                </Button>
-              </div>
-            </>
-          )}
+  // â”€â”€ Pick the right screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const renderContent = () => {
+    if (pkg.status === 'signed') return renderSuccess();
+    if (pkg.status === 'declined') return renderDeclined();
+    if (pkg.status === 'expired' || pkg.status === 'voided') return renderExpired();
 
-          <SignatureBrandCredit logoUrl={pkg.signature_brand_logo_url} variant="signing" />
-        </section>
+    switch (currentStep) {
+      case 'welcome': return renderWelcome();
+      case 'identity': return renderIdentity();
+      case 'review': return renderReview();
+      case 'fields': return renderFields();
+      case 'consent': return renderConsent();
+      case 'sign': return renderSign();
+      case 'success': return renderSuccess();
+      default: return renderWelcome();
+    }
+  };
+
+  // â”€â”€ Progress bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const activeStepIndex = isComplete ? STEPS.length - 1 : step;
+  const progressPct = ((activeStepIndex) / (STEPS.length - 1)) * 100;
+
+  return (
+    <div style={S.page}>
+      <NexArtSignBrandHeader
+        companyLogoUrl={pkg.company_logo_url || pkg.audit_summary?.company_logo_url || ''}
+        companyName={pkg.company_name || pkg.audit_summary?.company_name || ''}
+        nexArtSignLogoUrl={pkg.signature_brand_logo_url || pkg.audit_summary?.nexartsign_logo_url || ''}
+        status={headerStatus}
+      />
+
+      {/* Progress bar */}
+      {!isComplete && (
+        <div style={{ background:'#e2e8f0', height:3 }}>
+          <div style={{ height:3, background:'linear-gradient(90deg,#1e40af,#3b82f6)', width:`${progressPct}%`, transition:'width 0.4s ease' }} />
+        </div>
+      )}
+
+      {/* Document title bar */}
+      <div style={{ background:'#fff', borderBottom:'1px solid #e2e8f0', padding:'12px 24px', textAlign:'center' }}>
+        <p style={{ fontSize:14, fontWeight:600, color:'#0f172a' }}>{pkg.document_title || 'Secure Document'}</p>
+        <p style={{ fontSize:12, color:'#94a3b8' }}>Signer: {pkg.signer_name || name || 'Required signer'} Â· {pkg.signer_email || ''}</p>
       </div>
 
-      <div className="pb-10 flex justify-center">
-        <div className="flex items-center gap-3 rounded-2xl px-5 py-3" style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(148,163,184,0.1)', backdropFilter: 'blur(12px)' }}>
-          {(pkg?.signature_brand_logo_url || pkg?.audit_summary?.nexartsign_logo_url) && (
-            <img src={pkg.signature_brand_logo_url || pkg.audit_summary?.nexartsign_logo_url} alt="NexArtSign Pro" className="h-7 object-contain" />
-          )}
-          <div>
-            <p className="text-white text-xs font-bold tracking-wide">Secured by NexArtSign Pro</p>
-            <p className="text-slate-500 text-[10px] tracking-wider">Digital Signature · Limitless</p>
-          </div>
-        </div>
+      {/* Main content */}
+      <div style={{ padding:'32px 16px', maxWidth:800, margin:'0 auto' }}>
+        {renderContent()}
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign:'center', padding:'24px 16px 40px' }}>
+        <p style={{ fontSize:11, color:'#94a3b8', letterSpacing:'0.05em' }}>
+          Powered by <strong>NexArt Pro</strong> &middot; NexArtSign&trade; Secure Document Signing
+        </p>
       </div>
     </div>
   );
