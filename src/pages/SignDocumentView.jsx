@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,7 +36,7 @@ function extractFunctionError(error) {
   const payload = error?.context || error?.data || error?.response?.data || error?.body || error?.cause?.data || null;
   // If context is a Response object (Supabase SDK), try to read its parsed JSON
   if (payload && typeof payload === 'object' && typeof payload.json === 'function') {
-    // Already consumed â€” fallback to message
+    // Already consumed Ã¢â‚¬â€ fallback to message
     return {
       code: error?.code || 'server_error',
       message: error?.message || 'Unexpected signing error',
@@ -48,11 +48,11 @@ function extractFunctionError(error) {
   };
 }
 
-// Edge Functions return data directly â€” unwrap consistently
+// Edge Functions return data directly Ã¢â‚¬â€ unwrap consistently
 function unwrapFnResult(res) {
   if (!res) return {};
   // supabase.functions.invoke wraps in { data, error }
-  // base44Client functionsProxy also wraps â€” handle both shapes
+  // base44Client functionsProxy also wraps Ã¢â‚¬â€ handle both shapes
   return res?.data ?? res;
 }
 
@@ -665,9 +665,11 @@ export default function SignDocumentView() {
     return (
       <div style={{ ...S.page, display:'flex', alignItems:'center', justifyContent:'center' }}>
         <div style={{ textAlign:'center' }}>
-          <ShieldCheck style={{ width:48, height:48, color:'#1e40af', margin:'0 auto 16px' }} />
+          <div style={{ width:48, height:48, borderRadius:14, background:'linear-gradient(135deg,#1e40af 0%,#3b82f6 100%)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+            <ShieldCheck style={{ width:26, height:26, color:'#fff' }} />
+          </div>
           <Loader2 className="animate-spin" style={{ width:24, height:24, color:'#94a3b8', margin:'0 auto 12px' }} />
-          <p style={{ fontSize:14, color:'#64748b' }}>Preparing your secure signing sessionâ€¦</p>
+          <p style={{ fontSize:14, color:'#64748b' }}>Preparing your secure signing session...</p>
         </div>
       </div>
     );
@@ -961,7 +963,7 @@ export default function SignDocumentView() {
     </div>
   );
 
-  // â”€â”€ Pick the right screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Pick the right screen Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const renderContent = () => {
     if (pkg.status === 'signed') return renderSuccess();
     if (pkg.status === 'declined') return renderDeclined();
@@ -979,7 +981,7 @@ export default function SignDocumentView() {
     }
   };
 
-  // â”€â”€ Progress bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Progress bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const activeStepIndex = isComplete ? STEPS.length - 1 : step;
   const progressPct = ((activeStepIndex) / (STEPS.length - 1)) * 100;
 
@@ -1002,19 +1004,22 @@ export default function SignDocumentView() {
       {/* Document title bar */}
       <div style={{ background:'#fff', borderBottom:'1px solid #e2e8f0', padding:'12px 24px', textAlign:'center' }}>
         <p style={{ fontSize:14, fontWeight:600, color:'#0f172a' }}>{pkg.document_title || 'Secure Document'}</p>
-        <p style={{ fontSize:12, color:'#94a3b8' }}>Signer: {pkg.signer_name || name || 'Required signer'} Â· {pkg.signer_email || ''}</p>
+        <p style={{ fontSize:12, color:'#94a3b8' }}>Signer: {pkg.signer_name || name || 'Required signer'} &middot; {pkg.signer_email || ''}</p>
       </div>
 
       {/* Main content */}
-      <div style={{ padding:'32px 16px', maxWidth:800, margin:'0 auto' }}>
+      <div style={{ padding:'32px 16px', maxWidth: currentStep === 'review' ? 1100 : 800, margin:'0 auto', transition:'max-width 0.3s ease' }}>
         {renderContent()}
-      </div>
 
-      {/* Footer */}
-      <div style={{ textAlign:'center', padding:'24px 16px 40px' }}>
-        <p style={{ fontSize:11, color:'#94a3b8', letterSpacing:'0.05em' }}>
-          Powered by <strong>NexArt Pro</strong> &middot; NexArtSign&trade; Secure Document Signing
-        </p>
+        {/* Powered-by badge below every card */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginTop:28, opacity:0.7 }}>
+          <div style={{ width:22, height:22, borderRadius:6, background:'linear-gradient(135deg,#1e40af,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <ShieldCheck style={{ width:13, height:13, color:'#fff' }} />
+          </div>
+          <p style={{ fontSize:12, color:'#94a3b8', letterSpacing:'0.03em' }}>
+            Powered by <strong style={{ color:'#64748b' }}>NexArt Pro</strong> &middot; NexArtSign&trade; Secure Document Signing
+          </p>
+        </div>
       </div>
     </div>
   );
