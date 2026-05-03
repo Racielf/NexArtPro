@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +23,8 @@ import {
   ArrowLeft,
   Eye,
   Mail,
+  Pencil,
+  Eraser,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import NexArtSignBrandHeader from '@/components/signing/NexArtSignBrandHeader';
@@ -274,6 +276,10 @@ export default function SignDocumentView() {
   const [otpBusy, setOtpBusy] = useState(false);
   const [fieldValues, setFieldValues] = useState({});
   const [step, setStep] = useState(0);
+  const [sigMethod, setSigMethod] = useState('typed');
+  const [sigImageDataUrl, setSigImageDataUrl] = useState('');
+  const canvasRef = useRef(null);
+  const isDrawingRef = useRef(false);
 
   const signingFields = useMemo(() => {
     const fields = normalizeFields(getFieldConfig(pkg));
@@ -459,8 +465,13 @@ export default function SignDocumentView() {
   };
 
   const handleApprove = async () => {
-    if (!name.trim() || !accepted || !identityConfirmed) {
+    if (!name.trim() || !accepted) {
       toast.error('Complete all required signing confirmations');
+      return;
+    }
+
+    if (sigMethod === 'drawn' && !sigImageDataUrl) {
+      toast.error('Please draw your signature before signing');
       return;
     }
 
@@ -480,6 +491,9 @@ export default function SignDocumentView() {
         fingerprint: deviceFingerprint || await getDeviceFingerprint(),
         field_values: fieldPayload,
         field_config_version: getFieldConfig(pkg)?.version || 1,
+        signature_method: sigMethod,
+        signature_value: sigMethod === 'typed' ? name.trim() : '',
+        signature_image_data_url: sigMethod === 'drawn' ? sigImageDataUrl : '',
       });
       const result = unwrapFnResult(res);
 
@@ -577,6 +591,46 @@ export default function SignDocumentView() {
     if (!ref) return;
     window.open(`/verify-document?certificate=${encodeURIComponent(ref)}`, '_blank', 'noopener,noreferrer');
   };
+
+  // ---- Canvas drawing helpers ---
+  const getCanvasPos = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: (t.clientX - rect.left) * (canvas.width / rect.width), y: (t.clientY - rect.top) * (canvas.height / rect.height) };
+  };
+
+  const startDraw = useCallback((e) => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    e.preventDefault(); isDrawingRef.current = true;
+    const ctx = canvas.getContext('2d'); const p = getCanvasPos(e, canvas);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+  }, []);
+
+  const moveDraw = useCallback((e) => {
+    if (!isDrawingRef.current) return; const canvas = canvasRef.current; if (!canvas) return;
+    e.preventDefault(); const ctx = canvas.getContext('2d'); const p = getCanvasPos(e, canvas);
+    ctx.lineTo(p.x, p.y); ctx.strokeStyle = '#1e3a5f'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+  }, []);
+
+  const endDraw = useCallback(() => {
+    isDrawingRef.current = false;
+    const canvas = canvasRef.current; if (!canvas) return;
+    setSigImageDataUrl(canvas.toDataURL('image/png'));
+  }, []);
+
+  const clearCanvas = useCallback(() => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setSigImageDataUrl('');
+  }, []);
+
+  useEffect(() => {
+    if (sigMethod !== 'drawn') return;
+    const canvas = canvasRef.current; if (!canvas) return;
+    canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', moveDraw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mouseleave', endDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false }); canvas.addEventListener('touchmove', moveDraw, { passive: false }); canvas.addEventListener('touchend', endDraw);
+    return () => { canvas.removeEventListener('mousedown', startDraw); canvas.removeEventListener('mousemove', moveDraw); canvas.removeEventListener('mouseup', endDraw); canvas.removeEventListener('mouseleave', endDraw); canvas.removeEventListener('touchstart', startDraw); canvas.removeEventListener('touchmove', moveDraw); canvas.removeEventListener('touchend', endDraw); };
+  }, [sigMethod, startDraw, moveDraw, endDraw]);
 
   const openReviewPdf = () => {
     const url = pkg?.source_pdf_url || pkg?.final_pdf_url;
@@ -709,29 +763,27 @@ export default function SignDocumentView() {
   );
 
   const renderReview = () => (
-    <div style={{ ...S.card, maxWidth:800 }}>
-      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+    <div style={{ ...S.card, maxWidth:1100 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
         <Eye style={{ width:20, height:20, color:'#1e40af' }} />
         <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Review your document</h2>
       </div>
-      <p style={{ ...S.trust, marginBottom:16 }}>Please review the complete document before proceeding to sign.</p>
+      <p style={{ ...S.trust, marginBottom:16 }}>Please review the full document carefully before signing.</p>
       {pdfUrl ? (
-        <div style={{ borderRadius:12, overflow:'hidden', border:'1px solid #e2e8f0', marginBottom:20, background:'#f8fafc' }}>
-          <iframe src={pdfUrl} title="Document Preview" style={{ width:'100%', height:500, border:'none' }} />
+        <div style={{ borderRadius:12, overflow:'hidden', border:'1px solid #e2e8f0', marginBottom:20, background:'#fff' }}>
+          <iframe src={`${pdfUrl}#toolbar=1&navpanes=0&zoom=page-width`} title="Document preview" style={{ width:'100%', minHeight:'80vh', border:'none', background:'#fff' }} />
         </div>
       ) : (
-        <div style={{ textAlign:'center', padding:'40px 20px', background:'#f8fafc', borderRadius:12, border:'1px solid #e2e8f0', marginBottom:20 }}>
-          <FileCheck style={{ width:40, height:40, color:'#94a3b8', margin:'0 auto 12px' }} />
-          <p style={{ fontSize:14, color:'#64748b', marginBottom:12 }}>Document preview not available</p>
-          <button onClick={openReviewPdf} disabled={!pdfUrl} style={{ ...S.btn, ...S.outline, ...(pdfUrl ? {} : S.disabled) }}>
-            <ExternalLink style={{ width:14, height:14 }} /> Open Document
-          </button>
+        <div style={{ textAlign:'center', padding:'60px 20px', background:'#f8fafc', borderRadius:12, border:'1px solid #e2e8f0', marginBottom:20 }}>
+          <FileCheck style={{ width:48, height:48, color:'#94a3b8', margin:'0 auto 16px' }} />
+          <p style={{ fontSize:15, color:'#475569', marginBottom:4, fontWeight:600 }}>We could not load the document preview.</p>
+          <p style={{ fontSize:13, color:'#94a3b8' }}>Please contact the sender.</p>
         </div>
       )}
-      <div style={{ display:'flex', justifyContent:'space-between' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
         <button onClick={() => signingFields.length > 0 ? goNext() : skipToStep('consent')} style={{ ...S.btn, ...S.primary }}>
-          Continue <ArrowRight style={{ width:16, height:16 }} />
+          I reviewed this document &mdash; Continue <ArrowRight style={{ width:16, height:16 }} />
         </button>
       </div>
     </div>
@@ -765,26 +817,26 @@ export default function SignDocumentView() {
     </div>
   );
 
+  const handleConsentCheck = (checked) => { setAccepted(checked); setIdentityConfirmed(checked); };
+  const sigReady = sigMethod === 'typed' ? name.trim().length > 0 : sigImageDataUrl.length > 0;
+
   const renderConsent = () => (
     <div style={S.card}>
-      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
         <UserCheck style={{ width:20, height:20, color:'#1e40af' }} />
         <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Legal consent</h2>
       </div>
-      <p style={{ ...S.trust, marginBottom:20 }}>Please confirm the following before signing.</p>
-      <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:20 }}>
-        <label style={S.check}>
-          <input type="checkbox" checked={identityConfirmed} onChange={e => setIdentityConfirmed(e.target.checked)} style={{ marginTop:2, accentColor:'#1e40af', width:18, height:18 }} />
-          <span>I confirm I am the intended signer for this document.</span>
-        </label>
-        <label style={S.check}>
-          <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} style={{ marginTop:2, accentColor:'#1e40af', width:18, height:18 }} />
-          <span>I have reviewed, completed all required fields, and approve this document electronically.</span>
-        </label>
-      </div>
+      <p style={{ ...S.trust, marginBottom:20 }}>Please confirm before signing.</p>
+      <label style={{ ...S.check, marginBottom:12 }}>
+        <input type="checkbox" checked={accepted} onChange={e => handleConsentCheck(e.target.checked)} style={{ marginTop:2, accentColor:'#1e40af', width:18, height:18, flexShrink:0 }} />
+        <span>I confirm that I am the intended signer, I have reviewed this document, and I agree to sign it electronically.</span>
+      </label>
+      <p style={{ fontSize:12, color:'#94a3b8', lineHeight:1.6, marginBottom:20, paddingLeft:30 }}>
+        By continuing, you agree that your electronic signature has the same intent as a handwritten signature and that NexArtSign will record a secure certificate and audit trail for this signing session.
+      </p>
       <div style={{ display:'flex', justifyContent:'space-between' }}>
         <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
-        <button onClick={goNext} disabled={!identityConfirmed || !accepted} style={{ ...S.btn, ...S.primary, ...(!identityConfirmed || !accepted ? S.disabled : {}) }}>
+        <button onClick={goNext} disabled={!accepted} style={{ ...S.btn, ...S.primary, ...(!accepted ? S.disabled : {}) }}>
           Continue to Sign <ArrowRight style={{ width:16, height:16 }} />
         </button>
       </div>
@@ -793,27 +845,64 @@ export default function SignDocumentView() {
 
   const renderSign = () => (
     <div style={S.card}>
-      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
         <PenLine style={{ width:20, height:20, color:'#1e40af' }} />
         <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Sign your document</h2>
       </div>
-      <div>
+      <p style={{ ...S.trust, marginBottom:16 }}>Choose how you would like to sign.</p>
+
+      {/* Name field always required */}
+      <div style={{ marginBottom:16 }}>
         <label style={S.label}>Legal full name</label>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Your full legal name" style={{ ...S.input, marginBottom:16 }} disabled={isComplete} />
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Your full legal name" style={S.input} disabled={isComplete} />
       </div>
-      {name.trim() && (
-        <div style={{ padding:20, borderRadius:12, background:'#fafafa', border:'1px solid #e2e8f0', textAlign:'center', marginBottom:20 }}>
-          <p style={{ fontSize:11, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Electronic Signature Preview</p>
-          <p style={{ fontFamily:'cursive, serif', fontSize:28, color:'#1e40af' }}>{name}</p>
+
+      {/* Tabs: Type / Draw */}
+      <div style={{ display:'flex', gap:0, marginBottom:16, borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0' }}>
+        <button onClick={() => setSigMethod('typed')} style={{ flex:1, padding:'10px 16px', fontSize:13, fontWeight:600, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, background: sigMethod === 'typed' ? '#1e40af' : '#f8fafc', color: sigMethod === 'typed' ? '#fff' : '#475569' }}>
+          <Type style={{ width:15, height:15 }} /> Type Signature
+        </button>
+        <button onClick={() => setSigMethod('drawn')} style={{ flex:1, padding:'10px 16px', fontSize:13, fontWeight:600, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, background: sigMethod === 'drawn' ? '#1e40af' : '#f8fafc', color: sigMethod === 'drawn' ? '#fff' : '#475569', borderLeft:'1px solid #e2e8f0' }}>
+          <Pencil style={{ width:15, height:15 }} /> Draw Signature
+        </button>
+      </div>
+
+      {/* Typed signature preview */}
+      {sigMethod === 'typed' && name.trim() && (
+        <div style={{ padding:24, borderRadius:12, background:'#fafafa', border:'1px solid #e2e8f0', textAlign:'center', marginBottom:16 }}>
+          <p style={{ fontSize:11, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Electronic Signature Preview</p>
+          <p style={{ fontFamily:"'Brush Script MT', 'Segoe Script', cursive, serif", fontSize:32, color:'#1e40af' }}>{name}</p>
         </div>
       )}
+
+      {/* Draw canvas */}
+      {sigMethod === 'drawn' && (
+        <div style={{ marginBottom:16 }}>
+          <div style={{ borderRadius:12, border:'2px dashed #cbd5e1', background:'#fff', overflow:'hidden', position:'relative' }}>
+            <canvas ref={canvasRef} width={600} height={220} style={{ width:'100%', height:220, cursor:'crosshair', touchAction:'none', display:'block' }} />
+            {!sigImageDataUrl && (
+              <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', pointerEvents:'none', color:'#cbd5e1', fontSize:14 }}>
+                Sign here
+              </div>
+            )}
+          </div>
+          <div style={{ display:'flex', justifyContent:'flex-end', marginTop:8 }}>
+            <button onClick={clearCanvas} style={{ ...S.btn, ...S.outline, padding:'6px 14px', fontSize:12 }}>
+              <Eraser style={{ width:14, height:14 }} /> Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ padding:12, borderRadius:10, background:'#f0f9ff', border:'1px solid #bae6fd', color:'#0c4a6e', fontSize:13, marginBottom:20, lineHeight:1.6 }}>
         <ShieldCheck style={{ width:14, height:14, display:'inline', verticalAlign:'-2px', marginRight:4 }} />
         Your signature will lock this document, generate a NexArtSign certificate, and keep the record for verification.
       </div>
-      <button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !identityConfirmed || missingRequiredFields.length > 0 || (otpRequired && !otpVerified)} style={{ ...S.btn, ...S.success, width:'100%', fontSize:15, padding:'14px 24px', ...(acting || !name.trim() ? S.disabled : {}) }}>
-        {acting ? <Loader2 className="animate-spin" style={{ width:18, height:18 }} /> : <><CheckCircle style={{ width:18, height:18 }} /> Sign & Approve Document</>}
+
+      <button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !sigReady || missingRequiredFields.length > 0 || (otpRequired && !otpVerified)} style={{ ...S.btn, ...S.success, width:'100%', fontSize:15, padding:'14px 24px', ...(acting || !name.trim() || !sigReady ? S.disabled : {}) }}>
+        {acting ? <Loader2 className="animate-spin" style={{ width:18, height:18 }} /> : <><CheckCircle style={{ width:18, height:18 }} /> Sign &amp; Approve Document</>}
       </button>
+
       <div style={{ borderTop:'1px solid #e2e8f0', marginTop:24, paddingTop:20 }}>
         <p style={{ fontSize:13, fontWeight:600, color:'#64748b', marginBottom:8 }}>Need to decline?</p>
         <textarea value={declineReason} onChange={e => setDeclineReason(e.target.value)} placeholder="Provide a reason for declining" style={{ ...S.input, minHeight:80, resize:'vertical', marginBottom:8 }} disabled={isComplete} />
