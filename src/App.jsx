@@ -122,7 +122,7 @@ const ProtectedRoute = ({ children, access = 'any' }) => {
     return <Navigate to="/team-access" replace />;
   }
 
-  if (isAuthenticated) sessionStorage.setItem('base44_authenticated', 'true');
+  if (isAuthenticated) sessionStorage.setItem('nexartpro_authenticated', 'true');
   return children;
 };
 

@@ -6,7 +6,7 @@ const INACTIVITY_MS = 20 * 60 * 1000; // 20 minutes
 export function logout(navigate) {
   sessionStorage.removeItem('local_auth');
   sessionStorage.removeItem('user_role');
-  sessionStorage.removeItem('base44_authenticated');
+  sessionStorage.removeItem('nexartpro_authenticated');
   sessionStorage.removeItem('team_access_granted');
   if (navigate) {
     navigate('/team-access', { replace: true });

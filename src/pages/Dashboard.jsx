@@ -488,7 +488,7 @@ export default function Dashboard() {
       ]);
       setAllProposals(proposals || []);
     } catch (err) {
-      const isBase44Auth = sessionStorage.getItem('base44_authenticated') === 'true';
+      const isBase44Auth = sessionStorage.getItem('nexartpro_authenticated') === 'true';
       if (!isBase44Auth && sessionStorage.getItem('local_auth') === 'true') { setLoading(false); return; }
       throw err;
     }
