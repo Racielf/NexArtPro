@@ -1,0 +1,37 @@
+{
+  "name": "NexArtPro — Construction Management",
+  "short_name": "NexArtPro",
+  "description": "Professional construction management: estimates, work orders, invoices, and field operations.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "icons": []
+    },
+    {
+      "name": "New Estimate",
+      "url": "/estimates/create",
+      "icons": []
+    },
+    {
+      "name": "Work Orders",
+      "url": "/work-orders",
+      "icons": []
+    }
+  ]
+}
