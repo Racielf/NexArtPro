@@ -355,6 +355,15 @@ export default function SignDocumentView() {
     });
   }, [name]);
 
+  // Auto-skip welcome screen: go directly to review (step 2)
+  useEffect(() => {
+    if (!pkg) return;
+    const showWelcome = pkg?.audit_summary?.show_welcome_screen === true;
+    if (step === 0 && !showWelcome) {
+      setStep(2); // index 2 = 'review'
+    }
+  }, [pkg?.id]);
+
   const isComplete = pkg?.status === 'signed' || pkg?.status === 'declined' || pkg?.status === 'expired' || pkg?.status === 'voided';
   const otpRequired = Boolean(pkg?.otp_required);
   const otpVerified = Boolean(pkg?.otp_verified);
@@ -576,7 +585,11 @@ export default function SignDocumentView() {
   };
 
   const STEPS = ['welcome','identity','review','fields','consent','sign','success'];
-  const currentStep = STEPS[step] || 'welcome';
+  // Default: skip welcome, go straight to review (index 2)
+  // If pkg has show_welcome_screen=true, stay at welcome (index 0)
+  const showWelcome = pkg?.audit_summary?.show_welcome_screen === true;
+  const initialStep = showWelcome ? 0 : 2; // 0=welcome, 2=review
+  const currentStep = STEPS[step] || 'review';
   const canGoBack = step > 0 && currentStep !== 'success' && currentStep !== 'welcome';
   const goNext = () => setStep(s => Math.min(s + 1, STEPS.length - 1));
   const goBack = () => setStep(s => Math.max(s - 1, 0));
@@ -586,7 +599,7 @@ export default function SignDocumentView() {
   const pdfUrl = pkg?.source_pdf_url || pkg?.final_pdf_url || '';
   const signerFirstName = (pkg?.signer_name || name || '').split(' ')[0] || 'there';
 
-  // Auto-skip identity step if OTP not required
+  // Navigate from welcome
   const nextFromWelcome = () => {
     if (!otpRequired || otpVerified) skipToStep('review');
     else goNext();
@@ -615,14 +628,14 @@ export default function SignDocumentView() {
             <ShieldAlert style={{ width:48, height:48, color: state.tone === 'critical' ? '#dc2626' : '#d97706', margin:'0 auto 16px' }} />
             <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a', marginBottom:8 }}>{state.title}</h2>
             <p style={{ ...S.trust, marginBottom:24 }}>{state.message}</p>
-            <p style={{ fontSize:11, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em', fontWeight:600 }}>NexArtSignâ„¢ Secure Signing</p>
+            <p style={{ fontSize:11, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em', fontWeight:600 }}>NexArtSign Secure Signing</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // â”€â”€ Step renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ---- Step renderers ----------------------------------
 
   const renderWelcome = () => (
     <div style={S.card}>
@@ -646,7 +659,7 @@ export default function SignDocumentView() {
       <div style={{ padding:16, borderRadius:12, background:'#f0f9ff', border:'1px solid #bae6fd', marginBottom:24 }}>
         <p style={{ fontSize:13, color:'#0c4a6e', lineHeight:1.6 }}>
           <ShieldCheck style={{ width:14, height:14, display:'inline', verticalAlign:'-2px', marginRight:4 }} />
-          Your document is protected by NexArtSignâ„¢ secure signing. A signed copy will be emailed to you after completion.
+          Your document is protected by NexArtSign secure signing. A signed copy will be emailed to you after completion.
         </p>
       </div>
       <button onClick={nextFromWelcome} style={{ ...S.btn, ...S.primary, width:'100%' }}>
@@ -796,7 +809,7 @@ export default function SignDocumentView() {
       )}
       <div style={{ padding:12, borderRadius:10, background:'#f0f9ff', border:'1px solid #bae6fd', color:'#0c4a6e', fontSize:13, marginBottom:20, lineHeight:1.6 }}>
         <ShieldCheck style={{ width:14, height:14, display:'inline', verticalAlign:'-2px', marginRight:4 }} />
-        Your signature will lock this document, generate a NexArtSignâ„¢ certificate, and keep the record for verification.
+        Your signature will lock this document, generate a NexArtSign certificate, and keep the record for verification.
       </div>
       <button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !identityConfirmed || missingRequiredFields.length > 0 || (otpRequired && !otpVerified)} style={{ ...S.btn, ...S.success, width:'100%', fontSize:15, padding:'14px 24px', ...(acting || !name.trim() ? S.disabled : {}) }}>
         {acting ? <Loader2 className="animate-spin" style={{ width:18, height:18 }} /> : <><CheckCircle style={{ width:18, height:18 }} /> Sign & Approve Document</>}
@@ -824,7 +837,7 @@ export default function SignDocumentView() {
         <p style={S.trust}>Your signed copy has been sent to your email.</p>
         {certificateNumber && <p style={{ fontSize:13, color:'#475569', marginTop:8 }}>Certificate <strong>#{certificateNumber}</strong> was generated.</p>}
       </div>
-      {deliveryStatus === 'sending' && <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, color:'#64748b', fontSize:14, marginBottom:16 }}><Loader2 className="animate-spin" style={{ width:16, height:16 }} /> Sending signed copiesâ€¦</div>}
+      {deliveryStatus === 'sending' && <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, color:'#64748b', fontSize:14, marginBottom:16 }}><Loader2 className="animate-spin" style={{ width:16, height:16 }} /> Sending signed copies...</div>}
       {deliveryStatus === 'sent' && <div style={{ display:'flex', alignItems:'center', gap:8, padding:12, borderRadius:10, background:'#ecfdf5', border:'1px solid #a7f3d0', color:'#065f46', fontSize:13, marginBottom:16 }}><MailCheck style={{ width:16, height:16 }} /> Signed copies sent to client and company.</div>}
       {deliveryStatus === 'failed' && <div style={{ display:'flex', alignItems:'center', gap:8, padding:12, borderRadius:10, background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', fontSize:13, marginBottom:16 }}><AlertTriangle style={{ width:16, height:16 }} /> Email delivery needs review.</div>}
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -835,7 +848,7 @@ export default function SignDocumentView() {
           <ShieldCheck style={{ width:16, height:16 }} /> Verify Certificate
         </button>
       </div>
-      <p style={{ textAlign:'center', fontSize:12, color:'#94a3b8', marginTop:24 }}>This document has been securely archived by NexArtSignâ„¢.</p>
+      <p style={{ textAlign:'center', fontSize:12, color:'#94a3b8', marginTop:24 }}>This document has been securely archived by NexArtSign.</p>
     </div>
   );
 
