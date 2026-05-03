@@ -20,8 +20,10 @@ function buildPackageToken(documentId: string, pkgId: string) {
 }
 
 function buildSigningUrl(rawToken: string, appBaseUrl?: string) {
-  const baseUrl = appBaseUrl || Deno.env.get('APP_BASE_URL') || Deno.env.get('APP_ORIGIN') || 'https://app.nexartpro.com';
-  return `${new URL(baseUrl).origin}/sign-document?token=${encodeURIComponent(rawToken)}`;
+  const baseUrl = (appBaseUrl || Deno.env.get('APP_BASE_URL') || 'https://racielf.github.io/NexArtPro')
+    .replace(/\/$/, '');
+
+  return `${baseUrl}/sign-document?token=${encodeURIComponent(rawToken)}`;
 }
 
 Deno.serve(async (req) => {

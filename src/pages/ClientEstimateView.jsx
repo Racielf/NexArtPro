@@ -122,7 +122,8 @@ export default function ClientEstimateView() {
 
   const isFinal = ['approved', 'declined', 'converted', 'signed'].includes(estimate.status);
   const canAct = !isFinal;
-  const nexArtSignUrl = estimate.signing_package_token ? `${window.location.origin}/sign-document?token=${estimate.signing_package_token}` : '';
+  const nexArtSignBase = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  const nexArtSignUrl = estimate.signing_package_token ? `${window.location.origin}${nexArtSignBase}/sign-document?token=${estimate.signing_package_token}` : '';
   const hasNexArtSign = Boolean(nexArtSignUrl) && !['signed', 'declined', 'expired', 'voided'].includes(estimate.signing_package_status);
 
   const dc = getDocTypeConfig(estimate?.document_type);
