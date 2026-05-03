@@ -39,8 +39,23 @@ export async function getUsers() {
 }
 
 export async function authenticate(username, password) {
-  const response = await base44.functions.invoke('authenticateUser', { username, password });
-  return response.data;
+  if (!supabase) return { ok: false, error: 'Supabase not configured' };
+  try {
+    const { data, error } = await supabase
+      .from('app_users')
+      .select('id, username, display_name, role, active')
+      .eq('username', username)
+      .eq('password', password)
+      .eq('active', true)
+      .single();
+    if (error || !data) {
+      return { ok: false, error: 'Invalid username or password' };
+    }
+    return { ok: true, user: data };
+  } catch (err) {
+    console.error('[userStore] authenticate error:', err);
+    return { ok: false, error: 'Connection error' };
+  }
 }
 
 export async function createUser({ username, password, display_name, role }) {

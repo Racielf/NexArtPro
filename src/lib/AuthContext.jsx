@@ -8,7 +8,7 @@ const AuthContext = createContext();
 function persistSessionProfile(profile, authUser) {
   const role = normalizeLocalRole(profile?.role);
   sessionStorage.setItem('local_auth', 'true');
-  sessionStorage.setItem('base44_authenticated', 'true');
+  sessionStorage.setItem('nexartpro_authenticated', 'true');
   sessionStorage.setItem('local_user_id', profile?.id || authUser?.id || '');
   sessionStorage.setItem('local_username', profile?.username || authUser?.email || '');
   sessionStorage.setItem('local_display_name', profile?.display_name || authUser?.email || '');

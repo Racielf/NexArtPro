@@ -111,20 +111,25 @@ const LoadingScreen = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children, access = 'any' }) => {
+// --- AUTH BYPASS (temporary) ---
+// Original ProtectedRoute preserved below for re-enabling.
+const ProtectedRoute = ({ children /*, access = 'any' */ }) => {
+  // Always allow access — auth disabled temporarily
+  return children;
+};
+/* ORIGINAL ProtectedRoute:
+const ProtectedRoute_Original = ({ children, access = 'any' }) => {
   const { isLoadingAuth, isAuthenticated } = useAuth();
   if (isLoadingAuth) return <LoadingScreen />;
-
   const localSession = getLocalSession();
-
   if (!canAccessRoute({ access, isAuthenticated, localSession })) {
     if (localSession.role === 'field_agent') return <Navigate to="/field" replace />;
     return <Navigate to="/team-access" replace />;
   }
-
-  if (isAuthenticated) sessionStorage.setItem('base44_authenticated', 'true');
+  if (isAuthenticated) sessionStorage.setItem('nexartpro_authenticated', 'true');
   return children;
 };
+*/
 
 const AppRoutes = () => (
   <Routes>
@@ -134,8 +139,9 @@ const AppRoutes = () => (
     <Route path="/about" element={<About />} />
     <Route path="/contact" element={<Contact />} />
     <Route path="/partners" element={<Partners />} />
-    <Route path="/team-access" element={<TeamAccess />} />
-    <Route path="/login" element={<Login />} />
+    {/* AUTH BYPASS: redirect team-access and login to dashboard */}
+    <Route path="/team-access" element={<Navigate to="/dashboard" replace />} />
+    <Route path="/login" element={<Navigate to="/dashboard" replace />} />
     <Route path="/sign-document" element={<SignDocumentView />} />
 
     <Route path="/field" element={<ProtectedRoute access="field"><FieldWorkOrders /></ProtectedRoute>} />
@@ -184,7 +190,12 @@ const AppRoutes = () => (
   </Routes>
 );
 
+// --- AUTH BYPASS: skip auth checks, go straight to routes ---
 const AuthenticatedApp = () => {
+  return <AppRoutes />;
+};
+/* ORIGINAL AuthenticatedApp:
+const AuthenticatedApp_Original = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
   const location = useLocation();
   const publicRoute = isPublicRoute(location.pathname);
@@ -197,12 +208,13 @@ const AuthenticatedApp = () => {
   }
   return <AppRoutes />;
 };
+*/
 
 function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
+        <Router basename={import.meta.env.BASE_URL}>
           <AuthenticatedApp />
         </Router>
         <Toaster />

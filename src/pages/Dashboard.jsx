@@ -94,7 +94,7 @@ function DigitalClock() {
   const ss = String(now.getSeconds()).padStart(2, '0');
   const dateStr = now.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   return (
-    <div className="w-full bg-white flex items-center justify-center gap-4 py-2 border-b border-slate-200 select-none">
+    <div className="dash-clock w-full bg-white flex items-center justify-center gap-4 py-2 border-b border-slate-200 select-none">
       <div className="flex items-end gap-1 tabular-nums leading-none">
         <span className="text-3xl font-black text-slate-800" style={{ letterSpacing: '-1px' }}>
           {hh}<span className="text-blue-500">:</span>{mm}
@@ -122,7 +122,7 @@ function MoneyControl({ monthRevenue = 0, outstanding = 0, invoices = [], loadin
     <Card title="Money Control" icon={DollarSign} className="h-full">
       <div className="p-5 flex flex-col gap-4 h-full">
         {/* 4 métricas — 2 grandes arriba, 2 pequeñas abajo */}
-        <div className="grid grid-cols-2 gap-4 flex-1">
+        <div className="money-control-grid grid grid-cols-2 gap-4 flex-1">
           {/* Este mes — hero metric */}
           <div className="flex flex-col gap-1.5 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
             <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Este mes</span>
@@ -488,7 +488,7 @@ export default function Dashboard() {
       ]);
       setAllProposals(proposals || []);
     } catch (err) {
-      const isBase44Auth = sessionStorage.getItem('base44_authenticated') === 'true';
+      const isBase44Auth = sessionStorage.getItem('nexartpro_authenticated') === 'true';
       if (!isBase44Auth && sessionStorage.getItem('local_auth') === 'true') { setLoading(false); return; }
       throw err;
     }
@@ -521,13 +521,13 @@ export default function Dashboard() {
       <DigitalClock />
 
       {/* TOPBAR */}
-      <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-2 shadow-sm">
-        <div className="max-w-screen-2xl mx-auto flex items-center gap-3">
-          <div className="border-r border-slate-200 pr-3 flex-shrink-0">
+      <div className="dash-topbar sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-2 shadow-sm">
+        <div className="dash-topbar-inner max-w-screen-2xl mx-auto flex items-center gap-3">
+          <div className="dash-topbar-brand border-r border-slate-200 pr-3 flex-shrink-0">
             <h1 className="text-[13px] font-bold text-slate-800 leading-none">RC Art Contractors</h1>
             <p className="text-[9px] text-slate-400 mt-0.5">Control Center · {format(new Date(), 'EEE MMM d, yyyy')}</p>
           </div>
-          <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-none py-0.5">
+          <div className="dash-topbar-kpis flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-none py-0.5">
             <KpiChip label="Ingresos Mes"  value={`$${(kpis.monthRevenue||0).toLocaleString()}`} dot="#10b981" loading={loading} tooltip="Revenue cobrado este mes" />
             <KpiChip label="Jobs Activos"  value={kpis.activeJobs ?? 0}                          dot="#3b82f6" loading={loading} tooltip="Work orders en progreso" />
             <KpiChip label="Por Cobrar"    value={`$${(kpis.outstanding||0).toLocaleString()}`}  dot="#ef4444" loading={loading} tooltip="Facturas pendientes" />
@@ -535,7 +535,7 @@ export default function Dashboard() {
             <KpiChip label="Estimados"     value={kpis.estimatesSent ?? 0}                       dot="#8b5cf6" loading={loading} tooltip="Estimados enviados" />
             <KpiChip label="Aprobación"    value={`${kpis.approvalRate ?? 0}%`}                  dot="#06b6d4" loading={loading} tooltip="Tasa de aprobación" />
           </div>
-          <div className="flex gap-1.5 flex-shrink-0">
+          <div className="dash-topbar-actions flex gap-1.5 flex-shrink-0">
             <Button asChild variant="outline" size="sm" className="h-7 px-2.5 text-[10px] text-slate-600 border-slate-200 hover:bg-slate-50">
               <Link to="/appointments"><Plus className="w-3 h-3 mr-0.5" />Cita</Link>
             </Button>
@@ -550,7 +550,7 @@ export default function Dashboard() {
       </div>
 
       {/* CONTENT */}
-      <div className="flex-1 max-w-screen-2xl mx-auto w-full px-4 py-4 flex flex-col gap-4">
+      <div className="dash-content flex-1 max-w-screen-2xl mx-auto w-full px-4 py-4 flex flex-col gap-4">
 
         {/* ── FILA 1: Money Control (dominante col-span-2) + Revenue Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-visible" style={{ minHeight: '300px' }}>

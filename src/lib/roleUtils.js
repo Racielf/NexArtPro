@@ -91,5 +91,5 @@ export function clearLocalSession() {
   sessionStorage.removeItem('local_username');
   sessionStorage.removeItem('local_display_name');
   sessionStorage.removeItem('team_access_granted');
-  sessionStorage.removeItem('base44_authenticated');
+  sessionStorage.removeItem('nexartpro_authenticated');
 }

@@ -43,25 +43,29 @@ export default function Estimates() {
   const handleConfirmCreate = async () => {
     setShowConfirm(false);
     setCreating(true);
-    const nextNum = await getNextDocumentNumber('estimate');
-    const created = await base44.entities.Estimate.create({
-      estimate_number: nextNum,
-      document_type: 'ESTIMATE',
-      status: 'draft',
-      client_name: '',
-      groups: [],
-      line_items: [],
-      materials: [],
-      other_costs: [],
-      tax_rate: 0,
-      subtotal: 0,
-      tax_amount: 0,
-      total: 0,
-      created_by: 'Admin',
-      updated_by: 'Admin',
-    });
-    setCreating(false);
-    navigate(`/estimate-editor?id=${created.id}&new=1`);
+    try {
+      const nextNum = await getNextDocumentNumber('estimate');
+      const created = await base44.entities.Estimate.create({
+        estimate_number: nextNum,
+        document_type: 'ESTIMATE',
+        status: 'draft',
+        client_name: '',
+        groups: [],
+        line_items: [],
+        materials: [],
+        other_costs: [],
+        tax_rate: 0,
+        subtotal: 0,
+        tax_amount: 0,
+        total: 0,
+      });
+      navigate(`/estimate-editor?id=${created.id}&new=1`);
+    } catch (err) {
+      console.error('[Estimates] Failed to create estimate:', err);
+      toast.error(`Could not create estimate: ${err?.message || 'Unknown error'}`);
+    } finally {
+      setCreating(false);
+    }
   };
 
   const filtered = estimates.filter(e =>

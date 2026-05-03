@@ -52,24 +52,30 @@ export default function NewProposalCustomerModal({ open, onOpenChange, onCustome
     if (!form.full_name.trim()) { toast.error('Name is required'); return; }
     if (!form.phone.trim()) { toast.error('Phone is required'); return; }
     setSaving(true);
-    const nameParts = form.full_name.trim().split(/\s+/);
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-    const created = await base44.entities.Customer.create({
-      first_name: firstName,
-      last_name: lastName,
-      display_name: form.full_name.trim(),
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      service_address: form.address.trim(),
-      city: form.city.trim(),
-      state: form.state.trim(),
-      zip: form.zip.trim(),
-    });
-    setSaving(false);
-    toast.success('Customer created');
-    onCustomerSelected({ ...created, full_name: created.display_name || form.full_name.trim() });
-    onOpenChange(false);
+    try {
+      const nameParts = form.full_name.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      const created = await base44.entities.Customer.create({
+        first_name: firstName,
+        last_name: lastName,
+        display_name: form.full_name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        service_address: form.address.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+        zip: form.zip.trim(),
+      });
+      toast.success('Customer created');
+      onCustomerSelected({ ...created, full_name: created.display_name || form.full_name.trim() });
+      onOpenChange(false);
+    } catch (err) {
+      console.error('[NewProposalCustomerModal] Create error:', err);
+      toast.error(err?.message || 'Failed to create customer');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
