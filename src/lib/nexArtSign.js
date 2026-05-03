@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabaseClient';
 import { APP_CONFIG } from '@/lib/appConfig';
 import { loadCompanySettings } from '@/lib/companySettings';
 
@@ -148,13 +149,35 @@ function buildEstimateSigningParticipants({ estimate, currentUser }) {
     }));
 }
 
-async function issueSigningAccessForPackage({ pkg, participants = [] }) {
+async function issueSigningAccessForPackage({ pkg }) {
   if (!pkg?.id) return { token: '', signing_url: '', scope: 'package' };
 
+  try {
+    // Call Edge Function — token generation and hashing happen server-side for security
+    const { data, error } = await supabase.functions.invoke('issueSigningAccessLink', {
+      body: { signing_package_id: pkg.id, app_base_url: window.location.origin },
+    });
+
+    if (error) throw error;
+    if (data?.signing_url) {
+      return {
+        token: '',   // raw token stays server-side
+        signing_url: data.signing_url,
+        scope: data.token_scope || 'package',
+        participant_id: data.participant_id || '',
+      };
+    }
+  } catch (err) {
+    console.warn('[nexArtSign] issueSigningAccessLink Edge Function failed, falling back to client-side token:', err?.message);
+  }
+
+  // Fallback: client-side token (used in dev/local when Edge Functions are not deployed)
   const now = new Date().toISOString();
-  const ordered = [...(participants || [])].sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
-  const activeParticipant = ordered.find((participant) => participant.status === 'active')
-    || ordered.find((participant) => !CLOSED_PARTICIPANT_STATUSES.has(participant.status));
+  const ordered = [];
+  const existing = await base44.entities.SigningParticipant.filter({ signing_package_id: pkg.id }).catch(() => []);
+  const sorted = [...(existing || [])].sort((a, b) => (a.signing_order || 1) - (b.signing_order || 1));
+  const activeParticipant = sorted.find((p) => p.status === 'active')
+    || sorted.find((p) => !CLOSED_PARTICIPANT_STATUSES.has(p.status));
 
   if (activeParticipant?.id) {
     const token = buildParticipantToken(pkg.id, activeParticipant.id);
@@ -164,25 +187,13 @@ async function issueSigningAccessForPackage({ pkg, participants = [] }) {
       status: activeParticipant.status === 'pending' ? 'active' : activeParticipant.status,
       sent_at: activeParticipant.sent_at || pkg.sent_at || now,
     }).catch(() => {});
-
-    return {
-      token,
-      signing_url: buildSigningUrl(token),
-      scope: 'participant',
-      participant_id: activeParticipant.id,
-    };
+    return { token, signing_url: buildSigningUrl(token), scope: 'participant', participant_id: activeParticipant.id };
   }
 
   const token = buildPackageToken(pkg.document_id || pkg.id);
   const fields = await buildTokenFields(token, now);
   await base44.entities.SigningPackage.update(pkg.id, fields).catch(() => {});
-
-  return {
-    token,
-    signing_url: buildSigningUrl(token),
-    scope: 'package',
-    participant_id: '',
-  };
+  return { token, signing_url: buildSigningUrl(token), scope: 'package', participant_id: '' };
 }
 
 async function syncSigningParticipants({ pkg, estimate, currentUser }) {

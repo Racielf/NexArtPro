@@ -24,9 +24,11 @@ export default function Settings() {
   useEffect(() => {
     base44.auth.me()
       .then(u => {
-        const role = normalizeUserRole(u?.role);
-        sessionStorage.setItem('user_role', role);
-        setUserRole(role);
+        if (u && u.role) {
+          const role = normalizeUserRole(u.role);
+          sessionStorage.setItem('user_role', role);
+          setUserRole(role);
+        }
       })
       .catch(() => {});
   }, []);
@@ -154,17 +156,25 @@ export default function Settings() {
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-slate-100 px-8 py-5 flex-shrink-0">
-        <h1 className="text-xl font-bold text-slate-900">Settings</h1>
+      <div className="bg-white border-b border-slate-100 px-4 sm:px-8 py-4 sm:py-5 flex-shrink-0">
+        <h1 className="text-lg sm:text-xl font-bold text-slate-900">Settings</h1>
         <p className="text-sm text-slate-400 mt-0.5">Manage your account and application preferences</p>
       </div>
 
+      {/* Mobile: Horizontal scrollable tabs */}
+      <div className="lg:hidden flex-shrink-0 bg-white border-b border-slate-100 overflow-x-auto scrollbar-none">
+        <div className="flex px-2 py-1 gap-0.5 min-w-max">
+          <SettingsSidebar active={activeSection} onChange={setActiveSection} userRole={userRole} horizontal />
+        </div>
+      </div>
+
       <div className="flex flex-1 min-h-0">
-        <div className="w-64 flex-shrink-0 bg-white border-r border-slate-100 p-4 overflow-y-auto">
+        {/* Desktop: Sidebar */}
+        <div className="hidden lg:block w-64 flex-shrink-0 bg-white border-r border-slate-100 p-4 overflow-y-auto">
           <SettingsSidebar active={activeSection} onChange={setActiveSection} userRole={userRole} />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-10 py-8 pb-16">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-10 py-4 sm:py-8 pb-16">
           {panels[activeSection] || (
             <div className="text-sm text-slate-400 text-center mt-20">Select a section from the sidebar.</div>
           )}

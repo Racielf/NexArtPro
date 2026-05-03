@@ -219,23 +219,140 @@ const entitiesProxy = new Proxy({}, {
 });
 
 // ─── Functions proxy ──────────────────────────────────────────────
-// Replaces base44.functions.FunctionName(params) with Supabase Edge Function calls
+// Replaces base44.functions.FunctionName(params) with Supabase Edge Function calls.
+// Supports TWO calling patterns:
+//   1. base44.functions.sendEstimateEmail(params)    → returns data directly
+//   2. base44.functions.invoke('sendEstimateEmail', params) → returns { data } (Supabase SDK shape)
 const functionsProxy = new Proxy({}, {
   get(_, functionName) {
+    // Pattern 2: base44.functions.invoke('functionName', params)
+    if (functionName === 'invoke') {
+      return async (fnName, params = {}) => {
+        const { data, error } = await supabase.functions.invoke(fnName, { body: params });
+        if (error) {
+          console.error(`[SupabaseData] Function ${fnName} error:`, error);
+          // Attach parsed response body so callers can extract code/message
+          const enriched = new Error(error.message || 'Edge Function error');
+          enriched.code = 'function_error';
+          try {
+            const body = typeof error.context?.json === 'function' ? await error.context.json() : (error.context || null);
+            enriched.data = body;
+          } catch { enriched.data = null; }
+          throw enriched;
+        }
+        return { data };
+      };
+    }
+    // Pattern 1: base44.functions.FunctionName(params)
     return async (params = {}) => {
       const { data, error } = await supabase.functions.invoke(functionName, { body: params });
       if (error) {
         console.error(`[SupabaseData] Function ${functionName} error:`, error);
-        throw error;
+        const enriched = new Error(error.message || 'Edge Function error');
+        enriched.code = 'function_error';
+        try {
+          const body = typeof error.context?.json === 'function' ? await error.context.json() : (error.context || null);
+          enriched.data = body;
+        } catch { enriched.data = null; }
+        throw enriched;
       }
       return data;
     };
   }
 });
 
+// ─── Integrations proxy ───────────────────────────────────────────
+// Drop-in replacement for base44.integrations.Core.{SendEmail, UploadFile, CreateFileSignedUrl, InvokeLLM}
+const integrationsCore = {
+  async SendEmail(params = {}) {
+    // Route through Resend via Edge Function
+    const { data, error } = await supabase.functions.invoke('sendEmail', { body: params });
+    if (error) {
+      console.error('[SupabaseData] SendEmail error:', error);
+      throw error;
+    }
+    return data || { success: true };
+  },
+
+  async UploadFile({ file }) {
+    if (!file) throw new Error('No file provided for upload');
+    const ext = file.name ? file.name.split('.').pop() : 'bin';
+    const path = `uploads/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+    if (error) {
+      console.error('[SupabaseData] UploadFile error:', error);
+      throw error;
+    }
+    const { data: urlData } = supabase.storage.from('documents').getPublicUrl(data.path);
+    return { file_url: urlData?.publicUrl || '' };
+  },
+
+  async CreateFileSignedUrl({ file_url, expiry_seconds = 3600 }) {
+    // Extract the storage path from the full URL
+    const bucketUrl = `${supabase.storageUrl || supabase.supabaseUrl}/storage/v1/object/public/documents/`;
+    const path = file_url?.replace(bucketUrl, '') || file_url;
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .createSignedUrl(path, expiry_seconds);
+    if (error) {
+      console.warn('[SupabaseData] CreateFileSignedUrl error:', error);
+      return { signed_url: file_url }; // Fallback to original URL
+    }
+    return { signed_url: data?.signedUrl || file_url };
+  },
+
+  async InvokeLLM(params = {}) {
+    // Stub — LLM calls not yet migrated; log and return empty
+    console.warn('[SupabaseData] InvokeLLM not yet implemented on Supabase, params:', Object.keys(params));
+    return { response: '' };
+  },
+};
+
+const integrationsProxy = { Core: integrationsCore };
+
+// ─── Auth proxy ───────────────────────────────────────────────────
+// Stub for base44.auth.me() / base44.auth.updateMe() used across the app.
+// Returns the current user from session/local storage until full Supabase Auth migration.
+const USER_PROFILE_KEY = 'nexartpro_user_profile';
+
+function getStoredUser() {
+  try {
+    const stored = localStorage.getItem(USER_PROFILE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  // Default admin user based on login
+  return {
+    id: 'admin',
+    email: 'admin@rcartconstruction.com',
+    role: sessionStorage.getItem('user_role') || 'admin',
+    name: sessionStorage.getItem('user_name') || 'Admin',
+  };
+}
+
+const authProxy = {
+  async me() {
+    return getStoredUser();
+  },
+  async updateMe(updates) {
+    const current = getStoredUser();
+    const updated = { ...current, ...updates };
+    localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updated));
+    return updated;
+  },
+  redirectToLogin(url) {
+    window.location.href = url || '/';
+  },
+};
+
 // ─── Main export ──────────────────────────────────────────────────
 // Maintains the same API shape as the old Base44 client
 export const base44 = {
   entities: entitiesProxy,
   functions: functionsProxy,
+  integrations: integrationsProxy,
+  auth: authProxy,
+  // asServiceRole — alias to regular entities (Supabase RLS + permissive policies handle access)
+  asServiceRole: { entities: entitiesProxy },
 };

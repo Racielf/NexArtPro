@@ -622,3 +622,201 @@
   .sidebar-bottom-item { font-size: 9px; }
   .sidebar-bottom-item svg { width: 18px; height: 18px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Mobile: stack everything vertically, reduce padding */
+@media (max-width: 767px) {
+  /* Dashboard clock — smaller on mobile */
+  .dash-clock {
+    padding: 6px 0 !important;
+  }
+  .dash-clock .text-3xl {
+    font-size: 1.5rem !important;
+  }
+  .dash-clock .text-\[10px\] {
+    font-size: 9px !important;
+  }
+
+  /* Dashboard topbar — stack KPIs */
+  .dash-topbar {
+    padding: 8px 12px !important;
+  }
+  .dash-topbar-inner {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+  .dash-topbar-brand {
+    width: 100%;
+    border-right: none !important;
+    border-bottom: 1px solid hsl(var(--border));
+    padding-bottom: 8px !important;
+    padding-right: 0 !important;
+    margin-bottom: 4px;
+  }
+  .dash-topbar-kpis {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px !important;
+    padding-bottom: 4px;
+  }
+  .dash-topbar-kpis::-webkit-scrollbar { display: none; }
+  .dash-topbar-actions {
+    width: 100%;
+    justify-content: center;
+    padding-top: 4px;
+    border-top: 1px solid hsl(var(--border));
+  }
+
+  /* Dashboard content — tighter padding */
+  .dash-content {
+    padding: 12px 10px !important;
+    gap: 12px !important;
+  }
+
+  /* Dashboard cards — full height auto */
+  .dash-content .grid {
+    min-height: auto !important;
+  }
+
+  /* Money Control — smaller metrics */
+  .money-control-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .money-control-grid .text-3xl {
+    font-size: 1.25rem !important;
+  }
+  .money-control-grid .text-2xl {
+    font-size: 1.1rem !important;
+  }
+}
+
+/* Tablet: optimize 2-column layouts */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .dash-content {
+    padding: 16px 14px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LIST PAGES RESPONSIVE (Estimates, WO, Invoices)
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  /* Page headers — stack title and action button */
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 16px 12px !important;
+  }
+  .page-header-title {
+    font-size: 20px !important;
+  }
+  .page-header-actions {
+    width: 100%;
+    display: flex;
+    justify-content: stretch;
+  }
+  .page-header-actions > * {
+    flex: 1;
+  }
+
+  /* Status summary cards — horizontal scroll */
+  .status-summary-row {
+    display: flex !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px !important;
+    padding: 0 12px 8px !important;
+  }
+  .status-summary-row::-webkit-scrollbar { display: none; }
+  .status-summary-row > * {
+    min-width: 140px;
+    flex-shrink: 0;
+  }
+
+  /* Search bars — full width */
+  .list-search {
+    margin: 0 12px !important;
+    max-width: none !important;
+  }
+
+  /* Table to card layout on mobile */
+  .list-table thead { display: none; }
+  .list-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    margin: 0 12px 8px;
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .list-table tbody td {
+    padding: 2px 0 !important;
+    border: none !important;
+  }
+
+  /* Invoice SLA cards — 2 columns */
+  .sla-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Calendar on WO page — reduce size */
+  .wo-calendar {
+    font-size: 12px !important;
+  }
+  .wo-calendar td, .wo-calendar th {
+    padding: 6px 4px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GENERAL CONTENT RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  /* App content padding on mobile */
+  .app-content {
+    padding: 0;
+  }
+  .app-content > div {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* Modals — full width on mobile */
+  .modal-overlay .modal,
+  [role="dialog"] > div {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 90vh !important;
+  }
+
+  /* Buttons — larger touch targets */
+  button, [role="button"], a[href] {
+    min-height: 36px;
+  }
+
+  /* Form inputs — larger on mobile */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="search"],
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px !important; /* prevents iOS zoom */
+  }
+}

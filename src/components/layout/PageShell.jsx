@@ -14,7 +14,7 @@ import React from 'react';
 export default function PageShell({ children, className = '', innerClassName = '' }) {
   return (
     <div className={`flex flex-col h-full overflow-y-auto ${className}`}>
-      <div className={`flex-1 p-6 space-y-5 max-w-screen-xl mx-auto w-full ${innerClassName}`}>
+      <div className={`flex-1 p-3 sm:p-6 space-y-3 sm:space-y-5 max-w-screen-xl mx-auto w-full ${innerClassName}`}>
         {children}
       </div>
     </div>

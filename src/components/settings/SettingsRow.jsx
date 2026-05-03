@@ -2,12 +2,12 @@ import React from 'react';
 
 export default function SettingsRow({ label, description, children, last = false }) {
   return (
-    <div className={`flex items-center justify-between px-5 py-4 gap-6 ${!last ? 'border-b border-slate-50' : ''}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-5 py-3 sm:py-4 gap-2 sm:gap-6 ${!last ? 'border-b border-slate-50' : ''}`}>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-800">{label}</p>
         {description && <p className="text-xs text-slate-400 mt-0.5">{description}</p>}
       </div>
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 w-full sm:w-auto">
         {children}
       </div>
     </div>
