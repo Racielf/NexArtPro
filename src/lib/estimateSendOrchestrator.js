@@ -130,9 +130,9 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
   }
   emailAttachments.push(...getSelectedClientAttachments(estimate, includedAttachmentIds));
 
-  // Enterprise guard: never send email without valid signing link
+  // Warn if signing link is missing but don't block the send
   if (!finalLink || !finalLink.includes('/sign-document?token=')) {
-    throw new Error('NexArtSign link generation failed: missing valid signing URL. Cannot send estimate without a working signature link.');
+    console.warn('[executeSend] NexArtSign link missing — email will be sent without signing link');
   }
 
   let emailRes;
