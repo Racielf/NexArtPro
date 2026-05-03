@@ -10,9 +10,9 @@ import GlobalMoneyBrainBanner from '@/components/finance/GlobalMoneyBrainBanner'
 export default function AppLayout() {
   useInactivityTimeout();
   return (
-    <div className="flex h-screen bg-background font-inter overflow-hidden">
+    <div className="app-layout">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="app-main-area">
         {/* ⚡ Instant Security Toasts */}
         <SecurityToastListener />
 
@@ -22,10 +22,10 @@ export default function AppLayout() {
         {/* 🔔 Global Security Banner */}
         <GlobalSecurityAlertBanner />
 
-        <header className="flex-shrink-0 h-12 bg-white border-b border-border flex items-center px-5">
+        <header className="app-topbar">
           <GlobalSearchBar />
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main className="app-content">
           <Outlet />
         </main>
       </div>

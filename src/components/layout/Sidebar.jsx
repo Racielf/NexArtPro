@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -21,6 +21,9 @@ import {
   LogOut,
   RotateCcw,
   FileSignature,
+  Menu,
+  X,
+  MoreHorizontal,
 } from 'lucide-react';
 import { isAdmin } from '@/lib/roleUtils';
 import { useAuth } from '@/lib/AuthContext';
@@ -69,6 +72,14 @@ const adminNavGroup = {
   ],
 };
 
+/* Bottom nav items for mobile — the 4 most-used + More */
+const bottomNavItems = [
+  { path: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { path: '/work-orders', label: 'WO', icon: ClipboardList },
+  { path: '/estimates', label: 'Estimates', icon: FileText },
+  { path: '/invoices', label: 'Invoices', icon: Receipt },
+];
+
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -78,71 +89,163 @@ export default function Sidebar() {
   const visibleNavGroups = canAccessAdmin ? [...navGroups, adminNavGroup] : navGroups;
   const sidebarLogoUrl = cc.logo_url || appConfig.company.logo_url || '';
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close sidebar on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Prevent scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
+
+  const isBottomNavActive = (path) => location.pathname === path;
+
   return (
-    <div className="w-[224px] flex-shrink-0 h-screen flex flex-col" style={{ background: '#1a2233', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-      <div className="px-4 pt-5 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="flex items-center gap-3">
+    <>
+      {/* ═══════════════════════════════════════ */}
+      {/* MOBILE TOP BAR — visible on < lg only  */}
+      {/* ═══════════════════════════════════════ */}
+      <div className="sidebar-mobile-topbar">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="sidebar-hamburger"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <div className="sidebar-mobile-brand">
           {sidebarLogoUrl ? (
-            <div className="w-8 h-8 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
-              <img src={sidebarLogoUrl} alt="Company logo" className="max-w-full max-h-full object-contain" />
-            </div>
+            <img src={sidebarLogoUrl} alt="Logo" className="sidebar-mobile-logo" />
           ) : (
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#2563EB' }}>
-              <Wrench className="w-4 h-4 text-white" />
+            <div className="sidebar-mobile-logo-fallback">
+              <Wrench className="w-3.5 h-3.5 text-white" />
             </div>
           )}
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-[13px] leading-tight truncate" style={{ color: '#f1f5f9' }}>{cc.name || appConfig.appName}</p>
-            <p className="text-[11px] leading-tight mt-0.5 truncate" style={{ color: 'rgba(148,163,184,0.7)' }}>{cc.displayName || appConfig.company.displayName}</p>
+          <span className="sidebar-mobile-name">{cc.name || appConfig.appName}</span>
+        </div>
+        <div style={{ width: 40 }} /> {/* spacer for centering */}
+      </div>
+
+      {/* ═══════════════════════════════════════ */}
+      {/* MOBILE OVERLAY                          */}
+      {/* ═══════════════════════════════════════ */}
+      {mobileOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* SIDEBAR — slides in on mobile           */}
+      {/* ═══════════════════════════════════════ */}
+      <div className={`sidebar-container ${mobileOpen ? 'sidebar-open' : ''}`}>
+        {/* Close button — mobile only */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="sidebar-close-btn"
+          aria-label="Close menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Brand */}
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-inner">
+            {sidebarLogoUrl ? (
+              <div className="sidebar-brand-logo">
+                <img src={sidebarLogoUrl} alt="Company logo" className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : (
+              <div className="sidebar-brand-logo-fallback">
+                <Wrench className="w-4 h-4 text-white" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="sidebar-brand-name">{cc.name || appConfig.appName}</p>
+              <p className="sidebar-brand-sub">{cc.displayName || appConfig.company.displayName}</p>
+            </div>
           </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="sidebar-nav">
+          {visibleNavGroups.map((group, gi) => (
+            <div key={gi} className={gi > 0 ? 'mt-5' : ''}>
+              {group.label && <p className="sidebar-group-label">{group.label}</p>}
+              <div className="space-y-0.5">
+                {group.items.map(item => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                    >
+                      <Icon className="sidebar-link-icon" />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="sidebar-footer">
+          <Link
+            to="/settings"
+            className={`sidebar-link ${location.pathname === '/settings' ? 'sidebar-link-active' : ''}`}
+          >
+            <Settings className="sidebar-link-icon" />
+            <span>Settings</span>
+          </Link>
+          <button
+            onClick={() => logout(navigate)}
+            className="sidebar-link sidebar-link-logout"
+          >
+            <LogOut className="sidebar-link-icon" />
+            <span>Logout</span>
+          </button>
         </div>
       </div>
 
-      <nav className="flex-1 px-2.5 py-3 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-        {visibleNavGroups.map((group, gi) => (
-          <div key={gi} className={gi > 0 ? 'mt-5' : ''}>
-            {group.label && <p className="text-[10px] font-bold uppercase tracking-[0.12em] px-3 mb-2" style={{ color: 'rgba(100,116,139,0.8)' }}>{group.label}</p>}
-            <div className="space-y-0.5">
-              {group.items.map(item => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    style={isActive ? { background: 'rgba(37,99,235,0.18)', color: '#93c5fd', borderLeft: '2px solid #3b82f6', paddingLeft: '10px' } : { color: 'rgba(148,163,184,0.85)', borderLeft: '2px solid transparent', paddingLeft: '10px' }}
-                    className={`flex items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${isActive ? '' : 'hover:bg-white/[0.05] hover:text-slate-200'}`}
-                  >
-                    <Icon className="w-[15px] h-[15px] flex-shrink-0" style={{ color: isActive ? '#60a5fa' : 'rgba(100,116,139,0.9)', strokeWidth: 1.75 }} />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      <div className="flex-shrink-0 px-2.5 py-3 space-y-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <Link
-          to="/settings"
-          style={location.pathname === '/settings' ? { background: 'rgba(37,99,235,0.18)', color: '#93c5fd', borderLeft: '2px solid #3b82f6', paddingLeft: '10px' } : { color: 'rgba(148,163,184,0.85)', borderLeft: '2px solid transparent', paddingLeft: '10px' }}
-          className={`flex items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${location.pathname === '/settings' ? '' : 'hover:bg-white/[0.05] hover:text-slate-200'}`}
-        >
-          <Settings className="w-[15px] h-[15px] flex-shrink-0" style={{ color: location.pathname === '/settings' ? '#60a5fa' : 'rgba(100,116,139,0.9)', strokeWidth: 1.75 }} />
-          <span>Settings</span>
-        </Link>
+      {/* ═══════════════════════════════════════ */}
+      {/* MOBILE BOTTOM NAV                       */}
+      {/* ═══════════════════════════════════════ */}
+      <nav className="sidebar-bottom-nav">
+        {bottomNavItems.map(item => {
+          const Icon = item.icon;
+          const active = isBottomNavActive(item.path);
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`sidebar-bottom-item ${active ? 'sidebar-bottom-item-active' : ''}`}
+            >
+              <Icon className="w-5 h-5" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
         <button
-          onClick={() => logout(navigate)}
-          className="flex w-full items-center gap-3 pr-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 hover:bg-red-500/10"
-          style={{ color: 'rgba(148,163,184,0.7)', paddingLeft: '12px' }}
-          onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
-          onMouseLeave={e => e.currentTarget.style.color = 'rgba(148,163,184,0.7)'}
+          onClick={() => setMobileOpen(true)}
+          className="sidebar-bottom-item"
         >
-          <LogOut className="w-[15px] h-[15px] flex-shrink-0" style={{ strokeWidth: 1.75 }} />
-          <span>Logout</span>
+          <MoreHorizontal className="w-5 h-5" />
+          <span>More</span>
         </button>
-      </div>
-    </div>
+      </nav>
+    </>
   );
 }
