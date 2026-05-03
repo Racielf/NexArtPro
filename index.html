@@ -23,7 +23,9 @@
         var p = params.get('p');
         if (p) {
           var q = params.get('q');
-          var restored = p + (q ? '?' + q : '') + window.location.hash;
+          // Preserve the base path (/NexArtPro/) when restoring
+          var base = window.location.pathname.replace(/\/$/, '');
+          var restored = base + p + (q ? '?' + q : '') + window.location.hash;
           window.history.replaceState(null, '', restored);
         }
       })();
