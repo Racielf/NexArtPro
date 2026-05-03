@@ -130,6 +130,11 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
   }
   emailAttachments.push(...getSelectedClientAttachments(estimate, includedAttachmentIds));
 
+  // Enterprise guard: never send email without valid signing link
+  if (!finalLink || !finalLink.includes('/sign-document?token=')) {
+    throw new Error('NexArtSign link generation failed: missing valid signing URL. Cannot send estimate without a working signature link.');
+  }
+
   let emailRes;
   try {
     emailRes = await base44.functions.invoke('sendEstimateEmail', {
