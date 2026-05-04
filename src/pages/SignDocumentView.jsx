@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import {
@@ -764,32 +764,46 @@ export default function SignDocumentView() {
     </div>
   );
 
-  const renderReview = () => (
-    <div style={{ ...S.card, maxWidth:1100 }}>
-      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-        <Eye style={{ width:20, height:20, color:'#1e40af' }} />
-        <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Review your document</h2>
-      </div>
-      <p style={{ ...S.trust, marginBottom:16 }}>Please review the full document carefully before signing.</p>
-      {pdfUrl ? (
-        <div style={{ borderRadius:12, overflow:'hidden', border:'1px solid #e2e8f0', marginBottom:20, background:'#fff' }}>
-          <iframe src={`${pdfUrl}#toolbar=1&navpanes=0&zoom=page-width`} title="Document preview" style={{ width:'100%', minHeight:'80vh', border:'none', background:'#fff' }} />
+  const isMobile = typeof window !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  const renderReview = () => {
+    const googleViewerUrl = pdfUrl ? `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true` : '';
+    const viewerSrc = isMobile ? googleViewerUrl : `${pdfUrl}#toolbar=1&navpanes=0&zoom=page-width`;
+
+    return (
+      <div style={{ ...S.card, maxWidth:1100 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+          <Eye style={{ width:20, height:20, color:'#1e40af' }} />
+          <h2 style={{ fontSize:18, fontWeight:700, color:'#0f172a' }}>Review your document</h2>
         </div>
-      ) : (
-        <div style={{ textAlign:'center', padding:'60px 20px', background:'#f8fafc', borderRadius:12, border:'1px solid #e2e8f0', marginBottom:20 }}>
-          <FileCheck style={{ width:48, height:48, color:'#94a3b8', margin:'0 auto 16px' }} />
-          <p style={{ fontSize:15, color:'#475569', marginBottom:4, fontWeight:600 }}>We could not load the document preview.</p>
-          <p style={{ fontSize:13, color:'#94a3b8' }}>Please contact the sender.</p>
+        <p style={{ ...S.trust, marginBottom:16 }}>Please review the full document carefully before signing.</p>
+        {pdfUrl ? (
+          <>
+            <div style={{ borderRadius:12, overflow:'hidden', border:'1px solid #e2e8f0', marginBottom:12, background:'#fff' }}>
+              <iframe src={viewerSrc} title="Document preview" style={{ width:'100%', minHeight: isMobile ? '70vh' : '80vh', border:'none', background:'#fff' }} />
+            </div>
+            <div style={{ textAlign:'center', marginBottom:20 }}>
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, ...S.outline, display:'inline-flex', textDecoration:'none', fontSize:13 }}>
+                <ExternalLink style={{ width:14, height:14 }} /> Open PDF in new tab
+              </a>
+            </div>
+          </>
+        ) : (
+          <div style={{ textAlign:'center', padding:'60px 20px', background:'#f8fafc', borderRadius:12, border:'1px solid #e2e8f0', marginBottom:20 }}>
+            <FileCheck style={{ width:48, height:48, color:'#94a3b8', margin:'0 auto 16px' }} />
+            <p style={{ fontSize:15, color:'#475569', marginBottom:4, fontWeight:600 }}>We could not load the document preview.</p>
+            <p style={{ fontSize:13, color:'#94a3b8' }}>Please contact the sender.</p>
+          </div>
+        )}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
+          <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
+          <button onClick={() => signingFields.length > 0 ? goNext() : skipToStep('consent')} style={{ ...S.btn, ...S.primary }}>
+            I reviewed this document &mdash; Continue <ArrowRight style={{ width:16, height:16 }} />
+          </button>
         </div>
-      )}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
-        <button onClick={() => signingFields.length > 0 ? goNext() : skipToStep('consent')} style={{ ...S.btn, ...S.primary }}>
-          I reviewed this document &mdash; Continue <ArrowRight style={{ width:16, height:16 }} />
-        </button>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderFields = () => (
     <div style={S.card}>
@@ -1012,13 +1026,18 @@ export default function SignDocumentView() {
         {renderContent()}
 
         {/* Powered-by badge below every card */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginTop:28, opacity:0.7 }}>
-          <div style={{ width:22, height:22, borderRadius:6, background:'linear-gradient(135deg,#1e40af,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <ShieldCheck style={{ width:13, height:13, color:'#fff' }} />
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginTop:32, padding:'16px 0' }}>
+          <div style={{ width:32, height:32, borderRadius:9, background:'linear-gradient(135deg,#1e40af,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <ShieldCheck style={{ width:18, height:18, color:'#fff' }} />
           </div>
-          <p style={{ fontSize:12, color:'#94a3b8', letterSpacing:'0.03em' }}>
-            Powered by <strong style={{ color:'#64748b' }}>NexArt Pro</strong> &middot; NexArtSign&trade; Secure Document Signing
-          </p>
+          <div>
+            <p style={{ fontSize:13, color:'#475569', fontWeight:600, lineHeight:1.3 }}>
+              Powered by <strong style={{ color:'#1e40af' }}>NexArt Pro</strong>
+            </p>
+            <p style={{ fontSize:11, color:'#94a3b8', lineHeight:1.3 }}>
+              NexArtSign&trade; Secure Document Signing
+            </p>
+          </div>
         </div>
       </div>
     </div>
