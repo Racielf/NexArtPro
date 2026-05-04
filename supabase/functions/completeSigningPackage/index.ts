@@ -232,7 +232,7 @@ async function createCompletionCertificate(entities: any, pkg: any, signer: stri
   return cert;
 }
 
-async function closePackageAsSigned(entities: any, supabaseAdmin: any, pkg: any, signer: string, signerEmail: string, now: string, ip: string, ua: string) {
+async function closePackageAsSigned(entities: any, supabaseAdmin: any, pkg: any, signer: string, signerEmail: string, now: string, ip: string, ua: string, sigData?: { signature_method?: string; signature_value?: string; signature_image_data_url?: string }) {
   const frozenPdf = await freezeSignedPdf(supabaseAdmin, pkg, now);
   if (!frozenPdf.final_pdf_url || !frozenPdf.final_pdf_hash) {
     throw new Error('Final PDF lock failed: finalized PDF evidence is incomplete.');
@@ -258,6 +258,9 @@ async function closePackageAsSigned(entities: any, supabaseAdmin: any, pkg: any,
       final_pdf_frozen: true,
       final_pdf_frozen_at: now,
       token_revoked_at: now,
+      signature_method: sigData?.signature_method || 'typed',
+      signature_value: sigData?.signature_value || signer,
+      has_drawn_signature: Boolean(sigData?.signature_image_data_url),
     },
   });
 
@@ -338,7 +341,10 @@ Deno.serve(async (req) => {
     const supabaseAdmin = createAdminClient();
     const entities = supabaseEntities(supabaseAdmin);
     const supabase = createSupabaseAdmin();
-    const { token, action, signer_name, declined_reason, fingerprint } = await req.json();
+    const body = await req.json();
+    const { token, action, signer_name, declined_reason, fingerprint,
+            field_values, field_config_version,
+            signature_method, signature_value, signature_image_data_url } = body;
 
     if (!token || !action) {
       return json({ error: 'Missing token or action', code: 'invalid_request' }, 400);
@@ -467,8 +473,9 @@ Deno.serve(async (req) => {
       return json({ error: 'Invalid action', code: 'invalid_action' }, 400);
     }
 
-    // ── APPROVE — OTP required first ────────────────────────────────────
-    if (!otpVerificationStatus(otpState, preflight.tokenHash, preflight.fingerprint)) {
+    // ── APPROVE — OTP check (skip if not configured / simple mode) ─────
+    const pkgOtpRequired = Boolean(pkg.otp_required);
+    if (pkgOtpRequired && !otpVerificationStatus(otpState, preflight.tokenHash, preflight.fingerprint)) {
       return json({ error: 'Verification code required before signing', code: 'otp_required' }, 409);
     }
 
@@ -536,7 +543,8 @@ Deno.serve(async (req) => {
       // All signed — close the package
       await persistOtpState(supabaseAdmin, context, null);
       const { cert, finalizedPackage } = await closePackageAsSigned(
-        entities, supabaseAdmin, pkg, signer, matchedParticipant.email, now, ip, ua
+        entities, supabaseAdmin, pkg, signer, matchedParticipant.email, now, ip, ua,
+        { signature_method, signature_value, signature_image_data_url }
       );
 
       await writeSecurityAuditLog(supabase, {
@@ -568,6 +576,12 @@ Deno.serve(async (req) => {
       document_id: pkg.document_id, event_type: 'signed',
       actor_name: signer, actor_email: pkg.signer_email,
       ip_address: ip, user_agent: ua, created_at: now,
+      metadata: {
+        signature_method: signature_method || 'typed',
+        signature_value: signature_value || signer,
+        has_drawn_signature: Boolean(signature_image_data_url),
+        field_count: Array.isArray(field_values) ? field_values.length : 0,
+      },
     });
 
     await recordTokenAttempt(supabase, {
@@ -577,7 +591,8 @@ Deno.serve(async (req) => {
 
     await persistOtpState(supabaseAdmin, context, null);
     const { cert, finalizedPackage } = await closePackageAsSigned(
-      entities, supabaseAdmin, pkg, signer, pkg.signer_email, now, ip, ua
+      entities, supabaseAdmin, pkg, signer, pkg.signer_email, now, ip, ua,
+      { signature_method, signature_value, signature_image_data_url }
     );
 
     await writeSecurityAuditLog(supabase, {

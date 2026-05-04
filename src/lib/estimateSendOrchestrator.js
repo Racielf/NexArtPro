@@ -130,6 +130,11 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
   }
   emailAttachments.push(...getSelectedClientAttachments(estimate, includedAttachmentIds));
 
+  // Warn if signing link is missing but don't block the send
+  if (!finalLink || !finalLink.includes('/sign-document?token=')) {
+    console.warn('[executeSend] NexArtSign link missing — email will be sent without signing link');
+  }
+
   let emailRes;
   try {
     emailRes = await base44.functions.invoke('sendEstimateEmail', {

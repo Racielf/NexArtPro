@@ -29,7 +29,9 @@ function buildPackageToken(documentId) {
 
 function buildSigningUrl(rawToken) {
   if (!rawToken) return '';
-  return `${window.location.origin}/sign-document?token=${encodeURIComponent(rawToken)}`;
+
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  return `${window.location.origin}${base}/sign-document?token=${encodeURIComponent(rawToken)}`;
 }
 
 async function buildTokenFields(rawToken, issuedAt = new Date().toISOString()) {
@@ -155,7 +157,7 @@ async function issueSigningAccessForPackage({ pkg }) {
   try {
     // Call Edge Function — token generation and hashing happen server-side for security
     const { data, error } = await supabase.functions.invoke('issueSigningAccessLink', {
-      body: { signing_package_id: pkg.id, app_base_url: window.location.origin },
+      body: { signing_package_id: pkg.id, app_base_url: `${window.location.origin}${(import.meta.env.BASE_URL || '/').replace(/\/$/, '')}` },
     });
 
     if (error) throw error;
