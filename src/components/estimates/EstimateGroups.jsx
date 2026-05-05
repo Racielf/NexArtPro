@@ -37,7 +37,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
 const emptyItem = () => normalizeLineItem({ id: uid() });
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
-const GRID_COLS = 'minmax(20px,24px) minmax(220px,3fr) minmax(52px,64px) minmax(60px,78px) minmax(96px,118px) minmax(92px,118px) minmax(24px,28px)';
+const GRID_COLS = 'minmax(24px,28px) minmax(360px,1fr) minmax(80px,100px) minmax(100px,120px) minmax(120px,150px) minmax(120px,150px) minmax(28px,32px)';
 
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null }) {
   const [expanded, setExpanded] = useState(!item.service_name || !item.description);
@@ -81,7 +81,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   return (
     <div className={`bg-white border-b border-slate-200 last:border-0 transition-colors group/row ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}>
       <div className="grid items-center gap-2 px-3 py-4" style={{ gridTemplateColumns: GRID_COLS }}>
-        <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing flex justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+        <button className="text-slate-400 hover:text-slate-700 cursor-grab active:cursor-grabbing flex justify-center opacity-100 transition-colors">
           <GripVertical className="w-3.5 h-3.5" />
         </button>
 
@@ -130,11 +130,11 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
               }
             }}
             placeholder="Search service from Price Book…"
-            className="h-8 w-full text-[14px] font-semibold text-slate-900 border-transparent hover:border-slate-200 focus:border-blue-400 bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-2 focus:ring-blue-500/15 transition placeholder:text-slate-400"
+            className="h-8 w-full text-[15px] font-semibold leading-6 text-slate-950 border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-2 focus:ring-blue-500/20 transition placeholder:text-slate-400"
           />
 
           {!expanded && item.description && (
-            <p className="text-sm text-slate-500 px-2 leading-snug truncate mt-1 font-normal">{item.description}</p>
+            <p className="text-[14px] text-slate-700 px-2 leading-5 truncate mt-1 font-normal">{item.description}</p>
           )}
           {!expanded && (
             <button onClick={() => setExpanded(true)} className="text-[10px] text-slate-400 hover:text-primary px-2 mt-0.5 font-medium opacity-0 group-hover/row:opacity-100 transition-opacity">
@@ -204,7 +204,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           {isPreview ? (
             <p className="text-sm text-slate-400 px-1 py-1 leading-relaxed">{item.description || '—'}</p>
           ) : (
-            <Input value={item.description} onChange={e => update('description', e.target.value)} placeholder="Service description / scope details…" className="h-8 text-sm border-slate-100 bg-slate-50/60 text-slate-500 rounded-lg focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 placeholder:text-slate-400 focus:bg-white transition" />
+            <Input value={item.description} onChange={e => update('description', e.target.value)} placeholder="Service description / scope details…" className="h-8 text-sm border border-slate-300 bg-white text-slate-900 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400 transition" />
           )}
           <div className="flex items-center gap-4">
             <span className="text-[11px] text-slate-400">{item.taxable !== false ? 'Taxable' : 'Not taxable'}</span>
