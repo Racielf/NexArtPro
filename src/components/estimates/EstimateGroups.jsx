@@ -30,6 +30,7 @@ import OtherCostsSection from '@/components/estimates/OtherCostsSection';
 import { persistNewServiceToCatalog } from '@/lib/persistNewService';
 import { calculateRiskScore } from '@/lib/estimateRiskScoring';
 import RiskScorePanel from '@/components/estimates/internal/RiskScorePanel';
+import FinancialAnalysisPanel from '@/components/estimates/internal/FinancialAnalysisPanel';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
@@ -694,6 +695,17 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
           </div>
         </div>
       </div>
+
+      {!isPreview && (
+        <FinancialAnalysisPanel
+          servicesSubtotal={servicesSubtotal}
+          totalCost={totalCost}
+          grossMargin={grossMargin}
+          grossMarginPct={grossMarginPct}
+          netProfit={netProfit}
+          netProfitPct={netProfitPct}
+        />
+      )}
 
       {!isPreview && (
         <div className="bg-white rounded-xl border border-slate-100 overflow-hidden mb-5" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
