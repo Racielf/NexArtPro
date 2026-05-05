@@ -152,5 +152,7 @@ async function seed() {
 
 seed().catch(err => {
   console.error('❌ Seed failed:', err);
-  process.exit(1);
+  if (typeof globalThis !== 'undefined' && globalThis.process?.exit) {
+    globalThis.process.exit(1);
+  }
 });
