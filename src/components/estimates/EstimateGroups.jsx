@@ -81,12 +81,12 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   return (
     <div className={`bg-white border-b border-slate-200 last:border-0 transition-colors group/row ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}>
       <div className="grid items-center gap-2 px-3 py-4" style={{ gridTemplateColumns: GRID_COLS }}>
-        <button className="text-slate-400 hover:text-slate-700 cursor-grab active:cursor-grabbing flex justify-center opacity-100 transition-colors">
+        <button className="text-slate-700 hover:text-slate-900 cursor-grab active:cursor-grabbing flex justify-center transition-colors">
           <GripVertical className="w-3.5 h-3.5" />
         </button>
 
         <div className="min-w-0">
-          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-0 leading-none">Service</p>
+          <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest px-2 mb-0 leading-none">Service</p>
           <SmartServicePicker
             value={item.service_name}
             onChange={v => update('service_name', v)}
@@ -130,14 +130,14 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
               }
             }}
             placeholder="Search service from Price Book…"
-            className="h-8 w-full text-[15px] font-semibold leading-6 text-slate-950 border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-2 focus:ring-blue-500/20 transition placeholder:text-slate-400"
+            className="h-8 w-full text-[15px] font-semibold leading-6 text-slate-950 border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-2 focus:ring-blue-500/20 transition placeholder:text-slate-700"
           />
 
           {!expanded && item.description && (
             <p className="text-[14px] text-slate-700 px-2 leading-5 truncate mt-1 font-normal">{item.description}</p>
           )}
           {!expanded && (
-            <button onClick={() => setExpanded(true)} className="text-[10px] text-slate-400 hover:text-primary px-2 mt-0.5 font-medium opacity-0 group-hover/row:opacity-100 transition-opacity">
+            <button onClick={() => setExpanded(true)} className="text-[10px] text-slate-700 hover:text-primary px-2 mt-0.5 font-medium transition-colors">
               {item.description ? 'edit' : '+ desc'}
             </button>
           )}
@@ -153,9 +153,9 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         )}
 
         {isPreview ? (
-          <div className="h-7 text-[11px] flex items-center justify-center text-slate-500 font-medium">{item.unit}</div>
+          <div className="h-7 text-[11px] flex items-center justify-center text-slate-700 font-medium">{item.unit}</div>
         ) : (
-          <select value={item.unit} onChange={e => update('unit', e.target.value)} className="h-7 text-[11px] border border-slate-200 rounded-md px-1.5 bg-white text-slate-500 w-full font-medium focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 focus:outline-none">
+          <select value={item.unit} onChange={e => update('unit', e.target.value)} className="h-7 text-[11px] border border-slate-200 rounded-md px-1.5 bg-white text-slate-700 w-full font-medium focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 focus:outline-none">
             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
           </select>
         )}
@@ -166,7 +166,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
               <div className={`h-7 px-2 text-sm text-right font-semibold tabular-nums flex items-center justify-end w-full ${isLoss ? 'text-red-600' : isZeroProfit ? 'text-amber-600' : 'text-slate-800'}`}>${price.toFixed(2)}</div>
             ) : (
               <>
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-700 pointer-events-none">$</span>
                 <Input
                   type="number"
                   step="0.01"
@@ -186,7 +186,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         </div>
 
         {!isPreview ? (
-          <button onClick={() => onRemove(item.id)} className="flex justify-center p-1 rounded text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover/row:opacity-100">
+          <button onClick={() => onRemove(item.id)} className="flex justify-center p-1 rounded text-slate-700 hover:text-red-600 hover:bg-red-50 transition-colors">
             <X className="w-3 h-3" />
           </button>
         ) : <div />}
@@ -200,21 +200,21 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
 
       {expanded && (
         <div className="px-10 pb-3 pt-0.5 space-y-1.5">
-          <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest leading-none">Description</p>
+          <p className="text-[9px] font-semibold text-slate-700 uppercase tracking-widest leading-none">Description</p>
           {isPreview ? (
-            <p className="text-sm text-slate-400 px-1 py-1 leading-relaxed">{item.description || '—'}</p>
+            <p className="text-sm text-slate-700 px-1 py-1 leading-relaxed">{item.description || '—'}</p>
           ) : (
-            <Input value={item.description} onChange={e => update('description', e.target.value)} placeholder="Service description / scope details…" className="h-8 text-sm border border-slate-300 bg-white text-slate-900 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400 transition" />
+            <Input value={item.description} onChange={e => update('description', e.target.value)} placeholder="Service description / scope details…" className="h-8 text-sm border border-slate-300 bg-white text-slate-900 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-700 transition" />
           )}
           <div className="flex items-center gap-4">
-            <span className="text-[11px] text-slate-400">{item.taxable !== false ? 'Taxable' : 'Not taxable'}</span>
+            <span className="text-[11px] text-slate-700">{item.taxable !== false ? 'Taxable' : 'Not taxable'}</span>
             {!isPreview && (
-              <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer select-none hover:text-slate-600 transition-colors">
+              <label className="flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer select-none hover:text-slate-900 transition-colors">
                 <input type="checkbox" checked={item.taxable !== false} onChange={e => update('taxable', e.target.checked)} className="rounded accent-primary" />
                 Toggle taxable
               </label>
             )}
-            <button onClick={() => setExpanded(false)} className="text-[11px] text-slate-400 hover:text-slate-600 transition-colors">↑ collapse</button>
+            <button onClick={() => setExpanded(false)} className="text-[11px] text-slate-700 hover:text-slate-900 transition-colors">↑ collapse</button>
           </div>
         </div>
       )}

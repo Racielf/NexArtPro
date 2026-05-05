@@ -35,14 +35,14 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
 
   return (
     <div className="flex items-center gap-2 text-[13px] text-slate-700 font-medium px-2 flex-wrap">
-      <Info className="w-3 h-3 text-slate-400 flex-shrink-0" />
-      <span className="text-slate-400">Cost</span>
+      <Info className="w-3 h-3 text-slate-700 flex-shrink-0" />
+      <span className="text-slate-700">Cost</span>
       <span className="font-semibold text-slate-700 tabular-nums">{fmt(lineCost)}</span>
-      <span className="text-slate-300">·</span>
-      <span className="text-slate-400">Profit</span>
+      <span className="text-slate-700">·</span>
+      <span className="text-slate-700">Profit</span>
       <span className="font-semibold text-slate-700 tabular-nums">{fmt(profit)}</span>
-      <span className="text-slate-300">·</span>
-      <span className="text-slate-400">Margin</span>
+      <span className="text-slate-700">·</span>
+      <span className="text-slate-700">Margin</span>
       <span className="font-semibold text-slate-700 tabular-nums">{marginPct.toFixed(1)}%</span>
       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-bold ${badge.cls}`}>
         <span className={`w-1 h-1 rounded-full ${badge.dot}`} />
