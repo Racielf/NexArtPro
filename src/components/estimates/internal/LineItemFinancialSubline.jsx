@@ -34,7 +34,7 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
   }
 
   return (
-    <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-1.5 px-2 flex-wrap">
+    <div className="flex items-center gap-2 text-[10px] text-slate-500 px-2 flex-wrap">
       <Info className="w-3 h-3 text-slate-400 flex-shrink-0" />
       <span className="text-slate-400">Cost</span>
       <span className="font-semibold text-slate-700 tabular-nums">{fmt(lineCost)}</span>

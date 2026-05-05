@@ -79,14 +79,14 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   const negMeta = !isPreview ? getNegotiationMeta(cost, price) : { status: 'none' };
 
   return (
-    <div className={`border-b border-slate-100 last:border-0 transition-colors group/row ${isFixed ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-200' : expanded ? 'bg-blue-50/10' : 'hover:bg-slate-50/70'}`}>
-      <div className="grid items-center gap-2 px-4 py-2.5" style={{ gridTemplateColumns: GRID_COLS }}>
+    <div className={`border-b border-slate-200 last:border-0 transition-colors group/row ${isFixed ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-200' : expanded ? 'bg-blue-50/10' : 'hover:bg-slate-50/70'}`}>
+      <div className="grid items-center gap-2 px-3 py-1.5" style={{ gridTemplateColumns: GRID_COLS }}>
         <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing flex justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
           <GripVertical className="w-3.5 h-3.5" />
         </button>
 
         <div className="min-w-0">
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-0.5 leading-none">Service</p>
+          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-0 leading-none">Service</p>
           <SmartServicePicker
             value={item.service_name}
             onChange={v => update('service_name', v)}
@@ -130,7 +130,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
               }
             }}
             placeholder="Search service from Price Book…"
-            className="h-9 w-full text-[13px] font-medium text-slate-800 border-transparent hover:border-slate-200 focus:border-blue-400 bg-transparent hover:bg-white focus:bg-white px-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/15 transition placeholder:text-slate-300"
+            className="h-7 w-full text-[13px] font-semibold text-slate-800 border-transparent hover:border-slate-200 focus:border-blue-400 bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-2 focus:ring-blue-500/15 transition placeholder:text-slate-300"
           />
 
           {!expanded && item.description && (
@@ -147,15 +147,15 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         </div>
 
         {isPreview ? (
-          <div className="h-8 text-sm text-center font-semibold tabular-nums flex items-center justify-center text-slate-700">{item.quantity}</div>
+          <div className="h-7 text-sm text-center font-semibold tabular-nums flex items-center justify-center text-slate-700">{item.quantity}</div>
         ) : (
-          <Input type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)} className="h-8 text-sm text-center border-slate-200 font-semibold px-1 w-full tabular-nums rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" min={0} />
+          <Input type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)} className="h-7 text-sm text-center border-slate-200 font-semibold px-1 w-full tabular-nums rounded-md focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" min={0} />
         )}
 
         {isPreview ? (
-          <div className="h-8 text-[11px] flex items-center justify-center text-slate-500 font-medium">{item.unit}</div>
+          <div className="h-7 text-[11px] flex items-center justify-center text-slate-500 font-medium">{item.unit}</div>
         ) : (
-          <select value={item.unit} onChange={e => update('unit', e.target.value)} className="h-8 text-[11px] border border-slate-200 rounded-lg px-1.5 bg-white text-slate-500 w-full font-medium focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 focus:outline-none">
+          <select value={item.unit} onChange={e => update('unit', e.target.value)} className="h-7 text-[11px] border border-slate-200 rounded-md px-1.5 bg-white text-slate-500 w-full font-medium focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 focus:outline-none">
             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
           </select>
         )}
@@ -163,7 +163,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         <div className="min-w-0 overflow-hidden">
           <div className="relative flex items-center">
             {isPreview ? (
-              <div className={`h-8 px-2 text-sm text-right font-semibold tabular-nums flex items-center justify-end w-full ${isLoss ? 'text-red-600' : isZeroProfit ? 'text-amber-600' : 'text-slate-800'}`}>${price.toFixed(2)}</div>
+              <div className={`h-7 px-2 text-sm text-right font-semibold tabular-nums flex items-center justify-end w-full ${isLoss ? 'text-red-600' : isZeroProfit ? 'text-amber-600' : 'text-slate-800'}`}>${price.toFixed(2)}</div>
             ) : (
               <>
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
@@ -173,7 +173,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   value={item.unit_price}
                   onChange={e => update('unit_price', e.target.value)}
                   onBlur={() => handlePriceBlur('unit_price')}
-                  className="h-8 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-lg border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 text-slate-800"
+                  className="h-7 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-md border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 text-slate-800"
                   min={0}
                 />
               </>
@@ -192,7 +192,11 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         ) : <div />}
       </div>
 
-      {!isPreview && <LineItemFinancialSubline quantity={item.quantity} unitPrice={item.unit_price} unitCost={item.unit_cost} />}
+      {!isPreview && (
+        <div className="px-3 pb-1.5 -mt-0.5">
+          <LineItemFinancialSubline quantity={item.quantity} unitPrice={item.unit_price} unitCost={item.unit_cost} />
+        </div>
+      )}
 
       {expanded && (
         <div className="px-10 pb-3 pt-0.5 space-y-1.5">
@@ -288,7 +292,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             <div />
           </div>
 
-          <div className="divide-y divide-slate-100/80 min-h-[40px]">
+          <div className="divide-y divide-slate-200 min-h-[40px]">
             {group.items.length === 0 && <div className="py-6 text-center text-slate-300 text-xs">No items yet — click below to add</div>}
             {group.items.map(item => (
               <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} isPreview={isPreview} pricingWarning={pricingWarningsMap?.[item.id] || null} />
