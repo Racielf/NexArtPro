@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Clock, User, Calendar } from 'lucide-react';
+import { Eye, Clock, User, Calendar, TrendingUp } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { getFollowUpCategory } from '@/lib/salesPipeline';
 
@@ -52,6 +52,43 @@ export default function SalesEstimateCard({ estimate }) {
       {estimate.title && (
         <p className="text-xs text-slate-500 truncate mb-2">{estimate.title}</p>
       )}
+
+      {/* Financial row: margin % + profit + health badge */}
+      {(() => {
+        const marginPct = Number(estimate.gross_margin_pct);
+        const profit = Number(estimate.net_profit);
+        const hasMargin = !Number.isNaN(marginPct) && estimate.gross_margin_pct != null;
+        const hasProfit = !Number.isNaN(profit) && estimate.net_profit != null;
+        if (!hasMargin && !hasProfit) return null;
+
+        let badge = null;
+        if (hasMargin) {
+          if (marginPct < 25) badge = { label: 'Low margin', cls: 'bg-red-100 text-red-700 border-red-200' };
+          else if (marginPct <= 40) badge = { label: 'Review margin', cls: 'bg-amber-100 text-amber-700 border-amber-200' };
+          else badge = { label: 'Healthy', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
+        }
+
+        return (
+          <div className="flex items-center justify-between gap-2 mb-2 text-[11px]">
+            <div className="flex items-center gap-2 text-slate-500">
+              {hasMargin && (
+                <span className="inline-flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  {marginPct.toFixed(1)}%
+                </span>
+              )}
+              {hasProfit && (
+                <span className="font-semibold text-slate-700">{fmt(profit)}</span>
+              )}
+            </div>
+            {badge && (
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border flex-shrink-0 ${badge.cls}`}>
+                {badge.label}
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Metrics row */}
       <div className="flex items-center gap-3 text-[10px] text-slate-400 flex-wrap">
