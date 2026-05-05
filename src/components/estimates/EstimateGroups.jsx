@@ -79,8 +79,8 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   const negMeta = !isPreview ? getNegotiationMeta(cost, price) : { status: 'none' };
 
   return (
-    <div className={`border-b border-slate-200 last:border-0 transition-colors group/row ${isFixed ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-200' : expanded ? 'bg-blue-50/10' : 'hover:bg-slate-50/70'}`}>
-      <div className="grid items-center gap-2 px-3 py-1.5" style={{ gridTemplateColumns: GRID_COLS }}>
+    <div className={`bg-white border-b border-slate-200 last:border-0 transition-colors group/row ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}>
+      <div className="grid items-center gap-2 px-3 py-4" style={{ gridTemplateColumns: GRID_COLS }}>
         <button className="text-slate-200 hover:text-slate-400 cursor-grab active:cursor-grabbing flex justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
           <GripVertical className="w-3.5 h-3.5" />
         </button>
@@ -130,11 +130,11 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
               }
             }}
             placeholder="Search service from Price Book…"
-            className="h-7 w-full text-[13px] font-semibold text-slate-800 border-transparent hover:border-slate-200 focus:border-blue-400 bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-2 focus:ring-blue-500/15 transition placeholder:text-slate-300"
+            className="h-8 w-full text-[14px] font-semibold text-slate-900 border-transparent hover:border-slate-200 focus:border-blue-400 bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-2 focus:ring-blue-500/15 transition placeholder:text-slate-400"
           />
 
           {!expanded && item.description && (
-            <p className="text-[11px] text-slate-400 px-2 leading-snug truncate mt-0.5 font-normal">{item.description}</p>
+            <p className="text-sm text-slate-500 px-2 leading-snug truncate mt-1 font-normal">{item.description}</p>
           )}
           {!expanded && (
             <button onClick={() => setExpanded(true)} className="text-[10px] text-slate-400 hover:text-primary px-2 mt-0.5 font-medium opacity-0 group-hover/row:opacity-100 transition-opacity">
@@ -193,7 +193,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
       </div>
 
       {!isPreview && (
-        <div className="px-3 pb-1.5 -mt-0.5">
+        <div className="pl-12 pr-3 pb-3 mt-3">
           <LineItemFinancialSubline quantity={item.quantity} unitPrice={item.unit_price} unitCost={item.unit_cost} />
         </div>
       )}
@@ -204,7 +204,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           {isPreview ? (
             <p className="text-sm text-slate-400 px-1 py-1 leading-relaxed">{item.description || '—'}</p>
           ) : (
-            <Input value={item.description} onChange={e => update('description', e.target.value)} placeholder="Service description / scope details…" className="h-8 text-sm border-slate-100 bg-slate-50/60 text-slate-400 rounded-lg focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 placeholder:text-slate-300 focus:bg-white transition" />
+            <Input value={item.description} onChange={e => update('description', e.target.value)} placeholder="Service description / scope details…" className="h-8 text-sm border-slate-100 bg-slate-50/60 text-slate-500 rounded-lg focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 placeholder:text-slate-400 focus:bg-white transition" />
           )}
           <div className="flex items-center gap-4">
             <span className="text-[11px] text-slate-400">{item.taxable !== false ? 'Taxable' : 'Not taxable'}</span>
