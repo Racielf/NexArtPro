@@ -141,77 +141,8 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
             </button>
           )}
 
-          {!isPreview && <ConcreteMetrics item={item} />}
-
-          {!isPreview && (cost > 0 || book > 0 || pricingWarning) && (
-            <div className="px-2 mt-1.5 flex flex-wrap gap-1">
-              {lineMarginPct !== null && (
-                <span className={`inline-flex items-center gap-1 text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border ${
-                  lineMarginPct >= 30 ? 'bg-emerald-50/80 border-emerald-100 text-emerald-600' :
-                  lineMarginPct >= 20 ? 'bg-amber-50/80 border-amber-100 text-amber-600' :
-                  lineMarginPct >= 0 ? 'bg-red-50/80 border-red-100 text-red-500' :
-                  'bg-red-50 border-red-200 text-red-600'
-                }`}>
-                  <span className={`w-1 h-1 rounded-full flex-shrink-0 ${
-                    lineMarginPct >= 30 ? 'bg-emerald-400' :
-                    lineMarginPct >= 20 ? 'bg-amber-400' : 'bg-red-400'
-                  }`} />
-                  {lineMarginPct.toFixed(1)}%
-                </span>
-              )}
-
-              {isLoss && (
-                <span className="inline-flex items-center gap-1 text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border bg-red-50/80 border-red-200 text-red-600">
-                  ↓ −${(cost - price).toFixed(2)}/u
-                </span>
-              )}
-              {isZeroProfit && !isLoss && (
-                <span className="inline-flex items-center gap-1 text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border bg-amber-50/80 border-amber-100 text-amber-600">
-                  0% profit
-                </span>
-              )}
-
-              {pricingWarning && (
-                <span className="inline-flex items-center gap-1 text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border bg-red-50 border-red-200 text-red-600">
-                  ⚠ underpriced {Math.abs(pricingWarning.deltaPercent)}%
-                </span>
-              )}
-
-              {negMeta.status !== 'none' && negMeta.status !== 'healthy' && (
-                <span className={`inline-flex items-center gap-1 text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border ${
-                  negMeta.status === 'critical' ? 'bg-red-50/60 border-red-100 text-red-500' : 'bg-amber-50/60 border-amber-100 text-amber-500'
-                }`}>
-                  sug ${negMeta.suggested.toFixed(0)}
-                </span>
-              )}
-
-              {book > 0 && (() => {
-                const diff = price - book;
-                const pct = (diff / book) * 100;
-                const isDanger = pct < -15;
-                const isWarning = pct < 0 && pct >= -15;
-                const cls = isDanger ? 'bg-red-50/60 border-red-100 text-red-500'
-                  : isWarning ? 'bg-amber-50/60 border-amber-100 text-amber-500'
-                  : 'bg-emerald-50/60 border-emerald-100 text-emerald-500';
-                const label = isDanger ? `−${Math.abs(pct).toFixed(0)}%↓`
-                  : isWarning ? `−${Math.abs(pct).toFixed(0)}%`
-                  : diff > 0 ? `+${pct.toFixed(0)}%`
-                  : '✓';
-                return <span className={`inline-flex items-center text-[9px] font-semibold leading-none px-1.5 py-0.5 rounded border ${cls}`}>{label}</span>;
-              })()}
-
-              {pricingWarning && (
-                <button
-                  type="button"
-                  onClick={applyPricingSuggestion}
-                  className="text-[9px] px-1.5 py-0.5 rounded border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors leading-none font-semibold"
-                  title={`Apply suggested catalog price $${pricingWarning.suggestedCatalogPrice}`}
-                >
-                  Fix → ${pricingWarning.suggestedCatalogPrice}
-                </button>
-              )}
-            </div>
-          )}
+          {/* Pricing intelligence badges hidden — financial analysis is centralized in the panel below the Summary. */}
+          {/* Cálculos (lineMarginPct, isLoss, isZeroProfit, pricingWarning, negMeta, book delta) siguen activos. */}
         </div>
 
         {isPreview ? (
@@ -254,21 +185,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
               <button type="button" onClick={() => update('unit_price', autoSuggest)} title={`Set suggested price at 30% margin: $${autoSuggest.toFixed(2)}`} className="absolute right-1 top-1/2 -translate-y-1/2 text-[11px] leading-none hover:text-amber-500 text-slate-300 transition-colors">⚡</button>
             )}
           </div>
-          {!isPreview && book > 0 && (() => {
-            const MARGINS = [0.10, 0.20, 0.30];
-            const suggestions = MARGINS.map(m => ({ label: `+${m * 100}%`, p: parseFloat((book * (1 + m)).toFixed(2)), margin: m }));
-            const isAtBook = Math.abs(price - book) < 0.01;
-            return (
-              <div className="flex gap-0.5 mt-0.5 flex-wrap">
-                {suggestions.map(s => (
-                  <button key={s.margin} type="button" onClick={() => update('unit_price', s.p)} title={`Set to $${s.p} (${s.label} over book)`} className={`text-[9px] px-1 py-0.5 rounded border transition-colors leading-none font-semibold ${price === s.p ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-white border-slate-200 text-slate-400 hover:border-primary/40 hover:text-primary'}`}>{s.label}</button>
-                ))}
-                {!isAtBook && (
-                  <button type="button" onClick={() => update('unit_price', book)} title={`Reset to book price $${book.toFixed(2)}`} className="text-[9px] px-1 py-0.5 rounded border border-slate-200 bg-white text-slate-400 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-colors leading-none font-semibold">↺ book</button>
-                )}
-              </div>
-            );
-          })()}
+          {/* Margin suggestion buttons (+10/+20/+30/book) hidden — pricing brain still active. */}
         </div>
 
         {!isPreview ? (() => {
