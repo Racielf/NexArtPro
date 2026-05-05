@@ -31,12 +31,13 @@ import { persistNewServiceToCatalog } from '@/lib/persistNewService';
 import { calculateRiskScore } from '@/lib/estimateRiskScoring';
 import RiskScorePanel from '@/components/estimates/internal/RiskScorePanel';
 import FinancialAnalysisPanel from '@/components/estimates/internal/FinancialAnalysisPanel';
+import LineItemFinancialSubline from '@/components/estimates/internal/LineItemFinancialSubline';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
 const emptyItem = () => normalizeLineItem({ id: uid() });
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
-const GRID_COLS = 'minmax(20px,24px) minmax(220px,3fr) minmax(52px,64px) minmax(60px,78px) minmax(96px,118px) minmax(56px,72px) minmax(92px,118px) minmax(24px,28px)';
+const GRID_COLS = 'minmax(20px,24px) minmax(220px,3fr) minmax(52px,64px) minmax(60px,78px) minmax(96px,118px) minmax(92px,118px) minmax(24px,28px)';
 
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null }) {
   const [expanded, setExpanded] = useState(!item.service_name || !item.description);
@@ -172,35 +173,16 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   value={item.unit_price}
                   onChange={e => update('unit_price', e.target.value)}
                   onBlur={() => handlePriceBlur('unit_price')}
-                  className={`h-8 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-lg border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 ${
-                    isLoss ? 'border-red-300 bg-red-50/40 text-red-600' :
-                    isZeroProfit ? 'border-amber-300 bg-amber-50/40 text-amber-600' :
-                    pricingWarning ? 'border-red-300 bg-red-50/30 text-slate-800' : 'text-slate-800'
-                  }`}
+                  className="h-8 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-lg border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 text-slate-800"
                   min={0}
                 />
               </>
             )}
-            {!isPreview && autoSuggest > 0 && (
-              <button type="button" onClick={() => update('unit_price', autoSuggest)} title={`Set suggested price at 30% margin: $${autoSuggest.toFixed(2)}`} className="absolute right-1 top-1/2 -translate-y-1/2 text-[11px] leading-none hover:text-amber-500 text-slate-300 transition-colors">⚡</button>
-            )}
           </div>
-          {/* Margin suggestion buttons (+10/+20/+30/book) hidden — pricing brain still active. */}
         </div>
-
-        {!isPreview ? (() => {
-          if (book === 0) return <div className="text-right text-xs text-slate-200">—</div>;
-          return (
-            <div className="text-right leading-tight min-w-0">
-              <div className="text-[10px] text-slate-400 font-medium tabular-nums">${book.toFixed(2)}</div>
-              <div className="text-[9px] text-slate-300 leading-none">book</div>
-            </div>
-          );
-        })() : <div />}
 
         <div className="text-right min-w-0">
           <div className="font-bold text-slate-800 text-sm tabular-nums">${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-          {(qty > 0 && price > 0) && <div className="text-[9px] text-slate-400 leading-none mt-0.5 tabular-nums">{qty % 1 === 0 ? parseInt(qty) : qty.toFixed(2)} × ${price.toFixed(2)}</div>}
         </div>
 
         {!isPreview ? (
@@ -209,6 +191,8 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           </button>
         ) : <div />}
       </div>
+
+      {!isPreview && <LineItemFinancialSubline quantity={item.quantity} unitPrice={item.unit_price} unitCost={item.unit_cost} />}
 
       {expanded && (
         <div className="px-10 pb-3 pt-0.5 space-y-1.5">
@@ -300,7 +284,6 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             <div className="text-center">Qty</div>
             <div className="text-center">UOM</div>
             <div className="text-right">Unit Price</div>
-            {!isPreview ? <div className="text-right text-slate-300">Book</div> : <div />}
             <div className="text-right">Total</div>
             <div />
           </div>
