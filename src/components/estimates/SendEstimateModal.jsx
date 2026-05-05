@@ -10,7 +10,7 @@ import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [to, setTo] = useState(estimate?.client_email || '');
-  const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from FSM Pro`);
+  const [subject, setSubject] = useState(`Estimate #${estimate?.estimate_number} from ${appConfig.company.name}`);
   const [clientLink, setClientLink] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -44,12 +44,12 @@ export default function SendEstimateModal({ estimate, open, onClose, onSent }) {
 
   useEffect(() => {
     setTo(estimate?.client_email || '');
-    setSubject(`Estimate #${estimate?.estimate_number} from FSM Pro`);
+    setSubject(`Estimate #${estimate?.estimate_number} from ${appConfig.company.name}`);
   }, [estimate]);
 
   useEffect(() => {
     setMessage(
-      `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nThank you for choosing FSM Pro. Please review your estimate below:\n\n${clientLink}\n\nTotal: $${(estimate?.total || 0).toFixed(2)}\n\nPlease click the link to approve or decline.\n\nThank you!`
+      `Hi ${estimate?.client_name?.split(' ')[0] || 'there'},\n\nThank you for choosing ${appConfig.company.name}. Please review your estimate below:\n\n${clientLink}\n\nTotal: $${(estimate?.total || 0).toFixed(2)}\n\nPlease click the link to approve or decline.\n\nThank you!`
     );
   }, [estimate, clientLink]);
 

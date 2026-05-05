@@ -124,10 +124,12 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
     // The link can be generated later via NexArtSign admin panel
   }
 
-  const emailAttachments = [];
-  if (generatedPdf?.base64) {
-    emailAttachments.push({ filename: generatedPdf.filename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`, content: generatedPdf.base64, contentType: 'application/pdf' });
+  if (!generatedPdf?.base64) {
+    throw new Error('PDF generation failed. Cannot send estimate.');
   }
+
+  const emailAttachments = [];
+  emailAttachments.push({ filename: generatedPdf.filename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`, content: generatedPdf.base64, contentType: 'application/pdf' });
   emailAttachments.push(...getSelectedClientAttachments(estimate, includedAttachmentIds));
 
   // Warn if signing link is missing but don't block the send
