@@ -78,6 +78,15 @@ export function normalizeLineItem(raw = {}) {
     }
   }
 
+  // Internal Job Cost Allocation fields — stored inside the line item JSON.
+  // base_unit_price is the immutable anchor used to recompute allocation
+  // without compounding when the operator clicks "Apply Internal Job Cost
+  // Allocation" multiple times.
+  const base_unit_price    = safeNonNeg(raw.base_unit_price, 0);
+  const allocated_job_cost = safeNonNeg(raw.allocated_job_cost, 0);
+  const final_unit_price   = safeNonNeg(raw.final_unit_price, 0);
+  const pricing_source     = safeStr(raw.pricing_source, 'manual');
+
   return {
     ...raw,
     id:           raw.id || Math.random().toString(36).slice(2, 10),
@@ -94,6 +103,10 @@ export function normalizeLineItem(raw = {}) {
     book_price,
     line_total:   safeNonNeg(line_total, 0),
     taxable:      raw.taxable !== false,
+    base_unit_price,
+    allocated_job_cost,
+    final_unit_price,
+    pricing_source,
   };
 }
 

@@ -22,6 +22,7 @@ import PriceAuditLog from '@/components/estimates/internal/PriceAuditLog';
 import { normalizeLineItem, resolveAndNormalizeGroups, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
 import { usePriceAuditLog } from '@/hooks/usePriceAuditLog';
 import { calculateLineTotal, runEstimateEngine, suggestPriceFromCost, getNegotiationMeta } from '@/lib/estimateEngine';
+import { applyInternalJobCostAllocation, clearInternalJobCostAllocation } from '@/lib/internalJobCostAllocator';
 import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
 import { logFieldChange } from '@/lib/pricingAuditService';
 import ConcreteMetrics from '@/components/estimates/internal/ConcreteMetrics';
@@ -666,6 +667,26 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
     setTargetMarkupMessage(`Applied target markup to ${applied} services. Skipped ${skipped} manual overrides.`);
   };
 
+  const applyJobCostAllocation = () => {
+    const jobCost = (otherCosts || []).reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+    const { groups: nextGroups, summary } = applyInternalJobCostAllocation(groups, jobCost);
+    setGroups(nextGroups);
+    if (!summary.applied) {
+      if (jobCost <= 0) {
+        setTargetMarkupMessage('Allocation cleared — no Internal Job Cost to distribute.');
+      } else {
+        setTargetMarkupMessage('Allocation skipped — services have no base value to allocate against.');
+      }
+    } else {
+      setTargetMarkupMessage(`Allocated $${summary.allocatedTotal.toFixed(2)} of Internal Job Cost across ${summary.lineCount} service line${summary.lineCount !== 1 ? 's' : ''}. Reapplying will not compound — anchor prices are preserved.`);
+    }
+  };
+
+  const clearJobCostAllocation = () => {
+    setGroups(prev => clearInternalJobCostAllocation(prev));
+    setTargetMarkupMessage('Allocation cleared — service prices reverted to base unit price (cost × markup).');
+  };
+
   const forceApplySuggestedPrice = () => {
     let applied = 0;
     setGroups(prev => prev.map(group => ({
@@ -757,6 +778,10 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
           message={targetMarkupMessage}
           onApplySuggestedPrice={applySuggestedPrice}
           onForceApplyToAll={forceApplySuggestedPrice}
+          internalJobCost={totalCost}
+          allocatedLinesCount={groups.reduce((n, g) => n + (g.items || []).filter(i => i.pricing_source === 'allocated').length, 0)}
+          onApplyJobCostAllocation={applyJobCostAllocation}
+          onClearJobCostAllocation={clearJobCostAllocation}
         />
       )}
 

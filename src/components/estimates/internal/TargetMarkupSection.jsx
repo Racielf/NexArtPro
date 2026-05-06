@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, TrendingUp, AlertTriangle, AlertOctagon } from 'lucide-react';
+import { Target, TrendingUp, AlertTriangle, AlertOctagon, Layers, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -37,6 +37,10 @@ export default function TargetMarkupSection({
   message,
   onApplySuggestedPrice,
   onForceApplyToAll,
+  internalJobCost = 0,
+  allocatedLinesCount = 0,
+  onApplyJobCostAllocation,
+  onClearJobCostAllocation,
 }) {
   const differenceAccent = Number(differenceFromTarget) >= 0 ? 'emerald' : 'amber';
   const overrides = Number(overriddenServicesCount) || 0;
@@ -75,6 +79,38 @@ export default function TargetMarkupSection({
           </Button>
         </div>
       </div>
+
+      {onApplyJobCostAllocation && (
+        <div className="px-5 py-3 bg-amber-50/50 border-b border-amber-100 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Layers className="w-4 h-4 text-amber-700 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-amber-600 leading-none mb-0.5">Hidden overhead recovery</p>
+              <p className="text-xs font-semibold text-amber-900">
+                Internal Job Cost: <span className="tabular-nums">{fmt(internalJobCost)}</span>
+                {allocatedLinesCount > 0 && (
+                  <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded">
+                    Allocated to {allocatedLinesCount} line{allocatedLinesCount !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </p>
+              <p className="text-[10px] text-amber-700 italic mt-0.5">Distributes hidden costs into Unit Price (proportional by service value). Reapplying never compounds.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {allocatedLinesCount > 0 && onClearJobCostAllocation && (
+              <Button type="button" size="sm" variant="outline" onClick={onClearJobCostAllocation} className="h-8 gap-1.5 border-amber-200 text-amber-700 hover:bg-amber-50">
+                <RotateCcw className="w-3.5 h-3.5" />
+                Revert to Base Price
+              </Button>
+            )}
+            <Button type="button" size="sm" onClick={onApplyJobCostAllocation} className="h-8 gap-1.5 bg-amber-700 hover:bg-amber-800">
+              <Layers className="w-3.5 h-3.5" />
+              Apply Internal Job Cost Allocation
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-5 py-4">
         <Metric label="Internal Job Cost" value={fmt(costBase)} accent="amber" />
