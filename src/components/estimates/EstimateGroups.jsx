@@ -32,6 +32,7 @@ import { calculateRiskScore } from '@/lib/estimateRiskScoring';
 import RiskScorePanel from '@/components/estimates/internal/RiskScorePanel';
 import LineItemFinancialSubline from '@/components/estimates/internal/LineItemFinancialSubline';
 import TargetMarkupSection from '@/components/estimates/internal/TargetMarkupSection';
+import { resolvePickedUnit } from '@/lib/uomNormalize';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
@@ -137,13 +138,17 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 const qtyVal = parseFloat(item.quantity) || 0;
                 const lineTotal = calculateLineTotal(qtyVal, safePrice);
                 const pickedMarkup = safeCost > 0 && safePrice > 0 ? parseFloat((((safePrice - safeCost) / safeCost) * 100).toFixed(2)) : 0;
+                // UOM rule: when the catalog provides a unit, ALWAYS use it
+                // (the price represents price per that UOM). Only fall back to
+                // the previous item.unit when picked.unit is missing/empty.
+                const resolvedUnit = resolvePickedUnit(picked.unit, item.unit, 'ea');
                 const updated = {
                   ...item,
                   service_id: picked.service_id ?? null,
                   service_name: picked.name || item.service_name,
                   description: picked.description || item.description || '',
                   category: picked.category || item.category || 'Misc',
-                  unit: picked.unit || item.unit || 'ea',
+                  unit: resolvedUnit,
                   unit_price: safePrice,
                   unit_cost: safeCost,
                   markup_pct: pickedMarkup,
@@ -157,7 +162,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   persistNewServiceToCatalog({
                     service_name: picked.name,
                     category: picked.category || 'Misc',
-                    unit: picked.unit || 'ea',
+                    unit: resolvedUnit,
                     description: picked.description || '',
                     unit_price: safePrice,
                     unit_cost: safeCost,

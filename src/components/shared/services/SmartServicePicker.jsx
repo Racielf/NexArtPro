@@ -3,16 +3,12 @@ import { createPortal } from 'react-dom';
 import { buildTempService } from './serviceSearch';
 import { searchServicesUnified } from './serviceSearchUnified';
 import { Plus, BookOpen, Tag, Database } from 'lucide-react';
+import { normalizeUOM } from '@/lib/uomNormalize';
 
-const UNIT_DISPLAY = {
-  each: 'ea', sqft: 'sqft', linear_ft: 'ln ft', room: 'room', wall: 'wall',
-  door: 'door', window: 'win', box: 'box', gallon: 'gal', bag: 'bag',
-  hour: 'hr', day: 'day', project: 'proj', custom: 'custom',
-  // also pass through existing ea/hr/sq ft values unchanged
-};
-
+// Display alias is now driven by canonical normalization — guarantees that
+// what users see in the dropdown is exactly what gets written to the line item.
 function unitDisplay(u) {
-  return UNIT_DISPLAY[u] || u || 'ea';
+  return normalizeUOM(u, 'ea');
 }
 
 const CAT_COLORS = {
@@ -103,7 +99,9 @@ export default function SmartServicePicker({ value, onChange, onSelect, placehol
       service_id: result.id || null,
       name,
       description: result.description || '',
-      unit: unitDisplay(result.unit),
+      // Canonicalize the UOM so the receiving line item always gets a value
+      // that matches the editor's <select> options exactly.
+      unit: normalizeUOM(result.unit, 'ea'),
       unit_price: result.unit_price != null ? Number(result.unit_price) : null,
       unit_cost:  result.unit_cost != null ? Number(result.unit_cost) : null,
       book_price: result.book_price != null ? Number(result.book_price) : null,
