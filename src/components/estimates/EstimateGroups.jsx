@@ -37,8 +37,12 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
 const emptyItem = () => normalizeLineItem({ id: uid() });
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
-const GRID_COLS = 'minmax(24px,28px) minmax(320px,1fr) minmax(70px,90px) minmax(80px,100px) minmax(100px,120px) minmax(110px,130px) minmax(110px,130px) minmax(28px,32px)';
-const PREVIEW_GRID_COLS = 'minmax(24px,28px) minmax(360px,1fr) minmax(80px,100px) minmax(100px,120px) minmax(120px,150px) minmax(120px,150px) minmax(28px,32px)';
+// Unified grid — every row, header, and section share the SAME columns.
+// drag | service (flex) | qty | uom | unit cost | unit price | total | remove
+const GRID_COLS = '28px minmax(0,1fr) 80px 80px 120px 130px 130px 32px';
+const PREVIEW_GRID_COLS = '28px minmax(0,1fr) 80px 80px 0px 130px 130px 32px';
+// Materials grid mirrors services for visual continuity (no unit cost column when showCost=false collapses to 0)
+export const MATERIALS_GRID_COLS = GRID_COLS;
 
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null, dragHandleProps = {}, onDragOverRow, onDropRow, isDragging = false, isDropTarget = false }) {
   const [editingService, setEditingService] = useState(false);
@@ -104,17 +108,16 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
       onDrop={onDropRow}
       className={`relative bg-white border-b border-slate-200 last:border-0 transition-all duration-150 group/row ${isDragging ? 'opacity-80 scale-[1.01] shadow-lg ring-2 ring-blue-400/40 z-50' : ''} ${isDropTarget && !isDragging ? 'border-t-2 border-blue-500' : ''} ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}
     >
-      <div className="grid items-center gap-2 px-3 py-4" style={{ gridTemplateColumns: isPreview ? PREVIEW_GRID_COLS : GRID_COLS }}>
+      <div className="grid items-start gap-3 px-4 py-4" style={{ gridTemplateColumns: isPreview ? PREVIEW_GRID_COLS : GRID_COLS }}>
         <button
           type="button"
-          className="text-slate-500 hover:text-slate-900 cursor-grab active:cursor-grabbing pointer-events-auto flex justify-center transition-colors"
+          className="text-slate-400 hover:text-slate-700 cursor-grab active:cursor-grabbing pointer-events-auto flex items-center justify-center pt-1.5 transition-colors"
           {...dragHandleProps}
         >
-          <GripVertical className="w-3.5 h-3.5 pointer-events-none" />
+          <GripVertical className="w-4 h-4 pointer-events-none" />
         </button>
 
-        <div className="min-w-0 px-2">
-          <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest mb-1 leading-none">Service</p>
+        <div className="min-w-0 flex flex-col gap-1.5">
           {editingService && !isPreview ? (
             <SmartServicePicker
               value={item.service_name}
@@ -202,46 +205,56 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
             </button>
           )}
 
-          {/* Pricing intelligence badges hidden — financial analysis is centralized in the panel below the Summary. */}
-          {/* Cálculos (lineMarginPct, isLoss, isZeroProfit, pricingWarning, negMeta, book delta) siguen activos. */}
+          {!isPreview && (
+            <div className="mt-1">
+              <LineItemFinancialSubline
+                quantity={item.quantity}
+                unitPrice={item.unit_price}
+                unitCost={item.unit_cost}
+                markupPct={markupPct}
+                markupOverride={item.markup_override === true}
+                onMarkupChange={(value) => update('markup_pct', value)}
+              />
+            </div>
+          )}
         </div>
 
         {isPreview ? (
-          <div className="h-7 text-sm text-center font-semibold tabular-nums flex items-center justify-center text-slate-700">{item.quantity}</div>
+          <div className="h-9 text-sm text-center font-semibold tabular-nums flex items-center justify-center text-slate-700">{item.quantity}</div>
         ) : (
-          <Input type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)} className="h-7 text-sm text-center border-slate-200 font-semibold px-1 w-full tabular-nums rounded-md focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" min={0} />
+          <Input type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)} className="h-9 text-sm text-center border-slate-200 font-semibold px-1 w-full tabular-nums rounded-md focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" min={0} />
         )}
 
         {isPreview ? (
-          <div className="h-7 text-[11px] flex items-center justify-center text-slate-700 font-medium">{item.unit}</div>
+          <div className="h-9 text-xs flex items-center justify-center text-slate-700 font-medium">{item.unit}</div>
         ) : (
-          <select value={item.unit} onChange={e => update('unit', e.target.value)} className="h-7 text-[11px] border border-slate-200 rounded-md px-1.5 bg-white text-slate-700 w-full font-medium focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 focus:outline-none">
+          <select value={item.unit} onChange={e => update('unit', e.target.value)} className="h-9 text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700 w-full font-medium focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 focus:outline-none">
             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
           </select>
         )}
 
-        {!isPreview && (
+        {!isPreview ? (
           <div className="min-w-0 overflow-hidden" title="Internal Cost — not shown in client view, PDF, or email">
             <div className="relative flex items-center">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-amber-600 pointer-events-none">$</span>
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-amber-600 pointer-events-none">$</span>
               <Input
                 type="number"
                 step="0.01"
                 value={item.unit_cost}
                 onChange={e => update('unit_cost', e.target.value)}
                 onBlur={() => handlePriceBlur('unit_cost')}
-                className="h-7 pl-4 pr-7 text-sm text-right font-semibold tabular-nums rounded-md border-amber-300 bg-amber-50 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-amber-900"
+                className="h-9 pl-5 pr-8 text-sm text-right font-semibold tabular-nums rounded-md border-amber-300 bg-amber-50 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-amber-900"
                 min={0}
               />
-              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-bold uppercase tracking-wide text-amber-600 pointer-events-none">Int</span>
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-wide text-amber-600 pointer-events-none px-1 rounded bg-amber-100 border border-amber-200">Int</span>
             </div>
           </div>
-        )}
+        ) : <div />}
 
         <div className="min-w-0 overflow-hidden">
           <div className="relative flex items-center">
             {isPreview ? (
-              <div className={`h-7 px-2 text-sm text-right font-semibold tabular-nums flex items-center justify-end w-full ${isLoss ? 'text-red-600' : isZeroProfit ? 'text-amber-600' : 'text-slate-800'}`}>${price.toFixed(2)}</div>
+              <div className={`h-9 px-2 text-sm text-right font-semibold tabular-nums flex items-center justify-end w-full ${isLoss ? 'text-red-600' : isZeroProfit ? 'text-amber-600' : 'text-slate-800'}`}>${price.toFixed(2)}</div>
             ) : (
               <>
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-700 pointer-events-none">$</span>
@@ -251,7 +264,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   value={item.unit_price}
                   onChange={e => update('unit_price', e.target.value)}
                   onBlur={() => handlePriceBlur('unit_price')}
-                  className="h-7 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-md border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 text-slate-800"
+                  className="h-9 pl-5 pr-2 text-sm text-right font-bold tabular-nums rounded-md border-slate-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-slate-900"
                   min={0}
                 />
               </>
@@ -259,31 +272,16 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           </div>
         </div>
 
-        <div className="text-right min-w-0">
-          <div className="font-bold text-slate-800 text-sm tabular-nums">${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+        <div className="h-9 flex items-center justify-end text-right min-w-0">
+          <div className="font-bold text-slate-900 text-sm tabular-nums">${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
         </div>
 
         {!isPreview ? (
-          <button onClick={() => onRemove(item.id)} className="flex justify-center p-1 rounded text-slate-700 hover:text-red-600 hover:bg-red-50 transition-colors">
-            <X className="w-3 h-3" />
+          <button onClick={() => onRemove(item.id)} className="h-9 flex items-center justify-center p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         ) : <div />}
       </div>
-
-      {!isPreview && (
-        <div className="pl-12 pr-3 pb-3 mt-3">
-          <LineItemFinancialSubline
-            quantity={item.quantity}
-            unitPrice={item.unit_price}
-            unitCost={item.unit_cost}
-            markupPct={markupPct}
-            markupOverride={item.markup_override === true}
-            onMarkupChange={(value) => update('markup_pct', value)}
-          />
-        </div>
-      )}
-
-
     </div>
   );
 }
@@ -361,12 +359,12 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
 
       {!group.collapsed && (
         <>
-          <div className="grid text-[9px] text-slate-400 font-bold uppercase tracking-widest px-4 py-2 bg-slate-50/80 border-b border-slate-100" style={{ gridTemplateColumns: isPreview ? PREVIEW_GRID_COLS : GRID_COLS }}>
+          <div className="grid items-center gap-3 text-[10px] text-slate-500 font-bold uppercase tracking-widest px-4 py-2.5 bg-slate-50 border-b border-slate-200" style={{ gridTemplateColumns: isPreview ? PREVIEW_GRID_COLS : GRID_COLS }}>
             <div />
-            <div className="text-slate-500">Service</div>
+            <div>Service</div>
             <div className="text-center">Qty</div>
             <div className="text-center">UOM</div>
-            {!isPreview && <div className="text-right text-amber-600" title="Internal — not shown in client view">Unit Cost (Internal)</div>}
+            {!isPreview ? <div className="text-right text-amber-600" title="Internal — not shown in client view">Unit Cost</div> : <div />}
             <div className="text-right">Unit Price</div>
             <div className="text-right">Total</div>
             <div />
@@ -693,7 +691,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   }));
 
   return (
-    <div className="w-full space-y-0 max-w-5xl mx-auto">
+    <div className="w-full space-y-0 max-w-[1400px] mx-auto px-6">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0">

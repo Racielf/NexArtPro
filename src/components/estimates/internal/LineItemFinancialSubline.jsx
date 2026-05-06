@@ -35,16 +35,16 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
   }
 
   return (
-    <div className="flex items-center gap-2 text-[13px] text-slate-700 font-medium px-2 flex-wrap">
-      <Info className="w-3 h-3 text-slate-700 flex-shrink-0" />
-      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Internal</span>
-      <span className="text-slate-700" title={`Cost = Unit Cost × Qty (${fmt(parseFloat(unitCost) || 0)} × ${qty})`}>Cost</span>
+    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium flex-nowrap overflow-x-auto whitespace-nowrap py-1">
+      <Info className="w-3 h-3 text-slate-400 flex-shrink-0" />
+      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mr-0.5">Internal</span>
+      <span className="text-slate-500" title={`Cost = Unit Cost × Qty (${fmt(parseFloat(unitCost) || 0)} × ${qty})`}>Cost</span>
       <span className="font-semibold text-slate-700 tabular-nums" title={`Unit Cost ${fmt(parseFloat(unitCost) || 0)} × Qty ${qty}`}>{fmt(lineCost)}</span>
-      <span className="text-slate-700">·</span>
-      <span className="text-slate-700">Profit</span>
-      <span className="font-semibold text-slate-700 tabular-nums">{fmt(profit)}</span>
-      <span className="text-slate-700">·</span>
-      <span className="text-slate-700">Markup</span>
+      <span className="text-slate-300">•</span>
+      <span className="text-slate-500">Profit</span>
+      <span className="font-semibold text-emerald-700 tabular-nums">{fmt(profit)}</span>
+      <span className="text-slate-300">•</span>
+      <span className="text-slate-500">Markup</span>
       {onMarkupChange ? (
         <span className="relative inline-flex items-center">
           <input
@@ -60,11 +60,11 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
       ) : (
         <span className="font-semibold text-slate-700 tabular-nums">{displayMarkup.toFixed(1)}%</span>
       )}
-      {markupOverride && <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700">Override</span>}
-      <span className="text-slate-700">·</span>
-      <span className="text-slate-700">Margin</span>
+      {markupOverride && <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 flex-shrink-0">Override</span>}
+      <span className="text-slate-300">•</span>
+      <span className="text-slate-500">Margin</span>
       <span className="font-semibold text-slate-700 tabular-nums">{marginPct.toFixed(1)}%</span>
-      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-bold ${badge.cls}`}>
+      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-bold flex-shrink-0 ${badge.cls}`}>
         <span className={`w-1 h-1 rounded-full ${badge.dot}`} />
         {badge.label}
       </span>

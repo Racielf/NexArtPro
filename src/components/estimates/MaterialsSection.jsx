@@ -8,6 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Plus, Trash2, X, Package, ChevronDown, ChevronRight } from 'lucide-react';
 import { calculateLineTotal } from '@/lib/estimateEngine';
 
+// Aligns with EstimateGroups GRID_COLS for visual continuity:
+// drag | name (flex) | qty | unit | sale price | internal cost | total | remove
+const MATERIALS_GRID = '28px minmax(0,1fr) 80px 80px 120px 120px 130px 32px';
+
 const uid = () => Math.random().toString(36).slice(2, 10);
 const UNITS = ['ea', 'bag', 'ton', 'cu yd', 'sq ft', 'ln ft', 'gal', 'box', 'roll', 'pallet', 'lump sum'];
 
@@ -35,61 +39,65 @@ function MaterialRow({ item, onUpdate, onRemove, showCost }) {
   };
 
   return (
-    <div className="grid items-center gap-2 px-4 py-2 border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
-      style={{ gridTemplateColumns: '3fr minmax(48px,60px) minmax(56px,76px) minmax(88px,110px) minmax(72px,104px) minmax(88px,110px) 28px' }}>
+    <div className="grid items-start gap-3 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+      style={{ gridTemplateColumns: MATERIALS_GRID }}>
+      {/* Spacer to align with services drag column */}
+      <div />
+
       {/* Name + description */}
-      <div className="min-w-0">
+      <div className="min-w-0 flex flex-col gap-1">
         <Input
           value={item.name}
           onChange={e => update('name', e.target.value)}
           placeholder="Material name"
-          className="h-7 text-sm font-semibold border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2 rounded-md"
+          className="h-9 text-sm font-semibold border-slate-200 px-2 rounded-md"
         />
         <Input
           value={item.description}
           onChange={e => update('description', e.target.value)}
           placeholder="Description (optional)"
-          className="h-6 text-xs text-slate-500 border-transparent hover:border-slate-200 focus:border-primary bg-transparent hover:bg-white focus:bg-white px-2 rounded-md mt-0.5"
+          className="h-8 text-xs text-slate-500 border-slate-100 px-2 rounded-md"
         />
       </div>
 
       {/* Qty */}
       <Input type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
-        className="h-7 text-sm text-center border-slate-200 font-semibold px-1" min={0} />
+        className="h-9 text-sm text-center border-slate-200 font-semibold px-1 tabular-nums" min={0} />
 
       {/* Unit */}
       <select value={item.unit} onChange={e => update('unit', e.target.value)}
-        className="h-7 text-[11px] border border-slate-200 rounded px-1 bg-white text-slate-600 font-medium">
+        className="h-9 text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700 font-medium">
         {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
       </select>
 
       {/* Sale Price */}
-      <div className="relative" title="Customer-facing sale price. This drives the material line total.">
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+      <div className="relative h-9" title="Customer-facing sale price. This drives the material line total.">
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-700 pointer-events-none">$</span>
         <Input type="number" step="0.01" value={item.unit_price}
           onChange={e => update('unit_price', e.target.value)}
-          className="h-7 pl-4 pr-1 text-sm text-right font-semibold border-slate-200" min={0} />
+          className="h-9 pl-5 pr-2 text-sm text-right font-bold border-slate-300 tabular-nums text-slate-900" min={0} />
       </div>
 
       {/* Internal Cost */}
       {showCost ? (
-        <div className="relative" title="Internal material cost. Used for margin only; not shown as a client charge.">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">$</span>
+        <div className="relative h-9" title="Internal material cost. Used for margin only; not shown as a client charge.">
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-amber-600 pointer-events-none">$</span>
           <Input type="number" step="0.01" value={item.unit_cost}
             onChange={e => update('unit_cost', e.target.value)}
-            className="h-7 pl-4 text-sm text-right border-slate-200 bg-amber-50/60" min={0} />
+            className="h-9 pl-5 pr-8 text-sm text-right font-semibold border-amber-300 bg-amber-50 text-amber-900 tabular-nums" min={0} />
+          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-wide text-amber-600 pointer-events-none px-1 rounded bg-amber-100 border border-amber-200">Int</span>
         </div>
       ) : <div />}
 
       {/* Line total */}
-      <div className="text-right text-sm font-bold text-slate-900 tabular-nums">
+      <div className="h-9 flex items-center justify-end text-right text-sm font-bold text-slate-900 tabular-nums">
         ${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
       </div>
 
       {/* Remove */}
       <button onClick={() => onRemove(item.id)}
-        className="flex justify-center p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
-        <X className="w-3 h-3" />
+        className="h-9 flex justify-center items-center p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+        <X className="w-3.5 h-3.5" />
       </button>
     </div>
   );
@@ -161,14 +169,15 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
 
       {!collapsed && (
         <>
-          {/* Column headers */}
-          <div className="grid text-[10px] text-slate-400 font-semibold uppercase tracking-wide px-4 py-2 bg-slate-50 border-b border-slate-100"
-            style={{ gridTemplateColumns: '3fr minmax(48px,60px) minmax(56px,76px) minmax(88px,110px) minmax(72px,104px) minmax(88px,110px) 28px' }}>
+          {/* Column headers — same grid as services */}
+          <div className="grid items-center gap-3 text-[10px] text-slate-500 font-bold uppercase tracking-widest px-4 py-2.5 bg-slate-50 border-b border-slate-200"
+            style={{ gridTemplateColumns: MATERIALS_GRID }}>
+            <div />
             <div>Material</div>
             <div className="text-center">Qty</div>
             <div className="text-center">Unit</div>
             <div className="text-right" title="Customer-facing sale price">Sale Price</div>
-            <div className={`text-right ${showCost ? 'text-amber-600' : ''}`} title="Internal cost only">{showCost ? 'Internal Cost' : ''}</div>
+            <div className={`text-right ${showCost ? 'text-amber-600' : ''}`} title="Internal cost only">{showCost ? 'Unit Cost' : ''}</div>
             <div className="text-right">Total</div>
             <div />
           </div>
