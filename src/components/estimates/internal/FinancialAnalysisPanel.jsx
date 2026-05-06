@@ -54,6 +54,7 @@ export default function FinancialAnalysisPanel({
   serviceCost,
   netProfit,
   netProfitPct,
+  markupPercentage,
 }) {
   const displayRevenue = Number(revenue ?? total) || 0;
   const displayMaterialsCost = Number(materialsCost) || 0;
@@ -61,6 +62,7 @@ export default function FinancialAnalysisPanel({
   const displayLaborCost = Number(serviceCost) || 0;
   const displayTotalProjectCost = displayMaterialsCost + displayLaborCost + displayOtherCosts;
   const displayProfit = Number(netProfit ?? (displayRevenue - displayTotalProjectCost)) || 0;
+  const displayMarkup = Number(markupPercentage ?? (displayTotalProjectCost > 0 ? (displayProfit / displayTotalProjectCost) * 100 : 0)) || 0;
   const displayMargin = Number(netProfitPct ?? (displayRevenue > 0 ? (displayProfit / displayRevenue) * 100 : 0)) || 0;
   const health = getHealth(displayMargin);
   const HealthIcon = health.icon;
@@ -84,13 +86,14 @@ export default function FinancialAnalysisPanel({
       </div>
 
       <div className="px-6 py-5 grid grid-cols-2 md:grid-cols-3 gap-2">
-        <Metric label="Ingreso total / Revenue" value={fmt(displayRevenue)} accent="slate" />
+        <Metric label="Cost base / Base de costo" value={fmt(displayTotalProjectCost)} accent="slate" />
+        <Metric label="Revenue / Ingreso" value={fmt(displayRevenue)} accent="slate" />
+        <Metric label="Profit / Ganancia" value={fmt(displayProfit)} accent="emerald" />
+        <Metric label="Markup % / Construcción del precio" value={pct(displayMarkup)} accent="emerald" />
+        <Metric label="Margin % / Desempeño del negocio" value={pct(displayMargin)} accent="emerald" />
         <Metric label="Costo de materiales" value={fmt(displayMaterialsCost)} accent="amber" />
         <Metric label="Costo de mano de obra" value={fmt(displayLaborCost)} accent="amber" />
         <Metric label="Otros gastos" value={fmt(displayOtherCosts)} accent="amber" />
-        <Metric label="Costo total del proyecto" value={fmt(displayTotalProjectCost)} accent="slate" />
-        <Metric label="Ganancia neta" value={fmt(displayProfit)} accent="emerald" />
-        <Metric label="Margen de ganancia" value={pct(displayMargin)} accent="emerald" />
       </div>
     </div>
   );

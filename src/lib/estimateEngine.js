@@ -167,6 +167,9 @@ export function runEstimateEngine(groups = [], {
   const grossMarginPct = grandTotal > 0
     ? toMoney(D(grossMargin).dividedBy(D(grandTotal)).times(100))
     : 0;
+  const markupPercentage = totalCost > 0
+    ? toMoney(D(grossMargin).dividedBy(D(totalCost)).times(100))
+    : 0;
 
   const netProfit = grossMargin;
   const netProfitPct = grossMarginPct;
@@ -194,6 +197,7 @@ export function runEstimateEngine(groups = [], {
     marginPercentage,
     grossMargin,
     grossMarginPct,
+    markupPercentage,
     otherCostsTotal,
     netProfit,
     netProfitPct,
