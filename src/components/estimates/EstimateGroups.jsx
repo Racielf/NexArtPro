@@ -646,6 +646,8 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   const suggestedRevenue = totalCost > 0 ? totalCost * (1 + targetMarkupValue / 100) : 0;
   const targetMarkupDifference = markupPercentage - targetMarkupValue;
   const overriddenServicesCount = groups.reduce((count, group) => count + (group.items || []).filter(item => item.markup_override === true).length, 0);
+  const allocatedLinesCount = groups.reduce((n, g) => n + (g.items || []).filter(i => i.pricing_source === 'allocated').length, 0);
+  const allocationIsApplied = allocatedLinesCount > 0;
 
   const applySuggestedPrice = () => {
     let applied = 0;
@@ -668,6 +670,12 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   };
 
   const applyJobCostAllocation = () => {
+    // Anti-compounding guard: block if already applied.
+    const alreadyAllocated = groups.some(g => (g.items || []).some(i => i.pricing_source === 'allocated'));
+    if (alreadyAllocated) {
+      setTargetMarkupMessage('⚠️ Job Cost Allocation is already applied. Revert before applying again.');
+      return;
+    }
     const jobCost = (otherCosts || []).reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
     const { groups: nextGroups, summary } = applyInternalJobCostAllocation(groups, jobCost);
     setGroups(nextGroups);
@@ -779,7 +787,8 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
           onApplySuggestedPrice={applySuggestedPrice}
           onForceApplyToAll={forceApplySuggestedPrice}
           internalJobCost={totalCost}
-          allocatedLinesCount={groups.reduce((n, g) => n + (g.items || []).filter(i => i.pricing_source === 'allocated').length, 0)}
+          allocatedLinesCount={allocatedLinesCount}
+          allocationIsApplied={allocationIsApplied}
           onApplyJobCostAllocation={applyJobCostAllocation}
           onClearJobCostAllocation={clearJobCostAllocation}
         />

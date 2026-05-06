@@ -39,6 +39,7 @@ export default function TargetMarkupSection({
   onForceApplyToAll,
   internalJobCost = 0,
   allocatedLinesCount = 0,
+  allocationIsApplied = false,
   onApplyJobCostAllocation,
   onClearJobCostAllocation,
 }) {
@@ -86,11 +87,16 @@ export default function TargetMarkupSection({
             <Layers className="w-4 h-4 text-amber-700 flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-[9px] font-bold uppercase tracking-widest text-amber-600 leading-none mb-0.5">Hidden overhead recovery</p>
-              <p className="text-xs font-semibold text-amber-900">
+              <p className="text-xs font-semibold text-amber-900 flex items-center gap-2 flex-wrap">
                 Internal Job Cost: <span className="tabular-nums">{fmt(internalJobCost)}</span>
-                {allocatedLinesCount > 0 && (
-                  <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded">
-                    Allocated to {allocatedLinesCount} line{allocatedLinesCount !== 1 ? 's' : ''}
+                {/* Allocation status badge */}
+                {allocationIsApplied ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded">
+                    ✓ Allocated · {allocatedLinesCount} line{allocatedLinesCount !== 1 ? 's' : ''} · Revert Available
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                    Not Allocated
                   </span>
                 )}
               </p>

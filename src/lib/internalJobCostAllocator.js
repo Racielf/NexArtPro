@@ -143,6 +143,7 @@ export function applyInternalJobCostAllocation(groups = [], internalJobCost = 0)
         unit_price: finalUnitPrice,
         line_total: finalLineTotal,
         pricing_source: pricingSource,
+        allocation_applied_at: pricingSource === 'allocated' ? (item.allocation_applied_at || new Date().toISOString()) : null,
       };
     }),
   }));

@@ -127,8 +127,13 @@ export function runEstimateEngine(groups = [], {
   const otherCostsTotalEarly = toMoney(
     (otherCosts || []).reduce((acc, c) => acc.plus(D(c.amount)), new Decimal(0))
   );
-  // Other Costs revenue — only contributes to client-facing subtotal when explicitly billed.
-  const otherCostsRevenue = billOtherCostsToClient ? otherCostsTotalEarly : 0;
+  // Anti-double-charge guard: if Internal Job Cost is already allocated into
+  // service Unit Prices, it must NOT also be added as a separate client line.
+  const allItems_flat = groups.flatMap(g => g.items || []);
+  const allocationIsApplied = allItems_flat.some(i => i.pricing_source === 'allocated');
+  // Other Costs revenue — only contributes to client-facing subtotal when explicitly billed
+  // AND when not already recovered through allocation (prevents double-charging).
+  const otherCostsRevenue = (billOtherCostsToClient && !allocationIsApplied) ? otherCostsTotalEarly : 0;
 
   // CLIENT-FACING SUBTOTAL — single source of truth.
   // Formula: services + (materials if billed) + (other costs if billed).
