@@ -221,18 +221,19 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         )}
 
         {!isPreview && (
-          <div className="min-w-0 overflow-hidden">
+          <div className="min-w-0 overflow-hidden" title="Internal Cost — not shown in client view, PDF, or email">
             <div className="relative flex items-center">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-700 pointer-events-none">$</span>
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-amber-600 pointer-events-none">$</span>
               <Input
                 type="number"
                 step="0.01"
                 value={item.unit_cost}
                 onChange={e => update('unit_cost', e.target.value)}
                 onBlur={() => handlePriceBlur('unit_cost')}
-                className="h-7 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-md border-amber-200 bg-amber-50/60 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/15 text-slate-800"
+                className="h-7 pl-4 pr-7 text-sm text-right font-semibold tabular-nums rounded-md border-amber-300 bg-amber-50 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-amber-900"
                 min={0}
               />
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-bold uppercase tracking-wide text-amber-600 pointer-events-none">Int</span>
             </div>
           </div>
         )}
@@ -365,7 +366,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             <div className="text-slate-500">Service</div>
             <div className="text-center">Qty</div>
             <div className="text-center">UOM</div>
-            {!isPreview && <div className="text-right text-amber-600">Unit Cost</div>}
+            {!isPreview && <div className="text-right text-amber-600" title="Internal — not shown in client view">Unit Cost (Internal)</div>}
             <div className="text-right">Unit Price</div>
             <div className="text-right">Total</div>
             <div />
