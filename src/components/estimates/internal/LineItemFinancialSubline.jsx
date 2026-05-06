@@ -10,7 +10,7 @@ import { Info } from 'lucide-react';
  *   25-40% → Warning  (amber)
  *   > 40%  → Healthy  (emerald)
  */
-export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost }) {
+export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost, markupPct }) {
   const qty = parseFloat(quantity) || 0;
   const price = parseFloat(unitPrice) || 0;
   const cost = parseFloat(unitCost) || 0;
@@ -21,6 +21,7 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
   const lineCost = qty * cost;
   const profit = lineRevenue - lineCost;
   const marginPct = (profit / lineRevenue) * 100;
+  const displayMarkup = Number(markupPct ?? (lineCost > 0 ? (profit / lineCost) * 100 : 0)) || 0;
 
   const fmt = (n) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -41,6 +42,9 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
       <span className="text-slate-700">·</span>
       <span className="text-slate-700">Profit</span>
       <span className="font-semibold text-slate-700 tabular-nums">{fmt(profit)}</span>
+      <span className="text-slate-700">·</span>
+      <span className="text-slate-700">Markup</span>
+      <span className="font-semibold text-slate-700 tabular-nums">{displayMarkup.toFixed(1)}%</span>
       <span className="text-slate-700">·</span>
       <span className="text-slate-700">Margin</span>
       <span className="font-semibold text-slate-700 tabular-nums">{marginPct.toFixed(1)}%</span>

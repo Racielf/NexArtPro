@@ -3,7 +3,7 @@
  *
  * CANONICAL SHAPE:
  * { id, service_id, service_name, category, description,
- *   quantity, unit, unit_price, unit_cost, book_price, line_total, taxable }
+ *   quantity, unit, unit_price, unit_cost, markup_pct, book_price, line_total, taxable }
  *
  * Use `normalizeLineItem` on every line item entering the system
  * (legacy load, group init, picker result, import).
@@ -51,6 +51,9 @@ export function normalizeLineItem(raw = {}) {
   const quantity   = safeNonNeg(raw.quantity, 1);
   const unit_price = safeNonNeg(raw.unit_price, 0);
   const unit_cost  = safeNonNeg(raw.unit_cost, 0);
+  const markup_pct = raw.markup_pct !== undefined
+    ? safeNonNeg(raw.markup_pct, 0)
+    : (unit_cost > 0 && unit_price > 0 ? ((unit_price - unit_cost) / unit_cost) * 100 : 0);
   const book_price = safeNonNeg(raw.book_price, 0);
   // line_total: ALWAYS recalculate from quantity * unit_price to enforce contract.
   // Only fall back to stored value when unit_price is 0 (legacy items with no price set).
@@ -86,6 +89,7 @@ export function normalizeLineItem(raw = {}) {
     unit:         safeStr(raw.unit, 'ea'),
     unit_price,
     unit_cost,
+    markup_pct,
     book_price,
     line_total:   safeNonNeg(line_total, 0),
     taxable:      raw.taxable !== false,

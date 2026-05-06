@@ -37,7 +37,8 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
 const emptyItem = () => normalizeLineItem({ id: uid() });
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
-const GRID_COLS = 'minmax(24px,28px) minmax(360px,1fr) minmax(80px,100px) minmax(100px,120px) minmax(120px,150px) minmax(120px,150px) minmax(28px,32px)';
+const GRID_COLS = 'minmax(24px,28px) minmax(320px,1fr) minmax(70px,90px) minmax(80px,100px) minmax(100px,120px) minmax(90px,110px) minmax(110px,130px) minmax(110px,130px) minmax(28px,32px)';
+const PREVIEW_GRID_COLS = 'minmax(24px,28px) minmax(360px,1fr) minmax(80px,100px) minmax(100px,120px) minmax(120px,150px) minmax(120px,150px) minmax(28px,32px)';
 
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null, dragHandleProps = {}, onDragOverRow, onDropRow, isDragging = false, isDropTarget = false }) {
   const [editingService, setEditingService] = useState(false);
@@ -45,13 +46,22 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   const committedRef = React.useRef({ unit_price: item.unit_price, unit_cost: item.unit_cost });
 
   const update = (field, value) => {
-    const numericFields = new Set(['quantity', 'unit_price', 'unit_cost', 'book_price']);
+    const numericFields = new Set(['quantity', 'unit_price', 'unit_cost', 'markup_pct', 'book_price']);
     const safeValue = numericFields.has(field) ? (parseFloat(value) || 0) : value;
     const updated = { ...item, [field]: safeValue };
-    updated.line_total = calculateLineTotal(
-      field === 'quantity' ? safeValue : updated.quantity,
-      field === 'unit_price' ? safeValue : updated.unit_price
-    );
+
+    if (field === 'unit_cost' || field === 'markup_pct') {
+      const cost = field === 'unit_cost' ? safeValue : (parseFloat(updated.unit_cost) || 0);
+      const markup = field === 'markup_pct' ? safeValue : (parseFloat(updated.markup_pct) || 0);
+      updated.unit_price = parseFloat((cost * (1 + markup / 100)).toFixed(2));
+    }
+
+    if (field === 'unit_price') {
+      const cost = parseFloat(updated.unit_cost) || 0;
+      updated.markup_pct = cost > 0 ? parseFloat((((safeValue - cost) / cost) * 100).toFixed(2)) : 0;
+    }
+
+    updated.line_total = calculateLineTotal(updated.quantity, updated.unit_price);
     onUpdate(updated);
   };
 
@@ -73,6 +83,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   const cost = parseFloat(item.unit_cost) || 0;
   const book = parseFloat(item.book_price) || 0;
   const qty = parseFloat(item.quantity) || 0;
+  const markupPct = parseFloat(item.markup_pct) || 0;
   const lineMarginPct = price > 0 && cost > 0 ? ((price - cost) / price) * 100 : null;
   const isLoss = cost > 0 && price > 0 && price < cost;
   const isZeroProfit = cost > 0 && price > 0 && Math.abs(price - cost) < 0.01;
@@ -86,7 +97,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
       onDrop={onDropRow}
       className={`relative bg-white border-b border-slate-200 last:border-0 transition-all duration-150 group/row ${isDragging ? 'opacity-80 scale-[1.01] shadow-lg ring-2 ring-blue-400/40 z-50' : ''} ${isDropTarget && !isDragging ? 'border-t-2 border-blue-500' : ''} ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}
     >
-      <div className="grid items-center gap-2 px-3 py-4" style={{ gridTemplateColumns: GRID_COLS }}>
+      <div className="grid items-center gap-2 px-3 py-4" style={{ gridTemplateColumns: isPreview ? PREVIEW_GRID_COLS : GRID_COLS }}>
         <button
           type="button"
           className="text-slate-500 hover:text-slate-900 cursor-grab active:cursor-grabbing pointer-events-auto flex justify-center transition-colors"
@@ -115,6 +126,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 const safeBook = isNaN(pickedBook) ? 0 : pickedBook;
                 const qtyVal = parseFloat(item.quantity) || 0;
                 const lineTotal = calculateLineTotal(qtyVal, safePrice);
+                const pickedMarkup = safeCost > 0 && safePrice > 0 ? parseFloat((((safePrice - safeCost) / safeCost) * 100).toFixed(2)) : 0;
                 const updated = {
                   ...item,
                   service_id: picked.service_id ?? null,
@@ -124,6 +136,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   unit: picked.unit || item.unit || 'ea',
                   unit_price: safePrice,
                   unit_cost: safeCost,
+                  markup_pct: pickedMarkup,
                   book_price: safeBook,
                   line_total: lineTotal,
                 };
@@ -199,6 +212,39 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           </select>
         )}
 
+        {!isPreview && (
+          <div className="min-w-0 overflow-hidden">
+            <div className="relative flex items-center">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-700 pointer-events-none">$</span>
+              <Input
+                type="number"
+                step="0.01"
+                value={item.unit_cost}
+                onChange={e => update('unit_cost', e.target.value)}
+                onBlur={() => handlePriceBlur('unit_cost')}
+                className="h-7 pl-4 pr-2 text-sm text-right font-semibold tabular-nums rounded-md border-amber-200 bg-amber-50/60 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/15 text-slate-800"
+                min={0}
+              />
+            </div>
+          </div>
+        )}
+
+        {!isPreview && (
+          <div className="min-w-0 overflow-hidden">
+            <div className="relative flex items-center">
+              <Input
+                type="number"
+                step="0.1"
+                value={markupPct}
+                onChange={e => update('markup_pct', e.target.value)}
+                className="h-7 pr-5 text-sm text-right font-semibold tabular-nums rounded-md border-blue-200 bg-blue-50/60 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 text-blue-800"
+                min={0}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-700 pointer-events-none">%</span>
+            </div>
+          </div>
+        )}
+
         <div className="min-w-0 overflow-hidden">
           <div className="relative flex items-center">
             {isPreview ? (
@@ -233,7 +279,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
 
       {!isPreview && (
         <div className="pl-12 pr-3 pb-3 mt-3">
-          <LineItemFinancialSubline quantity={item.quantity} unitPrice={item.unit_price} unitCost={item.unit_cost} />
+          <LineItemFinancialSubline quantity={item.quantity} unitPrice={item.unit_price} unitCost={item.unit_cost} markupPct={item.markup_pct} />
         </div>
       )}
 
@@ -315,11 +361,13 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
 
       {!group.collapsed && (
         <>
-          <div className="grid text-[9px] text-slate-400 font-bold uppercase tracking-widest px-4 py-2 bg-slate-50/80 border-b border-slate-100" style={{ gridTemplateColumns: GRID_COLS }}>
+          <div className="grid text-[9px] text-slate-400 font-bold uppercase tracking-widest px-4 py-2 bg-slate-50/80 border-b border-slate-100" style={{ gridTemplateColumns: isPreview ? PREVIEW_GRID_COLS : GRID_COLS }}>
             <div />
             <div className="text-slate-500">Service</div>
             <div className="text-center">Qty</div>
             <div className="text-center">UOM</div>
+            {!isPreview && <div className="text-right text-amber-600">Unit Cost</div>}
+            {!isPreview && <div className="text-right text-blue-600">Markup %</div>}
             <div className="text-right">Unit Price</div>
             <div className="text-right">Total</div>
             <div />

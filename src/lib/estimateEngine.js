@@ -103,8 +103,13 @@ export function runEstimateEngine(groups = [], {
   const processedGroups = groups.map(group => ({
     ...group,
     items: (group.items || []).map(item => {
-      const line_total = calculateLineTotal(item.quantity, item.unit_price);
-      const processed = { ...item, line_total };
+      const unitCost = parseFloat(item.unit_cost) || 0;
+      const markupPct = parseFloat(item.markup_pct) || 0;
+      const unitPrice = unitCost > 0 && item.markup_pct !== undefined
+        ? toMoney(D(unitCost).times(D(1).plus(D(markupPct).dividedBy(100))))
+        : (parseFloat(item.unit_price) || 0);
+      const line_total = calculateLineTotal(item.quantity, unitPrice);
+      const processed = { ...item, markup_pct: markupPct, unit_price: unitPrice, line_total };
       allItems.push(processed);
       return processed;
     }),
