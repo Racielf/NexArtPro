@@ -38,7 +38,7 @@ const emptyItem = () => normalizeLineItem({ id: uid() });
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
 const GRID_COLS = 'minmax(24px,28px) minmax(360px,1fr) minmax(80px,100px) minmax(100px,120px) minmax(120px,150px) minmax(120px,150px) minmax(28px,32px)';
 
-function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null, dragHandleProps = {}, onDragOverRow, onDropRow, isDragging = false }) {
+function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null, dragHandleProps = {}, onDragOverRow, onDropRow, isDragging = false, isDropTarget = false }) {
   const [editingService, setEditingService] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
   const committedRef = React.useRef({ unit_price: item.unit_price, unit_cost: item.unit_cost });
@@ -80,14 +80,15 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
 
   return (
     <div
+      data-line-item-row
       onDragOver={onDragOverRow}
       onDrop={onDropRow}
-      className={`bg-white border-b border-slate-200 last:border-0 transition-colors group/row ${isDragging ? 'bg-blue-50/70' : ''} ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}
+      className={`relative bg-white border-b border-slate-200 last:border-0 transition-all duration-150 group/row ${isDragging ? 'opacity-80 scale-[1.01] shadow-lg ring-2 ring-blue-400/40 z-50' : ''} ${isDropTarget && !isDragging ? 'border-t-2 border-blue-500' : ''} ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}
     >
       <div className="grid items-center gap-2 px-3 py-4" style={{ gridTemplateColumns: GRID_COLS }}>
         <button
           type="button"
-          className="text-slate-700 hover:text-slate-900 cursor-grab active:cursor-grabbing pointer-events-auto flex justify-center transition-colors"
+          className="text-slate-500 hover:text-slate-900 cursor-grab active:cursor-grabbing pointer-events-auto flex justify-center transition-colors"
           {...dragHandleProps}
         >
           <GripVertical className="w-3.5 h-3.5 pointer-events-none" />
@@ -244,6 +245,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(group.name);
   const [draggingItemId, setDraggingItemId] = useState(null);
+  const [dropTargetItemId, setDropTargetItemId] = useState(null);
 
   const updateItem = (updatedItem) => {
     onUpdate({ ...group, items: group.items.map(i => i.id === updatedItem.id ? updatedItem : i) });
@@ -336,23 +338,31 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
                 isPreview={isPreview}
                 pricingWarning={pricingWarningsMap?.[item.id] || null}
                 isDragging={draggingItemId === item.id}
+                isDropTarget={dropTargetItemId === item.id}
                 dragHandleProps={!isPreview ? {
                   draggable: true,
                   onDragStart: (event) => {
                     setDraggingItemId(item.id);
                     event.dataTransfer.effectAllowed = 'move';
                     event.dataTransfer.setData('text/plain', item.id);
+                    const row = event.currentTarget.closest('[data-line-item-row]');
+                    if (row) event.dataTransfer.setDragImage(row, 24, 24);
                   },
-                  onDragEnd: () => setDraggingItemId(null),
+                  onDragEnd: () => {
+                    setDraggingItemId(null);
+                    setDropTargetItemId(null);
+                  },
                 } : {}}
                 onDragOverRow={!isPreview ? (event) => {
                   event.preventDefault();
                   event.dataTransfer.dropEffect = 'move';
+                  if (draggingItemId && draggingItemId !== item.id) setDropTargetItemId(item.id);
                 } : undefined}
                 onDropRow={!isPreview ? (event) => {
                   event.preventDefault();
                   reorderItems(item.id);
                   setDraggingItemId(null);
+                  setDropTargetItemId(null);
                 } : undefined}
               />
             ))}
