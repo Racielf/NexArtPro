@@ -80,7 +80,7 @@ function CostRow({ item, onUpdate, onRemove }) {
   );
 }
 
-export default function OtherCostsSection({ otherCosts = [], onChange }) {
+export default function OtherCostsSection({ otherCosts = [], onChange, billOtherCostsToClient = false, onBillToClientChange }) {
   const [expanded, setExpanded] = useState(otherCosts.length > 0);
 
   const items = Array.isArray(otherCosts) ? otherCosts : [];
@@ -102,24 +102,35 @@ export default function OtherCostsSection({ otherCosts = [], onChange }) {
   return (
     <div className="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-sm">
       {/* Header */}
-      <button
-        type="button"
-        onClick={() => setExpanded(v => !v)}
-        className="w-full flex items-center justify-between px-5 py-3 bg-amber-50 hover:bg-amber-100/60 transition-colors"
-      >
-        <div className="flex items-center gap-2">
+      <div className="w-full flex items-center justify-between px-5 py-3 bg-amber-50">
+        <button
+          type="button"
+          onClick={() => setExpanded(v => !v)}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1 text-left"
+        >
           {expanded ? <ChevronDown className="w-4 h-4 text-amber-600" /> : <ChevronRight className="w-4 h-4 text-amber-600" />}
           <DollarSign className="w-4 h-4 text-amber-600" />
-          <span className="text-sm font-bold text-amber-800">Internal Job Costs</span>
-          <span className="text-[9px] font-bold uppercase tracking-wide text-amber-500 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded">
-            Not billed directly
+          <span className="text-sm font-bold text-amber-800">Other Costs</span>
+          <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${billOtherCostsToClient ? 'text-emerald-700 bg-emerald-100 border-emerald-200' : 'text-amber-500 bg-amber-100 border-amber-200'}`}>
+            {billOtherCostsToClient ? 'Billed to client' : 'Internal only'}
           </span>
-        </div>
+        </button>
         <div className="flex items-center gap-3 text-xs">
+          {onBillToClientChange && (
+            <label className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 whitespace-nowrap cursor-pointer">
+              <input
+                type="checkbox"
+                checked={billOtherCostsToClient}
+                onChange={e => onBillToClientChange(e.target.checked)}
+                className="accent-amber-600"
+              />
+              Bill to client
+            </label>
+          )}
           <span className="text-amber-600 font-medium">{items.length} item{items.length !== 1 ? 's' : ''}</span>
           <span className="font-bold text-amber-800">${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
         </div>
-      </button>
+      </div>
 
       {expanded && (
         <div className="px-5 py-4 space-y-2">

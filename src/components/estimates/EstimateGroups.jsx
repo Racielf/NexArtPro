@@ -492,6 +492,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   const [uncertaintyNote, setUncertaintyNote] = useState(estimate?.uncertainty_note || '');
   const [includeMaterialsInClientDocument, setIncludeMaterialsInClientDocument] = useState(estimate?.document_config?.includeMaterialsInClientDocument !== false);
   const [billMaterialsToClient, setBillMaterialsToClient] = useState(estimate?.document_config?.billMaterialsToClient !== false);
+  const [billOtherCostsToClient, setBillOtherCostsToClient] = useState(estimate?.document_config?.billOtherCostsToClient === true);
   const [targetMarkupPct, setTargetMarkupPct] = useState(estimate?.document_config?.target_markup_pct || 0);
   const [targetMarkupMessage, setTargetMarkupMessage] = useState('');
   const [materials, setMaterials] = useState(() => normalizeMaterials(estimate?.materials || []));
@@ -551,6 +552,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
     setUncertaintyNote(estimate.uncertainty_note || '');
     setIncludeMaterialsInClientDocument(estimate?.document_config?.includeMaterialsInClientDocument !== false);
     setBillMaterialsToClient(estimate?.document_config?.billMaterialsToClient !== false);
+    setBillOtherCostsToClient(estimate?.document_config?.billOtherCostsToClient === true);
     setTargetMarkupPct(estimate?.document_config?.target_markup_pct || 0);
     setMaterials(normalizeMaterials(estimate.materials || []));
     setOtherCosts(estimate.other_costs || []);
@@ -559,7 +561,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   useEffect(() => {
     if (onDirty) onDirty();
     const t = setTimeout(() => {
-      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts, billMaterialsToClient });
+      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts, billMaterialsToClient, billOtherCostsToClient });
       onSave({
         ...estimate,
         groups: result.groups,
@@ -597,6 +599,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
           ...(estimate?.document_config || {}),
           includeMaterialsInClientDocument,
           billMaterialsToClient,
+          billOtherCostsToClient,
           target_markup_pct: targetMarkupPct,
         },
         subtotal: result.subtotal,
@@ -612,7 +615,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, includedScopeBullets, contingencyType, contingencyValue, showContingencyToClient, uncertaintyNote, includeMaterialsInClientDocument, billMaterialsToClient, targetMarkupPct, materials, otherCosts]);
+  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, includedScopeBullets, contingencyType, contingencyValue, showContingencyToClient, uncertaintyNote, includeMaterialsInClientDocument, billMaterialsToClient, billOtherCostsToClient, targetMarkupPct, materials, otherCosts]);
 
   const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
@@ -636,7 +639,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
     totalCost, serviceCost, materialsCost, grossMargin, grossMarginPct,
     materialsSubtotal, servicesSubtotal, markupPercentage,
-    otherCostsTotal, revenue, netProfit, netProfitPct } = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts, billMaterialsToClient });
+    otherCostsTotal, revenue, netProfit, netProfitPct } = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts, billMaterialsToClient, billOtherCostsToClient });
 
   const targetMarkupValue = parseFloat(targetMarkupPct) || 0;
   const suggestedRevenue = totalCost > 0 ? totalCost * (1 + targetMarkupValue / 100) : 0;
@@ -738,7 +741,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
 
       {!isPreview && <button onClick={addGroup} className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-primary border border-dashed border-slate-200 hover:border-primary/30 rounded-xl w-full py-2.5 justify-center transition-colors mb-5 bg-white/60 hover:bg-white"><Plus className="w-3.5 h-3.5" />Add work group</button>}
       <div className="mb-5"><MaterialsSection materials={materials} onChange={setMaterials} showCost={showCost} includeMaterialsInClientDocument={includeMaterialsInClientDocument} billMaterialsToClient={billMaterialsToClient} onSettingsChange={({ includeMaterialsInClientDocument: showMaterials, billMaterialsToClient: billMaterials }) => { if (typeof showMaterials === 'boolean') setIncludeMaterialsInClientDocument(showMaterials); if (typeof billMaterials === 'boolean') setBillMaterialsToClient(billMaterials); }} /></div>
-      {!isPreview && <div className="mb-5"><OtherCostsSection otherCosts={otherCosts} onChange={setOtherCosts} /></div>}
+      {!isPreview && <div className="mb-5"><OtherCostsSection otherCosts={otherCosts} onChange={setOtherCosts} billOtherCostsToClient={billOtherCostsToClient} onBillToClientChange={setBillOtherCostsToClient} /></div>}
       {!isPreview && (
         <TargetMarkupSection
           targetMarkupPct={targetMarkupPct}
@@ -765,7 +768,16 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
         <div className="flex justify-end">
           <div className="flex-shrink-0 w-full max-w-md px-6 py-5 space-y-2 text-sm">
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Client-Facing Total</p>
-            <div className="flex justify-between py-1.5 border-b border-slate-100"><span className="text-slate-500">Subtotal</span><span className="font-semibold text-slate-800 tabular-nums">{fmt(subtotal)}</span></div>
+            <div className="space-y-1 pb-2 border-b border-slate-100">
+              <div className="flex justify-between text-xs text-slate-400"><span>Services Total</span><span className="tabular-nums">{fmt(servicesSubtotal)}</span></div>
+              {billMaterialsToClient && materialsSubtotal > 0 && (
+                <div className="flex justify-between text-xs text-slate-400"><span>Materials Total</span><span className="tabular-nums">{fmt(materialsSubtotal)}</span></div>
+              )}
+              {billOtherCostsToClient && otherCostsTotal > 0 && (
+                <div className="flex justify-between text-xs text-slate-400"><span>Other Costs Total</span><span className="tabular-nums">{fmt(otherCostsTotal)}</span></div>
+              )}
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-slate-100"><span className="text-slate-500 font-semibold">Subtotal</span><span className="font-semibold text-slate-800 tabular-nums">{fmt(subtotal)}</span></div>
             <div className="flex items-center justify-between gap-3 py-1.5 border-b border-slate-100">
               <span className="text-slate-500">Discount</span>
               {isPreview ? <span className="text-sm font-semibold text-slate-700 tabular-nums">{discountValue > 0 ? `${discountType === 'percent' ? discountValue + '%' : '$' + discountValue}` : '—'}</span> : <div className="flex items-center gap-1.5">{readOnlyDiscountType ? <div className="h-7 px-2 flex items-center text-xs text-slate-500 font-medium bg-slate-50 rounded border border-slate-200">{discountType === 'percent' ? '%' : '$'}</div> : <select value={discountType} onChange={e => setDiscountType(e.target.value)} className="h-7 text-xs border border-slate-200 rounded px-2 bg-white text-slate-600"><option value="percent">%</option><option value="fixed">$</option></select>}<Input type="number" value={discountValue} onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)} className="h-7 w-20 text-right text-sm border-slate-200" min={0} /></div>}

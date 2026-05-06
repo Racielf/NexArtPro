@@ -98,6 +98,7 @@ export function runEstimateEngine(groups = [], {
   materials = [],
   otherCosts = [],
   billMaterialsToClient = true,
+  billOtherCostsToClient = false,
 } = {}) {
   const allItems = [];
   const processedGroups = groups.map(group => ({
@@ -121,8 +122,18 @@ export function runEstimateEngine(groups = [], {
 
   const servicesSubtotal = calculateSubtotal(allItems);
   const materialsRevenue = billMaterialsToClient ? materialsSubtotal : 0;
-  const subtotal = toMoney(D(servicesSubtotal).plus(D(materialsRevenue)));
-  const taxableBase = calculateTaxableBase(allItems);
+
+  // Other Costs total — always computed for internal cost accounting.
+  const otherCostsTotalEarly = toMoney(
+    (otherCosts || []).reduce((acc, c) => acc.plus(D(c.amount)), new Decimal(0))
+  );
+  // Other Costs revenue — only contributes to client-facing subtotal when explicitly billed.
+  const otherCostsRevenue = billOtherCostsToClient ? otherCostsTotalEarly : 0;
+
+  // CLIENT-FACING SUBTOTAL — single source of truth.
+  // Formula: services + (materials if billed) + (other costs if billed).
+  const subtotal = toMoney(D(servicesSubtotal).plus(D(materialsRevenue)).plus(D(otherCostsRevenue)));
+  const taxableBase = toMoney(D(calculateTaxableBase(allItems)).plus(D(materialsRevenue)).plus(D(otherCostsRevenue)));
   const discountAmt = calculateDiscount(subtotal, discountType, discountValue);
   const taxAmount = calculateTax(toMoney(D(taxableBase).minus(D(discountAmt))), taxRate);
   const grandTotal = calculateGrandTotal(subtotal, taxAmount, discountAmt);
@@ -141,9 +152,7 @@ export function runEstimateEngine(groups = [], {
     }, new Decimal(0))
   );
 
-  const otherCostsTotal = toMoney(
-    (otherCosts || []).reduce((acc, c) => acc.plus(D(c.amount)), new Decimal(0))
-  );
+  const otherCostsTotal = otherCostsTotalEarly;
 
   // Official contractor model: total project cost = materials + labor + other costs.
   // serviceCost is kept for compatibility and represents Labor Cost / Costo de mano de obra.
@@ -163,10 +172,10 @@ export function runEstimateEngine(groups = [], {
     }, new Decimal(0))
   );
 
-  // Internal Revenue (Project Total) — includes services + billed materials + other costs.
-  // This is the FULL project revenue used for internal profitability metrics.
-  // Note: grandTotal (client-facing) may differ if otherCosts are not billed to client directly.
-  const revenue = toMoney(D(servicesSubtotal).plus(D(materialsRevenue)).plus(D(otherCostsTotal)));
+  // Revenue = Subtotal (single source of truth, before discount/tax).
+  // Per official rule: Revenue must equal client-facing Subtotal.
+  // If a section is not billed to the client, it does not contribute to Revenue.
+  const revenue = subtotal;
 
   const grossMargin = toMoney(D(revenue).minus(D(totalCost)));
   const grossMarginPct = revenue > 0
