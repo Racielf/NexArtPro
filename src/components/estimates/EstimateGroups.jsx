@@ -40,7 +40,8 @@ const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'r
 const GRID_COLS = 'minmax(24px,28px) minmax(360px,1fr) minmax(80px,100px) minmax(100px,120px) minmax(120px,150px) minmax(120px,150px) minmax(28px,32px)';
 
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null }) {
-  const [expanded, setExpanded] = useState(!item.service_name || !item.description);
+  const [editingService, setEditingService] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
   const committedRef = React.useRef({ unit_price: item.unit_price, unit_cost: item.unit_cost });
 
   const update = (field, value) => {
@@ -85,60 +86,89 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           <GripVertical className="w-3.5 h-3.5" />
         </button>
 
-        <div className="min-w-0">
-          <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest px-2 mb-0 leading-none">Service</p>
-          <SmartServicePicker
-            value={item.service_name}
-            onChange={v => update('service_name', v)}
-            onSelect={picked => {
-              if (!picked?.name) return;
-              setExpanded(true);
-              const pickedPrice = picked.unit_price !== null ? Number(picked.unit_price) : price;
-              const pickedCost = picked.unit_cost !== null ? Number(picked.unit_cost) : cost;
-              const safePrice = isNaN(pickedPrice) ? 0 : pickedPrice;
-              const safeCost = isNaN(pickedCost) ? 0 : pickedCost;
-              const pickedBook = picked.book_price !== null && picked.book_price !== undefined
-                ? Number(picked.book_price)
-                : (picked.unit_price !== null ? Number(picked.unit_price) : book);
-              const safeBook = isNaN(pickedBook) ? 0 : pickedBook;
-              const qtyVal = parseFloat(item.quantity) || 0;
-              const lineTotal = calculateLineTotal(qtyVal, safePrice);
-              const updated = {
-                ...item,
-                service_id: picked.service_id ?? null,
-                service_name: picked.name || item.service_name,
-                description: picked.description || item.description || '',
-                category: picked.category || item.category || 'Misc',
-                unit: picked.unit || item.unit || 'ea',
-                unit_price: safePrice,
-                unit_cost: safeCost,
-                book_price: safeBook,
-                line_total: lineTotal,
-              };
-              onUpdate(updated);
-              if (picked._is_new && picked.source === 'custom') {
-                persistNewServiceToCatalog({
-                  service_name: picked.name,
-                  category: picked.category || 'Misc',
-                  unit: picked.unit || 'ea',
-                  description: picked.description || '',
+        <div className="min-w-0 px-2">
+          <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest mb-1 leading-none">Service</p>
+          {editingService && !isPreview ? (
+            <SmartServicePicker
+              value={item.service_name}
+              onChange={v => update('service_name', v)}
+              onBlur={() => setEditingService(false)}
+              onKeyDown={e => e.key === 'Enter' && setEditingService(false)}
+              onSelect={picked => {
+                if (!picked?.name) return;
+                const pickedPrice = picked.unit_price !== null ? Number(picked.unit_price) : price;
+                const pickedCost = picked.unit_cost !== null ? Number(picked.unit_cost) : cost;
+                const safePrice = isNaN(pickedPrice) ? 0 : pickedPrice;
+                const safeCost = isNaN(pickedCost) ? 0 : pickedCost;
+                const pickedBook = picked.book_price !== null && picked.book_price !== undefined
+                  ? Number(picked.book_price)
+                  : (picked.unit_price !== null ? Number(picked.unit_price) : book);
+                const safeBook = isNaN(pickedBook) ? 0 : pickedBook;
+                const qtyVal = parseFloat(item.quantity) || 0;
+                const lineTotal = calculateLineTotal(qtyVal, safePrice);
+                const updated = {
+                  ...item,
+                  service_id: picked.service_id ?? null,
+                  service_name: picked.name || item.service_name,
+                  description: picked.description || item.description || '',
+                  category: picked.category || item.category || 'Misc',
+                  unit: picked.unit || item.unit || 'ea',
                   unit_price: safePrice,
                   unit_cost: safeCost,
-                }).then(result => {
-                  if (result.service_id && !updated.service_id) onUpdate({ ...updated, service_id: result.service_id });
-                });
-              }
-            }}
-            placeholder="Search service from Price Book…"
-            className="h-8 w-full text-[15px] font-semibold leading-6 text-slate-950 border-transparent hover:border-slate-300 focus:border-blue-500 bg-transparent hover:bg-white focus:bg-white px-2 rounded-md outline-none focus:ring-2 focus:ring-blue-500/20 transition placeholder:text-slate-700"
-          />
-
-          {!expanded && item.description && (
-            <p className="text-[14px] text-slate-700 px-2 leading-5 truncate mt-1 font-normal">{item.description}</p>
+                  book_price: safeBook,
+                  line_total: lineTotal,
+                };
+                onUpdate(updated);
+                setEditingService(false);
+                if (picked._is_new && picked.source === 'custom') {
+                  persistNewServiceToCatalog({
+                    service_name: picked.name,
+                    category: picked.category || 'Misc',
+                    unit: picked.unit || 'ea',
+                    description: picked.description || '',
+                    unit_price: safePrice,
+                    unit_cost: safeCost,
+                  }).then(result => {
+                    if (result.service_id && !updated.service_id) onUpdate({ ...updated, service_id: result.service_id });
+                  });
+                }
+              }}
+              placeholder="Search service from Price Book…"
+              autoFocus
+              className="h-10 w-full border border-blue-500 ring-2 ring-blue-500/20 bg-white rounded-lg text-slate-950 font-semibold text-[17px] leading-6 px-3 outline-none placeholder:text-slate-400"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => !isPreview && setEditingService(true)}
+              className="block w-full text-left text-slate-950 font-semibold text-[17px] leading-6 truncate"
+            >
+              {item.service_name || 'Service name'}
+            </button>
           )}
-          {!expanded && (
-            <button onClick={() => setExpanded(true)} className="text-[10px] text-slate-700 hover:text-primary px-2 mt-0.5 font-medium transition-colors">
-              {item.description ? 'edit' : '+ desc'}
+
+          {editingDescription && !isPreview ? (
+            <Textarea
+              autoFocus
+              value={item.description || ''}
+              onChange={e => update('description', e.target.value)}
+              onBlur={() => setEditingDescription(false)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  setEditingDescription(false);
+                }
+              }}
+              placeholder="Add description..."
+              className="mt-2 min-h-[80px] resize-y border border-blue-500 ring-2 ring-blue-500/20 bg-white rounded-lg text-slate-900 text-[15px] leading-6 placeholder:text-slate-400"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => !isPreview && setEditingDescription(true)}
+              className={`block w-full text-left text-[15px] leading-6 mt-1 truncate ${item.description ? 'text-slate-600' : 'text-slate-400'}`}
+            >
+              {item.description || 'Add description...'}
             </button>
           )}
 
@@ -198,26 +228,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         </div>
       )}
 
-      {expanded && (
-        <div className="px-10 pb-3 pt-0.5 space-y-1.5">
-          <p className="text-[9px] font-semibold text-slate-700 uppercase tracking-widest leading-none">Description</p>
-          {isPreview ? (
-            <p className="text-sm text-slate-700 px-1 py-1 leading-relaxed">{item.description || '—'}</p>
-          ) : (
-            <Input value={item.description} onChange={e => update('description', e.target.value)} placeholder="Service description / scope details…" className="h-8 text-sm border border-slate-300 bg-white text-slate-900 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-700 transition" />
-          )}
-          <div className="flex items-center gap-4">
-            <span className="text-[11px] text-slate-700">{item.taxable !== false ? 'Taxable' : 'Not taxable'}</span>
-            {!isPreview && (
-              <label className="flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer select-none hover:text-slate-900 transition-colors">
-                <input type="checkbox" checked={item.taxable !== false} onChange={e => update('taxable', e.target.checked)} className="rounded accent-primary" />
-                Toggle taxable
-              </label>
-            )}
-            <button onClick={() => setExpanded(false)} className="text-[11px] text-slate-700 hover:text-slate-900 transition-colors">↑ collapse</button>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
