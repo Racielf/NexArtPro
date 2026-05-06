@@ -631,11 +631,10 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
     totalCost, serviceCost, materialsCost, grossMargin, grossMarginPct,
     materialsSubtotal, servicesSubtotal, markupPercentage,
-    otherCostsTotal, netProfit, netProfitPct } = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts, billMaterialsToClient });
+    otherCostsTotal, revenue, netProfit, netProfitPct } = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts, billMaterialsToClient });
 
   const targetMarkupValue = parseFloat(targetMarkupPct) || 0;
   const suggestedRevenue = totalCost > 0 ? totalCost * (1 + targetMarkupValue / 100) : 0;
-  const suggestedProfit = suggestedRevenue - totalCost;
   const targetMarkupDifference = markupPercentage - targetMarkupValue;
   const overriddenServicesCount = groups.reduce((count, group) => count + (group.items || []).filter(item => item.markup_override === true).length, 0);
 
@@ -740,10 +739,9 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
           targetMarkupPct={targetMarkupPct}
           onTargetMarkupChange={setTargetMarkupPct}
           costBase={totalCost}
-          revenue={total}
+          revenue={revenue}
           profit={netProfit}
           suggestedRevenue={suggestedRevenue}
-          suggestedProfit={suggestedProfit}
           actualMarkupPct={markupPercentage}
           actualMarginPct={netProfitPct}
           differenceFromTarget={targetMarkupDifference}

@@ -12,6 +12,7 @@ function Metric({ label, value, accent = 'slate' }) {
     blue: 'text-blue-700 bg-blue-50 border-blue-200',
     emerald: 'text-emerald-700 bg-emerald-50 border-emerald-200',
     amber: 'text-amber-700 bg-amber-50 border-amber-200',
+    red: 'text-red-700 bg-red-50 border-red-200',
   }[accent] || 'text-slate-800 bg-slate-50 border-slate-200';
 
   return (
@@ -29,7 +30,6 @@ export default function TargetMarkupSection({
   revenue,
   profit,
   suggestedRevenue,
-  suggestedProfit,
   actualMarkupPct,
   actualMarginPct,
   differenceFromTarget,
@@ -40,7 +40,9 @@ export default function TargetMarkupSection({
 }) {
   const differenceAccent = Number(differenceFromTarget) >= 0 ? 'emerald' : 'amber';
   const overrides = Number(overriddenServicesCount) || 0;
-  const isLosingMoney = Number(profit) < 0;
+  const profitNum = Number(profit) || 0;
+  const isLosingMoney = profitNum < 0;
+  const profitAccent = profitNum > 0 ? 'emerald' : profitNum < 0 ? 'red' : 'amber';
 
   return (
     <div className="bg-white rounded-xl border border-blue-200 overflow-hidden mb-5 shadow-sm">
@@ -76,14 +78,13 @@ export default function TargetMarkupSection({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-5 py-4">
         <Metric label="Cost Base" value={fmt(costBase)} />
-        <Metric label="Revenue" value={fmt(revenue)} />
-        <Metric label="Profit" value={fmt(profit)} accent="emerald" />
+        <Metric label="Project Total / Revenue" value={fmt(revenue)} accent="blue" />
+        <Metric label="Net Profit" value={fmt(profit)} accent={profitAccent} />
         <Metric label="Target Markup %" value={pct(targetMarkupPct)} accent="blue" />
-        <Metric label="Suggested Revenue" value={fmt(suggestedRevenue)} accent="blue" />
-        <Metric label="Suggested Profit" value={fmt(suggestedProfit)} accent="emerald" />
+        <Metric label="Suggested Project Total" value={fmt(suggestedRevenue)} accent="blue" />
         <Metric label="Actual Markup %" value={pct(actualMarkupPct)} accent="blue" />
+        <Metric label="Net Margin %" value={pct(actualMarginPct)} accent="emerald" />
         <Metric label="Difference from Target" value={`${Number(differenceFromTarget) >= 0 ? '+' : ''}${pct(differenceFromTarget)}`} accent={differenceAccent} />
-        <Metric label="Actual Margin %" value={pct(actualMarginPct)} accent="emerald" />
         <Metric label="Manual Overrides" value={`${Number(overriddenServicesCount) || 0} services`} accent="amber" />
       </div>
       {message && (

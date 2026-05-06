@@ -163,9 +163,14 @@ export function runEstimateEngine(groups = [], {
     }, new Decimal(0))
   );
 
-  const grossMargin = toMoney(D(grandTotal).minus(D(totalCost)));
-  const grossMarginPct = grandTotal > 0
-    ? toMoney(D(grossMargin).dividedBy(D(grandTotal)).times(100))
+  // Internal Revenue (Project Total) — includes services + billed materials + other costs.
+  // This is the FULL project revenue used for internal profitability metrics.
+  // Note: grandTotal (client-facing) may differ if otherCosts are not billed to client directly.
+  const revenue = toMoney(D(servicesSubtotal).plus(D(materialsRevenue)).plus(D(otherCostsTotal)));
+
+  const grossMargin = toMoney(D(revenue).minus(D(totalCost)));
+  const grossMarginPct = revenue > 0
+    ? toMoney(D(grossMargin).dividedBy(D(revenue)).times(100))
     : 0;
   const markupPercentage = totalCost > 0
     ? toMoney(D(grossMargin).dividedBy(D(totalCost)).times(100))
@@ -199,6 +204,7 @@ export function runEstimateEngine(groups = [], {
     grossMarginPct,
     markupPercentage,
     otherCostsTotal,
+    revenue,
     netProfit,
     netProfitPct,
   };
