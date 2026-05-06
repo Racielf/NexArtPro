@@ -97,6 +97,7 @@ export function runEstimateEngine(groups = [], {
   depositPercent = 0,
   materials = [],
   otherCosts = [],
+  billMaterialsToClient = true,
 } = {}) {
   const allItems = [];
   const processedGroups = groups.map(group => ({
@@ -119,7 +120,8 @@ export function runEstimateEngine(groups = [], {
   );
 
   const servicesSubtotal = calculateSubtotal(allItems);
-  const subtotal = toMoney(D(servicesSubtotal).plus(D(materialsSubtotal)));
+  const materialsRevenue = billMaterialsToClient ? materialsSubtotal : 0;
+  const subtotal = toMoney(D(servicesSubtotal).plus(D(materialsRevenue)));
   const taxableBase = calculateTaxableBase(allItems);
   const discountAmt = calculateDiscount(subtotal, discountType, discountValue);
   const taxAmount = calculateTax(toMoney(D(taxableBase).minus(D(discountAmt))), taxRate);
@@ -177,6 +179,7 @@ export function runEstimateEngine(groups = [], {
     groups: processedGroups,
     materials: processedMaterials,
     materialsSubtotal,
+    materialsRevenue,
     servicesSubtotal,
     subtotal,
     discountAmount: discountAmt,

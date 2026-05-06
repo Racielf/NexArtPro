@@ -150,6 +150,10 @@ export function buildEstimateDocumentViewModel({
   const effectiveShowStartDate = options.showProjectDates === false && options.showProjectStartDate === undefined ? false : showProjectStartDate;
   const effectiveShowEndDate = options.showProjectDates === false && options.showProjectEndDate === undefined ? false : showProjectEndDate;
 
+  const docConfig = estimate?.document_config || {};
+  const includeMaterialsInClientDocument = docConfig.includeMaterialsInClientDocument !== false;
+  const billMaterialsToClient = docConfig.billMaterialsToClient !== false;
+
   const visibility = {
     isEstimate,
     isProposal,
@@ -171,7 +175,7 @@ export function buildEstimateDocumentViewModel({
     showEstimateNumber: options.showEstimateNumber !== false,
     showEstimateName: options.showEstimateName !== false,
     showNotes: options.showNotes !== false,
-    showMaterials: options.showMaterials !== false,
+    showMaterials: options.showMaterials !== false && includeMaterialsInClientDocument,
     showCustomerName: options.showCustomerName !== false,
     showExpirationDate: options.showExpirationDate !== false,
     showTechnicianName: options.showTechnicianName !== false,
@@ -256,16 +260,17 @@ export function buildEstimateDocumentViewModel({
   };
 
   const materialsRaw = Array.isArray(estimate.materials) ? estimate.materials : [];
-  const materialsItems = materialsRaw.map(m => ({
+  const visibleMaterialsRaw = visibility.showMaterials ? materialsRaw.filter(m => m.visible_to_client !== false) : [];
+  const materialsItems = visibleMaterialsRaw.map(m => ({
     id: m.id || '',
     name: safeStr(m.name),
     description: safeStr(m.description),
     quantity: safeNum(m.quantity),
     unit: safeStr(m.unit, 'ea'),
-    unit_price: safeNum(m.unit_price),
-    line_total: safeNum(m.line_total),
+    unit_price: billMaterialsToClient ? safeNum(m.unit_price) : 0,
+    line_total: billMaterialsToClient ? safeNum(m.line_total) : 0,
   }));
-  const materialsSubtotal = materialsItems.reduce((s, m) => s + m.line_total, 0);
+  const materialsSubtotal = billMaterialsToClient ? materialsItems.reduce((s, m) => s + m.line_total, 0) : 0;
   const columns = getLineItemColumns(documentType, showPrices);
   const termsArray = buildTermsArray(text);
 
@@ -289,6 +294,7 @@ export function buildEstimateDocumentViewModel({
     groups,
     materials: materialsItems,
     materialsSubtotal,
+    materialsBillToClient: billMaterialsToClient,
     totals,
     text,
     contingency,

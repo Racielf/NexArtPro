@@ -439,6 +439,8 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   const [contingencyValue, setContingencyValue] = useState(estimate?.contingency_value || 0);
   const [showContingencyToClient, setShowContingencyToClient] = useState(estimate?.show_contingency_to_client || false);
   const [uncertaintyNote, setUncertaintyNote] = useState(estimate?.uncertainty_note || '');
+  const [includeMaterialsInClientDocument, setIncludeMaterialsInClientDocument] = useState(estimate?.document_config?.includeMaterialsInClientDocument !== false);
+  const [billMaterialsToClient, setBillMaterialsToClient] = useState(estimate?.document_config?.billMaterialsToClient !== false);
   const [materials, setMaterials] = useState(() => normalizeMaterials(estimate?.materials || []));
   const [otherCosts, setOtherCosts] = useState(estimate?.other_costs || []);
   const showCost = true;
@@ -494,6 +496,8 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
     setContingencyValue(estimate.contingency_value || 0);
     setShowContingencyToClient(estimate.show_contingency_to_client || false);
     setUncertaintyNote(estimate.uncertainty_note || '');
+    setIncludeMaterialsInClientDocument(estimate?.document_config?.includeMaterialsInClientDocument !== false);
+    setBillMaterialsToClient(estimate?.document_config?.billMaterialsToClient !== false);
     setMaterials(normalizeMaterials(estimate.materials || []));
     setOtherCosts(estimate.other_costs || []);
   }, [estimate?.id]);
@@ -501,7 +505,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   useEffect(() => {
     if (onDirty) onDirty();
     const t = setTimeout(() => {
-      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts });
+      const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts, billMaterialsToClient });
       onSave({
         ...estimate,
         groups: result.groups,
@@ -535,6 +539,11 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
         })(),
         show_contingency_to_client: showContingencyToClient,
         uncertainty_note: uncertaintyNote,
+        document_config: {
+          ...(estimate?.document_config || {}),
+          includeMaterialsInClientDocument,
+          billMaterialsToClient,
+        },
         subtotal: result.subtotal,
         discount_amount: result.discountAmount,
         tax_amount: result.taxAmount,
@@ -548,7 +557,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, includedScopeBullets, contingencyType, contingencyValue, showContingencyToClient, uncertaintyNote, materials, otherCosts]);
+  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, includedScopeBullets, contingencyType, contingencyValue, showContingencyToClient, uncertaintyNote, includeMaterialsInClientDocument, billMaterialsToClient, materials, otherCosts]);
 
   const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
@@ -572,7 +581,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   const { subtotal, discountAmount, taxAmount, total, depositAmount,
     totalCost, serviceCost, materialsCost, grossMargin, grossMarginPct,
     materialsSubtotal, servicesSubtotal,
-    otherCostsTotal, netProfit, netProfitPct } = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts });
+    otherCostsTotal, netProfit, netProfitPct } = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts, billMaterialsToClient });
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
   const lossItems = [];
@@ -633,7 +642,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
       </div>
 
       {!isPreview && <button onClick={addGroup} className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-primary border border-dashed border-slate-200 hover:border-primary/30 rounded-xl w-full py-2.5 justify-center transition-colors mb-5 bg-white/60 hover:bg-white"><Plus className="w-3.5 h-3.5" />Add work group</button>}
-      <div className="mb-5"><MaterialsSection materials={materials} onChange={setMaterials} showCost={showCost} /></div>
+      <div className="mb-5"><MaterialsSection materials={materials} onChange={setMaterials} showCost={showCost} includeMaterialsInClientDocument={includeMaterialsInClientDocument} billMaterialsToClient={billMaterialsToClient} onSettingsChange={({ includeMaterialsInClientDocument: showMaterials, billMaterialsToClient: billMaterials }) => { if (typeof showMaterials === 'boolean') setIncludeMaterialsInClientDocument(showMaterials); if (typeof billMaterials === 'boolean') setBillMaterialsToClient(billMaterials); }} /></div>
       {!isPreview && <div className="mb-5"><OtherCostsSection otherCosts={otherCosts} onChange={setOtherCosts} /></div>}
 
       <div className="bg-white rounded-xl border border-slate-100 overflow-hidden mb-5" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
@@ -648,7 +657,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
         <div className="flex gap-0 flex-wrap">
           {!isPreview && (() => {
             const marginStatus = grossMarginPct < 25 ? { label: 'Critical', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' } : grossMarginPct <= 40 ? { label: 'Warning', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' } : { label: 'Healthy', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' };
-            return <div className="flex-1 min-w-[280px] px-6 py-5 border-r border-slate-100"><div className="flex items-center justify-between gap-3 mb-3"><p className="text-[9px] font-bold tracking-widest uppercase text-slate-700">🔒 Internal · Análisis financiero / Financial Analysis</p><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${marginStatus.bg} ${marginStatus.border} ${marginStatus.text}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{marginStatus.label} · {grossMarginPct.toFixed(1)}%</span></div><div className="grid grid-cols-2 gap-2"><div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5"><p className="text-[9px] font-bold uppercase tracking-wide text-slate-700 mb-1">Ingreso total / Revenue</p><p className="text-sm font-bold text-slate-800 tabular-nums">{fmt(total)}</p></div>{materialsSubtotal > 0 && <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5"><p className="text-[9px] font-bold uppercase tracking-wide text-emerald-700 mb-1">Costo de materiales</p><p className="text-sm font-bold text-emerald-700 tabular-nums">{fmt(materialsCost)}</p></div>}{otherCostsTotal > 0 && <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5"><p className="text-[9px] font-bold uppercase tracking-wide text-amber-700 mb-1">Otros gastos</p><p className="text-sm font-bold text-amber-700 tabular-nums">{fmt(otherCostsTotal)}</p></div>}<div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5"><p className="text-[9px] font-bold uppercase tracking-wide text-slate-700 mb-1">Costo total del proyecto</p><p className="text-sm font-bold text-slate-700 tabular-nums">{fmt(totalCost)}</p></div><div className={`border rounded-lg px-3 py-2.5 ${marginStatus.bg} ${marginStatus.border}`}><p className="text-[9px] font-bold uppercase tracking-wide text-slate-700 mb-1">Ganancia neta</p><div className="flex items-baseline gap-2"><p className={`text-base font-bold tabular-nums ${marginStatus.text}`}>{fmt(netProfit)}</p></div></div><div className={`border rounded-lg px-3 py-2.5 ${marginStatus.bg} ${marginStatus.border}`}><p className="text-[9px] font-bold uppercase tracking-wide text-slate-700 mb-1">Margen de ganancia</p><div className="flex items-baseline gap-2"><p className={`text-base font-bold tabular-nums ${marginStatus.text}`}>{netProfitPct.toFixed(1)}%</p></div></div></div></div>;
+            return <div className="flex-1 min-w-[280px] px-6 py-5 border-r border-slate-100"><div className="flex items-center justify-between gap-3 mb-3"><p className="text-[9px] font-bold tracking-widest uppercase text-slate-700">🔒 Internal · Análisis financiero / Financial Analysis</p><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${marginStatus.bg} ${marginStatus.border} ${marginStatus.text}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{marginStatus.label} · {grossMarginPct.toFixed(1)}%</span></div><div className="grid grid-cols-2 gap-2"><div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5"><p className="text-[9px] font-bold uppercase tracking-wide text-slate-700 mb-1">Ingreso total / Revenue</p><p className="text-sm font-bold text-slate-800 tabular-nums">{fmt(total)}</p></div>{materialsSubtotal > 0 && <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5"><p className="text-[9px] font-bold uppercase tracking-wide text-emerald-700 mb-1">Costo de materiales</p><p className="text-sm font-bold text-emerald-700 tabular-nums">{fmt(materialsCost)}</p>{!billMaterialsToClient && <p className="text-[9px] font-semibold text-emerald-700 mt-1">Internal cost only</p>}</div>}{otherCostsTotal > 0 && <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5"><p className="text-[9px] font-bold uppercase tracking-wide text-amber-700 mb-1">Otros gastos</p><p className="text-sm font-bold text-amber-700 tabular-nums">{fmt(otherCostsTotal)}</p></div>}<div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5"><p className="text-[9px] font-bold uppercase tracking-wide text-slate-700 mb-1">Costo total del proyecto</p><p className="text-sm font-bold text-slate-700 tabular-nums">{fmt(totalCost)}</p></div><div className={`border rounded-lg px-3 py-2.5 ${marginStatus.bg} ${marginStatus.border}`}><p className="text-[9px] font-bold uppercase tracking-wide text-slate-700 mb-1">Ganancia neta</p><div className="flex items-baseline gap-2"><p className={`text-base font-bold tabular-nums ${marginStatus.text}`}>{fmt(netProfit)}</p></div></div><div className={`border rounded-lg px-3 py-2.5 ${marginStatus.bg} ${marginStatus.border}`}><p className="text-[9px] font-bold uppercase tracking-wide text-slate-700 mb-1">Margen de ganancia</p><div className="flex items-baseline gap-2"><p className={`text-base font-bold tabular-nums ${marginStatus.text}`}>{netProfitPct.toFixed(1)}%</p></div></div></div></div>;
           })()}
 
           <div className="flex-shrink-0 w-80 px-6 py-5 space-y-2 text-sm">

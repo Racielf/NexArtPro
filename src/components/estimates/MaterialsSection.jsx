@@ -95,7 +95,7 @@ function MaterialRow({ item, onUpdate, onRemove, showCost }) {
   );
 }
 
-export default function MaterialsSection({ materials = [], onChange, showCost = false }) {
+export default function MaterialsSection({ materials = [], onChange, showCost = false, includeMaterialsInClientDocument = true, billMaterialsToClient = true, onSettingsChange }) {
   const [collapsed, setCollapsed] = useState(false);
   const hasMaterials = materials.length > 0;
 
@@ -143,6 +143,14 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
           {showCost && materialsCost > 0 && (
             <span className="text-[10px] font-semibold text-emerald-300 tabular-nums" title="Internal material cost, not a client-facing charge">internal cost ${materialsCost.toFixed(2)}</span>
           )}
+          <label className="flex items-center gap-1.5 text-[10px] font-semibold text-white/80 whitespace-nowrap">
+            <input type="checkbox" checked={includeMaterialsInClientDocument} onChange={e => onSettingsChange?.({ includeMaterialsInClientDocument: e.target.checked })} className="accent-white" />
+            Show materials to client
+          </label>
+          <label className="flex items-center gap-1.5 text-[10px] font-semibold text-white/80 whitespace-nowrap">
+            <input type="checkbox" checked={billMaterialsToClient} onChange={e => onSettingsChange?.({ billMaterialsToClient: e.target.checked })} className="accent-white" />
+            Bill materials to client
+          </label>
           <button onClick={() => onChange([])}
             className="p-1 rounded hover:bg-red-500/30 text-white/40 hover:text-white transition-colors"
             title="Remove materials section">
