@@ -37,7 +37,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
 const emptyItem = () => normalizeLineItem({ id: uid() });
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
-const GRID_COLS = 'minmax(24px,28px) minmax(320px,1fr) minmax(70px,90px) minmax(80px,100px) minmax(100px,120px) minmax(90px,110px) minmax(110px,130px) minmax(110px,130px) minmax(28px,32px)';
+const GRID_COLS = 'minmax(24px,28px) minmax(320px,1fr) minmax(70px,90px) minmax(80px,100px) minmax(100px,120px) minmax(110px,130px) minmax(110px,130px) minmax(28px,32px)';
 const PREVIEW_GRID_COLS = 'minmax(24px,28px) minmax(360px,1fr) minmax(80px,100px) minmax(100px,120px) minmax(120px,150px) minmax(120px,150px) minmax(28px,32px)';
 
 function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null, dragHandleProps = {}, onDragOverRow, onDropRow, isDragging = false, isDropTarget = false }) {
@@ -237,22 +237,6 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
           </div>
         )}
 
-        {!isPreview && (
-          <div className="min-w-0 overflow-hidden">
-            <div className="relative flex items-center">
-              <Input
-                type="number"
-                step="0.1"
-                value={markupPct}
-                onChange={e => update('markup_pct', e.target.value)}
-                className="h-7 pr-5 text-sm text-right font-semibold tabular-nums rounded-md border-blue-200 bg-blue-50/60 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 text-blue-800"
-                min={0}
-              />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-700 pointer-events-none">%</span>
-            </div>
-          </div>
-        )}
-
         <div className="min-w-0 overflow-hidden">
           <div className="relative flex items-center">
             {isPreview ? (
@@ -287,7 +271,14 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
 
       {!isPreview && (
         <div className="pl-12 pr-3 pb-3 mt-3">
-          <LineItemFinancialSubline quantity={item.quantity} unitPrice={item.unit_price} unitCost={item.unit_cost} markupPct={item.markup_pct} />
+          <LineItemFinancialSubline
+            quantity={item.quantity}
+            unitPrice={item.unit_price}
+            unitCost={item.unit_cost}
+            markupPct={markupPct}
+            markupOverride={item.markup_override === true}
+            onMarkupChange={(value) => update('markup_pct', value)}
+          />
         </div>
       )}
 
@@ -375,7 +366,6 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             <div className="text-center">Qty</div>
             <div className="text-center">UOM</div>
             {!isPreview && <div className="text-right text-amber-600">Unit Cost</div>}
-            {!isPreview && <div className="text-right text-blue-600">Markup %</div>}
             <div className="text-right">Unit Price</div>
             <div className="text-right">Total</div>
             <div />
@@ -499,6 +489,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   const [includeMaterialsInClientDocument, setIncludeMaterialsInClientDocument] = useState(estimate?.document_config?.includeMaterialsInClientDocument !== false);
   const [billMaterialsToClient, setBillMaterialsToClient] = useState(estimate?.document_config?.billMaterialsToClient !== false);
   const [targetMarkupPct, setTargetMarkupPct] = useState(estimate?.document_config?.target_markup_pct || 0);
+  const [targetMarkupMessage, setTargetMarkupMessage] = useState('');
   const [materials, setMaterials] = useState(() => normalizeMaterials(estimate?.materials || []));
   const [otherCosts, setOtherCosts] = useState(estimate?.other_costs || []);
   const showCost = true;
@@ -645,19 +636,43 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
 
   const targetMarkupValue = parseFloat(targetMarkupPct) || 0;
   const suggestedRevenue = totalCost > 0 ? totalCost * (1 + targetMarkupValue / 100) : 0;
+  const suggestedProfit = suggestedRevenue - totalCost;
   const targetMarkupDifference = markupPercentage - targetMarkupValue;
+  const overriddenServicesCount = groups.reduce((count, group) => count + (group.items || []).filter(item => item.markup_override === true).length, 0);
 
   const applySuggestedPrice = () => {
+    let applied = 0;
+    let skipped = 0;
     setGroups(prev => prev.map(group => ({
       ...group,
       items: (group.items || []).map(item => {
-        if (item.markup_override === true) return item;
+        if (item.markup_override === true) {
+          skipped += 1;
+          return item;
+        }
         const unitCost = parseFloat(item.unit_cost) || 0;
         if (unitCost <= 0) return item;
         const unitPrice = parseFloat((unitCost * (1 + targetMarkupValue / 100)).toFixed(2));
-        return { ...item, unit_price: unitPrice, line_total: calculateLineTotal(item.quantity, unitPrice) };
+        applied += 1;
+        return { ...item, markup_pct: targetMarkupValue, markup_override: false, unit_price: unitPrice, line_total: calculateLineTotal(item.quantity, unitPrice) };
       }),
     })));
+    setTargetMarkupMessage(`Applied target markup to ${applied} services. Skipped ${skipped} manual overrides.`);
+  };
+
+  const forceApplySuggestedPrice = () => {
+    let applied = 0;
+    setGroups(prev => prev.map(group => ({
+      ...group,
+      items: (group.items || []).map(item => {
+        const unitCost = parseFloat(item.unit_cost) || 0;
+        if (unitCost <= 0) return item;
+        const unitPrice = parseFloat((unitCost * (1 + targetMarkupValue / 100)).toFixed(2));
+        applied += 1;
+        return { ...item, markup_pct: targetMarkupValue, markup_override: false, unit_price: unitPrice, line_total: calculateLineTotal(item.quantity, unitPrice) };
+      }),
+    })));
+    setTargetMarkupMessage(`Force applied target markup to ${applied} services. Manual overrides cleared.`);
   };
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -729,10 +744,14 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
           revenue={total}
           profit={netProfit}
           suggestedRevenue={suggestedRevenue}
+          suggestedProfit={suggestedProfit}
           actualMarkupPct={markupPercentage}
           actualMarginPct={netProfitPct}
           differenceFromTarget={targetMarkupDifference}
+          overriddenServicesCount={overriddenServicesCount}
+          message={targetMarkupMessage}
           onApplySuggestedPrice={applySuggestedPrice}
+          onForceApplyToAll={forceApplySuggestedPrice}
         />
       )}
 

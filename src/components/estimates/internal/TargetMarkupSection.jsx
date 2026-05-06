@@ -29,10 +29,14 @@ export default function TargetMarkupSection({
   revenue,
   profit,
   suggestedRevenue,
+  suggestedProfit,
   actualMarkupPct,
   actualMarginPct,
   differenceFromTarget,
+  overriddenServicesCount,
+  message,
   onApplySuggestedPrice,
+  onForceApplyToAll,
 }) {
   const differenceAccent = Number(differenceFromTarget) >= 0 ? 'emerald' : 'amber';
 
@@ -62,6 +66,9 @@ export default function TargetMarkupSection({
             <TrendingUp className="w-3.5 h-3.5" />
             Apply Suggested Price
           </Button>
+          <Button type="button" size="sm" variant="outline" onClick={onForceApplyToAll} className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50">
+            Force Apply to All
+          </Button>
         </div>
       </div>
 
@@ -71,10 +78,17 @@ export default function TargetMarkupSection({
         <Metric label="Profit" value={fmt(profit)} accent="emerald" />
         <Metric label="Target Markup %" value={pct(targetMarkupPct)} accent="blue" />
         <Metric label="Suggested Revenue" value={fmt(suggestedRevenue)} accent="blue" />
+        <Metric label="Suggested Profit" value={fmt(suggestedProfit)} accent="emerald" />
         <Metric label="Actual Markup %" value={pct(actualMarkupPct)} accent="blue" />
         <Metric label="Difference from Target" value={`${Number(differenceFromTarget) >= 0 ? '+' : ''}${pct(differenceFromTarget)}`} accent={differenceAccent} />
         <Metric label="Actual Margin %" value={pct(actualMarginPct)} accent="emerald" />
+        <Metric label="Manual Overrides" value={`${Number(overriddenServicesCount) || 0} services`} accent="amber" />
       </div>
+      {message && (
+        <div className="mx-5 mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+          {message}
+        </div>
+      )}
     </div>
   );
 }
