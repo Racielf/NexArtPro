@@ -55,16 +55,21 @@ export default function SalesEstimateCard({ estimate }) {
 
       {/* Financial row: margin % + profit + health badge */}
       {(() => {
-        const marginPct = Number(estimate.gross_margin_pct);
-        const profit = Number(estimate.net_profit);
-        const hasMargin = !Number.isNaN(marginPct) && estimate.gross_margin_pct != null;
-        const hasProfit = !Number.isNaN(profit) && estimate.net_profit != null;
+        const revenue = Number(estimate.total) || 0;
+        const materialsCost = Number(estimate.materials_cost) || 0;
+        const otherCosts = Number(estimate.other_costs_total) || 0;
+        const calculatedProfit = revenue - materialsCost - otherCosts;
+        const calculatedMargin = revenue > 0 ? (calculatedProfit / revenue) * 100 : 0;
+        const marginPct = estimate.gross_margin_pct != null ? Number(estimate.gross_margin_pct) : calculatedMargin;
+        const profit = estimate.net_profit != null ? Number(estimate.net_profit) : calculatedProfit;
+        const hasMargin = revenue > 0 && !Number.isNaN(marginPct);
+        const hasProfit = revenue > 0 && !Number.isNaN(profit);
         if (!hasMargin && !hasProfit) return null;
 
         let badge = null;
         if (hasMargin) {
-          if (marginPct < 25) badge = { label: 'Low margin', cls: 'bg-red-100 text-red-700 border-red-200' };
-          else if (marginPct <= 40) badge = { label: 'Review margin', cls: 'bg-amber-100 text-amber-700 border-amber-200' };
+          if (marginPct < 25) badge = { label: 'Critical', cls: 'bg-red-100 text-red-700 border-red-200' };
+          else if (marginPct <= 40) badge = { label: 'Warning', cls: 'bg-amber-100 text-amber-700 border-amber-200' };
           else badge = { label: 'Healthy', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
         }
 

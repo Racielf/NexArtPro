@@ -47,14 +47,20 @@ function Metric({ label, value, accent }) {
 }
 
 export default function FinancialAnalysisPanel({
-  servicesSubtotal,
-  totalCost,
-  grossMargin,
-  grossMarginPct,
+  revenue,
+  total,
+  materialsCost,
+  otherCostsTotal,
+  serviceCost,
   netProfit,
   netProfitPct,
 }) {
-  const health = getHealth(grossMarginPct);
+  const displayRevenue = Number(revenue ?? total) || 0;
+  const displayMaterialsCost = Number(materialsCost) || 0;
+  const displayOtherCosts = Number(otherCostsTotal) || 0;
+  const displayProfit = Number(netProfit ?? (displayRevenue - displayMaterialsCost - displayOtherCosts)) || 0;
+  const displayMargin = Number(netProfitPct ?? (displayRevenue > 0 ? (displayProfit / displayRevenue) * 100 : 0)) || 0;
+  const health = getHealth(displayMargin);
   const HealthIcon = health.icon;
 
   return (
@@ -66,24 +72,22 @@ export default function FinancialAnalysisPanel({
         <div className="flex items-center gap-2">
           <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Financial Analysis · Internal
+            Business Profit Analysis · Internal
           </p>
         </div>
-        <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${health.cls}`}
-        >
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${health.cls}`}>
           <HealthIcon className="w-3 h-3" />
-          {health.label} · {pct(grossMarginPct)}
+          {health.label} · {pct(displayMargin)}
         </span>
       </div>
 
       <div className="px-6 py-5 grid grid-cols-2 md:grid-cols-3 gap-2">
-        <Metric label="Services Subtotal" value={fmt(servicesSubtotal)} accent="slate" />
-        <Metric label="Total Cost" value={fmt(totalCost)} accent="slate" />
-        <Metric label="Gross Margin" value={fmt(grossMargin)} accent="emerald" />
-        <Metric label="Gross Margin %" value={pct(grossMarginPct)} accent="emerald" />
-        <Metric label="Net Profit" value={fmt(netProfit)} accent="emerald" />
-        <Metric label="Net Profit %" value={pct(netProfitPct)} accent="emerald" />
+        <Metric label="Revenue" value={fmt(displayRevenue)} accent="slate" />
+        <Metric label="Materials Cost" value={fmt(displayMaterialsCost)} accent="amber" />
+        <Metric label="Other Costs" value={fmt(displayOtherCosts)} accent="amber" />
+        <Metric label="Profit" value={fmt(displayProfit)} accent="emerald" />
+        <Metric label="Margin %" value={pct(displayMargin)} accent="emerald" />
+        <Metric label="Internal Labor Reference" value={fmt(serviceCost)} accent="slate" />
       </div>
     </div>
   );

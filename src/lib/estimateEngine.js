@@ -143,7 +143,9 @@ export function runEstimateEngine(groups = [], {
     (otherCosts || []).reduce((acc, c) => acc.plus(D(c.amount)), new Decimal(0))
   );
 
-  const totalCost = toMoney(D(serviceCost).plus(D(materialsCost)).plus(D(otherCostsTotal)));
+  // Business model: service/labor is the primary profit driver.
+  // Service cost remains an internal reference only and does not reduce main profit/margin.
+  const totalCost = toMoney(D(materialsCost).plus(D(otherCostsTotal)));
 
   const totalVariance = toMoney(
     allItems.reduce((acc, item) => {
@@ -159,7 +161,7 @@ export function runEstimateEngine(groups = [], {
     }, new Decimal(0))
   );
 
-  const grossMargin = toMoney(D(grandTotal).minus(D(totalCost)));
+  const grossMargin = toMoney(D(grandTotal).minus(D(materialsCost)).minus(D(otherCostsTotal)));
   const grossMarginPct = grandTotal > 0
     ? toMoney(D(grossMargin).dividedBy(D(grandTotal)).times(100))
     : 0;
