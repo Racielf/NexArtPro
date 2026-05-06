@@ -58,9 +58,9 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
             step="0.1"
             value={displayMarkup.toFixed(1)}
             onChange={e => onMarkupChange(e.target.value)}
-            className="h-6 w-16 rounded-md border border-blue-200 bg-blue-50/70 pr-5 pl-2 text-right text-[12px] font-bold text-blue-800 tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-300"
+            className="h-6 w-24 rounded-md border border-blue-200 bg-blue-50/70 pr-6 pl-2 text-right text-[12px] font-bold text-blue-800 tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-300"
           />
-          <span className="absolute right-1.5 text-[10px] font-bold text-blue-700 pointer-events-none">%</span>
+          <span className="absolute right-2 text-[10px] font-bold text-blue-700 pointer-events-none">%</span>
         </span>
       ) : (
         <span className="font-semibold text-slate-700 tabular-nums">{displayMarkup.toFixed(1)}%</span>
