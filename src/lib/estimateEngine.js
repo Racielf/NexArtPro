@@ -143,9 +143,9 @@ export function runEstimateEngine(groups = [], {
     (otherCosts || []).reduce((acc, c) => acc.plus(D(c.amount)), new Decimal(0))
   );
 
-  // Business model: service/labor is the primary profit driver.
-  // Service cost remains an internal reference only and does not reduce main profit/margin.
-  const totalCost = toMoney(D(materialsCost).plus(D(otherCostsTotal)));
+  // Official contractor model: total project cost = materials + labor + other costs.
+  // serviceCost is kept for compatibility and represents Labor Cost / Costo de mano de obra.
+  const totalCost = toMoney(D(materialsCost).plus(D(serviceCost)).plus(D(otherCostsTotal)));
 
   const totalVariance = toMoney(
     allItems.reduce((acc, item) => {
@@ -161,7 +161,7 @@ export function runEstimateEngine(groups = [], {
     }, new Decimal(0))
   );
 
-  const grossMargin = toMoney(D(grandTotal).minus(D(materialsCost)).minus(D(otherCostsTotal)));
+  const grossMargin = toMoney(D(grandTotal).minus(D(totalCost)));
   const grossMarginPct = grandTotal > 0
     ? toMoney(D(grossMargin).dividedBy(D(grandTotal)).times(100))
     : 0;

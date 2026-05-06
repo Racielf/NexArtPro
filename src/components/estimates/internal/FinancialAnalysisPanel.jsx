@@ -58,7 +58,9 @@ export default function FinancialAnalysisPanel({
   const displayRevenue = Number(revenue ?? total) || 0;
   const displayMaterialsCost = Number(materialsCost) || 0;
   const displayOtherCosts = Number(otherCostsTotal) || 0;
-  const displayProfit = Number(netProfit ?? (displayRevenue - displayMaterialsCost - displayOtherCosts)) || 0;
+  const displayLaborCost = Number(serviceCost) || 0;
+  const displayTotalProjectCost = displayMaterialsCost + displayLaborCost + displayOtherCosts;
+  const displayProfit = Number(netProfit ?? (displayRevenue - displayTotalProjectCost)) || 0;
   const displayMargin = Number(netProfitPct ?? (displayRevenue > 0 ? (displayProfit / displayRevenue) * 100 : 0)) || 0;
   const health = getHealth(displayMargin);
   const HealthIcon = health.icon;
@@ -72,7 +74,7 @@ export default function FinancialAnalysisPanel({
         <div className="flex items-center gap-2">
           <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Business Profit Analysis · Internal
+            Análisis financiero / Financial Analysis · Internal
           </p>
         </div>
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold ${health.cls}`}>
@@ -82,12 +84,13 @@ export default function FinancialAnalysisPanel({
       </div>
 
       <div className="px-6 py-5 grid grid-cols-2 md:grid-cols-3 gap-2">
-        <Metric label="Revenue" value={fmt(displayRevenue)} accent="slate" />
-        <Metric label="Materials Cost" value={fmt(displayMaterialsCost)} accent="amber" />
-        <Metric label="Other Costs" value={fmt(displayOtherCosts)} accent="amber" />
-        <Metric label="Profit" value={fmt(displayProfit)} accent="emerald" />
-        <Metric label="Margin %" value={pct(displayMargin)} accent="emerald" />
-        <Metric label="Internal Labor Reference" value={fmt(serviceCost)} accent="slate" />
+        <Metric label="Ingreso total / Revenue" value={fmt(displayRevenue)} accent="slate" />
+        <Metric label="Costo de materiales" value={fmt(displayMaterialsCost)} accent="amber" />
+        <Metric label="Costo de mano de obra" value={fmt(displayLaborCost)} accent="amber" />
+        <Metric label="Otros gastos" value={fmt(displayOtherCosts)} accent="amber" />
+        <Metric label="Costo total del proyecto" value={fmt(displayTotalProjectCost)} accent="slate" />
+        <Metric label="Ganancia neta" value={fmt(displayProfit)} accent="emerald" />
+        <Metric label="Margen de ganancia" value={pct(displayMargin)} accent="emerald" />
       </div>
     </div>
   );

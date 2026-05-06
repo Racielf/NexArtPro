@@ -57,8 +57,9 @@ export default function SalesEstimateCard({ estimate }) {
       {(() => {
         const revenue = Number(estimate.total) || 0;
         const materialsCost = Number(estimate.materials_cost) || 0;
+        const laborCost = Number(estimate.service_cost) || 0;
         const otherCosts = Number(estimate.other_costs_total) || 0;
-        const calculatedProfit = revenue - materialsCost - otherCosts;
+        const calculatedProfit = revenue - materialsCost - laborCost - otherCosts;
         const calculatedMargin = revenue > 0 ? (calculatedProfit / revenue) * 100 : 0;
         const marginPct = estimate.gross_margin_pct != null ? Number(estimate.gross_margin_pct) : calculatedMargin;
         const profit = estimate.net_profit != null ? Number(estimate.net_profit) : calculatedProfit;
