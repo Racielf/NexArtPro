@@ -31,6 +31,7 @@ import { persistNewServiceToCatalog } from '@/lib/persistNewService';
 import { calculateRiskScore } from '@/lib/estimateRiskScoring';
 import RiskScorePanel from '@/components/estimates/internal/RiskScorePanel';
 import LineItemFinancialSubline from '@/components/estimates/internal/LineItemFinancialSubline';
+import TargetMarkupSection from '@/components/estimates/internal/TargetMarkupSection';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_GROUPS = [{ id: uid(), name: 'General', collapsed: false, items: [] }];
@@ -441,6 +442,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
   const [uncertaintyNote, setUncertaintyNote] = useState(estimate?.uncertainty_note || '');
   const [includeMaterialsInClientDocument, setIncludeMaterialsInClientDocument] = useState(estimate?.document_config?.includeMaterialsInClientDocument !== false);
   const [billMaterialsToClient, setBillMaterialsToClient] = useState(estimate?.document_config?.billMaterialsToClient !== false);
+  const [targetMarkupPct, setTargetMarkupPct] = useState(estimate?.document_config?.target_markup_pct || 0);
   const [materials, setMaterials] = useState(() => normalizeMaterials(estimate?.materials || []));
   const [otherCosts, setOtherCosts] = useState(estimate?.other_costs || []);
   const showCost = true;
@@ -498,6 +500,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
     setUncertaintyNote(estimate.uncertainty_note || '');
     setIncludeMaterialsInClientDocument(estimate?.document_config?.includeMaterialsInClientDocument !== false);
     setBillMaterialsToClient(estimate?.document_config?.billMaterialsToClient !== false);
+    setTargetMarkupPct(estimate?.document_config?.target_markup_pct || 0);
     setMaterials(normalizeMaterials(estimate.materials || []));
     setOtherCosts(estimate.other_costs || []);
   }, [estimate?.id]);
@@ -543,6 +546,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
           ...(estimate?.document_config || {}),
           includeMaterialsInClientDocument,
           billMaterialsToClient,
+          target_markup_pct: targetMarkupPct,
         },
         subtotal: result.subtotal,
         discount_amount: result.discountAmount,
@@ -557,7 +561,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, includedScopeBullets, contingencyType, contingencyValue, showContingencyToClient, uncertaintyNote, includeMaterialsInClientDocument, billMaterialsToClient, materials, otherCosts]);
+  }, [groups, taxRate, discountType, discountValue, depositPercent, expirationDate, notes, internalNotes, exclusions, warrantyTerms, paymentTerms, legalTerms, scopeSummary, assumptions, changeRequestPolicy, includedScopeBullets, contingencyType, contingencyValue, showContingencyToClient, uncertaintyNote, includeMaterialsInClientDocument, billMaterialsToClient, targetMarkupPct, materials, otherCosts]);
 
   const updateGroup = (updated) => setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
   const removeGroup = (id) => setGroups(prev => prev.filter(g => g.id !== id));
@@ -582,6 +586,28 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
     totalCost, serviceCost, materialsCost, grossMargin, grossMarginPct,
     materialsSubtotal, servicesSubtotal, markupPercentage,
     otherCostsTotal, netProfit, netProfitPct } = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts, billMaterialsToClient });
+
+  const targetMarkupValue = parseFloat(targetMarkupPct) || 0;
+  const suggestedRevenue = totalCost > 0 ? totalCost * (1 + targetMarkupValue / 100) : 0;
+
+  const applySuggestedPrice = () => {
+    const currentRevenueBase = servicesSubtotal + (billMaterialsToClient ? materialsSubtotal : 0);
+    if (currentRevenueBase <= 0 || suggestedRevenue <= 0) return;
+    const factor = suggestedRevenue / currentRevenueBase;
+    setGroups(prev => prev.map(group => ({
+      ...group,
+      items: (group.items || []).map(item => {
+        const unitPrice = parseFloat(((parseFloat(item.unit_price) || 0) * factor).toFixed(2));
+        return { ...item, unit_price: unitPrice, line_total: calculateLineTotal(item.quantity, unitPrice) };
+      }),
+    })));
+    if (billMaterialsToClient) {
+      setMaterials(prev => prev.map(item => {
+        const unitPrice = parseFloat(((parseFloat(item.unit_price) || 0) * factor).toFixed(2));
+        return { ...item, unit_price: unitPrice, line_total: calculateLineTotal(item.quantity, unitPrice) };
+      }));
+    }
+  };
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
   const lossItems = [];
@@ -644,6 +670,19 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
       {!isPreview && <button onClick={addGroup} className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-primary border border-dashed border-slate-200 hover:border-primary/30 rounded-xl w-full py-2.5 justify-center transition-colors mb-5 bg-white/60 hover:bg-white"><Plus className="w-3.5 h-3.5" />Add work group</button>}
       <div className="mb-5"><MaterialsSection materials={materials} onChange={setMaterials} showCost={showCost} includeMaterialsInClientDocument={includeMaterialsInClientDocument} billMaterialsToClient={billMaterialsToClient} onSettingsChange={({ includeMaterialsInClientDocument: showMaterials, billMaterialsToClient: billMaterials }) => { if (typeof showMaterials === 'boolean') setIncludeMaterialsInClientDocument(showMaterials); if (typeof billMaterials === 'boolean') setBillMaterialsToClient(billMaterials); }} /></div>
       {!isPreview && <div className="mb-5"><OtherCostsSection otherCosts={otherCosts} onChange={setOtherCosts} /></div>}
+      {!isPreview && (
+        <TargetMarkupSection
+          targetMarkupPct={targetMarkupPct}
+          onTargetMarkupChange={setTargetMarkupPct}
+          costBase={totalCost}
+          revenue={total}
+          profit={netProfit}
+          suggestedRevenue={suggestedRevenue}
+          actualMarkupPct={markupPercentage}
+          actualMarginPct={netProfitPct}
+          onApplySuggestedPrice={applySuggestedPrice}
+        />
+      )}
 
       <div className="bg-white rounded-xl border border-slate-100 overflow-hidden mb-5" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
         <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-slate-50/60">
