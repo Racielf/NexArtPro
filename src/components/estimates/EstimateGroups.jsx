@@ -52,13 +52,18 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
 
     if (field === 'unit_cost' || field === 'markup_pct') {
       const cost = field === 'unit_cost' ? safeValue : (parseFloat(updated.unit_cost) || 0);
-      const markup = field === 'markup_pct' ? safeValue : (parseFloat(updated.markup_pct) || 0);
+      const currentPrice = parseFloat(updated.unit_price) || 0;
+      const fallbackMarkup = cost > 0 && currentPrice > 0 ? ((currentPrice - cost) / cost) * 100 : 0;
+      const markup = field === 'markup_pct' ? safeValue : (parseFloat(updated.markup_pct) || fallbackMarkup || 0);
+      updated.markup_pct = parseFloat(markup.toFixed(2));
+      updated.markup_override = true;
       updated.unit_price = parseFloat((cost * (1 + markup / 100)).toFixed(2));
     }
 
     if (field === 'unit_price') {
       const cost = parseFloat(updated.unit_cost) || 0;
       updated.markup_pct = cost > 0 ? parseFloat((((safeValue - cost) / cost) * 100).toFixed(2)) : 0;
+      updated.markup_override = true;
     }
 
     updated.line_total = calculateLineTotal(updated.quantity, updated.unit_price);
@@ -83,7 +88,9 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   const cost = parseFloat(item.unit_cost) || 0;
   const book = parseFloat(item.book_price) || 0;
   const qty = parseFloat(item.quantity) || 0;
-  const markupPct = parseFloat(item.markup_pct) || 0;
+  const markupPct = item.markup_pct !== undefined
+    ? (parseFloat(item.markup_pct) || 0)
+    : (cost > 0 && price > 0 ? parseFloat((((price - cost) / cost) * 100).toFixed(2)) : 0);
   const lineMarginPct = price > 0 && cost > 0 ? ((price - cost) / price) * 100 : null;
   const isLoss = cost > 0 && price > 0 && price < cost;
   const isZeroProfit = cost > 0 && price > 0 && Math.abs(price - cost) < 0.01;
@@ -137,6 +144,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                   unit_price: safePrice,
                   unit_cost: safeCost,
                   markup_pct: pickedMarkup,
+                  markup_override: false,
                   book_price: safeBook,
                   line_total: lineTotal,
                 };
@@ -637,24 +645,19 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
 
   const targetMarkupValue = parseFloat(targetMarkupPct) || 0;
   const suggestedRevenue = totalCost > 0 ? totalCost * (1 + targetMarkupValue / 100) : 0;
+  const targetMarkupDifference = markupPercentage - targetMarkupValue;
 
   const applySuggestedPrice = () => {
-    const currentRevenueBase = servicesSubtotal + (billMaterialsToClient ? materialsSubtotal : 0);
-    if (currentRevenueBase <= 0 || suggestedRevenue <= 0) return;
-    const factor = suggestedRevenue / currentRevenueBase;
     setGroups(prev => prev.map(group => ({
       ...group,
       items: (group.items || []).map(item => {
-        const unitPrice = parseFloat(((parseFloat(item.unit_price) || 0) * factor).toFixed(2));
+        if (item.markup_override === true) return item;
+        const unitCost = parseFloat(item.unit_cost) || 0;
+        if (unitCost <= 0) return item;
+        const unitPrice = parseFloat((unitCost * (1 + targetMarkupValue / 100)).toFixed(2));
         return { ...item, unit_price: unitPrice, line_total: calculateLineTotal(item.quantity, unitPrice) };
       }),
     })));
-    if (billMaterialsToClient) {
-      setMaterials(prev => prev.map(item => {
-        const unitPrice = parseFloat(((parseFloat(item.unit_price) || 0) * factor).toFixed(2));
-        return { ...item, unit_price: unitPrice, line_total: calculateLineTotal(item.quantity, unitPrice) };
-      }));
-    }
   };
 
   const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -728,6 +731,7 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
           suggestedRevenue={suggestedRevenue}
           actualMarkupPct={markupPercentage}
           actualMarginPct={netProfitPct}
+          differenceFromTarget={targetMarkupDifference}
           onApplySuggestedPrice={applySuggestedPrice}
         />
       )}

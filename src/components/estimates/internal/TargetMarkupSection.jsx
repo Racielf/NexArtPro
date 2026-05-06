@@ -11,6 +11,7 @@ function Metric({ label, value, accent = 'slate' }) {
     slate: 'text-slate-800 bg-slate-50 border-slate-200',
     blue: 'text-blue-700 bg-blue-50 border-blue-200',
     emerald: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+    amber: 'text-amber-700 bg-amber-50 border-amber-200',
   }[accent] || 'text-slate-800 bg-slate-50 border-slate-200';
 
   return (
@@ -30,15 +31,18 @@ export default function TargetMarkupSection({
   suggestedRevenue,
   actualMarkupPct,
   actualMarginPct,
+  differenceFromTarget,
   onApplySuggestedPrice,
 }) {
+  const differenceAccent = Number(differenceFromTarget) >= 0 ? 'emerald' : 'amber';
+
   return (
     <div className="bg-white rounded-xl border border-blue-200 overflow-hidden mb-5 shadow-sm">
       <div className="flex items-center justify-between gap-3 px-5 py-3 bg-blue-50 border-b border-blue-100 flex-wrap">
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-blue-700" />
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-blue-500 leading-none mb-0.5">Internal pricing guide</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-blue-500 leading-none mb-0.5">Global pricing control · applies on click only</p>
             <h4 className="text-sm font-bold text-blue-900">Target Markup %</h4>
           </div>
         </div>
@@ -68,6 +72,7 @@ export default function TargetMarkupSection({
         <Metric label="Target Markup %" value={pct(targetMarkupPct)} accent="blue" />
         <Metric label="Suggested Revenue" value={fmt(suggestedRevenue)} accent="blue" />
         <Metric label="Actual Markup %" value={pct(actualMarkupPct)} accent="blue" />
+        <Metric label="Difference from Target" value={`${Number(differenceFromTarget) >= 0 ? '+' : ''}${pct(differenceFromTarget)}`} accent={differenceAccent} />
         <Metric label="Actual Margin %" value={pct(actualMarginPct)} accent="emerald" />
       </div>
     </div>
