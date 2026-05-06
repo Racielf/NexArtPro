@@ -40,7 +40,7 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium flex-nowrap overflow-x-auto whitespace-nowrap py-1" title="Reference only — does not affect Net Profit">
+    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium flex-wrap py-1" title="Reference only — does not affect Net Profit">
       <Info className="w-3 h-3 text-slate-400 flex-shrink-0" />
       <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 mr-0.5">Reference</span>
       <span className="text-slate-500" title="Catalog Unit Cost × Qty (reference only)">Ref Cost</span>
