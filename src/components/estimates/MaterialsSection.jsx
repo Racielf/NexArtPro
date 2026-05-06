@@ -131,9 +131,9 @@ export default function MaterialsSection({ materials = [], onChange, showCost = 
   const addItem = () => onChange([...materials, emptyMaterial()]);
 
   return (
-    <div className="bg-white rounded-xl border border-emerald-200 overflow-hidden shadow-sm">
+    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-3 bg-emerald-800 text-white">
+      <div className="flex items-center gap-3 px-6 py-3 bg-emerald-700 text-white">
         <button onClick={() => setCollapsed(!collapsed)}
           className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0">
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

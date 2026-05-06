@@ -106,7 +106,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
       data-line-item-row
       onDragOver={onDragOverRow}
       onDrop={onDropRow}
-      className={`relative bg-white border-b border-slate-200 last:border-0 transition-all duration-150 group/row ${isDragging ? 'opacity-80 scale-[1.01] shadow-lg ring-2 ring-blue-400/40 z-50' : ''} ${isDropTarget && !isDragging ? 'border-t-2 border-blue-500' : ''} ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}
+      className={`relative bg-white border-b border-slate-100 last:border-0 transition-all duration-150 group/row ${isDragging ? 'opacity-90 scale-[1.005] shadow-xl ring-2 ring-blue-500/50 z-50 bg-white' : ''} ${isDropTarget && !isDragging ? 'border-t-2 border-blue-500' : ''} ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50/60'}`}
     >
       <div className="grid items-start gap-3 px-4 py-4" style={{ gridTemplateColumns: isPreview ? PREVIEW_GRID_COLS : GRID_COLS }}>
         <button
