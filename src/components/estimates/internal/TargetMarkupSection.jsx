@@ -50,7 +50,7 @@ export default function TargetMarkupSection({
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-blue-700" />
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-blue-500 leading-none mb-0.5">Global pricing control · applies on click only</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-blue-500 leading-none mb-0.5">Pricing guidance · suggests prices, does not affect Net Profit</p>
             <h4 className="text-sm font-bold text-blue-900">Target Markup %</h4>
           </div>
         </div>
@@ -77,15 +77,18 @@ export default function TargetMarkupSection({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-5 py-4">
-        <Metric label="Cost Base" value={fmt(costBase)} />
-        <Metric label="Project Total / Revenue" value={fmt(revenue)} accent="blue" />
+        <Metric label="Internal Job Cost" value={fmt(costBase)} accent="amber" />
+        <Metric label="Estimate Total / Revenue" value={fmt(revenue)} accent="blue" />
         <Metric label="Net Profit" value={fmt(profit)} accent={profitAccent} />
-        <Metric label="Target Markup %" value={pct(targetMarkupPct)} accent="blue" />
-        <Metric label="Suggested Project Total" value={fmt(suggestedRevenue)} accent="blue" />
-        <Metric label="Actual Markup %" value={pct(actualMarkupPct)} accent="blue" />
         <Metric label="Net Margin %" value={pct(actualMarginPct)} accent="emerald" />
+        <Metric label="Target Markup %" value={pct(targetMarkupPct)} accent="blue" />
+        <Metric label="Suggested Price (guide)" value={fmt(suggestedRevenue)} accent="blue" />
+        <Metric label="Actual Markup %" value={pct(actualMarkupPct)} accent="blue" />
         <Metric label="Difference from Target" value={`${Number(differenceFromTarget) >= 0 ? '+' : ''}${pct(differenceFromTarget)}`} accent={differenceAccent} />
         <Metric label="Manual Overrides" value={`${Number(overriddenServicesCount) || 0} services`} accent="amber" />
+      </div>
+      <div className="mx-5 mb-4 -mt-2 text-[10px] font-medium text-slate-500 italic">
+        Net Profit = Estimate Total − Internal Job Cost. Service Unit Cost values are catalog reference only and do not affect this calculation.
       </div>
       {message && (
         <div className="mx-5 mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">

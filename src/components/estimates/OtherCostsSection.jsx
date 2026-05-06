@@ -110,7 +110,8 @@ export default function OtherCostsSection({ otherCosts = [], onChange, billOther
         >
           {expanded ? <ChevronDown className="w-4 h-4 text-amber-600" /> : <ChevronRight className="w-4 h-4 text-amber-600" />}
           <DollarSign className="w-4 h-4 text-amber-600" />
-          <span className="text-sm font-bold text-amber-800">Other Costs</span>
+          <span className="text-sm font-bold text-amber-800">Internal Job Cost</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-amber-600 italic">expense bucket</span>
           <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${billOtherCostsToClient ? 'text-emerald-700 bg-emerald-100 border-emerald-200' : 'text-amber-500 bg-amber-100 border-amber-200'}`}>
             {billOtherCostsToClient ? 'Billed to client' : 'Internal only'}
           </span>
@@ -144,7 +145,7 @@ export default function OtherCostsSection({ otherCosts = [], onChange, billOther
 
           {total > 0 && (
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-amber-200 bg-amber-50/60 -mx-5 px-5 pb-3 rounded-b">
-              <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">Internal Costs Total</span>
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">Internal Job Cost Total</span>
               <span className="text-base font-bold text-amber-900 tabular-nums">
                 ${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>

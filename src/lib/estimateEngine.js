@@ -139,24 +139,33 @@ export function runEstimateEngine(groups = [], {
   const grandTotal = calculateGrandTotal(subtotal, taxAmount, discountAmt);
   const depositAmt = calculateDeposit(grandTotal, depositPercent);
 
-  const serviceCost = toMoney(
+  // serviceCost (sum of service unit_cost × qty) is kept as REFERENCE ONLY.
+  // It is NOT included in totalCost. Per the official profit model, only
+  // Internal Job Cost (otherCostsTotal) counts as expense against profit.
+  // Service unit_cost remains visible in the editor purely as a catalog reference.
+  const serviceCostReference = toMoney(
     allItems.reduce((acc, item) => acc.plus(D(item.unit_cost).times(D(item.quantity))), new Decimal(0))
   );
 
-  const materialsCost = toMoney(
+  // materialsCostReference is kept for backwards-compatible field output but
+  // does NOT contribute to totalCost. Materials only count as expense if
+  // entered manually under Internal Job Cost.
+  const materialsCostReference = toMoney(
     processedMaterials.reduce((acc, item) => {
       const cost = D(item.unit_cost);
-      const price = D(item.unit_price);
-      const effectiveCost = cost.isZero() ? price : cost;
-      return acc.plus(effectiveCost.times(D(item.quantity)));
+      return acc.plus(cost.times(D(item.quantity)));
     }, new Decimal(0))
   );
 
   const otherCostsTotal = otherCostsTotalEarly;
 
-  // Official contractor model: total project cost = materials + labor + other costs.
-  // serviceCost is kept for compatibility and represents Labor Cost / Costo de mano de obra.
-  const totalCost = toMoney(D(materialsCost).plus(D(serviceCost)).plus(D(otherCostsTotal)));
+  // Official profit model:
+  //   Internal Job Cost = otherCostsTotal (the only expense bucket)
+  //   Net Profit        = Estimate Total − Internal Job Cost
+  // Service & material unit_cost values are catalog reference only.
+  const totalCost = otherCostsTotal;
+  const serviceCost = serviceCostReference;
+  const materialsCost = materialsCostReference;
 
   const totalVariance = toMoney(
     allItems.reduce((acc, item) => {
@@ -172,21 +181,24 @@ export function runEstimateEngine(groups = [], {
     }, new Decimal(0))
   );
 
-  // Revenue = Subtotal (single source of truth, before discount/tax).
-  // Per official rule: Revenue must equal client-facing Subtotal.
-  // If a section is not billed to the client, it does not contribute to Revenue.
+  // Revenue = Subtotal (before discount/tax) — used for internal panel reference.
   const revenue = subtotal;
 
-  const grossMargin = toMoney(D(revenue).minus(D(totalCost)));
-  const grossMarginPct = revenue > 0
-    ? toMoney(D(grossMargin).dividedBy(D(revenue)).times(100))
-    : 0;
-  const markupPercentage = totalCost > 0
-    ? toMoney(D(grossMargin).dividedBy(D(totalCost)).times(100))
+  // Official profit formulas:
+  //   Net Profit   = Estimate Total (grandTotal) − Internal Job Cost (totalCost)
+  //   Net Margin % = Net Profit / Estimate Total × 100
+  const netProfit = toMoney(D(grandTotal).minus(D(totalCost)));
+  const netProfitPct = grandTotal > 0
+    ? toMoney(D(netProfit).dividedBy(D(grandTotal)).times(100))
     : 0;
 
-  const netProfit = grossMargin;
-  const netProfitPct = grossMarginPct;
+  // grossMargin / grossMarginPct kept for backwards compatibility with
+  // downstream consumers (estimate fields, reports). Aligned with Net Profit.
+  const grossMargin = netProfit;
+  const grossMarginPct = netProfitPct;
+  const markupPercentage = totalCost > 0
+    ? toMoney(D(netProfit).dividedBy(D(totalCost)).times(100))
+    : 0;
 
   const marginPercentage = totalBookValue > 0
     ? toMoney(D(totalVariance).dividedBy(D(totalBookValue)).times(100))

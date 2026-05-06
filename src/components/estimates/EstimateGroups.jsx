@@ -239,7 +239,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
         )}
 
         {!isPreview ? (
-          <div className="min-w-0 overflow-hidden" title="Internal Cost — not shown in client view, PDF, or email">
+          <div className="min-w-0 overflow-hidden" title="Unit Cost (Reference) — catalog/price book reference only. Does NOT affect Net Profit, Margin, or Internal Job Cost. Hidden from preview, PDF, and client view.">
             <div className="relative flex items-center">
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-amber-600 pointer-events-none">$</span>
               <Input
@@ -248,10 +248,10 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
                 value={item.unit_cost}
                 onChange={e => update('unit_cost', e.target.value)}
                 onBlur={() => handlePriceBlur('unit_cost')}
-                className="h-9 pl-5 pr-8 text-sm text-right font-semibold tabular-nums rounded-md border-amber-300 bg-amber-50 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-amber-900"
+                className="h-9 pl-5 pr-9 text-sm text-right font-semibold tabular-nums rounded-md border-amber-300 bg-amber-50 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-amber-900"
                 min={0}
               />
-              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-wide text-amber-600 pointer-events-none px-1 rounded bg-amber-100 border border-amber-200">Int</span>
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-wide text-amber-700 pointer-events-none px-1 rounded bg-amber-100 border border-amber-300">REF</span>
             </div>
           </div>
         ) : <div />}
@@ -369,7 +369,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
             <div>Service</div>
             <div className="text-center">Qty</div>
             <div className="text-center">UOM</div>
-            {!isPreview ? <div className="text-right text-amber-600" title="Internal — not shown in client view">Unit Cost</div> : <div />}
+            {!isPreview ? <div className="text-right text-amber-600" title="Reference only — does not affect Net Profit. Hidden from preview, PDF, and client view.">Unit Cost <span className="ml-1 text-[8px] font-bold px-1 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-700">REF</span></div> : <div />}
             <div className="text-right">Unit Price</div>
             <div className="text-right">Total</div>
             <div />

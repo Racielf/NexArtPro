@@ -3,9 +3,14 @@ import { Info } from 'lucide-react';
 
 /**
  * Discrete financial subline shown under each service row in EstimateGroups.
- * Internal-only — surfaces Cost, Profit, Margin %, and a health badge.
+ * Internal reference only — uses catalog Unit Cost as a pricing guide.
  *
- * Health thresholds:
+ * IMPORTANT: These per-line metrics do NOT affect the estimate's Net Profit.
+ * Net Profit is calculated only from Internal Job Cost (Other Costs section)
+ * vs the Estimate Total. The values shown here help the operator price the
+ * line against catalog reference, but they are not expense numbers.
+ *
+ * Health thresholds (line markup vs catalog cost):
  *   < 25%  → Critical (red)
  *   25-40% → Warning  (amber)
  *   > 40%  → Healthy  (emerald)
@@ -35,16 +40,16 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium flex-nowrap overflow-x-auto whitespace-nowrap py-1">
+    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium flex-nowrap overflow-x-auto whitespace-nowrap py-1" title="Reference only — does not affect Net Profit">
       <Info className="w-3 h-3 text-slate-400 flex-shrink-0" />
-      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mr-0.5">Internal</span>
-      <span className="text-slate-500" title={`Cost = Unit Cost × Qty (${fmt(parseFloat(unitCost) || 0)} × ${qty})`}>Cost</span>
+      <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 mr-0.5">Reference</span>
+      <span className="text-slate-500" title="Catalog Unit Cost × Qty (reference only)">Ref Cost</span>
       <span className="font-semibold text-slate-700 tabular-nums" title={`Unit Cost ${fmt(parseFloat(unitCost) || 0)} × Qty ${qty}`}>{fmt(lineCost)}</span>
       <span className="text-slate-300">•</span>
-      <span className="text-slate-500">Profit</span>
+      <span className="text-slate-500" title="Indicative line profit vs catalog reference cost. Does NOT affect Net Profit.">Ref Profit</span>
       <span className="font-semibold text-emerald-700 tabular-nums">{fmt(profit)}</span>
       <span className="text-slate-300">•</span>
-      <span className="text-slate-500">Markup</span>
+      <span className="text-slate-500" title="Pricing guidance only — used to suggest unit price from catalog cost">Markup</span>
       {onMarkupChange ? (
         <span className="relative inline-flex items-center">
           <input
@@ -62,7 +67,7 @@ export default function LineItemFinancialSubline({ quantity, unitPrice, unitCost
       )}
       {markupOverride && <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 flex-shrink-0">Override</span>}
       <span className="text-slate-300">•</span>
-      <span className="text-slate-500">Margin</span>
+      <span className="text-slate-500" title="Indicative line margin vs catalog reference. Net Margin is calculated from Internal Job Cost only.">Ref Margin</span>
       <span className="font-semibold text-slate-700 tabular-nums">{marginPct.toFixed(1)}%</span>
       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-bold flex-shrink-0 ${badge.cls}`}>
         <span className={`w-1 h-1 rounded-full ${badge.dot}`} />
