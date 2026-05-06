@@ -38,7 +38,7 @@ const emptyItem = () => normalizeLineItem({ id: uid() });
 const UNITS = ['ea', 'hr', 'sq ft', 'ln ft', 'day', 'lump sum', 'ton', 'gal', 'room', 'window', 'door', 'bag', 'box'];
 const GRID_COLS = 'minmax(24px,28px) minmax(360px,1fr) minmax(80px,100px) minmax(100px,120px) minmax(120px,150px) minmax(120px,150px) minmax(28px,32px)';
 
-function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null }) {
+function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLogChange, isPreview = false, pricingWarning = null, dragHandleProps = {}, onDragOverRow, onDropRow, isDragging = false }) {
   const [editingService, setEditingService] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
   const committedRef = React.useRef({ unit_price: item.unit_price, unit_cost: item.unit_cost });
@@ -79,10 +79,18 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
   const negMeta = !isPreview ? getNegotiationMeta(cost, price) : { status: 'none' };
 
   return (
-    <div className={`bg-white border-b border-slate-200 last:border-0 transition-colors group/row ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}>
+    <div
+      onDragOver={onDragOverRow}
+      onDrop={onDropRow}
+      className={`bg-white border-b border-slate-200 last:border-0 transition-colors group/row ${isDragging ? 'bg-blue-50/70' : ''} ${isFixed ? 'ring-1 ring-inset ring-emerald-200' : 'hover:bg-slate-50'}`}
+    >
       <div className="grid items-center gap-2 px-3 py-4" style={{ gridTemplateColumns: GRID_COLS }}>
-        <button className="text-slate-700 hover:text-slate-900 cursor-grab active:cursor-grabbing flex justify-center transition-colors">
-          <GripVertical className="w-3.5 h-3.5" />
+        <button
+          type="button"
+          className="text-slate-700 hover:text-slate-900 cursor-grab active:cursor-grabbing pointer-events-auto flex justify-center transition-colors"
+          {...dragHandleProps}
+        >
+          <GripVertical className="w-3.5 h-3.5 pointer-events-none" />
         </button>
 
         <div className="min-w-0 px-2">
@@ -235,6 +243,7 @@ function LineItemRow({ item, onUpdate, onRemove, showCost, isFixed = false, onLo
 function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds = new Set(), onLogChange, isPreview = false, pricingWarningsMap = {} }) {
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(group.name);
+  const [draggingItemId, setDraggingItemId] = useState(null);
 
   const updateItem = (updatedItem) => {
     onUpdate({ ...group, items: group.items.map(i => i.id === updatedItem.id ? updatedItem : i) });
@@ -245,6 +254,17 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
   const addItem = () => {
     const item = emptyItem();
     onUpdate({ ...group, items: [...group.items, item] });
+  };
+
+  const reorderItems = (targetItemId) => {
+    if (!draggingItemId || draggingItemId === targetItemId) return;
+    const items = [...(group.items || [])];
+    const fromIndex = items.findIndex(item => item.id === draggingItemId);
+    const toIndex = items.findIndex(item => item.id === targetItemId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    const [movedItem] = items.splice(fromIndex, 1);
+    items.splice(toIndex, 0, movedItem);
+    onUpdate({ ...group, items });
   };
 
   const groupSubtotal = (group.items || []).reduce((s, i) => s + (parseFloat(i.line_total) || 0), 0);
@@ -305,7 +325,36 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
           <div className="divide-y divide-slate-200 min-h-[40px]">
             {group.items.length === 0 && <div className="py-6 text-center text-slate-300 text-xs">No items yet — click below to add</div>}
             {group.items.map(item => (
-              <LineItemRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} isFixed={fixedItemIds.has(item.id)} onLogChange={onLogChange} isPreview={isPreview} pricingWarning={pricingWarningsMap?.[item.id] || null} />
+              <LineItemRow
+                key={item.id}
+                item={item}
+                onUpdate={updateItem}
+                onRemove={removeItem}
+                showCost={showCost}
+                isFixed={fixedItemIds.has(item.id)}
+                onLogChange={onLogChange}
+                isPreview={isPreview}
+                pricingWarning={pricingWarningsMap?.[item.id] || null}
+                isDragging={draggingItemId === item.id}
+                dragHandleProps={!isPreview ? {
+                  draggable: true,
+                  onDragStart: (event) => {
+                    setDraggingItemId(item.id);
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', item.id);
+                  },
+                  onDragEnd: () => setDraggingItemId(null),
+                } : {}}
+                onDragOverRow={!isPreview ? (event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = 'move';
+                } : undefined}
+                onDropRow={!isPreview ? (event) => {
+                  event.preventDefault();
+                  reorderItems(item.id);
+                  setDraggingItemId(null);
+                } : undefined}
+              />
             ))}
           </div>
 
