@@ -26,28 +26,34 @@ export default function useCompanyConfig() {
   const [config, setConfig] = useState(DEFAULTS);
 
   const refresh = useCallback(() => {
+    if (!loadCompanySettings) return;
     loadCompanySettings()
       .then(saved => {
-        setConfig({
-          ...DEFAULTS,
-          name: saved.name || DEFAULTS.name,
-          email: saved.email || DEFAULTS.email,
-          phone: saved.phone || DEFAULTS.phone,
-          address: saved.address || DEFAULTS.address,
-          license: saved.license || DEFAULTS.license,
-          logo_url: saved.logo_url || DEFAULTS.logo_url,
-          app_logo_url: saved.app_logo_url || DEFAULTS.app_logo_url,
-          payment_methods: saved.payment_methods || DEFAULTS.payment_methods,
-        });
+        if (saved) {
+          setConfig(prev => ({
+            ...DEFAULTS,
+            name: saved.name || DEFAULTS.name,
+            email: saved.email || DEFAULTS.email,
+            phone: saved.phone || DEFAULTS.phone,
+            address: saved.address || DEFAULTS.address,
+            license: saved.license || DEFAULTS.license,
+            logo_url: saved.logo_url || DEFAULTS.logo_url,
+            app_logo_url: saved.app_logo_url || DEFAULTS.app_logo_url,
+            payment_methods: saved.payment_methods || DEFAULTS.payment_methods,
+          }));
+        }
       })
-      .catch(() => {});
+      .catch(err => {
+        console.warn('[useCompanyConfig] Load failed:', err?.message);
+      });
   }, []);
 
   useEffect(() => {
     refresh();
-    // Re-fetch whenever company settings are saved anywhere
     const unsub = onCompanyConfigChange(refresh);
-    return unsub;
+    return () => {
+      if (unsub) unsub();
+    };
   }, [refresh]);
 
   return config;
