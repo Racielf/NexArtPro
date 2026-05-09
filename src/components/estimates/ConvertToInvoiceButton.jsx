@@ -27,11 +27,11 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
 
   if (!estimate) return null;
 
-  const isApproved = estimate.status === 'approved';
+  const canConvert = ['approved', 'signed'].includes(estimate.status);
 
   const handleConvert = async () => {
-    if (!isApproved) {
-      toast.error('Estimate must be approved before converting to an invoice.');
+    if (!canConvert) {
+      toast.error('Estimate must be approved or signed before converting to an invoice.');
       return;
     }
     setLoading(true);
@@ -97,7 +97,7 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
     }
   };
 
-  const enabled = !!estimate.client_name && !loading && isApproved;
+  const enabled = !!estimate.client_name && !loading && canConvert;
 
   if (asDropdownItem) {
     return (
@@ -110,9 +110,9 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
           Convert to Invoice
         </DropdownMenuItem>
-        {!isApproved && (
+        {!canConvert && (
           <p className="px-3 pb-1.5 text-[10px] text-amber-600 font-medium">
-            Approve the estimate first
+            Approve or sign the estimate first
           </p>
         )}
       </div>
@@ -126,7 +126,7 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
       variant="outline"
       size="sm"
       className="gap-1.5"
-      title={!isApproved ? 'Estimate must be approved first' : !estimate.client_name ? 'Customer required' : 'Convert to Invoice'}
+      title={!estimate.client_name ? 'Customer required' : !canConvert ? 'Estimate must be approved or signed first' : 'Convert to Invoice'}
     >
       {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
       Convert to Invoice
