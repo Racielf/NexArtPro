@@ -256,7 +256,12 @@ export default function Invoices() {
         count={selectedIds.size}
         entityLabel="Invoice"
       />
-      <PageHeader title="Invoices" subtitle={`${invoices.length} total`} action={<Button onClick={() => navigate('/invoice-create')} className="gap-1.5"><Plus className="w-4 h-4" />Create Invoice</Button>} />
+      <PageHeader
+        title="Invoices"
+        subtitle={`${invoices.length} total`}
+        actionLabel="Create Invoice"
+        onAction={() => navigate('/invoice-create')}
+      />
 
       <PageShell>
          {/* Financial Overview */}
