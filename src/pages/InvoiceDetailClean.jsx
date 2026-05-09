@@ -124,7 +124,8 @@ export default function InvoiceDetailClean() {
 
   const allItems = useMemo(() => {
     if (!invoice) return [];
-    const raw = invoice.groups?.flatMap(g => g.items || []) || invoice.line_items || [];
+    const groupItems = invoice.groups?.flatMap(g => g.items || []) || [];
+    const raw = groupItems.length > 0 ? groupItems : (invoice.line_items || []);
     return raw.map(normalizeLineItem);
   }, [invoice]);
 
@@ -157,16 +158,21 @@ export default function InvoiceDetailClean() {
       if (!confirm('Incomplete execution evidence. Send anyway?')) return;
     }
     setSaving(true);
-    const now = new Date().toISOString();
-    await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now, last_contacted_at: now });
-    await base44.integrations.Core.SendEmail({
-      to: invoice.client_email,
-      subject: `Invoice #${invoice.invoice_number} - Payment Due`,
-      body: `Hi ${invoice.client_name},\n\nPlease find your invoice #${invoice.invoice_number}.\n\nTotal Due: $${(invoice.total || 0).toFixed(2)}${dueDate ? `\nDue Date: ${dueDate}` : ''}\n\nThank you for your business!\n\n${co.name}`,
-    });
-    setInvoice(prev => ({ ...prev, status: 'sent', sent_at: now, last_contacted_at: now }));
-    setSaving(false);
-    toast.success('Invoice sent to client');
+    try {
+      const now = new Date().toISOString();
+      await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now, last_contacted_at: now });
+      await base44.integrations.Core.SendEmail({
+        to: invoice.client_email,
+        subject: `Invoice #${invoice.invoice_number} - Payment Due`,
+        body: `Hi ${invoice.client_name},\n\nPlease find your invoice #${invoice.invoice_number}.\n\nTotal Due: $${(invoice.total || 0).toFixed(2)}${dueDate ? `\nDue Date: ${dueDate}` : ''}\n\nThank you for your business!\n\n${co.name}`,
+      });
+      setInvoice(prev => ({ ...prev, status: 'sent', sent_at: now, last_contacted_at: now }));
+      toast.success('Invoice sent to client');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to send invoice');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleMarkPaid = async () => {
@@ -175,6 +181,8 @@ export default function InvoiceDetailClean() {
       const { updates } = await markInvoicePaid(invoice, actor, 'Marked as paid');
       setInvoice(prev => ({ ...prev, ...updates }));
       toast.success('Invoice marked as paid');
+    } catch (err) {
+      toast.error(err?.message || 'Unable to mark invoice as paid');
     } finally {
       setSaving(false);
     }
