@@ -8,18 +8,19 @@ import {
   ArrowLeft,
   CheckCircle,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Clock,
   DollarSign,
   ExternalLink,
   FileCheck,
+  Mail,
   MapPin,
+  Phone,
   Printer,
   Receipt,
   Send,
   Settings2,
-  Building2,
-  Phone,
-  Mail,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import StatusBadge from '@/components/shared/StatusBadge';
@@ -41,7 +42,6 @@ import { APP_CONFIG } from '@/lib/appConfig';
 
 const co = APP_CONFIG.company;
 
-// ─── Payment status label helper ─────────────────────────────────────────────
 function paymentStatusLabel(status) {
   if (status === 'paid') return 'Paid';
   if (status === 'partial') return 'Partially Paid';
@@ -63,6 +63,7 @@ export default function InvoiceDetailClean() {
   const [receiptModal, setReceiptModal] = useState(false);
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [showAdmin, setShowAdmin] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [previousBalance, setPreviousBalance] = useState(0);
 
@@ -196,7 +197,6 @@ export default function InvoiceDetailClean() {
     toast.success('Marked as contacted');
   };
 
-  // ─── Professional print ──────────────────────────────────────────────────
   const handlePrint = () => {
     const invoiceDate = invoice.created_date
       ? new Date(invoice.created_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -221,17 +221,19 @@ export default function InvoiceDetailClean() {
     })();
 
     const payTerms = invoice.payment_terms || 'Payment is due upon receipt unless otherwise agreed.';
-    const customerNotes = invoice.notes || '';
+    const statusBg = isPaid ? '#dcfce7' : isPartial ? '#fef9c3' : '#fee2e2';
+    const statusColor = isPaid ? '#166534' : isPartial ? '#854d0e' : '#991b1b';
 
     const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice #${invoice.invoice_number}</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:'Helvetica Neue',Arial,sans-serif;color:#0f172a;background:white;padding:48px;font-size:14px;line-height:1.5}
       .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:24px;border-bottom:2px solid #0f172a}
-      .company-name{font-size:22px;font-weight:900;color:#0f172a;letter-spacing:-0.02em}
+      .company-name{font-size:22px;font-weight:900;color:#0f172a}
       .company-meta{font-size:12px;color:#64748b;margin-top:4px}
-      .doc-title{font-size:36px;font-weight:900;color:#0f172a;text-align:right;letter-spacing:-0.03em}
+      .doc-title{font-size:36px;font-weight:900;color:#0f172a;text-align:right}
       .doc-number{font-size:13px;color:#64748b;text-align:right;margin-top:2px}
+      .status-badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;background:${statusBg};color:${statusColor};margin-top:6px}
       .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:28px 0}
       .block{padding:16px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc}
       .block-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin-bottom:8px}
@@ -251,14 +253,13 @@ export default function InvoiceDetailClean() {
       .box{padding:16px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;margin-top:20px}
       .box-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin-bottom:8px}
       .footer{margin-top:48px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
-      .status-badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:${isPaid ? '#dcfce7' : isPartial ? '#fef9c3' : '#fee2e2'};color:${isPaid ? '#166534' : isPartial ? '#854d0e' : '#991b1b'};margin-top:6px}
-      @media print{body{padding:24px}.no-print{display:none}}
+      @media print{body{padding:24px}}
     </style></head><body>
 
     <div class="header">
       <div>
         <div class="company-name">${co.name}</div>
-        <div class="company-meta">${co.city || ''}${co.email ? ` · ${co.email}` : ''}${co.phone ? ` · ${co.phone}` : ''}</div>
+        <div class="company-meta">${[co.city, co.email, co.phone].filter(Boolean).join(' · ')}</div>
       </div>
       <div>
         <div class="doc-title">INVOICE</div>
@@ -285,14 +286,12 @@ export default function InvoiceDetailClean() {
     </div>
 
     <table>
-      <thead>
-        <tr>
-          <th>Service / Description</th>
-          <th style="text-align:center">Qty</th>
-          <th style="text-align:right">Unit Price</th>
-          <th style="text-align:right">Total</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th>Service / Description</th>
+        <th style="text-align:center">Qty</th>
+        <th style="text-align:right">Unit Price</th>
+        <th style="text-align:right">Total</th>
+      </tr></thead>
       <tbody>${lineRows}</tbody>
     </table>
 
@@ -309,18 +308,13 @@ export default function InvoiceDetailClean() {
       <div class="box-title">Payment Terms</div>
       <p style="font-size:13px;color:#475569">${payTerms}</p>
     </div>
-
     <div class="box">
       <div class="box-title">Payment Instructions</div>
-      <p style="font-size:13px;color:#475569">Please contact us if you need a payment link or have billing questions.${co.email ? ` · ${co.email}` : ''}${co.phone ? ` · ${co.phone}` : ''}</p>
+      <p style="font-size:13px;color:#475569">Please contact us if you need a payment link or have billing questions.${[co.email, co.phone].filter(Boolean).map(v => ` · ${v}`).join('')}</p>
     </div>
+    ${invoice.notes ? `<div class="box"><div class="box-title">Notes</div><p style="font-size:13px;color:#475569;white-space:pre-wrap">${invoice.notes}</p></div>` : ''}
 
-    ${customerNotes ? `<div class="box"><div class="box-title">Notes</div><p style="font-size:13px;color:#475569;white-space:pre-wrap">${customerNotes}</p></div>` : ''}
-
-    <div class="footer">
-      Generated by ${APP_CONFIG.document.generator} · ${co.name}
-    </div>
-
+    <div class="footer">Generated by ${APP_CONFIG.document.generator} · ${co.name}</div>
     </body></html>`;
 
     const win = window.open('', '_blank');
@@ -341,7 +335,6 @@ export default function InvoiceDetailClean() {
     ? format(new Date(invoice.created_date), 'MMM d, yyyy')
     : format(new Date(), 'MMM d, yyyy');
 
-  // Source reference for customer-facing display
   const sourceReference = (() => {
     if (invoice.source_proposal_number) return `Proposal #${invoice.source_proposal_number}${invoice.source_selected_pricing_option_title ? ` — ${invoice.source_selected_pricing_option_title}` : ''}`;
     if (invoice.estimate_id) return 'Estimate';
@@ -349,105 +342,74 @@ export default function InvoiceDetailClean() {
     return null;
   })();
 
+  const hasPendingChanges = dueDate !== (invoice.due_date || '') || notes !== (invoice.notes || '');
+
   return (
     <>
       {receiptModal && receipt && <PaymentReceiptPreviewModal receipt={receipt} onClose={() => setReceiptModal(false)} />}
-      <PaymentInputModal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} invoice={invoice} onPaymentAdded={(updates) => setInvoice(prev => ({ ...prev, ...updates }))} />
+      <PaymentInputModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        invoice={invoice}
+        onPaymentAdded={(updates) => setInvoice(prev => ({ ...prev, ...updates }))}
+      />
 
       <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 overflow-hidden">
 
         {/* ── Top bar ── */}
-        <div className="bg-white border-b border-slate-200 flex items-center justify-between px-5 py-3 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/invoices')} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"><ArrowLeft className="w-4 h-4 text-slate-500" /></button>
-            <div>
-              <p className="text-sm font-bold text-slate-800 flex items-center gap-2"><Receipt className="w-4 h-4 text-primary" />Invoice #{invoice.invoice_number}</p>
-              <p className="text-xs text-slate-400">{invoice.client_name}</p>
+        <div className="bg-white border-b border-slate-200 flex items-center justify-between px-4 py-2.5 flex-shrink-0 gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button onClick={() => navigate('/invoices')} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0">
+              <ArrowLeft className="w-4 h-4 text-slate-500" />
+            </button>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-800 flex items-center gap-1.5 truncate">
+                <Receipt className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                Invoice #{invoice.invoice_number}
+              </p>
+              <p className="text-xs text-slate-400 truncate">{invoice.client_name}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge status={isPaid ? 'paid' : isPartial ? 'partial' : invoice.status} />
-            <Button size="sm" variant="outline" onClick={() => setShowCustomize(p => !p)}><Settings2 className="w-3.5 h-3.5 mr-1" />Customize</Button>
-            <Button size="sm" variant="outline" onClick={handlePrint}><Printer className="w-3.5 h-3.5 mr-1" />Print</Button>
-            {derived.payment_status !== 'unpaid' && <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 gap-1.5" onClick={() => setReceiptModal(true)}><FileCheck className="w-3.5 h-3.5" />Receipt</Button>}
-            {invoice.status === 'draft' && <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50" onClick={handleSend} disabled={saving}><Send className="w-3.5 h-3.5 mr-1" />Send</Button>}
-            {invoice.status === 'sent' && !isPaid && <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleMarkPaid} disabled={saving}><CheckCircle className="w-3.5 h-3.5 mr-1" />Mark Paid</Button>}
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+            {!isPaid && (
+              <Button size="sm" onClick={() => setPaymentModalOpen(true)} className="gap-1.5 bg-primary hover:bg-primary/90 text-white">
+                <DollarSign className="w-3.5 h-3.5" />Add Payment
+              </Button>
+            )}
+            {invoice.status === 'draft' && (
+              <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50" onClick={handleSend} disabled={saving}>
+                <Send className="w-3.5 h-3.5 mr-1" />Send
+              </Button>
+            )}
+            {invoice.status === 'sent' && !isPaid && (
+              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleMarkPaid} disabled={saving}>
+                <CheckCircle className="w-3.5 h-3.5 mr-1" />Mark Paid
+              </Button>
+            )}
+            {derived.payment_status !== 'unpaid' && (
+              <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 gap-1.5" onClick={() => setReceiptModal(true)}>
+                <FileCheck className="w-3.5 h-3.5" />Receipt
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={handlePrint}>
+              <Printer className="w-3.5 h-3.5 mr-1" />Print
+            </Button>
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        {/* ── Page body: single scrollable column ── */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
 
-          {/* ── Left sidebar: Internal admin/payment tools ── */}
-          <aside className="w-[300px] flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white">
-
-            {/* Payment summary */}
-            <section className={`px-5 py-5 border-b border-slate-100 ${isPaid ? 'bg-emerald-50' : overdue ? 'bg-red-50' : 'bg-slate-50'}`}>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Invoice Total</p>
-              <p className="text-3xl font-bold text-slate-900">${currentInvoiceTotal.toFixed(2)}</p>
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                <div className="bg-white rounded-lg px-3 py-2 border border-slate-200"><p className="text-[10px] text-slate-400">Paid</p><p className="text-sm font-bold text-emerald-600">${derived.amount_paid.toFixed(2)}</p></div>
-                <div className="bg-white rounded-lg px-3 py-2 border border-slate-200"><p className="text-[10px] text-slate-400">Balance Due</p><p className="text-sm font-bold text-slate-900">${derived.balance_due.toFixed(2)}</p></div>
-              </div>
-              <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 p-3 space-y-1.5">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Account Summary</p>
-                <SummaryMini label="Previous Balance" value={previousBalance} />
-                <SummaryMini label="This Invoice" value={currentInvoiceTotal} />
-                <SummaryMini label="Payments Applied" value={-derived.amount_paid} />
-                <div className="h-px bg-slate-200 my-1.5" />
-                <SummaryMini label="Total Owed" value={totalOwed} strong />
-              </div>
-              {invoice.due_date && <p className={`text-xs font-medium flex items-center gap-1.5 mt-3 ${overdue ? 'text-red-600' : 'text-slate-500'}`}><Clock className="w-3.5 h-3.5" />Due {invoice.due_date}</p>}
-              {!isPaid && <button onClick={() => setPaymentModalOpen(true)} className="w-full mt-3 bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-3 rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5"><DollarSign className="w-4 h-4" />Add Payment</button>}
-            </section>
-
-            {/* Collections */}
-            {nextAction && !isPaid && (
-              <section className="px-4 py-3.5 border-b border-slate-100 space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Collection Activity</p>
-                <div className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${nextAction.bg}`}><nextAction.icon className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${nextAction.color}`} /><div><p className={`font-semibold ${nextAction.color}`}>{nextAction.label}</p>{nextAction.sub && <p className={`text-[11px] mt-0.5 ${nextAction.color}`}>{nextAction.sub}</p>}</div></div>
-                {invoice.status === 'sent' && !isPaid && <button className="w-full text-xs py-1.5 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600" onClick={handleMarkContacted}>Mark as Contacted</button>}
-              </section>
-            )}
-
-            <QuickContactActions invoice={invoice} isOverdue={overdue} />
-
-            {/* Dates editable */}
-            <section className="px-4 py-3.5 border-b border-slate-100 space-y-2.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Admin Tools</p>
-              <div><label className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Due Date</label><Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="h-8 text-sm mt-1 border-slate-200" /></div>
-              {invoice.sent_at && <p className="text-xs text-slate-500">Sent {format(new Date(invoice.sent_at), 'MMM d, yyyy')}</p>}
-              {invoice.last_contacted_at && <p className="text-xs text-slate-500">Last contact {getLastContactedDisplay(invoice.last_contacted_at)}</p>}
-              {invoice.paid_at && <p className="text-xs text-emerald-600 font-semibold">Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}</p>}
-              {(dueDate !== (invoice.due_date || '') || notes !== (invoice.notes || '')) && <Button size="sm" variant="outline" className="w-full text-xs" onClick={handleSaveNotes} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>}
-            </section>
-
-            {/* Linked records */}
-            {viewSettings.show_linked_records && (invoice.estimate_id || invoice.work_order_id || evidenceEval) && (
-              <section className="px-4 py-3.5 border-b border-slate-100 space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Linked Records</p>
-                {invoice.estimate_id && <button onClick={() => navigate(`/estimate-editor?id=${invoice.estimate_id}`)} className="flex items-center gap-1.5 text-xs text-primary hover:underline"><ExternalLink className="w-3 h-3" />View Estimate</button>}
-                {invoice.work_order_id && <button onClick={() => navigate(`/work-orders/${invoice.work_order_id}`)} className="flex items-center gap-1.5 text-xs text-primary hover:underline"><ExternalLink className="w-3 h-3" />View Work Order</button>}
-                {evidenceEval && <div className={`mt-1 px-2.5 py-2 rounded-lg text-xs flex items-center gap-2 ${evidenceEval.isComplete ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>{evidenceEval.isComplete ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Clock className="w-3.5 h-3.5 text-amber-600" />}<span className={evidenceEval.isComplete ? 'text-emerald-700' : 'text-amber-700'}>{evidenceEval.isComplete ? 'Execution evidence complete' : `Missing: ${evidenceEval.missingItems.join(', ')}`}</span></div>}
-              </section>
-            )}
-          </aside>
-
-          {/* ── Main content: Customer-facing invoice document ── */}
-          <main className="flex-1 overflow-y-auto p-6 space-y-5">
-
-            {showCustomize && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <InvoiceVisibilityPanel invoice={invoice} saving={saving} onChange={handleViewSettingChange} />
-              </div>
-            )}
-
-            {/* ── CUSTOMER-FACING INVOICE DOCUMENT ── */}
+            {/* ══ CUSTOMER-FACING INVOICE DOCUMENT ══ */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
               {/* Company header */}
               <div className="bg-slate-900 text-white px-7 py-6 flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xl font-black tracking-tight leading-none">{co.name}</p>
+                  <p className="text-lg font-black tracking-tight leading-none">{co.name}</p>
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     {co.city && <span className="text-xs text-slate-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{co.city}</span>}
                     {co.email && <span className="text-xs text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" />{co.email}</span>}
@@ -455,7 +417,7 @@ export default function InvoiceDetailClean() {
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-3xl font-black tracking-tighter text-white">INVOICE</p>
+                  <p className="text-2xl font-black tracking-tighter text-white">INVOICE</p>
                   <p className="text-sm font-bold text-slate-400 mt-1">#{invoice.invoice_number}</p>
                   <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold ${isPaid ? 'bg-emerald-500 text-white' : isPartial ? 'bg-amber-400 text-slate-900' : overdue ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
                     {paymentStatusLabel(derived.payment_status)}
@@ -463,74 +425,80 @@ export default function InvoiceDetailClean() {
                 </div>
               </div>
 
-              {/* Invoice identity + Bill To */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-b border-slate-100">
-                <div className="px-7 py-5 border-b md:border-b-0 md:border-r border-slate-100">
+              {/* Bill To + Invoice Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 border-b border-slate-100">
+                <div className="px-6 py-5 sm:border-r border-slate-100">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Bill To</p>
-                  <p className="font-bold text-slate-900 text-base">{invoice.client_name}</p>
+                  <p className="font-bold text-slate-900">{invoice.client_name}</p>
                   {invoice.client_address && <p className="text-sm text-slate-500 mt-1">{invoice.client_address}</p>}
                   {invoice.client_phone && <p className="text-sm text-slate-500 mt-0.5">{invoice.client_phone}</p>}
                   {invoice.client_email && <p className="text-sm text-slate-500 mt-0.5">{invoice.client_email}</p>}
                 </div>
-                <div className="px-7 py-5">
+                <div className="px-6 py-5">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Invoice Details</p>
                   <div className="space-y-1">
-                    <InvoiceDetailRow label="Invoice #" value={`#${invoice.invoice_number}`} />
-                    <InvoiceDetailRow label="Invoice Date" value={invoiceDate} />
-                    <InvoiceDetailRow label="Due Date" value={invoice.due_date || 'Due upon receipt'} />
-                    {sourceReference && <InvoiceDetailRow label="Reference" value={sourceReference} />}
-                    {invoice.title && invoice.title !== `Invoice #${invoice.invoice_number}` && <InvoiceDetailRow label="Description" value={invoice.title} />}
+                    <DocRow label="Invoice #" value={`#${invoice.invoice_number}`} />
+                    <DocRow label="Date" value={invoiceDate} />
+                    <DocRow label="Due" value={invoice.due_date || 'Upon receipt'} />
+                    {sourceReference && <DocRow label="Reference" value={sourceReference} />}
                   </div>
                 </div>
               </div>
 
-              {/* Itemized services */}
+              {/* Line items */}
               <div>
-                <div className="px-7 py-3 bg-slate-50 border-b border-slate-100 grid grid-cols-[1fr_100px_110px_110px] gap-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Service / Description</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">Qty</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Unit Price</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Total</p>
+                <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-100 grid grid-cols-[1fr_72px_96px_96px] gap-3">
+                  {['Service / Description', 'Qty', 'Unit Price', 'Total'].map((h, i) => (
+                    <p key={h} className={`text-[10px] font-bold uppercase tracking-widest text-slate-400 ${i > 0 ? 'text-right' : ''}`}>{h}</p>
+                  ))}
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {allItems.length === 0 && <p className="px-7 py-6 text-sm text-slate-400 italic">No billable items.</p>}
+                  {allItems.length === 0 && (
+                    <p className="px-6 py-8 text-sm text-slate-400 italic text-center">No billable items on this invoice.</p>
+                  )}
                   {allItems.map((item, idx) => (
-                    <div key={item.id || idx} className="px-7 py-4 grid grid-cols-[1fr_100px_110px_110px] gap-4 items-start">
+                    <div key={item.id || idx} className="px-6 py-3.5 grid grid-cols-[1fr_72px_96px_96px] gap-3 items-start">
                       <div>
                         <p className="font-semibold text-slate-900 text-sm">{item.service_name || item.name || 'Service'}</p>
                         {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
                       </div>
-                      <p className="text-sm text-slate-500 text-center">{item.quantity || 0}</p>
+                      <p className="text-sm text-slate-500 text-right">{item.quantity || 0}</p>
                       <p className="text-sm text-slate-500 text-right">${(item.unit_price || 0).toFixed(2)}</p>
                       <p className="font-bold text-slate-900 text-sm text-right">${(item.line_total || item.total_price || 0).toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
 
-                {/* Totals block */}
-                <div className="border-t border-slate-100 px-7 py-5 flex justify-end">
-                  <div className="w-64 space-y-2">
+                {/* Totals */}
+                <div className="border-t border-slate-100 px-6 py-5 flex justify-end">
+                  <div className="w-56 space-y-2">
                     <TotalRow label="Subtotal" value={invoice.subtotal || 0} />
                     {invoice.discount_amount > 0 && <TotalRow label="Discount" value={-invoice.discount_amount} />}
                     {invoice.tax_rate > 0 && <TotalRow label={`Tax (${invoice.tax_rate}%)`} value={invoice.tax_amount || 0} />}
-                    <div className="h-px bg-slate-200 my-1" />
+                    <div className="h-px bg-slate-200" />
                     <TotalRow label="Total" value={invoice.total || 0} strong />
-                    {derived.amount_paid > 0 && <TotalRow label="Amount Paid" value={-derived.amount_paid} className="text-emerald-600" />}
-                    <div className="h-px bg-slate-200 my-1" />
+                    {derived.amount_paid > 0 && (
+                      <TotalRow label="Amount Paid" value={-derived.amount_paid} paidStyle />
+                    )}
+                    {derived.amount_paid > 0 && <div className="h-px bg-slate-200" />}
                     <TotalRow label="Balance Due" value={derived.balance_due} strong accent={!isPaid} />
                   </div>
                 </div>
               </div>
 
-              {/* Payment terms + instructions */}
-              <div className="border-t border-slate-100 px-7 py-5 space-y-4 bg-slate-50/50">
+              {/* Payment terms + notes */}
+              <div className="border-t border-slate-100 px-6 py-5 bg-slate-50/60 space-y-4">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Payment Terms</p>
-                  <p className="text-sm text-slate-600 leading-relaxed">{invoice.payment_terms || 'Payment is due upon receipt unless otherwise agreed.'}</p>
+                  <p className="text-sm text-slate-600">{invoice.payment_terms || 'Payment is due upon receipt unless otherwise agreed.'}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Payment Instructions</p>
-                  <p className="text-sm text-slate-600">Please contact us if you need a payment link or have billing questions.{co.email ? ` · ${co.email}` : ''}{co.phone ? ` · ${co.phone}` : ''}</p>
+                  <p className="text-sm text-slate-600">
+                    Please contact us if you need a payment link or have billing questions.
+                    {co.email ? ` · ${co.email}` : ''}
+                    {co.phone ? ` · ${co.phone}` : ''}
+                  </p>
                 </div>
                 {invoice.notes && (
                   <div>
@@ -540,36 +508,134 @@ export default function InvoiceDetailClean() {
                 )}
               </div>
             </div>
-            {/* ── END CUSTOMER INVOICE DOCUMENT ── */}
+            {/* ══ END INVOICE DOCUMENT ══ */}
 
-            {/* ── Internal payment tools (clearly separated) ── */}
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Internal Payment Tools</span>
-                <span className="text-[9px] text-slate-300 italic">— not visible on printed invoice</span>
-              </div>
-              <div className="p-5">
-                <PaymentHistory invoice={invoice} onPaymentRemoved={(updates) => setInvoice(prev => ({ ...prev, ...updates }))} />
-              </div>
+            {/* ── Admin / Collections Tools (collapsed by default) ── */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <button
+                onClick={() => setShowAdmin(p => !p)}
+                className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-slate-50 transition-colors"
+              >
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Admin / Collections Tools</span>
+                {showAdmin ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              {showAdmin && (
+                <div className="border-t border-slate-100 divide-y divide-slate-100">
+
+                  {/* Quick edit: due date + notes */}
+                  <div className="px-5 py-4 space-y-3">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Edit Invoice</p>
+                    <div>
+                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Due Date</label>
+                      <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="h-8 text-sm mt-1 border-slate-200 max-w-xs" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Customer Notes</label>
+                      <textarea
+                        value={notes}
+                        onChange={e => setNotes(e.target.value)}
+                        className="w-full mt-1 min-h-[80px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+                        placeholder="Customer-facing notes..."
+                      />
+                    </div>
+                    {hasPendingChanges && (
+                      <Button size="sm" variant="outline" onClick={handleSaveNotes} disabled={saving}>
+                        {saving ? 'Saving...' : 'Save Changes'}
+                      </Button>
+                    )}
+                    {invoice.sent_at && <p className="text-xs text-slate-500">Sent {format(new Date(invoice.sent_at), 'MMM d, yyyy')}</p>}
+                    {invoice.last_contacted_at && <p className="text-xs text-slate-500">Last contact {getLastContactedDisplay(invoice.last_contacted_at)}</p>}
+                    {invoice.paid_at && <p className="text-xs text-emerald-600 font-semibold">Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}</p>}
+                  </div>
+
+                  {/* Collection activity */}
+                  {nextAction && !isPaid && (
+                    <div className="px-5 py-4 space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Collection Activity</p>
+                      <div className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${nextAction.bg}`}>
+                        <nextAction.icon className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${nextAction.color}`} />
+                        <div>
+                          <p className={`font-semibold ${nextAction.color}`}>{nextAction.label}</p>
+                          {nextAction.sub && <p className={`text-[11px] mt-0.5 ${nextAction.color}`}>{nextAction.sub}</p>}
+                        </div>
+                      </div>
+                      {invoice.status === 'sent' && !isPaid && (
+                        <button className="w-full text-xs py-1.5 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600" onClick={handleMarkContacted}>
+                          Mark as Contacted
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Quick contact actions */}
+                  <div className="px-5 py-4">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Contact Actions</p>
+                    <QuickContactActions invoice={invoice} isOverdue={overdue} />
+                  </div>
+
+                  {/* Linked records */}
+                  {(invoice.estimate_id || invoice.work_order_id || evidenceEval) && (
+                    <div className="px-5 py-4 space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Linked Records</p>
+                      {invoice.estimate_id && (
+                        <button onClick={() => navigate(`/estimate-editor?id=${invoice.estimate_id}`)} className="flex items-center gap-1.5 text-xs text-primary hover:underline">
+                          <ExternalLink className="w-3 h-3" />View Estimate
+                        </button>
+                      )}
+                      {invoice.work_order_id && (
+                        <button onClick={() => navigate(`/work-orders/${invoice.work_order_id}`)} className="flex items-center gap-1.5 text-xs text-primary hover:underline">
+                          <ExternalLink className="w-3 h-3" />View Work Order
+                        </button>
+                      )}
+                      {evidenceEval && (
+                        <div className={`mt-1 px-2.5 py-2 rounded-lg text-xs flex items-center gap-2 ${evidenceEval.isComplete ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+                          {evidenceEval.isComplete
+                            ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            : <Clock className="w-3.5 h-3.5 text-amber-600" />}
+                          <span className={evidenceEval.isComplete ? 'text-emerald-700' : 'text-amber-700'}>
+                            {evidenceEval.isComplete ? 'Execution evidence complete' : `Missing: ${evidenceEval.missingItems.join(', ')}`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Payment history */}
+                  <div className="px-5 py-4">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Payment History</p>
+                    <PaymentHistory invoice={invoice} onPaymentRemoved={(updates) => setInvoice(prev => ({ ...prev, ...updates }))} />
+                  </div>
+
+                  {/* Customize */}
+                  <div className="px-5 py-4">
+                    <button
+                      onClick={() => setShowCustomize(p => !p)}
+                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 font-semibold"
+                    >
+                      <Settings2 className="w-3.5 h-3.5" />
+                      {showCustomize ? 'Hide' : 'Show'} Visibility Settings
+                    </button>
+                    {showCustomize && (
+                      <div className="mt-3">
+                        <InvoiceVisibilityPanel invoice={invoice} saving={saving} onChange={handleViewSettingChange} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Notes editable (internal edit) */}
-            {viewSettings.show_notes && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Customer Notes (editable)</p>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} className="w-full min-h-[120px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary resize-y" placeholder="Customer-facing notes..." />
-              </div>
-            )}
-          </main>
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-// ─── Helper sub-components ────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-function InvoiceDetailRow({ label, value }) {
+function DocRow({ label, value }) {
   return (
     <div className="flex items-start justify-between gap-4 text-sm">
       <span className="text-slate-400 flex-shrink-0">{label}</span>
@@ -578,21 +644,21 @@ function InvoiceDetailRow({ label, value }) {
   );
 }
 
-function TotalRow({ label, value, strong, accent, className = '' }) {
+function TotalRow({ label, value, strong, accent, paidStyle }) {
+  const colorCls = accent
+    ? 'text-red-600 font-black'
+    : paidStyle
+    ? 'text-emerald-600 font-semibold'
+    : strong
+    ? 'text-lg font-black text-slate-900'
+    : 'font-semibold text-slate-700';
+
   return (
     <div className="flex items-center justify-between text-sm">
       <span className={strong ? 'font-bold text-slate-900' : 'text-slate-500'}>{label}</span>
-      <span className={`tabular-nums ${strong ? 'text-lg font-black text-slate-900' : 'font-semibold text-slate-700'} ${accent ? 'text-red-600 font-black' : ''} ${className}`}>
+      <span className={`tabular-nums ${colorCls}`}>
         {value < 0 ? '-' : ''}${Math.abs(value || 0).toFixed(2)}
       </span>
     </div>
   );
-}
-
-function SummaryRow({ label, value, strong }) {
-  return <div className="flex items-center justify-between text-sm"><span className={strong ? 'font-bold text-slate-900' : 'text-slate-500'}>{label}</span><span className={strong ? 'text-lg font-black text-slate-900' : 'font-semibold text-slate-700'}>{value < 0 ? '-' : ''}${Math.abs(value || 0).toFixed(2)}</span></div>;
-}
-
-function SummaryMini({ label, value, strong }) {
-  return <div className="flex items-center justify-between text-xs"><span className={strong ? 'font-bold text-slate-800' : 'text-slate-500'}>{label}</span><span className={strong ? 'font-black text-slate-900' : 'font-semibold text-slate-700'}>{value < 0 ? '-' : ''}${Math.abs(value || 0).toFixed(2)}</span></div>;
 }

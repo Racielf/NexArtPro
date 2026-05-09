@@ -101,14 +101,21 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
 
   if (asDropdownItem) {
     return (
-      <DropdownMenuItem
-        onClick={handleConvert}
-        disabled={!enabled}
-        className="gap-2 cursor-pointer"
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-        Convert to Invoice
-      </DropdownMenuItem>
+      <div>
+        <DropdownMenuItem
+          onClick={handleConvert}
+          disabled={!enabled}
+          className="gap-2 cursor-pointer"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+          Convert to Invoice
+        </DropdownMenuItem>
+        {!isApproved && (
+          <p className="px-3 pb-1.5 text-[10px] text-amber-600 font-medium">
+            Approve the estimate first
+          </p>
+        )}
+      </div>
     );
   }
 
