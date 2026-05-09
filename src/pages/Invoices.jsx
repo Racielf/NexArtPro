@@ -8,7 +8,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
-import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2, AlertTriangle, CheckCircle2, Clock, Plus } from 'lucide-react';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import CashflowSummary from '@/components/invoices/CashflowSummary';
 import SLAMetricsPanel from '@/components/invoices/SLAMetricsPanel';
@@ -256,7 +256,7 @@ export default function Invoices() {
         count={selectedIds.size}
         entityLabel="Invoice"
       />
-      <PageHeader title="Invoices" subtitle={`${invoices.length} total`} />
+      <PageHeader title="Invoices" subtitle={`${invoices.length} total`} action={<Button onClick={() => navigate('/invoice-create')} className="gap-1.5"><Plus className="w-4 h-4" />Create Invoice</Button>} />
 
       <PageShell>
          {/* Financial Overview */}
@@ -465,7 +465,8 @@ export default function Invoices() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <Receipt className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Sin facturas</p>
+            <p className="text-sm text-muted-foreground mb-4">Sin facturas</p>
+            <Button variant="outline" onClick={() => navigate('/invoice-create')} className="gap-1.5"><Plus className="w-4 h-4" />Create your first invoice</Button>
           </div>
         ) : (
           <div className="space-y-2">
