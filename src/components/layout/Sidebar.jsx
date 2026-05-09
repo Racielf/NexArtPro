@@ -28,7 +28,6 @@ import {
 import { isAdmin } from '@/lib/roleUtils';
 import { useAuth } from '@/lib/AuthContext';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
-import useCompanyConfig from '@/hooks/useCompanyConfig';
 
 const navGroups = [
   { items: [{ path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
@@ -82,7 +81,12 @@ const bottomNavItems = [
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const cc = useCompanyConfig();
+  // Sidebar must not depend on async company settings; keep it render-safe.
+  const cc = {
+    name: appConfig.company?.name || appConfig.appName || 'NexArtPro',
+    displayName: appConfig.company?.displayName || '',
+    logo_url: appConfig.company?.logo_url || appConfig.app?.logo_url || '',
+  };
   const { user } = useAuth();
   const canAccessAdmin = user?.role === 'admin' || isAdmin();
   const visibleNavGroups = canAccessAdmin ? [...navGroups, adminNavGroup] : navGroups;
