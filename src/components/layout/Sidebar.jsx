@@ -29,7 +29,6 @@ import { isAdmin } from '@/lib/roleUtils';
 import { useAuth } from '@/lib/AuthContext';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
 import useCompanyConfig from '@/hooks/useCompanyConfig';
-import { logout } from '@/lib/sessionManager';
 
 const navGroups = [
   { items: [{ path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
@@ -211,7 +210,10 @@ export default function Sidebar() {
             <span>Settings</span>
           </Link>
           <button
-            onClick={() => logout(navigate)}
+            onClick={() => {
+              sessionStorage.clear();
+              navigate('/login');
+            }}
             className="sidebar-link sidebar-link-logout"
           >
             <LogOut className="sidebar-link-icon" />
