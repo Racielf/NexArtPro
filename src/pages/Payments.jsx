@@ -11,7 +11,7 @@ import { sendPaymentReceipt } from '@/lib/paymentReceiptAutomation';
 import { downloadPaymentReceiptPdf } from '@/lib/paymentReceiptPdf';
 import { useNavigate } from 'react-router-dom';
 
-const METHODS = ['cash', 'check', 'card', 'bank_transfer', 'zelle', 'venmo', 'other'];
+const METHODS = ['cash', 'check', 'card', 'transfer', 'other'];
 
 function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;

@@ -31,6 +31,7 @@ import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { getInvoiceNextAction } from '@/lib/nextActionLogic';
 import { buildTimelineEvent, appendCollectionTimelineEvent } from '@/lib/invoiceCollectionTimeline';
 import { markInvoiceContacted, getLastContactedDisplay } from '@/lib/invoiceActionHelpers';
+import { markInvoicePaid } from '@/lib/invoicePaymentRecorder';
 import InvoiceVisibilityPanel, { getInvoiceViewSettings } from '@/components/invoices/InvoiceVisibilityPanel';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -170,32 +171,13 @@ export default function InvoiceDetailClean() {
 
   const handleMarkPaid = async () => {
     setSaving(true);
-    const now = new Date().toISOString();
-    const fullPayment = {
-      id: `pay-${Date.now()}`,
-      amount: invoice.total,
-      method: 'manual',
-      payment_date: now,
-      note: 'Marked as paid',
-      recorded_by: 'Admin',
-      recorded_at: now,
-    };
-    const updatedPayments = [...(invoice?.payments || []), fullPayment];
-    const recalculated = computeInvoiceDerivedFields({ ...invoice, payments: updatedPayments });
-    const timelineEvent = buildTimelineEvent('payment_recorded', actor, 'Full payment recorded', { amount: invoice.total });
-    const timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
-    const patch = {
-      payments: updatedPayments,
-      amount_paid: recalculated.amount_paid,
-      balance_due: recalculated.balance_due,
-      payment_status: recalculated.payment_status,
-      paid_at: now,
-      collection_timeline: timeline,
-    };
-    await base44.entities.Invoice.update(invoiceId, patch);
-    setInvoice(prev => ({ ...prev, ...patch }));
-    setSaving(false);
-    toast.success('Invoice marked as paid');
+    try {
+      const { updates } = await markInvoicePaid(invoice, actor, 'Marked as paid');
+      setInvoice(prev => ({ ...prev, ...updates }));
+      toast.success('Invoice marked as paid');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleMarkContacted = async () => {
