@@ -10,6 +10,13 @@ import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle2, FilePlus2, Plus, Receipt, Search, Trash2, UserPlus, XCircle, AlertCircle, X } from 'lucide-react';
 import { filterActiveRecords } from '@/lib/softDelete';
 
+const getCreatedId = (created) =>
+  created?.id ||
+  created?._id ||
+  created?.data?.id ||
+  created?.data?._id ||
+  null;
+
 function money(value) {
   return Number(value || 0);
 }
@@ -248,8 +255,14 @@ export default function InvoiceCreate() {
         company_id: 'rc-art',
       });
 
+      const newId = getCreatedId(invoice);
+      if (!newId) {
+        toast.error(`Invoice #${invoice_number} created but ID was not returned. Returning to list.`);
+        navigate('/invoices');
+        return;
+      }
       toast.success(`Invoice #${invoice_number} created`);
-      navigate(`/invoice-detail?id=${invoice.id}`);
+      navigate(`/invoice-detail?id=${newId}`);
     } catch (err) {
       toast.error(err?.message || 'Failed to create invoice');
     } finally {

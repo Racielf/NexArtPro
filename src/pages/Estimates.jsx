@@ -12,6 +12,13 @@ import { FileText, Plus, Pencil, Search, X, Trash2 } from 'lucide-react';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
 import { archiveManyWithSnapshot, archiveWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 
+const getCreatedId = (created) =>
+  created?.id ||
+  created?._id ||
+  created?.data?.id ||
+  created?.data?._id ||
+  null;
+
 export default function Estimates() {
   const navigate = useNavigate();
   const [estimates, setEstimates] = useState([]);
@@ -59,7 +66,13 @@ export default function Estimates() {
         tax_amount: 0,
         total: 0,
       });
-      navigate(`/estimate-editor?id=${created.id}&new=1`);
+      const newId = getCreatedId(created);
+      if (!newId) {
+        toast.error('Estimate created but ID was not returned. Returning to list.');
+        await loadData();
+        return;
+      }
+      navigate(`/estimate-editor?id=${newId}&new=1`);
     } catch (err) {
       console.error('[Estimates] Failed to create estimate:', err);
       toast.error(`Could not create estimate: ${err?.message || 'Unknown error'}`);
@@ -84,11 +97,17 @@ export default function Estimates() {
   const handleConfirmDelete = async () => {
     const est = deleteModal.estimate;
     if (!est) return;
-    await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', est.id, 'Admin', 'Archived from Estimates list');
-    setEstimates(prev => prev.filter(e => e.id !== est.id));
-    setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
-    setDeleteModal({ open: false, estimate: null, canDelete: false });
-    toast.success(`Estimate #${est.estimate_number} archived`);
+    try {
+      await archiveWithSnapshot(base44.entities.Estimate, 'Estimate', est.id, 'Admin', 'Archived from Estimates list');
+      setEstimates(prev => prev.filter(e => e.id !== est.id));
+      setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
+      toast.success(`Estimate #${est.estimate_number} archived`);
+    } catch (err) {
+      console.error('[Estimates] Archive failed:', err);
+      toast.error(err?.message || 'Could not archive estimate');
+    } finally {
+      setDeleteModal({ open: false, estimate: null, canDelete: false });
+    }
   };
 
   const toggleSelect = (id) => {
@@ -105,11 +124,17 @@ export default function Estimates() {
 
   const handleDeleteSelected = async () => {
     const idsArray = Array.from(selectedIds);
-    await archiveManyWithSnapshot(base44.entities.Estimate, 'Estimate', idsArray, 'Admin', 'Bulk archived from Estimates list');
-    setEstimates(prev => prev.filter(e => !selectedIds.has(e.id)));
-    setSelectedIds(new Set());
-    setDeleteModal({ open: false, estimate: null, canDelete: false });
-    toast.success(`${idsArray.length} estimate(s) archived`);
+    try {
+      await archiveManyWithSnapshot(base44.entities.Estimate, 'Estimate', idsArray, 'Admin', 'Bulk archived from Estimates list');
+      setEstimates(prev => prev.filter(e => !selectedIds.has(e.id)));
+      setSelectedIds(new Set());
+      toast.success(`${idsArray.length} estimate(s) archived`);
+    } catch (err) {
+      console.error('[Estimates] Bulk archive failed:', err);
+      toast.error(err?.message || 'Could not archive selected estimates');
+    } finally {
+      setDeleteModal({ open: false, estimate: null, canDelete: false });
+    }
   };
 
   return (
