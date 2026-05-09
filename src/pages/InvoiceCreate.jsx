@@ -7,7 +7,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle2, FilePlus2, Plus, Receipt, Search, Trash2, UserPlus, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FilePlus2, Plus, Receipt, Search, Trash2, UserPlus, XCircle, AlertCircle, X } from 'lucide-react';
 import { filterActiveRecords } from '@/lib/softDelete';
 
 function money(value) {
@@ -328,21 +328,41 @@ export default function InvoiceCreate() {
               {!selectedClient && clientMode === 'existing' && (
                 <div className="space-y-3">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     <Input
+                      type="search"
                       value={clientSearch}
                       onChange={e => setClientSearch(e.target.value)}
                       placeholder="Search by name, phone, email, address, city, ZIP..."
-                      className="pl-9"
+                      className="pl-9 pr-10"
+                      autoComplete="new-password"
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      name="invoice-client-lookup"
+                      id="invoice-client-lookup"
+                      inputMode="search"
                     />
+                    {clientSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setClientSearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full transition-colors"
+                        title="Clear search"
+                      >
+                        <X className="w-4 h-4 text-slate-400" />
+                      </button>
+                    )}
                   </div>
+
+                  <p className="text-xs text-slate-500">Search NexArtPro clients by name, phone, email, address, city, or ZIP.</p>
 
                   <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden bg-slate-50">
                     {loadingClients ? (
                       <div className="px-4 py-6 text-sm text-slate-400 text-center">Loading clients...</div>
                     ) : filteredClients.length === 0 ? (
                       <div className="px-4 py-6 text-center">
-                        <p className="text-sm font-semibold text-slate-700">No matching client found</p>
+                        <p className="text-sm font-semibold text-slate-700">{clientSearch ? 'No matching client found' : 'No clients available'}</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -353,9 +373,13 @@ export default function InvoiceCreate() {
                         >
                           Create "{clientSearch || 'New Client'}"
                         </button>
-                      </div>
-                    ) : (
-                      filteredClients.map(client => {
+                        </div>
+                        ) : (
+                        <>
+                        <div className="px-4 py-2 bg-slate-100 text-xs text-slate-600 font-medium border-b border-slate-200">
+                          {clientSearch.trim() ? `${filteredClients.length} matching client${filteredClients.length !== 1 ? 's' : ''}` : `Showing ${filteredClients.length} client${filteredClients.length !== 1 ? 's' : ''}`}
+                        </div>
+                        {filteredClients.map(client => {
                         const active = selectedClientId === client.id;
                         return (
                           <button
@@ -373,9 +397,11 @@ export default function InvoiceCreate() {
                               {formatClientAddress(client) && <p className="text-xs text-slate-400 truncate mt-0.5">{formatClientAddress(client)}</p>}
                             </div>
                           </button>
-                        );
-                      })
-                    )}
+                          );
+                          })
+                          }
+                          </>
+                          )}
                   </div>
                 </div>
               )}
