@@ -339,6 +339,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const [schedNotes,    setSchedNotes]    = useState('');
   const [finishNotes,   setFinishNotes]   = useState('');
   const [declineReason, setDeclineReason] = useState('');
+  const [approvalSaving, setApprovalSaving] = useState(false);
   const [moreActionsOpen, setMoreActionsOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ open: false, loading: false, error: null });
 
@@ -476,37 +477,73 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
 
   // ── APPROVAL ─────────────────────────────────────────────────────────────
   const handleApproveConfirm = async () => {
-    await base44.entities.Estimate.update(estimate.id, {
-      status: 'approved',
-      approved_at: new Date().toISOString(),
-      approved_by: currentUser?.email || null,
-      approval_note: declineReason.trim() || null,
-      declined_at: null,
-      declined_reason: null,
-    });
-    await logComm({ event_type: 'estimate_approved', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Approved`, status: 'delivered' });
-    setApprovalOpen(false);
-    setDeclineReason('');
-    toast.success('Estimate approved!');
-    onStatusChange('approved');
+    if (!estimate?.id) { toast.error('Estimate is missing. Cannot approve.'); return; }
+    setApprovalSaving(true);
+    try {
+      const now = new Date().toISOString();
+      await base44.entities.Estimate.update(estimate.id, {
+        status: 'approved',
+        approved_at: now,
+        approved_by: currentUser?.email || currentUser?.full_name || 'Admin',
+        approval_note: declineReason.trim() || null,
+        declined_at: null,
+        declined_reason: null,
+        signed_at: null,
+      });
+      logComm({
+        event_type: 'estimate_approved',
+        client_id: estimate.client_id || '',
+        client_name: estimate.client_name,
+        client_email: estimate.client_email || '',
+        estimate_id: estimate.id,
+        subject: `Estimate #${estimate.estimate_number} Approved`,
+        status: 'sent',
+      }).catch(err => console.warn('[EstimateActionsPanel] approval comm log failed:', err?.message || err));
+      setApprovalOpen(false);
+      setDeclineReason('');
+      toast.success('Estimate approved!');
+      onStatusChange?.('approved');
+    } catch (err) {
+      console.error('[EstimateActionsPanel] approve failed:', err);
+      toast.error(err?.message || 'Failed to approve estimate');
+    } finally {
+      setApprovalSaving(false);
+    }
   };
 
   const handleDeclineConfirm = async () => {
     if (!declineReason.trim()) { toast.error('Please enter a reason for declining'); return; }
-    await base44.entities.Estimate.update(estimate.id, {
-      status: 'declined',
-      declined_at: new Date().toISOString(),
-      declined_reason: declineReason.trim(),
-      approved_at: null,
-      approved_by: null,
-      approval_note: null,
-      signed_at: null,
-    });
-    await logComm({ event_type: 'estimate_declined', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email || '', estimate_id: estimate.id, subject: `Estimate #${estimate.estimate_number} Declined`, status: 'delivered' });
-    setApprovalOpen(false);
-    setDeclineReason('');
-    toast.success('Estimate declined');
-    onStatusChange('declined');
+    if (!estimate?.id) { toast.error('Estimate is missing. Cannot decline.'); return; }
+    setApprovalSaving(true);
+    try {
+      await base44.entities.Estimate.update(estimate.id, {
+        status: 'declined',
+        declined_at: new Date().toISOString(),
+        declined_reason: declineReason.trim(),
+        approved_at: null,
+        approved_by: null,
+        approval_note: null,
+        signed_at: null,
+      });
+      logComm({
+        event_type: 'estimate_declined',
+        client_id: estimate.client_id || '',
+        client_name: estimate.client_name,
+        client_email: estimate.client_email || '',
+        estimate_id: estimate.id,
+        subject: `Estimate #${estimate.estimate_number} Declined`,
+        status: 'sent',
+      }).catch(err => console.warn('[EstimateActionsPanel] decline comm log failed:', err?.message || err));
+      setApprovalOpen(false);
+      setDeclineReason('');
+      toast.success('Estimate declined');
+      onStatusChange?.('declined');
+    } catch (err) {
+      console.error('[EstimateActionsPanel] decline failed:', err);
+      toast.error(err?.message || 'Failed to decline estimate');
+    } finally {
+      setApprovalSaving(false);
+    }
   };
 
   // ── DELETE ────────────────────────────────────────────────────────────────
@@ -635,11 +672,11 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
             </div>
           </div>
           <div className="flex gap-2 pt-1">
-            <Button variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50" onClick={handleDeclineConfirm}>
-              <XCircle className="w-3.5 h-3.5 mr-1 text-red-500" />Decline
+            <Button variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50" onClick={handleDeclineConfirm} disabled={approvalSaving}>
+              <XCircle className="w-3.5 h-3.5 mr-1 text-red-500" />{approvalSaving ? 'Saving...' : 'Decline'}
             </Button>
-            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleApproveConfirm}>
-              <CheckCircle className="w-3.5 h-3.5 mr-1" />Approve
+            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleApproveConfirm} disabled={approvalSaving}>
+              <CheckCircle className="w-3.5 h-3.5 mr-1" />{approvalSaving ? 'Approving...' : 'Approve'}
             </Button>
           </div>
         </DialogContent>
