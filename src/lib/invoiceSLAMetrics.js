@@ -41,10 +41,12 @@ export function computeSLAMetrics(invoices = []) {
   };
 
   invoices.forEach((inv) => {
-    // SLA breaches
-    const breaches = detectSLABreaches(inv);
+    // SLA breaches (null-safe)
+    const breaches = (detectSLABreaches(inv) || []).filter(Boolean);
+
     if (breaches.length > 0) {
       metrics.totalWithBreaches++;
+
       const primaryBreach =
         breaches.find(b => b?.severity === 'critical') ||
         breaches.find(b => b?.severity === 'high') ||
@@ -59,8 +61,7 @@ export function computeSLAMetrics(invoices = []) {
         metrics.details.highInvoices.push(inv);
       }
 
-      // Count breaches by type
-      breaches.filter(Boolean).forEach((b) => {
+      breaches.forEach((b) => {
         if (b?.type && Object.prototype.hasOwnProperty.call(metrics.breachesByType, b.type)) {
           metrics.breachesByType[b.type]++;
         }
@@ -115,19 +116,19 @@ export function filterInvoicesBySLAMetric(invoices = [], dimension, value) {
   switch (dimension) {
     case 'critical':
       return invoices.filter(inv => {
-        const breaches = detectSLABreaches(inv);
+        const breaches = (detectSLABreaches(inv) || []).filter(Boolean);
         return breaches.some(b => b?.severity === 'critical');
       });
 
     case 'high':
       return invoices.filter(inv => {
-        const breaches = detectSLABreaches(inv);
+        const breaches = (detectSLABreaches(inv) || []).filter(Boolean);
         return breaches.some(b => b?.severity === 'high');
       });
 
     case 'breach_type':
       return invoices.filter(inv => {
-        const breaches = detectSLABreaches(inv);
+        const breaches = (detectSLABreaches(inv) || []).filter(Boolean);
         return breaches.some(b => b?.type === value);
       });
 
