@@ -5,7 +5,7 @@
  * Reutiliza helpers existentes sin duplicar lógica.
  */
 
-import { detectSLABreaches, getPrimaryBreach } from '@/lib/invoiceSLA';
+import { detectSLABreaches } from '@/lib/invoiceSLA';
 import { isInvoiceOverdue, computeInvoiceDerivedFields } from '@/lib/invoiceHelpers';
 import { getInvoiceWorkloadCategory } from '@/lib/invoiceCollectionWorkload';
 import { getOverdueDays } from '@/lib/invoiceMessageTemplates';
@@ -45,18 +45,23 @@ export function computeSLAMetrics(invoices = []) {
     const breaches = detectSLABreaches(inv);
     if (breaches.length > 0) {
       metrics.totalWithBreaches++;
-      const primaryBreach = getPrimaryBreach(breaches);
-      if (primaryBreach.severity === 'critical') {
+      const primaryBreach =
+        breaches.find(b => b?.severity === 'critical') ||
+        breaches.find(b => b?.severity === 'high') ||
+        breaches[0] ||
+        null;
+
+      if (primaryBreach?.severity === 'critical') {
         metrics.criticalCount++;
         metrics.details.criticalInvoices.push(inv);
-      } else if (primaryBreach.severity === 'high') {
+      } else if (primaryBreach?.severity === 'high') {
         metrics.highCount++;
         metrics.details.highInvoices.push(inv);
       }
 
       // Count breaches by type
-      breaches.forEach((b) => {
-        if (metrics.breachesByType.hasOwnProperty(b.type)) {
+      breaches.filter(Boolean).forEach((b) => {
+        if (b?.type && Object.prototype.hasOwnProperty.call(metrics.breachesByType, b.type)) {
           metrics.breachesByType[b.type]++;
         }
       });
@@ -111,19 +116,19 @@ export function filterInvoicesBySLAMetric(invoices = [], dimension, value) {
     case 'critical':
       return invoices.filter(inv => {
         const breaches = detectSLABreaches(inv);
-        return breaches.some(b => b.severity === 'critical');
+        return breaches.some(b => b?.severity === 'critical');
       });
 
     case 'high':
       return invoices.filter(inv => {
         const breaches = detectSLABreaches(inv);
-        return breaches.some(b => b.severity === 'high');
+        return breaches.some(b => b?.severity === 'high');
       });
 
     case 'breach_type':
       return invoices.filter(inv => {
         const breaches = detectSLABreaches(inv);
-        return breaches.some(b => b.type === value);
+        return breaches.some(b => b?.type === value);
       });
 
     case 'broken_promise':

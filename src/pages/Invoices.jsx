@@ -15,6 +15,7 @@ import SLAMetricsPanel from '@/components/invoices/SLAMetricsPanel';
 import OwnerAccountabilityPanel from '@/components/invoices/OwnerAccountabilityPanel';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
+import { markInvoicePaid } from '@/lib/invoicePaymentRecorder';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
 import { filterInvoicesByAction, sortInvoicesByUrgency } from '@/lib/invoiceActionFilter';
 import { executeOneClickFollowUp } from '@/lib/invoiceActionHelpers';
@@ -87,28 +88,13 @@ export default function Invoices() {
   };
 
   const handleMarkPaid = async (inv) => {
-    const now = new Date().toISOString();
-    const fullPayment = {
-      id: `pay-${Date.now()}`,
-      amount: inv.total,
-      method: 'manual',
-      payment_date: now,
-      note: 'Marked as paid',
-      recorded_by: 'Admin',
-      recorded_at: now,
-    };
-    const updatedPayments = [...(inv?.payments || []), fullPayment];
-    const derived = computeInvoiceDerivedFields({ ...inv, payments: updatedPayments });
-
-    await base44.entities.Invoice.update(inv.id, {
-      payments: updatedPayments,
-      amount_paid: derived.amount_paid,
-      balance_due: derived.balance_due,
-      payment_status: derived.payment_status,
-      paid_at: now,
-    });
-    toast.success('Invoice marked as paid!');
-    loadData();
+    try {
+      await markInvoicePaid(inv, actor, 'Marked as paid');
+      toast.success('Invoice marked as paid!');
+      loadData();
+    } catch (err) {
+      toast.error(err?.message || 'Unable to mark invoice as paid');
+    }
   };
 
   const handlePrint = (inv) => {
