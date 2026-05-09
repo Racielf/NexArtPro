@@ -104,67 +104,9 @@
     "total": {
       "type": "number"
     },
-    "payments": {
-      "type": "array",
-      "description": "Single source of truth for money received on this invoice.",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "amount": {
-            "type": "number"
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "cash",
-              "card",
-              "check",
-              "transfer",
-              "other"
-            ]
-          },
-          "payment_date": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "note": {
-            "type": "string"
-          },
-          "reference": {
-            "type": "string"
-          },
-          "recorded_by": {
-            "type": "string"
-          },
-          "recorded_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      }
-    },
     "amount_paid": {
       "type": "number",
-      "default": 0,
-      "description": "Derived from payments[].amount."
-    },
-    "balance_due": {
-      "type": "number",
-      "default": 0,
-      "description": "Derived from total - amount_paid."
-    },
-    "payment_status": {
-      "type": "string",
-      "enum": [
-        "unpaid",
-        "partial",
-        "paid"
-      ],
-      "default": "unpaid",
-      "description": "Derived from payments[] and balance_due."
+      "default": 0
     },
     "notes": {
       "type": "string"

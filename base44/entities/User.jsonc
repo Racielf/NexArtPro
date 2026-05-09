@@ -12,5 +12,6 @@
       "default": "sales",
       "description": "User role: admin (full access), manager (can override pricing), sales (standard access)"
     }
-  }
+  },
+  "required": []
 }
