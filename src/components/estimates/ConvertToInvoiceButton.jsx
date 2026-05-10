@@ -20,14 +20,14 @@ function buildInitialPaymentState(total = 0) {
 async function markEstimateConverted(estimateId, invoiceId) {
   const now = new Date().toISOString();
 
-  // 1. Critical update — must succeed
+  // 1. Critical update — must succeed (status only)
   await base44.entities.Estimate.update(estimateId, {
     status: 'converted',
-    sales_stage: 'converted',
   });
 
-  // 2. Optional metadata — best effort
+  // 2. Optional metadata — best effort (sales_stage, timestamps, invoice link)
   await base44.entities.Estimate.update(estimateId, {
+    sales_stage: 'converted',
     invoice_id: invoiceId,
     converted_at: now,
     converted_to_invoice_at: now,
