@@ -14,6 +14,18 @@ import { APP_CONFIG } from "@/lib/appConfig";
 const co = APP_CONFIG?.company || {};
 const PAYMENT_METHODS = ["cash","check","card_manual","bank_transfer","zelle","venmo","other"];
 
+function getPaymentMethodMeta(method) {
+  switch (method) {
+    case "cash":         return { label: "Cash",          notesLabel: "Cash notes",               notesPlaceholder: "Drawer, received by, or optional note…",  notesRequired: false };
+    case "check":        return { label: "Check",         notesLabel: "Check number / reference",  notesPlaceholder: "Check #1234",                            notesRequired: true  };
+    case "card_manual":  return { label: "Card Manual",   notesLabel: "Card authorization / last 4",notesPlaceholder: "Auth code or last 4 digits",             notesRequired: true  };
+    case "bank_transfer":return { label: "Bank Transfer", notesLabel: "Transfer reference",        notesPlaceholder: "ACH / wire / reference number",          notesRequired: true  };
+    case "zelle":        return { label: "Zelle",         notesLabel: "Zelle confirmation",        notesPlaceholder: "Confirmation ID or sender name",         notesRequired: true  };
+    case "venmo":        return { label: "Venmo",         notesLabel: "Venmo reference",           notesPlaceholder: "Venmo username or transaction note",     notesRequired: true  };
+    default:             return { label: "Other",         notesLabel: "Payment note",              notesPlaceholder: "Describe payment source",                notesRequired: true  };
+  }
+}
+
 function StatusBadge({ status }) {
   const map = {
     draft:   "bg-slate-100 text-slate-600",
@@ -39,6 +51,7 @@ export default function InvoiceDetailClean() {
   const [payOpen,  setPayOpen]  = useState(false);
   const [payForm,  setPayForm]  = useState({ amount: "", method: "cash", reference: "", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
   const [stripeLoading, setStripeLoading] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const load = async () => {
     if (!invoiceId) { setLoading(false); return; }
@@ -87,14 +100,20 @@ export default function InvoiceDetailClean() {
     e.preventDefault();
     const amount = parseFloat(payForm.amount) || 0;
     if (!amount || amount <= 0) { toast.error("Enter a valid amount"); return; }
+    const meta = getPaymentMethodMeta(payForm.method);
+    if (meta.notesRequired && !payForm.notes.trim()) {
+      toast.error(`${meta.notesLabel} is required`);
+      return;
+    }
     setSaving(true);
     try {
       const entry = {
         id: crypto.randomUUID(),
         amount,
         method: payForm.method,
-        reference: payForm.reference || "",
+        method_label: meta.label,
         notes: payForm.notes,
+        reference: payForm.notes,
         paid_at: payForm.paid_at,
         created_at: new Date().toISOString(),
       };
@@ -102,7 +121,7 @@ export default function InvoiceDetailClean() {
       await base44.entities.Invoice.update(invoiceId, { payments });
       setInvoice(prev => ({ ...prev, payments }));
       setPayOpen(false);
-      setPayForm({ amount: "", method: "cash", reference: "", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
+      setPayForm({ amount: "", method: "cash", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
       toast.success("Payment recorded");
     } catch (err) {
       toast.error(err?.message || "Failed to record payment");
@@ -118,11 +137,17 @@ export default function InvoiceDetailClean() {
     finally { setStripeLoading(false); }
   };
 
-  // Print full invoice via CSS @media print
+  // Print full invoice — window.print() uses browser CSS @media print
   const handlePrint = () => window.print();
 
-  // Print payment receipt only — opens a separate popup window
-  const handlePrintReceipt = () => {
+  // Receipt — opens in-app Dialog (not a popup)
+  const handleOpenReceipt = () => {
+    if (!(invoice?.payments?.length)) return;
+    setReceiptOpen(true);
+  };
+
+  // Legacy popup kept only as fallback for Print Receipt button inside the dialog
+  const handlePrintReceiptPopup = () => {
     const paidList = (invoice.payments || []);
     if (!paidList.length) return;
     const companyName  = co.name  || "R.C Art Construction LLC";
@@ -227,8 +252,8 @@ export default function InvoiceDetailClean() {
             </Button>
           )}
           {!isVoid && payments.length > 0 && (
-            <Button size="sm" variant="outline" onClick={handlePrintReceipt} className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-              <Receipt className="w-3.5 h-3.5" />Receipt
+            <Button size="sm" variant="outline" onClick={handleOpenReceipt} className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
+              <Receipt className="w-3.5 h-3.5" />Payment Receipt
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">
@@ -444,7 +469,7 @@ export default function InvoiceDetailClean() {
         </div>
       </div>
 
-      {/* Record Payment Dialog — internal company payment (cash, check, Zelle, etc.) */}
+      {/* Record Payment Dialog */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -456,92 +481,156 @@ export default function InvoiceDetailClean() {
               Log a payment your company received. This is NOT a client online payment.
             </p>
           </DialogHeader>
-          <form onSubmit={handleRecordPayment} className="space-y-3.5 pt-1">
-
-            {/* Amount */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount ($) *</label>
-              <input
-                required type="number" step="0.01" min="0.01"
-                value={payForm.amount}
-                onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
-                placeholder={`Balance due: ${formatCurrency(derived.balance_due)}`}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-
-            {/* Method */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Method</label>
-              <div className="grid grid-cols-3 gap-2">
-                {PAYMENT_METHODS.map(m => {
-                  const icons = { cash: "💵", check: "📝", card_manual: "💳", bank_transfer: "🏦", zelle: "⚡", venmo: "📱", other: "🔖" };
-                  return (
-                    <button
-                      key={m} type="button"
-                      onClick={() => setPayForm(f => ({ ...f, method: m, reference: "" }))}
-                      className={`py-2 px-2 rounded-xl border text-xs font-medium transition-all text-center ${payForm.method === m ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}
-                    >
-                      <span className="block text-base mb-0.5">{icons[m]}</span>
-                      {m.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Method-specific reference field */}
-            {payForm.method !== "cash" && (() => {
-              const cfg = {
-                check:         { label: "Check Number",      placeholder: "e.g. 1042" },
-                card_manual:   { label: "Last 4 Digits",     placeholder: "e.g. 4242" },
-                bank_transfer: { label: "Transaction / ACH Ref", placeholder: "e.g. ACH-000123" },
-                zelle:         { label: "Zelle Confirmation", placeholder: "e.g. Zelle ref or phone" },
-                venmo:         { label: "Venmo Transaction",  placeholder: "e.g. @username or ID" },
-                other:         { label: "Reference / Note",   placeholder: "Any identifier" },
-              }[payForm.method];
-              return cfg ? (
+          {(() => {
+            const meta = getPaymentMethodMeta(payForm.method);
+            return (
+              <form onSubmit={handleRecordPayment} className="space-y-3.5 pt-1">
+                {/* Amount */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">{cfg.label}</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount ($) *</label>
                   <input
-                    value={payForm.reference}
-                    onChange={e => setPayForm(f => ({ ...f, reference: e.target.value }))}
-                    placeholder={cfg.placeholder}
+                    required type="number" step="0.01" min="0.01"
+                    value={payForm.amount}
+                    onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                    placeholder={`Balance due: ${formatCurrency(derived.balance_due)}`}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
-              ) : null;
-            })()}
 
-            {/* Date */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Date</label>
-              <input
-                type="date"
-                value={payForm.paid_at}
-                onChange={e => setPayForm(f => ({ ...f, paid_at: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none"
-              />
+                {/* Method pill grid */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Method</label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {PAYMENT_METHODS.map(m => {
+                      const icons = { cash:"💵", check:"📝", card_manual:"💳", bank_transfer:"🏦", zelle:"⚡", venmo:"📱", other:"🔖" };
+                      return (
+                        <button key={m} type="button"
+                          onClick={() => setPayForm(f => ({ ...f, method: m, notes: "" }))}
+                          className={`py-2 px-1 rounded-xl border text-[11px] font-medium transition-all text-center leading-tight ${
+                            payForm.method === m ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          <span className="block text-base mb-0.5">{icons[m]}</span>
+                          {m.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* card_manual warning */}
+                {payForm.method === "card_manual" && (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                    Manual card records an external card payment. It does not charge the card through Stripe.
+                  </p>
+                )}
+
+                {/* Dynamic notes/reference field */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {meta.notesLabel}{meta.notesRequired ? " *" : " (optional)"}
+                  </label>
+                  <input
+                    value={payForm.notes}
+                    onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder={meta.notesPlaceholder}
+                    required={meta.notesRequired}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Date</label>
+                  <input type="date"
+                    value={payForm.paid_at}
+                    onChange={e => setPayForm(f => ({ ...f, paid_at: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 justify-end pt-1">
+                  <Button type="button" variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700">
+                    {saving ? "Saving…" : "Record Payment"}
+                  </Button>
+                </div>
+              </form>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Receipt Dialog */}
+      <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-emerald-600" />
+              Payment Receipt
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            {/* Meta */}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-slate-50 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Invoice</div>
+                <div className="font-semibold">{invoice?.invoice_number}</div>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Client</div>
+                <div className="font-semibold truncate">{invoice?.client_name || "—"}</div>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Invoice Total</div>
+                <div className="font-semibold">{formatCurrency(invoice?.total || 0)}</div>
+              </div>
+              <div className="bg-emerald-50 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 mb-0.5">Amount Paid</div>
+                <div className="font-bold text-emerald-700">{formatCurrency(derived.amount_paid)}</div>
+              </div>
             </div>
 
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Internal Notes (optional)</label>
-              <input
-                value={payForm.notes}
-                onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="Any additional context for accounting…"
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none"
-              />
+            {/* Balance badge */}
+            <div className={`rounded-xl px-4 py-3 flex justify-between items-center ${
+              derived.balance_due <= 0 ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"
+            }`}>
+              <span className={`text-sm font-semibold ${derived.balance_due <= 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                {derived.balance_due <= 0 ? "Paid in Full" : "Balance Due"}
+              </span>
+              <span className={`font-black text-lg ${derived.balance_due <= 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                {formatCurrency(Math.max(0, derived.balance_due))}
+              </span>
             </div>
 
-            <div className="flex gap-3 justify-end pt-1">
-              <Button type="button" variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700">
-                {saving ? "Saving…" : "Record Payment"}
+            {/* Payment rows */}
+            <div className="border border-slate-100 rounded-xl overflow-hidden">
+              <div className="bg-slate-50 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Payment History</div>
+              <div className="divide-y divide-slate-50">
+                {payments.map((pay, i) => (
+                  <div key={pay.id || i} className="px-4 py-3 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-slate-800 capitalize">
+                        {(pay.method_label || pay.method || "cash").replace(/_/g," ")}
+                      </div>
+                      {pay.notes && <div className="text-xs text-slate-400 truncate">{pay.notes}</div>}
+                      {pay.paid_at && (
+                        <div className="text-xs text-slate-400">{format(new Date(pay.paid_at), "MMM d, yyyy")}</div>
+                      )}
+                    </div>
+                    <span className="font-bold text-emerald-700 flex-shrink-0">{formatCurrency(pay.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setReceiptOpen(false)}>Close</Button>
+              <Button onClick={handlePrintReceiptPopup} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
+                <Printer className="w-4 h-4" />Print Receipt
               </Button>
             </div>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
