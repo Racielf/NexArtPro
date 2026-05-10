@@ -83,22 +83,34 @@ export default function InvoiceDetailClean() {
   const canEdit   = !isVoid;
   const canMarkSent = !isVoid && ['draft','sent','viewed','partial'].includes(invoice?.status);
 
-  // Mark Sent Manual — no email sent
+  // Helper: critical update (status/sent_at/sent_source) + optional best-effort metadata
+  const markInvoiceSentCritical = async ({ source, sentAt, optionalPatch = {} }) => {
+    const criticalPatch = { status: "sent", sent_at: sentAt, sent_source: source };
+    await base44.entities.Invoice.update(invoiceId, criticalPatch); // throws on failure
+    let optionalApplied = {};
+    if (Object.keys(optionalPatch).length > 0) {
+      await base44.entities.Invoice.update(invoiceId, optionalPatch)
+        .then(() => { optionalApplied = optionalPatch; })
+        .catch(err => console.warn("[InvoiceDetailClean] optional sent metadata failed:", err?.message || err));
+    }
+    setInvoice(prev => ({ ...prev, ...criticalPatch, ...optionalApplied }));
+  };
+
+  // Manual Mark Sent — no email
   const handleMarkSentManual = async () => {
     setSaving(true);
     try {
-      const sentDate = manualSentForm.date ? new Date(manualSentForm.date).toISOString() : new Date().toISOString();
-      const patch = {
-        status: "sent",
-        sent_at: sentDate,
-        sent_source: "manual",
-        sent_manually: true,
-        last_contacted_at: sentDate,
-      };
-      if (manualSentForm.note.trim()) patch.manual_sent_note = manualSentForm.note.trim();
-      if (manualSentForm.method) patch.sent_method = manualSentForm.method;
-      await base44.entities.Invoice.update(invoiceId, patch);
-      setInvoice(prev => ({ ...prev, ...patch }));
+      const sentAt = manualSentForm.date ? new Date(manualSentForm.date).toISOString() : new Date().toISOString();
+      await markInvoiceSentCritical({
+        source: "manual",
+        sentAt,
+        optionalPatch: {
+          sent_manually: true,
+          sent_method: manualSentForm.method || null,
+          manual_sent_note: manualSentForm.note.trim() || null,
+          last_contacted_at: sentAt,
+        },
+      });
       setMarkSentOpen(false);
       setMarkSentSelectorOpen(false);
       setManualSentForm({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
@@ -110,23 +122,32 @@ export default function InvoiceDetailClean() {
     }
   };
 
-  // Mark Sent via Resend — sends email first, then marks sent
+  // Automatic via Resend — email FIRST, status only on success
   const handleResend = async () => {
     if (!invoice?.client_email) { toast.error("Client email required to send"); return; }
     setSaving(true);
     try {
-      const now = new Date().toISOString();
-      await base44.integrations.Core.SendEmail({
+      const emailResult = await base44.integrations.Core.SendEmail({
         to: invoice.client_email,
         subject: `Invoice ${invoice.invoice_number} — Payment Due`,
         body: `Hi ${invoice.client_name},\n\nPlease find your invoice ${invoice.invoice_number}.\n\nTotal Due: ${formatCurrency(derived.balance_due)}${invoice.due_date ? `\nDue: ${format(new Date(invoice.due_date), "MMM d, yyyy")}` : ""}\n\nThank you!\n${co.name || ""}`,
       });
-      await base44.entities.Invoice.update(invoiceId, { status: "sent", sent_at: now, sent_source: "resend", last_contacted_at: now });
-      setInvoice(prev => ({ ...prev, status: "sent", sent_at: now, sent_source: "resend" }));
+      // Email succeeded — now mark sent
+      const now = new Date().toISOString();
+      await markInvoiceSentCritical({
+        source: "resend",
+        sentAt: now,
+        optionalPatch: {
+          resend_message_id: emailResult?.id || emailResult?.data?.id || null,
+          resend_status: emailResult?.status || emailResult?.data?.status || "sent",
+          last_contacted_at: now,
+        },
+      });
       setResendOpen(false);
       setMarkSentSelectorOpen(false);
-      toast.success("Invoice sent via email");
+      toast.success("Invoice sent via Resend");
     } catch (err) {
+      // Email or critical update failed — status NOT changed
       toast.error(err?.message || "Failed to send invoice");
     } finally {
       setSaving(false);

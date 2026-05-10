@@ -47,6 +47,9 @@ export default function InvoiceCreate() {
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${Date.now().toString().slice(-6)}`);
   const [loadingEdit, setLoadingEdit] = useState(isEditMode);
   const [markSentSelectorOpen, setMarkSentSelectorOpen] = useState(false);
+  const [markSentManualOpen,   setMarkSentManualOpen]   = useState(false);
+  const [markSentResendOpen,   setMarkSentResendOpen]   = useState(false);
+  const [manualSentForm, setManualSentForm] = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
 
   // Load clients
   useEffect(() => {
@@ -168,27 +171,61 @@ export default function InvoiceCreate() {
     }
   };
 
-  // Save & Mark Sent Manually (edit mode only)
+  // ---- helpers ----
+  function buildInvoicePayload() {
+    return {
+      invoice_number:  invoiceNumber,
+      client_id:       selectedClient.id,
+      client_name:     selectedClient.full_name || selectedClient.name || "",
+      client_email:    selectedClient.email || "",
+      client_phone:    selectedClient.phone || "",
+      client_address:  selectedClient.address || selectedClient.billing_address || "",
+      line_items:      lineItems,
+      subtotal:        totals.subtotal,
+      tax_rate:        taxRate,
+      tax_amount:      totals.tax_total,
+      discount_amount: totals.discount_total,
+      total:           totals.total,
+      balance_due:     balanceDue,
+      notes,
+      due_date:        dueDate,
+      payment_terms:   paymentTerms,
+    };
+  }
+
+  async function saveInvoiceChangesOnly() {
+    const payload = buildInvoicePayload();
+    await base44.entities.Invoice.update(editInvoiceId, payload);
+    return payload;
+  }
+
+  async function markSavedInvoiceSent({ source, sentAt, optionalPatch = {} }) {
+    const criticalPatch = { status: "sent", sent_at: sentAt, sent_source: source };
+    await base44.entities.Invoice.update(editInvoiceId, criticalPatch);
+    if (Object.keys(optionalPatch).length > 0) {
+      await base44.entities.Invoice.update(editInvoiceId, optionalPatch)
+        .catch(err => console.warn("[InvoiceCreate] optional sent metadata failed:", err?.message || err));
+    }
+  }
+  // ---- end helpers ----
+
+  // Save & Mark Sent Manual (called from manual modal confirm)
   const handleSaveAndMarkSent = async () => {
     if (!isEditMode || !ready.client || !ready.items || !ready.total) return;
     setSaving(true);
     try {
-      const payload = {
-        invoice_number: invoiceNumber,
-        client_id: selectedClient.id,
-        client_name: selectedClient.full_name || selectedClient.name || "",
-        client_email: selectedClient.email || "",
-        client_phone: selectedClient.phone || "",
-        client_address: selectedClient.address || selectedClient.billing_address || "",
-        line_items: lineItems,
-        subtotal: totals.subtotal, tax_rate: taxRate, tax_amount: totals.tax_total,
-        discount_amount: totals.discount_total, total: totals.total, balance_due: balanceDue,
-        notes, due_date: dueDate, payment_terms: paymentTerms,
-        // Mark sent manually
-        status: "sent", sent_at: new Date().toISOString(),
-        sent_source: "manual", sent_manually: true, last_contacted_at: new Date().toISOString(),
-      };
-      await base44.entities.Invoice.update(editInvoiceId, payload);
+      await saveInvoiceChangesOnly();
+      const sentAt = manualSentForm.date ? new Date(manualSentForm.date).toISOString() : new Date().toISOString();
+      await markSavedInvoiceSent({
+        source: "manual",
+        sentAt,
+        optionalPatch: {
+          sent_manually: true,
+          sent_method: manualSentForm.method || null,
+          manual_sent_note: manualSentForm.note.trim() || null,
+          last_contacted_at: sentAt,
+        },
+      });
       navigate(`/invoice-detail?id=${editInvoiceId}`);
     } catch (err) {
       alert(err?.message || "Failed to save and mark sent");
@@ -197,36 +234,31 @@ export default function InvoiceCreate() {
     }
   };
 
-  // Save & Send via Email (edit mode only)
+  // Save & Send via Resend (called from resend modal confirm)
   const handleSaveAndResend = async () => {
     if (!isEditMode || !ready.client || !ready.items || !ready.total) return;
     const email = selectedClient?.email;
-    if (!email) { alert("Client email is required to send via email."); return; }
+    if (!email) { alert("Client email is required."); return; }
     setSaving(true);
     try {
-      // 1. Save changes
-      const payload = {
-        invoice_number: invoiceNumber,
-        client_id: selectedClient.id,
-        client_name: selectedClient.full_name || selectedClient.name || "",
-        client_email: email, client_phone: selectedClient.phone || "",
-        client_address: selectedClient.address || selectedClient.billing_address || "",
-        line_items: lineItems,
-        subtotal: totals.subtotal, tax_rate: taxRate, tax_amount: totals.tax_total,
-        discount_amount: totals.discount_total, total: totals.total, balance_due: balanceDue,
-        notes, due_date: dueDate, payment_terms: paymentTerms,
-      };
-      await base44.entities.Invoice.update(editInvoiceId, payload);
-      // 2. Send email
-      await base44.integrations.Core.SendEmail({
+      // 1. Save
+      await saveInvoiceChangesOnly();
+      // 2. Email first
+      const emailResult = await base44.integrations.Core.SendEmail({
         to: email,
         subject: `Invoice ${invoiceNumber} — Payment Due`,
         body: `Hi ${selectedClient.full_name || selectedClient.name || ""},\n\nPlease find your invoice ${invoiceNumber}.\n\nTotal Due: $${totals.total.toFixed(2)}${dueDate ? `\nDue: ${format(new Date(dueDate), "MMM d, yyyy")}` : ""}\n\nThank you!`,
       });
       // 3. Mark sent only after email success
       const now = new Date().toISOString();
-      await base44.entities.Invoice.update(editInvoiceId, {
-        status: "sent", sent_at: now, sent_source: "resend", last_contacted_at: now,
+      await markSavedInvoiceSent({
+        source: "resend",
+        sentAt: now,
+        optionalPatch: {
+          resend_message_id: emailResult?.id || emailResult?.data?.id || null,
+          resend_status: emailResult?.status || emailResult?.data?.status || "sent",
+          last_contacted_at: now,
+        },
       });
       navigate(`/invoice-detail?id=${editInvoiceId}`);
     } catch (err) {
@@ -631,7 +663,7 @@ export default function InvoiceCreate() {
           </DialogHeader>
           <div className="space-y-2.5 pt-1">
             <button
-              onClick={() => { setMarkSentSelectorOpen(false); handleSaveAndResend(); }}
+              onClick={() => { setMarkSentSelectorOpen(false); setMarkSentResendOpen(true); }}
               disabled={!selectedClient?.email || saving}
               className="w-full text-left p-3.5 rounded-xl border border-cyan-200 hover:bg-cyan-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -640,7 +672,7 @@ export default function InvoiceCreate() {
               {!selectedClient?.email && <p className="text-[10px] text-amber-600 mt-1">Client email required</p>}
             </button>
             <button
-              onClick={() => { setMarkSentSelectorOpen(false); handleSaveAndMarkSent(); }}
+              onClick={() => { setMarkSentSelectorOpen(false); setMarkSentManualOpen(true); }}
               disabled={saving}
               className="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-40"
             >
@@ -650,6 +682,73 @@ export default function InvoiceCreate() {
           </div>
           <div className="flex justify-end pt-1">
             <Button variant="outline" onClick={() => setMarkSentSelectorOpen(false)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Mark Sent sub-dialog */}
+      <Dialog open={markSentManualOpen} onOpenChange={setMarkSentManualOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCheck className="w-4 h-4 text-blue-600" />
+              Mark as Sent Manually
+            </DialogTitle>
+            <p className="text-xs text-slate-400 mt-0.5">Use this only if the invoice was sent outside NexArtPro. No email will be sent.</p>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sent Date</label>
+              <input type="date" value={manualSentForm.date} onChange={e => setManualSentForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Method / Channel</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {["email","text","printed","hand delivered","other"].map(m => (
+                  <button key={m} type="button" onClick={() => setManualSentForm(f => ({ ...f, method: m }))}
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-medium text-center capitalize transition-all ${manualSentForm.method === m ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}
+                  >{m}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Note (optional)</label>
+              <input value={manualSentForm.note} onChange={e => setManualSentForm(f => ({ ...f, note: e.target.value }))} placeholder="e.g. Handed to client at job site" className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none" />
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end pt-1">
+            <Button variant="outline" onClick={() => setMarkSentManualOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveAndMarkSent} disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700 gap-1.5">
+              <CheckCheck className="w-3.5 h-3.5" />{saving ? "Saving…" : "Confirm Sent"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Automatic via Resend sub-dialog */}
+      <Dialog open={markSentResendOpen} onOpenChange={setMarkSentResendOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="w-4 h-4 text-cyan-600" />
+              Send via Resend
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="bg-slate-50 rounded-xl p-3 space-y-1.5 text-sm">
+              <div className="flex justify-between"><span className="text-slate-400">To</span><span className="font-medium text-slate-700">{selectedClient?.email || "—"}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Invoice</span><span className="font-medium text-slate-700">{invoiceNumber}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Amount</span><span className="font-bold text-slate-800">{formatCurrency(totals.total)}</span></div>
+            </div>
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+              <p className="text-xs text-amber-700">Changes will be saved first. Status will be marked <strong>sent</strong> only if email succeeds.</p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end pt-1">
+            <Button variant="outline" onClick={() => setMarkSentResendOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveAndResend} disabled={saving} className="bg-cyan-600 text-white hover:bg-cyan-700 gap-1.5">
+              <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send via Resend"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
