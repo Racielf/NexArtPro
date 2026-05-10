@@ -512,7 +512,8 @@ export default function EstimateEditor() {
           </div>
 
           {/* isPreview || isLocked ensures locked estimates are fully read-only */}
-          <EstimateGroups ref={estimateGroupsRef} estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview || isLocked} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
+          {/* readOnly={isLocked} blocks autosave at the logic level — visual alone is not enough */}
+          <EstimateGroups ref={estimateGroupsRef} estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview || isLocked} readOnly={isLocked} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
 
           {!isPreview && estimate?.id && <div className="mt-3"><PricingAuditHistory documentId={estimate.id} /></div>}
         </div>

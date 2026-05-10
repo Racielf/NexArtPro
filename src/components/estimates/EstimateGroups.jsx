@@ -441,7 +441,7 @@ function NotesSection({ label, placeholder, value, onChange, accent, badge }) {
   );
 }
 
-const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false, currentUser, onDirty, pricingWarningsMap = {} }, ref) {
+const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, saving, readOnlyDiscountType = false, isPreview = false, readOnly = false, currentUser, onDirty, pricingWarningsMap = {} }, ref) {
   const [groups, setGroups] = useState(() => {
     const resolved = resolveAndNormalizeGroups(estimate);
     return resolved.length ? resolved : DEFAULT_GROUPS.map(g => ({ ...g, id: uid(), items: [] }));
@@ -524,7 +524,25 @@ const EstimateGroups = forwardRef(function EstimateGroups({ estimate, onSave, sa
     setOtherCosts(estimate.other_costs || []);
   }, [estimate?.id]);
 
+  // ── Hydration guard ──────────────────────────────────────────
+  // After estimate.id changes (hydration / load), skip the first autosave cycle
+  // so we don't persist immediately-after-hydration state back to the DB.
+  const hydratedRef = useRef(false);
   useEffect(() => {
+    hydratedRef.current = false;
+  }, [estimate?.id]);
+
+  useEffect(() => {
+    // ── Hotfix: autosave guards ───────────────────────────────────────
+    // 1. Lock guard: if estimate is legally locked or in preview, do NOT autosave.
+    //    Visual read-only is not enough — we must also block the save call.
+    if (isPreview || readOnly) return;
+    // 2. Hydration guard: skip exactly one save cycle after estimate.id changes
+    //    to avoid persisting hydration state on initial mount.
+    if (!hydratedRef.current) {
+      hydratedRef.current = true;
+      return;
+    }
     if (onDirty) onDirty();
     const t = setTimeout(() => {
       const result = runEstimateEngine(groups, { taxRate, discountType, discountValue, depositPercent, materials, otherCosts });
