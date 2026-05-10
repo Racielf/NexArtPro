@@ -135,11 +135,33 @@ export default function EstimateEditor() {
     }, 1000);
   };
 
+  const WORKFLOW_FIELDS = [
+    'status',
+    'sent_at',
+    'viewed_at',
+    'approved_at',
+    'approved_by',
+    'approval_note',
+    'declined_at',
+    'declined_reason',
+    'signed_at',
+    'signer_name',
+    'signature_name',
+    'signature_data',
+    'terms_accepted',
+    'converted_at',
+    'converted_to_work_order_id',
+    'converted_to_invoice_id',
+  ];
+
   const handleSave = async (updatedEstimate) => {
     setSaving(true);
     setSaveError(false);
     setDirty(false);
     const sanitized = { ...updatedEstimate };
+    WORKFLOW_FIELDS.forEach((key) => {
+      delete sanitized[key];
+    });
     if (sanitized.groups && Array.isArray(sanitized.groups)) {
       sanitized.groups = sanitized.groups.map(group => ({
         ...group,
@@ -151,7 +173,7 @@ export default function EstimateEditor() {
     }
     try {
       await base44.entities.Estimate.update(estimateId, { ...sanitized, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
-      setEstimate(sanitized);
+      setEstimate(prev => prev ? ({ ...prev, ...sanitized }) : sanitized);
       setSavedAt(Date.now());
       toast.success(`Estimate #${sanitized.estimate_number} saved`);
     } catch (err) {

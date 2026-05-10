@@ -18,16 +18,29 @@ function buildInitialPaymentState(total = 0) {
 }
 
 /**
- * Only enabled when estimate.status === 'approved'.
- * Converts estimate → Invoice and navigates to the invoice detail page.
+ * Enabled when the estimate has approval evidence:
+ *  - status approved/signed, OR
+ *  - approved_at / signed_at / terms_accepted = true
+ * Declined estimates are always blocked.
  */
+const hasApprovalEvidence = (estimate) => {
+  if (!estimate) return false;
+  if (['approved', 'signed'].includes(estimate.status)) return true;
+  if (estimate.status === 'declined') return false;
+  return Boolean(
+    estimate.approved_at ||
+    estimate.signed_at ||
+    estimate.terms_accepted === true
+  );
+};
+
 export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdownItem = false }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   if (!estimate) return null;
 
-  const canConvert = ['approved', 'signed'].includes(estimate.status);
+  const canConvert = hasApprovalEvidence(estimate);
 
   const handleConvert = async () => {
     if (!canConvert) {
