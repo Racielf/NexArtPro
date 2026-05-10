@@ -14,7 +14,6 @@ import {
   DollarSign,
   ExternalLink,
   FileCheck,
-  FileSignature,
   Mail,
   MapPin,
   Phone,
@@ -40,7 +39,6 @@ import { markInvoicePaid } from '@/lib/invoicePaymentRecorder';
 import InvoiceVisibilityPanel, { getInvoiceViewSettings } from '@/components/invoices/InvoiceVisibilityPanel';
 import { useAuth } from '@/lib/AuthContext';
 import { APP_CONFIG } from '@/lib/appConfig';
-import { createSigningPackageForInvoice } from '@/lib/nexArtSign';
 
 const co = APP_CONFIG.company;
 
@@ -68,8 +66,6 @@ export default function InvoiceDetailClean() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [previousBalance, setPreviousBalance] = useState(0);
-  const [signingPkg, setSigningPkg] = useState(null);
-  const [sendingForSignature, setSendingForSignature] = useState(false);
 
   useEffect(() => { loadInvoice(); }, [invoiceId]);
 
@@ -84,18 +80,6 @@ export default function InvoiceDetailClean() {
       setInvoice(inv);
       setNotes(inv.notes || '');
       setDueDate(inv.due_date || '');
-
-      // Load existing signing package if any
-      if (inv.signing_package_id) {
-        base44.entities.SigningPackage.filter({ id: inv.signing_package_id })
-          .then(rows => { if (rows?.[0]) setSigningPkg(rows[0]); })
-          .catch(() => {});
-      } else if (inv.id) {
-        // Check by document_id in case signing_package_id wasn't written back yet
-        base44.entities.SigningPackage.filter({ document_type: 'invoice', document_id: inv.id })
-          .then(rows => { if (rows?.[0]) setSigningPkg(rows[0]); })
-          .catch(() => {});
-      }
 
       if (inv.client_id) {
         try {
@@ -217,46 +201,6 @@ export default function InvoiceDetailClean() {
     const timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
     setInvoice(prev => ({ ...prev, last_contacted_at: new Date().toISOString(), collection_timeline: timeline }));
     toast.success('Marked as contacted');
-  };
-
-  const handleSendForSignature = async () => {
-    if (!invoice.client_email) {
-      toast.error('Client email is required to send for signature');
-      return;
-    }
-    setSendingForSignature(true);
-    try {
-      const pkg = await createSigningPackageForInvoice({ invoice, currentUser: user });
-      // Persist signing_package_id back to invoice (best-effort)
-      await base44.entities.Invoice.update(invoiceId, {
-        signing_package_id: pkg.id,
-        signature_status: 'sent',
-      }).catch(() => {});
-      setInvoice(prev => ({ ...prev, signing_package_id: pkg.id, signature_status: 'sent' }));
-      setSigningPkg(pkg);
-      if (pkg.signing_url) {
-        toast.success(`Signing link sent to ${invoice.client_email}`);
-      } else {
-        toast.success('Signing package created — copy link from NexArtSign');
-      }
-    } catch (err) {
-      toast.error(err?.message || 'Could not send for signature');
-    } finally {
-      setSendingForSignature(false);
-    }
-  };
-
-  const copySigningLink = async () => {
-    if (!signingPkg?.id) return;
-    try {
-      const res = await base44.functions.invoke('issueSigningAccessLink', { signing_package_id: signingPkg.id });
-      const url = res?.data?.signing_url || '';
-      if (!url) throw new Error('No signing link available');
-      await navigator.clipboard.writeText(url);
-      toast.success('Signing link copied to clipboard');
-    } catch (err) {
-      toast.error(err?.message || 'Could not copy signing link');
-    }
   };
 
   const handlePrint = () => {
@@ -433,33 +377,6 @@ export default function InvoiceDetailClean() {
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
-            {/* Signature button — send for signature or copy link if already sent */}
-            {invoice.status !== 'void' && (
-              signingPkg && !['signed','declined','expired','voided'].includes(signingPkg.status) ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-violet-300 text-violet-700 hover:bg-violet-50 gap-1.5"
-                  onClick={copySigningLink}
-                  title={`Signing package: ${signingPkg.status}`}
-                >
-                  <FileSignature className="w-3.5 h-3.5" />
-                  Copy Sign Link
-                </Button>
-              ) : !signingPkg ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-violet-300 text-violet-700 hover:bg-violet-50 gap-1.5"
-                  onClick={handleSendForSignature}
-                  disabled={sendingForSignature || !invoice.client_email}
-                  title={!invoice.client_email ? 'Client email required' : 'Send for e-signature'}
-                >
-                  <FileSignature className="w-3.5 h-3.5" />
-                  {sendingForSignature ? 'Sending…' : 'Sign'}
-                </Button>
-              ) : null
-            )}
             {!isPaid && (
               <Button size="sm" onClick={() => setPaymentModalOpen(true)} className="gap-1.5 bg-primary hover:bg-primary/90 text-white">
                 <DollarSign className="w-3.5 h-3.5" />Add Payment

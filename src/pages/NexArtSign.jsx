@@ -88,8 +88,6 @@ export default function NexArtSign() {
   const [showEstimateSearch, setShowEstimateSearch] = useState(false);
   const [allEstimatesSearch, setAllEstimatesSearch] = useState('');
   const [estimateSearch, setEstimateSearch] = useState('');
-  const [docTypeFilter, setDocTypeFilter] = useState('all'); // 'all' | 'estimate' | 'invoice'
-  const [invoices, setInvoices] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -97,29 +95,25 @@ export default function NexArtSign() {
       setNexartLogoUrl(s?.nexartsign_logo_url || '');
     }).catch(() => {});
     try {
-      const [pkgRows, eventRows, certRows, participantRows, estimateRows, invoiceRows] = await Promise.all([
+      const [pkgRows, eventRows, certRows, participantRows, estimateRows] = await Promise.all([
         base44.entities.SigningPackage.list('-created_date').catch(() => []),
         base44.entities.SigningEvent.list('-created_at').catch(() => []),
         base44.entities.SigningCertificate.list('-generated_at').catch(() => []),
         base44.entities.SigningParticipant.list('-created_date').catch(() => []),
         base44.entities.Estimate.list('-created_date').catch(() => []),
-        base44.entities.Invoice.list('-created_date', 200).catch(() => []),
       ]);
 
-      // Show all packages regardless of document_type — filtered by UI tab
-      const allPackages = pkgRows || [];
+      const estimatePackages = (pkgRows || []).filter(pkg => pkg.document_type === 'estimate');
       const liveEstimates = (estimateRows || []).filter(est => est?.deleted_at == null);
-      const liveInvoices = (invoiceRows || []).filter(inv => inv?.deleted_at == null);
 
-      setPackages(allPackages);
+      setPackages(estimatePackages);
       setEvents(eventRows || []);
       setCertificates(certRows || []);
       setParticipants(participantRows || []);
       setEstimates(liveEstimates);
-      setInvoices(liveInvoices);
       setSelectedId(current => {
-        if (current && allPackages.some(pkg => pkg.id === current)) return current;
-        return allPackages?.[0]?.id || null;
+        if (current && estimatePackages.some(pkg => pkg.id === current)) return current;
+        return estimatePackages?.[0]?.id || null;
       });
     } catch (err) {
       console.error('[NexArtSign] load failed:', err);
@@ -164,7 +158,6 @@ export default function NexArtSign() {
     return packages.filter(pkg => {
       const status = pkg.status || 'draft';
       const matchesStatus = statusFilter === 'all' || status === statusFilter;
-      const matchesDocType = docTypeFilter === 'all' || pkg.document_type === docTypeFilter;
       const haystack = [
         pkg.document_title,
         pkg.document_number,
@@ -175,9 +168,9 @@ export default function NexArtSign() {
         pkg.package_number,
       ].filter(Boolean).join(' ').toLowerCase();
       const matchesQuery = !normalized || haystack.includes(normalized);
-      return matchesStatus && matchesQuery && matchesDocType;
+      return matchesStatus && matchesQuery;
     });
-  }, [packages, query, statusFilter, docTypeFilter]);
+  }, [packages, query, statusFilter]);
 
   const visiblePackageRows = filteredPackages.slice(0, visiblePackages);
 
@@ -411,11 +404,11 @@ export default function NexArtSign() {
         {showSettings && <NexArtSignSettingsCard />}
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          <StatCard label="All Packages" value={packages.length} />
-          <StatCard label="Estimate Pkgs" value={packages.filter(p => p.document_type === 'estimate').length} />
-          <StatCard label="Invoice Pkgs" value={packages.filter(p => p.document_type === 'invoice').length} />
+          <StatCard label="Estimate Packages" value={packages.length} />
+          <StatCard label="Waiting" value={(counts.sent || 0) + (counts.viewed || 0) + (counts.draft || 0)} />
           <StatCard label="Signed" value={counts.signed || 0} />
           <StatCard label="Closed" value={(counts.declined || 0) + (counts.expired || 0) + (counts.voided || 0)} />
+          <StatCard label="Missing Package" value={coverage.missing} />
         </div>
 
         {connectResult && (
@@ -513,25 +506,6 @@ export default function NexArtSign() {
                 <div className="flex items-center gap-2"><FileSignature className="w-4 h-4 text-slate-500" /><h3 className="font-bold text-slate-900">Packages</h3></div>
                 {loading && <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />}
               </div>
-              {/* Doc-type tab filter */}
-              <div className="flex gap-1">
-                {[['all','All'],['estimate','Estimates'],['invoice','Invoices']].map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => { setDocTypeFilter(key); setVisiblePackages(PACKAGE_PAGE_SIZE); }}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                      docTypeFilter === key
-                        ? 'bg-slate-900 text-white'
-                        : 'bg-slate-100 text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    {label}
-                    <span className="ml-1 opacity-60">
-                      {key === 'all' ? packages.length : packages.filter(p => p.document_type === key).length}
-                    </span>
-                  </button>
-                ))}
-              </div>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -568,16 +542,7 @@ export default function NexArtSign() {
                         <p className="text-xs text-slate-500 mt-1 truncate">{pkg.signer_name || pkg.client_name || 'Signer'} • {pkg.signer_email}</p>
                         <p className="text-[11px] text-slate-400 mt-1">Sent {formatDate(pkg.sent_at || pkg.created_date)}</p>
                       </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${statusClass(pkg.status)}`}>{pkg.status || 'draft'}</span>
-                        <span className={`text-[9px] font-bold rounded px-1.5 py-0.5 ${
-                          pkg.document_type === 'invoice'
-                            ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                            : 'bg-amber-50 text-amber-600 border border-amber-200'
-                        }`}>
-                          {pkg.document_type === 'invoice' ? 'INV' : 'EST'}
-                        </span>
-                      </div>
+                      <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${statusClass(pkg.status)}`}>{pkg.status || 'draft'}</span>
                     </div>
                   </button>
                 ))}
