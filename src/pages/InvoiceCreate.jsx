@@ -342,96 +342,127 @@ export default function InvoiceCreate() {
           </div>
         </div>
 
-        {/* RIGHT: Dark preview + Readiness */}
-        <div className="space-y-4">
-          {/* Dark preview card */}
-          <div className="rounded-2xl overflow-hidden shadow-xl" style={{ background: "linear-gradient(135deg, #0F172A 0%, #1E3A5F 100%)" }}>
-            <div className="px-5 pt-5 pb-3 border-b border-white/10">
-              <div className="text-white/40 text-[10px] uppercase tracking-widest mb-0.5">Invoice Preview</div>
-              <div className="text-white font-bold text-xl">{invoiceNumber}</div>
+        {/* RIGHT: Single dark invoice preview panel */}
+        <div
+          className="rounded-[28px] p-6 shadow-2xl flex flex-col gap-4 lg:sticky lg:top-20 self-start"
+          style={{ background: "linear-gradient(180deg, #0A0F1E 0%, #050A18 100%)" }}
+        >
+          {/* Header */}
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-400 mb-1">
+              Invoice Preview
             </div>
-            <div className="px-5 py-4 space-y-3">
-              {selectedClient ? (
-                <div>
-                  <div className="text-white/40 text-[10px] uppercase tracking-wider mb-1">Bill To</div>
-                  <div className="text-white font-semibold text-sm">{selectedClient.full_name || selectedClient.name}</div>
-                  {selectedClient.email && <div className="text-white/50 text-xs">{selectedClient.email}</div>}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-white/30 text-xs italic">
-                  <User className="w-3.5 h-3.5" />No client selected
-                </div>
-              )}
+            <div className="text-3xl font-black text-white leading-tight">
+              {selectedClient
+                ? (selectedClient.full_name || selectedClient.name)
+                : "Select Client"}
+            </div>
+            <div className="text-slate-400 text-sm mt-0.5">Manual invoice</div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <div className="text-white/40 uppercase tracking-wide text-[10px]">Due Date</div>
-                  <div className="text-white font-medium">{dueDate ? format(new Date(dueDate), "MMM d, yyyy") : "—"}</div>
-                </div>
-                <div>
-                  <div className="text-white/40 uppercase tracking-wide text-[10px]">Terms</div>
-                  <div className="text-white font-medium">{paymentTerms}</div>
-                </div>
-              </div>
-
-              {lineItems.filter(li => li.name).length > 0 && (
-                <div className="space-y-1">
-                  <div className="text-white/40 text-[10px] uppercase tracking-wider">Items</div>
-                  {lineItems.filter(li => li.name).slice(0, 4).map(li => (
-                    <div key={li.id} className="flex justify-between text-xs">
-                      <span className="text-white/70 truncate mr-2">{li.name}</span>
-                      <span className="text-white font-medium flex-shrink-0">{formatCurrency(li.line_total)}</span>
+          {/* Billable Items */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-3">
+              Billable Items
+            </div>
+            {lineItems.filter(li => li.name && li.line_total > 0).length === 0 ? (
+              <p className="text-slate-500 text-sm italic">No billable items yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {lineItems.filter(li => li.name && li.line_total > 0).slice(0, 5).map(li => (
+                  <div key={li.id} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-slate-200 text-sm font-medium truncate">{li.name}</div>
+                      {li.quantity > 0 && li.unit_price > 0 && (
+                        <div className="text-slate-500 text-xs">{li.quantity} × {formatCurrency(li.unit_price)}</div>
+                      )}
                     </div>
-                  ))}
-                  {lineItems.filter(li => li.name).length > 4 && (
-                    <div className="text-white/30 text-[10px]">+{lineItems.filter(li => li.name).length - 4} more</div>
-                  )}
-                </div>
-              )}
+                    <span className="text-white text-sm font-semibold flex-shrink-0">{formatCurrency(li.line_total)}</span>
+                  </div>
+                ))}
+                {lineItems.filter(li => li.name && li.line_total > 0).length > 5 && (
+                  <div className="text-slate-500 text-xs">+{lineItems.filter(li => li.name && li.line_total > 0).length - 5} more items</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Totals */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-2.5">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 text-sm">Subtotal</span>
+              <span className="text-white font-semibold">{formatCurrency(totals.subtotal)}</span>
             </div>
-            <div className="px-5 pb-5 pt-2 border-t border-white/10">
-              <div className="flex justify-between items-center">
-                <span className="text-white/40 text-xs uppercase tracking-wide">Total</span>
-                <span className="text-white font-bold text-2xl">{formatCurrency(totals.total)}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 text-sm">Tax ({taxRate.toFixed(2)}%)</span>
+              <span className="text-white font-semibold">{formatCurrency(totals.tax_total)}</span>
+            </div>
+            <div className="flex justify-between items-center border-t border-white/10 pt-2.5 mt-1">
+              <span className="text-slate-300 text-base font-medium">Total</span>
+              <span className="text-4xl font-black text-white leading-none">{formatCurrency(totals.total)}</span>
+            </div>
+          </div>
+
+          {/* Payment Terms */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-2">
+              Payment Terms
+            </div>
+            <div className="text-slate-300 text-sm font-medium mb-1">{paymentTerms || "Net 30"}</div>
+            <p className="text-slate-500 text-xs leading-relaxed">
+              Payment is due upon receipt unless otherwise agreed. Credit card payments may include processing fees when applicable.
+            </p>
+          </div>
+
+          {/* Invoice Readiness */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-3">
+              Invoice Readiness
+            </div>
+            <div className="space-y-2.5">
+              {[
+                { check: ready.client, label: "Client selected" },
+                { check: ready.items,  label: "At least one billable item" },
+                { check: ready.total,  label: "Total greater than $0" },
+              ].map(({ check, label }) => (
+                <div key={label} className="flex items-center gap-2.5">
+                  {check ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  ) : (
+                    <svg className="w-4 h-4 flex-shrink-0 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1 4a1 1 0 00-1 1v3a1 1 0 002 0v-3a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  <span className={`text-sm ${check ? "text-slate-200" : "text-amber-400"}`}>{label}</span>
+                </div>
+              ))}
+              {/* Due date — optional, never blocks */}
+              <div className="flex items-center gap-2.5">
+                <Circle className="w-4 h-4 flex-shrink-0 text-slate-600" />
+                <span className="text-sm text-slate-500">Due date (optional)</span>
               </div>
             </div>
           </div>
 
-          {/* Readiness Checklist */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-slate-800 text-sm">Invoice Readiness</h3>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${readinessScore === 3 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-600"}`}>
-                {readinessScore}/3
-              </span>
-            </div>
-            <div className="space-y-2.5">
-              {[
-                { key: "client", label: "Client selected" },
-                { key: "items",  label: "At least one billable item" },
-                { key: "total",  label: "Total greater than $0" },
-              ].map(({ key, label }) => (
-                <div key={key} className="flex items-center gap-2.5">
-                  {ready[key]
-                    ? <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                    : <Circle     className="w-4 h-4 text-slate-300 flex-shrink-0" />
-                  }
-                  <span className={`text-sm ${ready[key] ? "text-slate-700" : "text-slate-400"}`}>{label}</span>
-                </div>
-              ))}
-            </div>
-
-            <Button
-              className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+          {/* Buttons */}
+          <div className="space-y-2.5 pt-1">
+            <button
               onClick={handleCreate}
               disabled={saving || readinessScore < 3}
+              className="w-full h-14 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-base rounded-2xl transition-colors"
             >
-              {saving ? "Creating…" : readinessScore < 3 ? "Complete checklist to continue" : "Create Invoice"}
-            </Button>
-
-            {!selectedClient?.email && selectedClient && (
-              <p className="text-[11px] text-amber-600 mt-2 text-center">⚠ Client email recommended for sending</p>
-            )}
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {saving ? "Creating…" : "Create Invoice"}
+            </button>
+            <button
+              onClick={() => navigate("/invoices")}
+              className="w-full h-12 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-medium text-sm rounded-2xl transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Invoices
+            </button>
           </div>
         </div>
       </div>
