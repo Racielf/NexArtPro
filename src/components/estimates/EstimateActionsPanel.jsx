@@ -45,6 +45,15 @@ function fmtDate(dateStr) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// ── approval gate helpers ─────────────────────────────────────────────────────
+function isApprovalTerminalStatus(status) {
+  return ['approved', 'signed', 'converted', 'declined'].includes(status);
+}
+// eslint-disable-next-line no-unused-vars
+function canApproveOrDecline(estimate) {
+  return ['sent', 'viewed', 'changes_requested', 'visit_completed'].includes(estimate?.status);
+}
+
 // ── next best action logic ────────────────────────────────────────────────────
 function getNextAction(estimate, omwActive) {
   const s = estimate?.status;
@@ -285,12 +294,13 @@ function ActionButtonsBlock({
       label: 'Approve / Decline',
       icon: ThumbsUp,
       onClick: onApproveDecline,
+      hidden: isApprovalTerminalStatus(estimate?.status),
     },
   ];
 
   const sortedActions = [
-    ...actions.filter(action => action.id === primary),
-    ...actions.filter(action => action.id !== primary),
+    ...actions.filter(action => action.id === primary && !action.hidden),
+    ...actions.filter(action => action.id !== primary && !action.hidden),
   ];
 
   return (
@@ -528,6 +538,11 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   // ── APPROVAL ─────────────────────────────────────────────────────────────
   const handleApproveConfirm = async () => {
     if (!estimate?.id) { toast.error('Estimate is missing. Cannot approve.'); return; }
+    if (isApprovalTerminalStatus(s)) {
+      toast.error(`Estimate is already ${s}. Cannot re-approve.`);
+      setApprovalOpen(false);
+      return;
+    }
     setApprovalSaving(true);
     try {
       const now = new Date().toISOString();
@@ -569,6 +584,11 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   const handleDeclineConfirm = async () => {
     if (!declineReason.trim()) { toast.error('Please enter a reason for declining'); return; }
     if (!estimate?.id) { toast.error('Estimate is missing. Cannot decline.'); return; }
+    if (isApprovalTerminalStatus(s)) {
+      toast.error(`Estimate is already ${s}. Cannot re-decline.`);
+      setApprovalOpen(false);
+      return;
+    }
     setApprovalSaving(true);
     try {
       const now = new Date().toISOString();
@@ -675,7 +695,13 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
         onStopOMW={handleStopOMW}
         onFinishVisit={() => setFinishOpen(true)}
         onSend={handleSendClick}
-        onApproveDecline={() => setApprovalOpen(true)}
+        onApproveDecline={() => {
+          if (isApprovalTerminalStatus(s)) {
+            toast.error(`Cannot change approval: estimate is already ${s}`);
+            return;
+          }
+          setApprovalOpen(true);
+        }}
       />
 
       {/* ── SCHEDULE MODAL ─────────────────────────────────────────────────── */}
