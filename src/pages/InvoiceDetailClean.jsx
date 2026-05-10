@@ -52,6 +52,7 @@ export default function InvoiceDetailClean() {
   const [payForm,  setPayForm]  = useState({ amount: "", method: "cash", reference: "", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
   const [stripeLoading, setStripeLoading] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [markSentSelectorOpen, setMarkSentSelectorOpen] = useState(false);
   const [markSentOpen, setMarkSentOpen] = useState(false);
   const [resendOpen, setResendOpen] = useState(false);
   const [manualSentForm, setManualSentForm] = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
@@ -99,6 +100,7 @@ export default function InvoiceDetailClean() {
       await base44.entities.Invoice.update(invoiceId, patch);
       setInvoice(prev => ({ ...prev, ...patch }));
       setMarkSentOpen(false);
+      setMarkSentSelectorOpen(false);
       setManualSentForm({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
       toast.success("Invoice marked as sent");
     } catch (err) {
@@ -122,6 +124,7 @@ export default function InvoiceDetailClean() {
       await base44.entities.Invoice.update(invoiceId, { status: "sent", sent_at: now, sent_source: "resend", last_contacted_at: now });
       setInvoice(prev => ({ ...prev, status: "sent", sent_at: now, sent_source: "resend" }));
       setResendOpen(false);
+      setMarkSentSelectorOpen(false);
       toast.success("Invoice sent via email");
     } catch (err) {
       toast.error(err?.message || "Failed to send invoice");
@@ -299,16 +302,9 @@ export default function InvoiceDetailClean() {
             </Button>
           )}
           {canMarkSent && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => setMarkSentOpen(true)} className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50">
-                <MailCheck className="w-3.5 h-3.5" />Mark Sent
-              </Button>
-              {invoice.client_email && (
-                <Button size="sm" variant="outline" onClick={() => setResendOpen(true)} disabled={saving} className="gap-1.5 border-cyan-300 text-cyan-700 hover:bg-cyan-50">
-                  <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send via Email"}
-                </Button>
-              )}
-            </>
+            <Button size="sm" variant="outline" onClick={() => setMarkSentSelectorOpen(true)} className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50">
+              <MailCheck className="w-3.5 h-3.5" />Mark Sent
+            </Button>
           )}
           <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">
             <Printer className="w-3.5 h-3.5" />Print
@@ -707,16 +703,50 @@ export default function InvoiceDetailClean() {
         </DialogContent>
       </Dialog>
 
+      {/* Mark Sent Selector Dialog */}
+      <Dialog open={markSentSelectorOpen} onOpenChange={setMarkSentSelectorOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MailCheck className="w-4 h-4 text-blue-600" />
+              Mark Invoice as Sent
+            </DialogTitle>
+            <p className="text-xs text-slate-400 mt-0.5">Choose how this invoice was sent.</p>
+          </DialogHeader>
+          <div className="space-y-2.5 pt-1">
+            <button
+              onClick={() => { setMarkSentSelectorOpen(false); setResendOpen(true); }}
+              disabled={!invoice?.client_email}
+              className="w-full text-left p-3.5 rounded-xl border border-cyan-200 hover:bg-cyan-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold text-cyan-700"><Send className="w-3.5 h-3.5" />Automatic via Resend</div>
+              <p className="text-xs text-slate-500 mt-1">Sends the invoice now. The invoice is marked as sent only if the email is delivered successfully.</p>
+              {!invoice?.client_email && <p className="text-[10px] text-amber-600 mt-1">Client email required</p>}
+            </button>
+            <button
+              onClick={() => { setMarkSentSelectorOpen(false); setMarkSentOpen(true); }}
+              className="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700"><CheckCheck className="w-3.5 h-3.5" />Manual Mark Sent</div>
+              <p className="text-xs text-slate-500 mt-1">Use this if you already sent the invoice outside NexArtPro. No email will be sent.</p>
+            </button>
+          </div>
+          <div className="flex justify-end pt-1">
+            <Button variant="outline" onClick={() => setMarkSentSelectorOpen(false)}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Mark Sent Manual Dialog */}
       <Dialog open={markSentOpen} onOpenChange={setMarkSentOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <MailCheck className="w-4 h-4 text-blue-600" />
-              Mark as Sent (Manual)
+              <CheckCheck className="w-4 h-4 text-blue-600" />
+              Mark as Sent Manually
             </DialogTitle>
             <p className="text-xs text-slate-400 mt-0.5">
-              Use this when the invoice was sent outside NexArtPro. No email will be sent.
+              Use this only if the invoice was sent outside NexArtPro. No email will be sent.
             </p>
           </DialogHeader>
           <div className="space-y-3 pt-1">
@@ -748,13 +778,13 @@ export default function InvoiceDetailClean() {
         </DialogContent>
       </Dialog>
 
-      {/* Send via Email / Resend Dialog */}
+      {/* Automatic via Resend Dialog */}
       <Dialog open={resendOpen} onOpenChange={setResendOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Send className="w-4 h-4 text-cyan-600" />
-              Send Invoice via Email
+              Send via Resend
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
@@ -770,7 +800,7 @@ export default function InvoiceDetailClean() {
           <div className="flex gap-3 justify-end pt-1">
             <Button variant="outline" onClick={() => setResendOpen(false)}>Cancel</Button>
             <Button onClick={handleResend} disabled={saving} className="bg-cyan-600 text-white hover:bg-cyan-700 gap-1.5">
-              <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send Now"}
+              <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send via Resend"}
             </Button>
           </div>
         </DialogContent>
