@@ -1,31 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/shared/PageHeader';
 import PageShell from '@/components/layout/PageShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
-import { Receipt, Search, Send, CheckCircle, DollarSign, MapPin, Printer, ChevronRight, Trash2, AlertTriangle, CheckCircle2, Clock, Plus } from 'lucide-react';
-import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import { Receipt, Search, MapPin, ChevronRight, Trash2, AlertTriangle, Clock, Plus } from 'lucide-react';
+
 import CashflowSummary from '@/components/invoices/CashflowSummary';
 import SLAMetricsPanel from '@/components/invoices/SLAMetricsPanel';
 import OwnerAccountabilityPanel from '@/components/invoices/OwnerAccountabilityPanel';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
-import { markInvoicePaid } from '@/lib/invoicePaymentRecorder';
+
+
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
 import { filterInvoicesByAction, sortInvoicesByUrgency } from '@/lib/invoiceActionFilter';
 import { executeOneClickFollowUp } from '@/lib/invoiceActionHelpers';
 import { getEscalationBand, getOverdueDays } from '@/lib/invoiceMessageTemplates';
 import { Zap } from 'lucide-react';
-import { buildOperatorQueue, QUEUE_LABELS } from '@/lib/invoiceOperatorQueue';
+import { buildOperatorQueue } from '@/lib/invoiceOperatorQueue';
 import { detectSLABreaches } from '@/lib/invoiceSLA';
 import { filterInvoicesBySLAMetric } from '@/lib/invoiceSLAMetrics';
 import { archiveManyWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
-import { logAuditEvent } from '@/lib/auditLog';
 import DeleteReasonModal from '@/components/shared/DeleteReasonModal';
 import { useAuth } from '@/lib/AuthContext';
 import CollectionCapacityPanel from '@/components/invoices/CollectionCapacityPanel';
@@ -39,11 +38,32 @@ const ESCALATION_BADGE = {
   standard: { cls: 'bg-orange-50 text-orange-600 border border-orange-200', label: (d) => `Overdue · ${d}d` },
 };
 
+// Status filter tabs — matches reference repo UX
+const STATUS_TABS = [
+  { key: 'all',      label: 'All' },
+  { key: 'draft',    label: 'Draft' },
+  { key: 'sent',     label: 'Sent' },
+  { key: 'partial',  label: 'Partial' },
+  { key: 'paid',     label: 'Paid' },
+  { key: 'overdue',  label: 'Overdue' },
+  { key: 'void',     label: 'Void' },
+];
+
+function matchesStatusTab(inv, tab) {
+  if (tab === 'all') return true;
+  const derived = computeInvoiceDerivedFields(inv);
+  if (tab === 'partial') return derived.payment_status === 'partial';
+  if (tab === 'paid') return derived.payment_status === 'paid';
+  if (tab === 'overdue') return isInvoiceOverdue(inv) && derived.payment_status !== 'paid';
+  return inv.status === tab;
+}
+
 export default function Invoices() {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [actionFilter, setActionFilter] = useState('all'); // 'all' | 'today' | 'overdue' | 'high'
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [evidenceCache, setEvidenceCache] = useState({});
@@ -81,89 +101,21 @@ export default function Invoices() {
     setLoading(false);
   };
 
-  const handleSend = async (inv) => {
-    await base44.entities.Invoice.update(inv.id, { status: 'sent', sent_at: new Date().toISOString() });
-    toast.success('Invoice marked as sent!');
-    loadData();
-  };
-
-  const handleMarkPaid = async (inv) => {
-    try {
-      await markInvoicePaid(inv, actor, 'Marked as paid');
-      toast.success('Invoice marked as paid!');
-      loadData();
-    } catch (err) {
-      toast.error(err?.message || 'Unable to mark invoice as paid');
-    }
-  };
-
-  const handlePrint = (inv) => {
-    // Use company branding from appConfig
-    const companyName = appConfig.company.name;
-    const content = `
-      <html><head><title>Invoice #${inv.invoice_number}</title>
-      <style>
-        body{font-family:Arial,sans-serif;padding:40px;color:#111}
-        h1{color:#1a56db}table{width:100%;border-collapse:collapse;margin:20px 0}
-        th{background:#1f2937;color:white;padding:10px;text-align:left}
-        td{padding:10px;border-bottom:1px solid #eee}
-        .total{font-size:18px;font-weight:bold;color:#1a56db}
-        .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}
-      </style></head><body>
-      <div style="display:flex;justify-content:space-between;align-items:start">
-        <div><h1>INVOICE</h1><p style="color:#666;font-size:20px">#${inv.invoice_number}</p></div>
-        <div style="text-align:right"><strong style="color:#1a56db;font-size:20px">\${companyName}</strong></div>
-      </div>
-      <div class="grid">
-        <div style="background:#f9fafb;padding:16px;border-radius:8px">
-          <p style="color:#888;font-size:11px;text-transform:uppercase;font-weight:bold">Bill To</p>
-          <p><strong>${inv.client_name}</strong></p>
-          ${inv.client_address ? `<p>${inv.client_address}</p>` : ''}
-          ${inv.client_phone ? `<p>${inv.client_phone}</p>` : ''}
-          ${inv.client_email ? `<p>${inv.client_email}</p>` : ''}
-        </div>
-        <div style="background:#f9fafb;padding:16px;border-radius:8px">
-          <p>Date: <strong>${new Date().toLocaleDateString()}</strong></p>
-          ${inv.due_date ? `<p>Due: <strong>${inv.due_date}</strong></p>` : ''}
-          <p>Status: <strong>${inv.status?.toUpperCase()}</strong></p>
-        </div>
-      </div>
-      <table>
-        <thead><tr><th>Service</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
-        <tbody>
-          ${(inv.line_items || []).map(item => `
-            <tr>
-              <td><strong>${item.service_name || item.name}</strong>${item.description ? `<br><small style="color:#666">${item.description}</small>` : ''}</td>
-              <td>${item.quantity}</td>
-              <td>$${(item.unit_price || 0).toFixed(2)}</td>
-              <td>$${(item.line_total || item.total_price || 0).toFixed(2)}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-      <div style="text-align:right;margin-top:20px">
-        <p>Subtotal: $${(inv.subtotal || 0).toFixed(2)}</p>
-        ${inv.tax_rate > 0 ? `<p>Tax (${inv.tax_rate}%): $${(inv.tax_amount || 0).toFixed(2)}</p>` : ''}
-        <p class="total">TOTAL: $${(inv.total || 0).toFixed(2)}</p>
-        ${inv.status === 'paid' ? `<p style="color:green;font-weight:bold">✓ PAID</p>` : ''}
-      </div>
-      ${inv.notes ? `<div style="margin-top:30px;border-top:1px solid #eee;padding-top:20px"><p style="color:#888;font-size:11px;font-weight:bold">NOTES</p><p>${inv.notes}</p></div>` : ''}
-      <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;text-align:center"><p style="color:#999;font-size:10px">Generated with ${appConfig.appName}</p></div>
-      </body></html>`;
-    const w = window.open('', '_blank');
-    w.document.write(content);
-    w.document.close();
-    w.print();
-  };
+  // List-level send/mark-paid/print are handled inside InvoiceDetail.
+  // Kept as stubs for future list-level actions.
 
   const searchFiltered = invoices.filter(i =>
     i.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     String(i.invoice_number).includes(search)
   );
-  
+
+  // Apply status tab filter first (reference repo UX)
+  const statusTabFiltered = searchFiltered.filter(i => matchesStatusTab(i, statusFilter));
+
   // Apply SLA drill-down filter if set
-  let slaFiltered = searchFiltered;
+  let slaFiltered = statusTabFiltered;
   if (slaFilterDimension && slaFilterValue) {
-    slaFiltered = filterInvoicesBySLAMetric(searchFiltered, slaFilterDimension, slaFilterValue);
+    slaFiltered = filterInvoicesBySLAMetric(statusTabFiltered, slaFilterDimension, slaFilterValue);
   }
   
   // Apply capacity drill-down filters if set
@@ -243,8 +195,7 @@ export default function Invoices() {
     setSearch('');
   };
 
-  const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
-  const totalPending = invoices.filter(i => i.status === 'sent').reduce((s, i) => s + (i.total || 0), 0);
+  const totalOutstanding = invoices.filter(i => !['paid','void'].includes(i.status) && computeInvoiceDerivedFields(i).balance_due > 0).reduce((s, i) => s + (computeInvoiceDerivedFields(i).balance_due || 0), 0);
   const recentOwners = getRecentOwners(invoices, 5);
 
   return (
@@ -258,7 +209,7 @@ export default function Invoices() {
       />
       <PageHeader
         title="Invoices"
-        subtitle={`${invoices.length} total`}
+        subtitle={`${invoices.length} total${totalOutstanding > 0 ? ` · $${totalOutstanding.toFixed(2)} outstanding` : ''}`}
         actionLabel="Create Invoice"
         onAction={() => navigate('/invoice-create')}
       />
@@ -420,6 +371,31 @@ export default function Invoices() {
             )}
           </div>
          )}
+
+         {/* ── STATUS FILTER TABS (reference repo style) ── */}
+         <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+           {STATUS_TABS.map(tab => {
+             const count = tab.key === 'all' ? invoices.length : invoices.filter(i => matchesStatusTab(i, tab.key)).length;
+             return (
+               <button
+                 key={tab.key}
+                 onClick={() => { setStatusFilter(tab.key); setActionFilter('all'); }}
+                 className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                   statusFilter === tab.key
+                     ? 'bg-primary text-white shadow-sm'
+                     : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                 }`}
+               >
+                 {tab.label}
+                 {count > 0 && (
+                   <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full ${
+                     statusFilter === tab.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                   }`}>{count}</span>
+                 )}
+               </button>
+             );
+           })}
+         </div>
 
          {/* Action bar */}
          <div className="flex items-center gap-2 flex-wrap">
