@@ -49,7 +49,7 @@ function fmtDate(dateStr) {
 function isApprovalTerminalStatus(status) {
   return ['approved', 'signed', 'converted', 'declined'].includes(status);
 }
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line unused-imports/no-unused-vars
 function canApproveOrDecline(estimate) {
   return ['sent', 'viewed', 'changes_requested', 'visit_completed'].includes(estimate?.status);
 }
