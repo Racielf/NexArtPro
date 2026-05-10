@@ -45,8 +45,17 @@ export default function EstimateEditor() {
   const [pricingInsight, setPricingInsight] = useState(null);
   const [showBrainPanel, setShowBrainPanel] = useState(false);
   const estimateGroupsRef = React.useRef(null);
+  const statusRefreshTimerRef = React.useRef(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
+
+  useEffect(() => {
+    return () => {
+      if (statusRefreshTimerRef.current) {
+        clearTimeout(statusRefreshTimerRef.current);
+      }
+    };
+  }, []);
 
   const [showSendModal, setShowSendModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -106,6 +115,24 @@ export default function EstimateEditor() {
       }
     }
     setLoading(false);
+  };
+
+  const handleEstimateActionStatusChange = (patchOrStatus) => {
+    const patch =
+      typeof patchOrStatus === 'string'
+        ? { status: patchOrStatus }
+        : (patchOrStatus || {});
+
+    setEstimate(prev => prev ? ({ ...prev, ...patch }) : prev);
+
+    if (statusRefreshTimerRef.current) {
+      clearTimeout(statusRefreshTimerRef.current);
+    }
+
+    // Delay reload to avoid Base44 eventual-consistency race.
+    statusRefreshTimerRef.current = setTimeout(() => {
+      loadEstimate();
+    }, 1000);
   };
 
   const handleSave = async (updatedEstimate) => {
@@ -437,10 +464,7 @@ export default function EstimateEditor() {
         {hasClient && (
           <EstimateActionsPanel
             estimate={estimate}
-            onStatusChange={(newStatus) => {
-              setEstimate(e => ({ ...e, status: newStatus }));
-              loadEstimate();
-            }}
+            onStatusChange={handleEstimateActionStatusChange}
             onOpenSendReview={() => setShowSendModal(true)}
           />
         )}
