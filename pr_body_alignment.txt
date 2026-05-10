@@ -1,0 +1,27 @@
+## Root Cause
+The Sales Pipeline and Invoice conversion workflow were becoming misaligned due to stale `sales_stage` values overriding the actual `status` of an estimate, and Invoice creation not properly backfilling the estimate's status and stage.
+
+## Changes Made
+- **src/lib/salesPipeline.js**: Fixed `deriveSalesStage` to prioritize the document's actual `status` (via `STATUS_TO_STAGE` mapping) over a potentially stale `sales_stage`. The `sales_stage` is now only used as a fallback if the `status` is unrecognized.
+- **src/components/estimates/EstimateActionsPanel.jsx**:
+  - `handleApproveConfirm`: Now explicitly sets `sales_stage: 'won'` along with `status: 'approved'`.
+  - `handleDeclineConfirm`: Now explicitly sets `sales_stage: 'lost'` along with `status: 'declined'`.
+  - Side panel copy updated: "Ready to convert to a Work Order" -> "Ready for invoicing" and "Work Order has been created" -> "Invoice / Work Order created".
+- **src/components/estimates/ConvertToInvoiceButton.jsx**:
+  - Upon successful invoice creation, the code now updates the parent Estimate to `status: 'converted'`, `sales_stage: 'converted'`, sets `invoice_id`, and updates timestamps.
+  - If a single existing invoice is found, it performs the same backfill on the Estimate if it wasn't already marked as converted.
+
+## QA
+- **npm run build:** ✅ Exit 0
+- **eslint targeted:** ✅ 0 errors on modified files
+
+## Safety Confirmations
+- NexArtSign touched: **no**
+- PR #14 touched: **no**
+- PR #15 touched: **no**
+- Estimate signature flow touched: **no**
+- Invoice UI redesigned: **no**
+- estimateEngine touched: **no**
+- formulas touched: **no**
+- SQL/migrations touched: **no**
+- Auth/RLS touched: **no**
