@@ -382,13 +382,15 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     try {
       let apptId = estimate.appointment_id;
       if (apptId) {
+        // Critical: appointment update must succeed before marking estimate scheduled
         await base44.entities.Appointment.update(apptId, {
           appointment_date: schedDate,
           start_time: schedTime,
           description: schedNotes || estimate.title || '',
           status: 'scheduled',
-        }).catch(err => console.warn('[EstimateActionsPanel] appointment update failed:', err));
+        });
       } else {
+        // Critical: appointment create must succeed before marking estimate scheduled
         const appt = await base44.entities.Appointment.create({
           customer_display_name: estimate.client_name,
           customer_email: estimate.client_email || '',
@@ -400,8 +402,8 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
           description: schedNotes || estimate.title || '',
           status: 'scheduled',
           estimate_id: estimate.id,
-        }).catch(err => { console.warn('[EstimateActionsPanel] appointment create failed:', err); return null; });
-        if (appt?.id) apptId = appt.id;
+        });
+        apptId = appt.id;
       }
       // Critical: status + appointment_id must succeed
       await updateEstimateCritical(
@@ -420,7 +422,12 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       }
       toast.success(`Appointment ${estimate.appointment_id ? 'updated' : 'scheduled'}`);
       setScheduleOpen(false);
-      onStatusChange('scheduled');
+      onStatusChange?.({
+        status: 'scheduled',
+        appointment_id: apptId,
+        scheduled_date: schedDate,
+        scheduled_time: schedTime,
+      });
     } catch (err) {
       console.error('[EstimateActionsPanel] schedule failed:', err);
       toast.error(err?.message || 'Failed to schedule appointment');
@@ -455,7 +462,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       const interval = setInterval(() => setOmwMiles(m => parseFloat((m + 0.1).toFixed(1))), 3000);
       setOmwInterval(interval);
       toast.success('OMW started — tracking mileage');
-      onStatusChange('on_my_way');
+      onStatusChange?.({ status: 'on_my_way' });
     } catch (err) {
       console.error('[EstimateActionsPanel] OMW failed:', err);
       toast.error(err?.message || 'Failed to start OMW');
@@ -511,7 +518,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       }
       toast.success('Visit marked as completed');
       setFinishOpen(false);
-      onStatusChange('visit_completed');
+      onStatusChange?.({ status: 'visit_completed' });
     } catch (err) {
       console.error('[EstimateActionsPanel] finish visit failed:', err);
       toast.error(err?.message || 'Failed to finish visit');
@@ -550,7 +557,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       setApprovalOpen(false);
       setDeclineReason('');
       toast.success('Estimate approved!');
-      onStatusChange?.('approved');
+      onStatusChange?.({ status: 'approved', sales_stage: 'won', approved_at: now, approved_by: approvedBy });
     } catch (err) {
       console.error('[EstimateActionsPanel] approve failed:', err);
       toast.error(err?.message || 'Failed to approve estimate');
@@ -590,7 +597,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       setApprovalOpen(false);
       setDeclineReason('');
       toast.success('Estimate declined');
-      onStatusChange?.('declined');
+      onStatusChange?.({ status: 'declined', sales_stage: 'lost', declined_at: now, declined_reason: declineReason.trim() });
     } catch (err) {
       console.error('[EstimateActionsPanel] decline failed:', err);
       toast.error(err?.message || 'Failed to decline estimate');
