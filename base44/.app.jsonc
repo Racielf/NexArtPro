@@ -1,6 +1,10 @@
-// Base44 App Configuration
-// This file links your local project to your Base44 app.
-// Do not commit this file to version control.
-{
-  "id": "69cc888bb34befdf803a06b0"
-}
+```javascript
+import { createClient } from '@base44/sdk';
+
+const base44 = createClient({
+  appId: "69cc888bb34befdf803a06b0",
+  headers: {
+    "api_key": "ac9d17611edc42d0b1250abf094bf498"
+  }
+});
+```
