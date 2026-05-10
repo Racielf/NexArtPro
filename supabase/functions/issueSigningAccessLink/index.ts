@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
         ...tokenFields,
         status: activeParticipant.status === 'pending' ? 'active' : activeParticipant.status,
         sent_at: activeParticipant.sent_at || pkg.sent_at || now,
-      }).catch(() => {});
+      });
 
       return json({
         signing_url: buildSigningUrl(rawToken, app_base_url),
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
 
     const rawToken = buildPackageToken(pkg.document_id, pkg.id);
     const tokenFields = await buildIssuedTokenFields(rawToken, now);
-    await entities.SigningPackage.update(pkg.id, tokenFields).catch(() => {});
+    await entities.SigningPackage.update(pkg.id, tokenFields);
 
     return json({
       signing_url: buildSigningUrl(rawToken, app_base_url),
