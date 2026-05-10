@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { ArrowLeft, Plus, Trash2, CheckCircle, Circle, User, FileText, DollarSign } from "lucide-react";
 import { format, addDays } from "date-fns";
@@ -29,6 +29,10 @@ function newLineItem() {
 
 export default function InvoiceCreate() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editInvoiceId = searchParams.get("id");
+  const isEditMode    = searchParams.get("mode") === "edit" && !!editInvoiceId;
+
   const [clients, setClients]       = useState([]);
   const [clientSearch, setClientSearch] = useState("");
   const [showClientDrop, setShowClientDrop] = useState(false);
@@ -40,10 +44,47 @@ export default function InvoiceCreate() {
   const [paymentTerms, setPaymentTerms] = useState("Net 30");
   const [saving, setSaving]         = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${Date.now().toString().slice(-6)}`);
+  const [loadingEdit, setLoadingEdit] = useState(isEditMode);
 
+  // Load clients
   useEffect(() => {
     base44.entities.Client.list("-created_date", 200).catch(() => []).then(d => setClients(d || []));
   }, []);
+
+  // Load existing invoice in edit mode
+  useEffect(() => {
+    if (!isEditMode) return;
+    setLoadingEdit(true);
+    base44.entities.Invoice.filter({ id: editInvoiceId })
+      .then(rows => {
+        const inv = rows?.[0];
+        if (!inv) { setLoadingEdit(false); return; }
+        setInvoiceNumber(inv.invoice_number || invoiceNumber);
+        setNotes(inv.notes || "");
+        setDueDate(inv.due_date || format(addDays(new Date(), 30), "yyyy-MM-dd"));
+        setPaymentTerms(inv.payment_terms || "Net 30");
+        setTaxRate(parseFloat(inv.tax_rate) || 0);
+        // Line items: support line_items[] or groups[].items
+        const items = inv.line_items?.length
+          ? inv.line_items
+          : (inv.groups || []).flatMap(g => g.items || []);
+        setLineItems(items.length ? items : [newLineItem()]);
+        // Pre-fill client display (read-only hint)
+        if (inv.client_name) {
+          setClientSearch(inv.client_name);
+          // Reconstruct a minimal client object so selectedClient is truthy
+          setSelectedClient({
+            id:       inv.client_id || "",
+            full_name: inv.client_name,
+            email:    inv.client_email || "",
+            phone:    inv.client_phone || "",
+            address:  inv.client_address || "",
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingEdit(false));
+  }, [editInvoiceId, isEditMode]);
 
   const totals = useMemo(() => calcDocumentTotals(lineItems, taxRate), [lineItems, taxRate]);
   const balanceDue = Math.max(0, totals.total);
@@ -80,37 +121,46 @@ export default function InvoiceCreate() {
   };
   const readinessScore = Object.values(ready).filter(Boolean).length;
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!ready.client || !ready.items || !ready.total) return;
     setSaving(true);
     try {
       const payload = {
-        invoice_number:   invoiceNumber,
-        status:           "draft",
-        payment_status:   "unpaid",
-        client_id:        selectedClient.id,
-        client_name:      selectedClient.full_name || selectedClient.name || "",
-        client_email:     selectedClient.email || "",
-        client_phone:     selectedClient.phone || "",
-        client_address:   selectedClient.address || selectedClient.billing_address || "",
-        line_items:       lineItems,
-        subtotal:         totals.subtotal,
-        tax_rate:         taxRate,
-        tax_amount:       totals.tax_total,
-        discount_amount:  totals.discount_total,
-        total:            totals.total,
-        amount_paid:      0,
-        balance_due:      balanceDue,
-        payments:         [],
+        invoice_number:  invoiceNumber,
+        client_id:       selectedClient.id,
+        client_name:     selectedClient.full_name || selectedClient.name || "",
+        client_email:    selectedClient.email || "",
+        client_phone:    selectedClient.phone || "",
+        client_address:  selectedClient.address || selectedClient.billing_address || "",
+        line_items:      lineItems,
+        subtotal:        totals.subtotal,
+        tax_rate:        taxRate,
+        tax_amount:      totals.tax_total,
+        discount_amount: totals.discount_total,
+        total:           totals.total,
+        balance_due:     balanceDue,
         notes,
-        due_date:         dueDate,
-        payment_terms:    paymentTerms,
-        created_date:     today,
+        due_date:        dueDate,
+        payment_terms:   paymentTerms,
       };
-      const created = await base44.entities.Invoice.create(payload);
-      navigate(`/invoice-detail?id=${created.id}`);
+      if (isEditMode) {
+        // UPDATE — preserve payments[], status, and other existing fields
+        await base44.entities.Invoice.update(editInvoiceId, payload);
+        navigate(`/invoice-detail?id=${editInvoiceId}`);
+      } else {
+        // CREATE
+        const created = await base44.entities.Invoice.create({
+          ...payload,
+          status:         "draft",
+          payment_status: "unpaid",
+          amount_paid:    0,
+          payments:       [],
+          created_date:   today,
+        });
+        navigate(`/invoice-detail?id=${created.id}`);
+      }
     } catch (err) {
-      alert(err?.message || "Failed to create invoice");
+      alert(err?.message || (isEditMode ? "Failed to update invoice" : "Failed to create invoice"));
     } finally {
       setSaving(false);
     }
@@ -118,21 +168,41 @@ export default function InvoiceCreate() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {loadingEdit && (
+        <div className="flex items-center justify-center h-64">
+          <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+        </div>
+      )}
+      {!loadingEdit && (
+      <>
       {/* Top bar */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => navigate("/invoices")} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500">
+        <button
+          onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}
+          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500"
+        >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <h1 className="font-bold text-slate-900 text-base">New Invoice</h1>
+        <h1 className="font-bold text-slate-900 text-base">
+          {isEditMode ? `Edit Invoice` : "New Invoice"}
+        </h1>
+        {isEditMode && (
+          <span className="text-xs text-slate-400 font-mono">{invoiceNumber}</span>
+        )}
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate("/invoices")}>Cancel</Button>
+          <Button
+            variant="outline" size="sm"
+            onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}
+          >
+            Cancel
+          </Button>
           <Button
             size="sm"
             className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-            onClick={handleCreate}
+            onClick={handleSave}
             disabled={saving || !ready.client || !ready.items || !ready.total}
           >
-            {saving ? "Creating…" : "Create Invoice"}
+            {saving ? (isEditMode ? "Saving…" : "Creating…") : (isEditMode ? "Save Changes" : "Create Invoice")}
           </Button>
         </div>
       </div>
@@ -447,25 +517,27 @@ export default function InvoiceCreate() {
           {/* Buttons */}
           <div className="space-y-2.5 pt-1">
             <button
-              onClick={handleCreate}
+              onClick={handleSave}
               disabled={saving || readinessScore < 3}
               className="w-full h-14 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-base rounded-2xl transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              {saving ? "Creating…" : "Create Invoice"}
+              {saving ? (isEditMode ? "Saving…" : "Creating…") : (isEditMode ? "Save Changes" : "Create Invoice")}
             </button>
             <button
-              onClick={() => navigate("/invoices")}
+              onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}
               className="w-full h-12 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-medium text-sm rounded-2xl transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Invoices
+              {isEditMode ? "Back to Invoice" : "Back to Invoices"}
             </button>
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { ArrowLeft, Send, DollarSign, Printer, ExternalLink, FileCheck, Copy, Ban, CreditCard, Receipt } from "lucide-react";
+import { ArrowLeft, Send, DollarSign, Printer, ExternalLink, FileCheck, Copy, Ban, CreditCard, Receipt, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -66,8 +66,10 @@ export default function InvoiceDetailClean() {
   const isOverdue = invoice ? isInvoiceOverdue({ ...invoice, ...derived }) : false;
   const isPaid    = derived.payment_status === "paid";
   const isVoid    = invoice?.status === "void";
-  const canSend   = !isPaid && !isVoid && invoice?.status === "draft";
+  // canSend: allow re-send for draft/sent/viewed/partial — not paid/void
+  const canSend   = !isPaid && !isVoid && ['draft','sent','viewed','partial'].includes(invoice?.status);
   const canPay    = !isPaid && !isVoid;
+  const canEdit   = !isVoid;
 
   const handleSend = async () => {
     if (!invoice?.client_email) { toast.error("Client email required to send"); return; }
@@ -139,6 +141,15 @@ export default function InvoiceDetailClean() {
 
   // Print full invoice — window.print() uses browser CSS @media print
   const handlePrint = () => window.print();
+
+  // Navigate to edit mode — warns if payments exist
+  const handleEdit = () => {
+    if ((invoice.payments || []).length > 0) {
+      const ok = confirm("This invoice already has payments. Editing totals can affect the balance. Continue?");
+      if (!ok) return;
+    }
+    navigate(`/invoice-create?id=${invoiceId}&mode=edit`);
+  };
 
   // Receipt — opens in-app Dialog (not a popup)
   const handleOpenReceipt = () => {
@@ -241,6 +252,11 @@ export default function InvoiceDetailClean() {
           {canSend && (
             <Button size="sm" variant="outline" onClick={handleSend} disabled={saving} className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5">
               <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send"}
+            </Button>
+          )}
+          {canEdit && (
+            <Button size="sm" variant="outline" onClick={handleEdit} className="gap-1.5">
+              <Pencil className="w-3.5 h-3.5" />Edit
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={handleClientView} className="gap-1.5">
