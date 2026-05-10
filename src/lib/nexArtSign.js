@@ -532,3 +532,140 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
     access_participant_id: issuedAccess.participant_id || '',
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Invoice signing — cloned from createSigningPackageForEstimate
+// document_type: 'invoice' | reuses all internal helpers unchanged
+// ─────────────────────────────────────────────────────────────────────────────
+export async function createSigningPackageForInvoice({
+  invoice,
+  pdfUrl = '',
+  pdfName = '',
+  pdfHash = '',
+  currentUser = null,
+}) {
+  if (!invoice?.id) throw new Error('Invoice is required');
+  if (!invoice.client_email) throw new Error('Invoice must have a client email to send for signature');
+
+  // resolveSigningBranding accepts any doc object — invoice fields are compatible
+  const signingBranding = await resolveSigningBranding(currentUser, invoice);
+
+  // Reuse existing non-expired package if one exists for this invoice
+  const existing = await base44.entities.SigningPackage.filter({
+    document_type: 'invoice',
+    document_id: invoice.id,
+  }).catch(() => []);
+
+  const reusable = (existing || []).find((pkg) => !CLOSED_PACKAGE_STATUSES.has(pkg.status));
+  if (reusable?.id) {
+    const normalizedReusable = await backfillLegacyToken(base44.entities.SigningPackage, reusable);
+    const patch = { token: '', company_id: signingBranding.companyId };
+    if (pdfUrl && !normalizedReusable.source_pdf_url) patch.source_pdf_url = pdfUrl;
+    if (pdfName && !normalizedReusable.source_pdf_name) patch.source_pdf_name = pdfName;
+    if (pdfHash && !normalizedReusable.source_pdf_hash) patch.source_pdf_hash = pdfHash;
+    if (signingBranding.signatureBrandLogoUrl &&
+        normalizedReusable.signature_brand_logo_url !== signingBranding.signatureBrandLogoUrl) {
+      patch.signature_brand_logo_url = signingBranding.signatureBrandLogoUrl;
+    }
+    const nextAuditSummary = {
+      ...(normalizedReusable.audit_summary || {}),
+      company_id: signingBranding.companyId,
+      company_logo_url: signingBranding.companyLogoUrl,
+      company_name: signingBranding.companyName,
+    };
+    if (JSON.stringify(nextAuditSummary) !== JSON.stringify(normalizedReusable.audit_summary || {})) {
+      patch.audit_summary = nextAuditSummary;
+    }
+    if (Object.keys(patch).length > 0) {
+      await base44.entities.SigningPackage.update(normalizedReusable.id, patch).catch(() => {});
+    }
+    const refreshed = Object.keys(patch).length > 0 ? { ...normalizedReusable, ...patch } : normalizedReusable;
+    // syncSigningParticipants expects an estimate-shaped object; invoice fields are compatible
+    const invoiceAsDoc = {
+      id: invoice.id,
+      client_name: invoice.client_name || '',
+      client_email: invoice.client_email || '',
+      client_phone: invoice.client_phone || '',
+      client_id: invoice.client_id || '',
+      title: invoice.title || `Invoice #${invoice.invoice_number || ''}`,
+    };
+    const participants = await syncSigningParticipants({ pkg: refreshed, estimate: invoiceAsDoc, currentUser });
+    const issuedAccess = await issueSigningAccessForPackage({ pkg: refreshed, participants });
+    return {
+      ...refreshed,
+      token: issuedAccess.token,
+      signing_url: issuedAccess.signing_url,
+      access_scope: issuedAccess.scope,
+      access_participant_id: issuedAccess.participant_id || '',
+    };
+  }
+
+  // Create new signing package
+  const now = new Date().toISOString();
+  const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
+
+  const pkg = await base44.entities.SigningPackage.create({
+    package_number: Date.now(),
+    document_type: 'invoice',
+    document_id: invoice.id,
+    document_number: String(invoice.invoice_number || ''),
+    document_title: invoice.title || `Invoice #${invoice.invoice_number || ''}`,
+    status: 'sent',
+    signing_mode: 'internal',
+    provider: 'nexartsign',
+    signer_name: invoice.client_name || '',
+    signer_email: invoice.client_email || '',
+    signer_phone: invoice.client_phone || '',
+    client_id: invoice.client_id || '',
+    client_name: invoice.client_name || '',
+    token: '',
+    token_hash: '',
+    token_last_four: '',
+    token_created_at: now,
+    expires_at: expires,
+    sent_at: now,
+    source_pdf_url: pdfUrl || '',
+    source_pdf_name: pdfName || '',
+    source_pdf_hash: pdfHash || '',
+    hash_algorithm: 'SHA-256',
+    signature_brand_logo_url: signingBranding.signatureBrandLogoUrl,
+    audit_summary: {
+      company_id: signingBranding.companyId,
+      company_logo_url: signingBranding.companyLogoUrl,
+      company_name: signingBranding.companyName,
+    },
+    created_by: currentUser?.email || 'system',
+    company_id: signingBranding.companyId,
+  });
+
+  await base44.entities.SigningEvent.create({
+    signing_package_id: pkg.id,
+    document_type: 'invoice',
+    document_id: invoice.id,
+    event_type: 'sent',
+    actor_name: currentUser?.full_name || currentUser?.email || 'system',
+    actor_email: currentUser?.email || '',
+    created_at: now,
+    metadata: { source_pdf_hash: pdfHash || '', invoice_number: invoice.invoice_number || '' },
+    company_id: signingBranding.companyId,
+  }).catch(() => {});
+
+  const invoiceAsDoc = {
+    id: invoice.id,
+    client_name: invoice.client_name || '',
+    client_email: invoice.client_email || '',
+    client_phone: invoice.client_phone || '',
+    client_id: invoice.client_id || '',
+    title: invoice.title || `Invoice #${invoice.invoice_number || ''}`,
+  };
+  const participants = await syncSigningParticipants({ pkg, estimate: invoiceAsDoc, currentUser });
+  const issuedAccess = await issueSigningAccessForPackage({ pkg, participants });
+
+  return {
+    ...pkg,
+    token: issuedAccess.token,
+    signing_url: issuedAccess.signing_url,
+    access_scope: issuedAccess.scope,
+    access_participant_id: issuedAccess.participant_id || '',
+  };
+}
