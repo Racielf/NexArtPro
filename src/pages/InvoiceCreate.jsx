@@ -6,6 +6,7 @@ import { format, addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { calcDocumentTotals, calcLineTotal, formatCurrency } from "@/utils/invoiceCalc";
+import { computeInvoiceDerivedFields } from "@/lib/invoiceHelpers";
 
 const PAYMENT_TERMS_OPTIONS = ["Due on receipt","Net 7","Net 15","Net 30","Net 45","Net 60"];
 const ITEM_TYPES = ["service","material","labor","fee","custom"];
@@ -50,6 +51,7 @@ export default function InvoiceCreate() {
   const [markSentManualOpen,   setMarkSentManualOpen]   = useState(false);
   const [markSentResendOpen,   setMarkSentResendOpen]   = useState(false);
   const [manualSentForm, setManualSentForm] = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
+  const [existingPayments, setExistingPayments] = useState([]);
 
   // Load clients
   useEffect(() => {
@@ -86,13 +88,20 @@ export default function InvoiceCreate() {
             address:  inv.client_address || "",
           });
         }
+        // Store existing payments so we can recalculate derived fields on save
+        setExistingPayments(Array.isArray(inv.payments) ? inv.payments : []);
       })
       .catch(() => {})
       .finally(() => setLoadingEdit(false));
   }, [editInvoiceId, isEditMode]);
 
   const totals = useMemo(() => calcDocumentTotals(lineItems, taxRate), [lineItems, taxRate]);
-  const balanceDue = Math.max(0, totals.total);
+  // In edit mode: recalculate derived fields using existing payments[] (never mutate payments)
+  const derivedFromPayments = useMemo(() => {
+    if (!isEditMode || existingPayments.length === 0) return null;
+    return computeInvoiceDerivedFields({ total: totals.total, payments: existingPayments });
+  }, [isEditMode, existingPayments, totals.total]);
+  const balanceDue = derivedFromPayments ? derivedFromPayments.balance_due : Math.max(0, totals.total);
 
   const filteredClients = clients.filter(c => {
     const q = clientSearch.toLowerCase();
@@ -173,6 +182,8 @@ export default function InvoiceCreate() {
 
   // ---- helpers ----
   function buildInvoicePayload() {
+    // Recalculate derived fields from existing payments (never modify payments[] itself)
+    const derived = derivedFromPayments || { amount_paid: 0, balance_due: Math.max(0, totals.total), payment_status: "unpaid" };
     return {
       invoice_number:  invoiceNumber,
       client_id:       selectedClient.id,
@@ -186,7 +197,10 @@ export default function InvoiceCreate() {
       tax_amount:      totals.tax_total,
       discount_amount: totals.discount_total,
       total:           totals.total,
-      balance_due:     balanceDue,
+      // Recalculated from payments[] — NOT from UI input
+      amount_paid:     derived.amount_paid,
+      balance_due:     derived.balance_due,
+      payment_status:  derived.payment_status,
       notes,
       due_date:        dueDate,
       payment_terms:   paymentTerms,
