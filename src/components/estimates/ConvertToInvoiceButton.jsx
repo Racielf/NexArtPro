@@ -59,6 +59,14 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
 
       if (existing.length === 1) {
         toast.info(`Invoice #${existing[0].invoice_number} already created`);
+        if (estimate.status !== 'converted') {
+          await base44.entities.Estimate.update(estimate.id, {
+            status: 'converted',
+            sales_stage: 'converted',
+            invoice_id: existing[0].id,
+            last_activity_at: new Date().toISOString()
+          }).catch(err => console.warn('Failed to update estimate to converted:', err));
+        }
         navigate(`/invoice-detail?id=${existing[0].id}`);
         setLoading(false);
         return;
@@ -101,6 +109,16 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
         payment_terms: estimate.payment_terms || '',
         company_id: estimate.company_id || 'rc-art',
       });
+
+      const now = new Date().toISOString();
+      await base44.entities.Estimate.update(estimate.id, {
+        status: 'converted',
+        sales_stage: 'converted',
+        invoice_id: invoice.id,
+        converted_at: now,
+        converted_to_invoice_at: now,
+        last_activity_at: now
+      }).catch(err => console.warn('Failed to update estimate to converted:', err));
 
       toast.success(`Invoice #${invoiceNum} created successfully`);
       onConverted?.();

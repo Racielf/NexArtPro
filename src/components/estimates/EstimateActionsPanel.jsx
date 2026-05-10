@@ -45,9 +45,9 @@ function getNextAction(estimate, omwActive) {
   if (s === 'sent' || s === 'viewed' || s === 'changes_requested') {
     return { text: 'Follow up or manually approve', icon: ThumbsUp, color: 'purple' };
   }
-  if (s === 'approved' || s === 'signed') return { text: 'Ready to convert to a Work Order', icon: Zap, color: 'green' };
+  if (s === 'approved' || s === 'signed') return { text: 'Ready for invoicing', icon: Zap, color: 'green' };
   if (s === 'declined') return { text: 'Consider revising and re-sending the estimate', icon: AlertCircle, color: 'red' };
-  if (s === 'converted') return { text: 'Work Order has been created', icon: CheckCircle, color: 'green' };
+  if (s === 'converted') return { text: 'Invoice / Work Order created', icon: CheckCircle, color: 'green' };
   return null;
 }
 
@@ -483,6 +483,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       const now = new Date().toISOString();
       await base44.entities.Estimate.update(estimate.id, {
         status: 'approved',
+        sales_stage: 'won',
         approved_at: now,
         approved_by: currentUser?.email || currentUser?.full_name || 'Admin',
         approval_note: declineReason.trim() || null,
@@ -518,6 +519,7 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     try {
       await base44.entities.Estimate.update(estimate.id, {
         status: 'declined',
+        sales_stage: 'lost',
         declined_at: new Date().toISOString(),
         declined_reason: declineReason.trim(),
         approved_at: null,
