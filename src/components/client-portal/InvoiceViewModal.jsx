@@ -190,20 +190,21 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
  * Uses useParams() — registered in App.jsx as /document/:token
  */
 export default function PublicInvoiceDocument() {
-  const { token } = useParams();
+  const { token: invoiceId } = useParams(); // token param = invoice UUID
   const [invoice,  setInvoice]  = useState(null);
   const [loading,  setLoading]  = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!token) { setNotFound(true); setLoading(false); return; }
+    if (!invoiceId) { setNotFound(true); setLoading(false); return; }
     (async () => {
-      const invs = await base44.entities.Invoice.list("-created_date", 500).catch(() => []);
-      const inv  = (invs || []).find(i => i.public_token === token);
+      const rows = await base44.entities.Invoice.filter({ id: invoiceId }).catch(() => []);
+      const inv  = rows?.[0];
       if (inv) {
         setInvoice(inv);
+        // Mark as viewed if first time seeing
         if (inv.status === "sent") {
-          await base44.entities.Invoice.update(inv.id, { status: "viewed", viewed_at: new Date().toISOString() }).catch(() => {});
+          await base44.entities.Invoice.update(inv.id, { status: "viewed" }).catch(() => {});
         }
         setLoading(false);
         return;
@@ -211,7 +212,8 @@ export default function PublicInvoiceDocument() {
       setNotFound(true);
       setLoading(false);
     })();
-  }, [token]);
+  }, [invoiceId]);
+
 
   if (loading) return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center">

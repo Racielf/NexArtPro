@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from "@/lib/invoiceHelpers";
 import { redirectToStripeCheckout } from "@/lib/stripeCheckout";
-import { formatCurrency, generatePublicToken } from "@/utils/invoiceCalc";
+import { formatCurrency } from "@/utils/invoiceCalc";
 import { toast } from "sonner";
 import { APP_CONFIG } from "@/lib/appConfig";
 
@@ -111,20 +111,9 @@ export default function InvoiceDetailClean() {
 
   const handlePrint = () => window.print();
 
-  const handleClientView = async () => {
-    let token = invoice?.public_token;
-    if (!token) {
-      try {
-        token = generatePublicToken();
-        await base44.entities.Invoice.update(invoiceId, { public_token: token });
-        setInvoice(prev => ({ ...prev, public_token: token }));
-      } catch (err) {
-        toast.error("Could not generate client link: " + (err?.message || "unknown error"));
-        return;
-      }
-    }
+  const handleClientView = () => {
     const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-    window.open(`${window.location.origin}${base}/document/${token}`, "_blank");
+    window.open(`${window.location.origin}${base}/document/${invoiceId}`, "_blank");
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" /></div>;
@@ -363,20 +352,19 @@ export default function InvoiceDetailClean() {
             </div>
           )}
 
-          {/* Copy client link */}
-          {invoice.public_token && (
-            <button
-              onClick={async () => {
-                const url = `${window.location.origin}/document/${invoice.public_token}`;
-                await navigator.clipboard.writeText(url);
-                toast.success("Client link copied");
-              }}
-              className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:bg-slate-50 transition-colors"
-            >
-              <Copy className="w-4 h-4 text-slate-400" />
-              <span className="text-sm text-slate-600">Copy Client Link</span>
-            </button>
-          )}
+          {/* Copy client link — always available, uses invoice ID */}
+          <button
+            onClick={async () => {
+              const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+              const url = `${window.location.origin}${base}/document/${invoiceId}`;
+              await navigator.clipboard.writeText(url);
+              toast.success("Client link copied");
+            }}
+            className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:bg-slate-50 transition-colors"
+          >
+            <Copy className="w-4 h-4 text-slate-400" />
+            <span className="text-sm text-slate-600">Copy Client Link</span>
+          </button>
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { ArrowLeft, Plus, Trash2, CheckCircle, Circle, User, FileText, DollarSign } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { calcDocumentTotals, calcLineTotal, formatCurrency, generatePublicToken } from "@/utils/invoiceCalc";
+import { calcDocumentTotals, calcLineTotal, formatCurrency } from "@/utils/invoiceCalc";
 
 const PAYMENT_TERMS_OPTIONS = ["Due on receipt","Net 7","Net 15","Net 30","Net 45","Net 60"];
 const ITEM_TYPES = ["service","material","labor","fee","custom"];
@@ -105,7 +105,6 @@ export default function InvoiceCreate() {
         notes,
         due_date:         dueDate,
         payment_terms:    paymentTerms,
-        public_token:     generatePublicToken(),
         created_date:     today,
       };
       const created = await base44.entities.Invoice.create(payload);
@@ -197,7 +196,12 @@ export default function InvoiceCreate() {
                 value={clientSearch}
                 onChange={e => { setClientSearch(e.target.value); setShowClientDrop(true); setSelectedClient(null); }}
                 onFocus={() => setShowClientDrop(true)}
+                onBlur={() => setTimeout(() => setShowClientDrop(false), 150)}
                 placeholder="Search client by name or email…"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+                name="nexart-client-search"
                 className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
               {showClientDrop && filteredClients.length > 0 && (
