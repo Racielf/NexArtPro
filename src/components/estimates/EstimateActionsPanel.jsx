@@ -22,6 +22,18 @@ import { normalizeUserRole } from '@/lib/utils';
 import { archiveWithSnapshot } from '@/lib/softDelete';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * updateEstimateCritical — Guarantees the status-bearing fields always persist.
+ * Optional metadata (timestamps, notes, nullable clears) are applied best-effort.
+ */
+async function updateEstimateCritical(estimateId, criticalPatch, optionalPatch = {}) {
+  await base44.entities.Estimate.update(estimateId, criticalPatch);
+  if (Object.keys(optionalPatch).length > 0) {
+    await base44.entities.Estimate.update(estimateId, optionalPatch)
+      .catch(err => console.warn('[EstimateActionsPanel] optional workflow update failed:', err));
+  }
+}
 function fmt(isoStr) {
   if (!isoStr) return null;
   return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -367,112 +379,143 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   // ── SCHEDULE ─────────────────────────────────────────────────────────────
   const handleSchedule = async () => {
     if (!schedDate) { toast.error('Select a date'); return; }
-    let apptId = estimate.appointment_id;
-    if (apptId) {
-      await base44.entities.Appointment.update(apptId, {
-        appointment_date: schedDate,
-        start_time: schedTime,
-        description: schedNotes || estimate.title || '',
-        status: 'scheduled',
-      });
-    } else {
-      const appt = await base44.entities.Appointment.create({
-        customer_display_name: estimate.client_name,
-        customer_email: estimate.client_email || '',
-        customer_phone: estimate.client_phone || '',
-        service_address: estimate.client_address || '',
-        customer_id: estimate.client_id || '',
-        appointment_date: schedDate,
-        start_time: schedTime,
-        description: schedNotes || estimate.title || '',
-        status: 'scheduled',
-        estimate_id: estimate.id,
-      });
-      apptId = appt.id;
-    }
-    await base44.entities.Estimate.update(estimate.id, {
-      status: 'scheduled',
-      appointment_id: apptId,
-      scheduled_date: schedDate,
-      scheduled_time: schedTime,
-    });
-    if (estimate.client_email) {
-      try {
-        await base44.integrations.Core.SendEmail({
+    try {
+      let apptId = estimate.appointment_id;
+      if (apptId) {
+        await base44.entities.Appointment.update(apptId, {
+          appointment_date: schedDate,
+          start_time: schedTime,
+          description: schedNotes || estimate.title || '',
+          status: 'scheduled',
+        }).catch(err => console.warn('[EstimateActionsPanel] appointment update failed:', err));
+      } else {
+        const appt = await base44.entities.Appointment.create({
+          customer_display_name: estimate.client_name,
+          customer_email: estimate.client_email || '',
+          customer_phone: estimate.client_phone || '',
+          service_address: estimate.client_address || '',
+          customer_id: estimate.client_id || '',
+          appointment_date: schedDate,
+          start_time: schedTime,
+          description: schedNotes || estimate.title || '',
+          status: 'scheduled',
+          estimate_id: estimate.id,
+        }).catch(err => { console.warn('[EstimateActionsPanel] appointment create failed:', err); return null; });
+        if (appt?.id) apptId = appt.id;
+      }
+      // Critical: status + appointment_id must succeed
+      await updateEstimateCritical(
+        estimate.id,
+        { status: 'scheduled', appointment_id: apptId },
+        { scheduled_date: schedDate, scheduled_time: schedTime }
+      );
+      // Best-effort email
+      if (estimate.client_email) {
+        base44.integrations.Core.SendEmail({
           to: estimate.client_email,
           subject: 'Appointment Scheduled',
           body: `Hi ${estimate.client_name},\n\nYour appointment has been scheduled for ${schedDate} at ${schedTime}.\n\nThank you!`,
-        });
-        await logComm({ event_type: 'appointment_created', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: apptId, estimate_id: estimate.id, subject: 'Appointment Scheduled', preview: `${schedDate} at ${schedTime}` });
-      } catch {
-        await logCommFailed({ event_type: 'appointment_created', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: apptId, estimate_id: estimate.id, subject: 'Appointment Scheduled' });
+        }).then(() => logComm({ event_type: 'appointment_created', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: apptId, estimate_id: estimate.id, subject: 'Appointment Scheduled', preview: `${schedDate} at ${schedTime}` }))
+          .catch(() => logCommFailed({ event_type: 'appointment_created', client_name: estimate.client_name, client_email: estimate.client_email, appointment_id: apptId, estimate_id: estimate.id, subject: 'Appointment Scheduled' }).catch(() => {}));
       }
+      toast.success(`Appointment ${estimate.appointment_id ? 'updated' : 'scheduled'}`);
+      setScheduleOpen(false);
+      onStatusChange('scheduled');
+    } catch (err) {
+      console.error('[EstimateActionsPanel] schedule failed:', err);
+      toast.error(err?.message || 'Failed to schedule appointment');
     }
-    toast.success(`Appointment ${estimate.appointment_id ? 'updated' : 'scheduled'}`);
-    setScheduleOpen(false);
-    onStatusChange('scheduled');
   };
 
   // ── OMW ──────────────────────────────────────────────────────────────────
   const handleOMW = async () => {
     const now = new Date().toISOString();
-    await base44.entities.Estimate.update(estimate.id, { status: 'on_my_way', omw_start_time: now });
-    await base44.entities.TimeEntry.create({
-      team_member: estimate.assigned_to || 'Technician',
-      date: now.split('T')[0],
-      client_name: estimate.client_name,
-      project: estimate.title || `Estimate #${estimate.estimate_number}`,
-      service: 'On My Way',
-      start_time: now,
-      status: 'running',
-      duration_seconds: 0,
-      miles_traveled: 0,
-    });
-    setOmwActive(true);
-    setOmwMiles(0);
-    setOmwStarted(Date.now());
-    const interval = setInterval(() => setOmwMiles(m => parseFloat((m + 0.1).toFixed(1))), 3000);
-    setOmwInterval(interval);
-    toast.success('OMW started — tracking mileage');
-    onStatusChange('on_my_way');
+    try {
+      // Critical: status must succeed
+      await updateEstimateCritical(
+        estimate.id,
+        { status: 'on_my_way' },
+        { omw_start_time: now }
+      );
+      // Best-effort time entry
+      base44.entities.TimeEntry.create({
+        team_member: estimate.assigned_to || 'Technician',
+        date: now.split('T')[0],
+        client_name: estimate.client_name,
+        project: estimate.title || `Estimate #${estimate.estimate_number}`,
+        service: 'On My Way',
+        start_time: now,
+        status: 'running',
+        duration_seconds: 0,
+        miles_traveled: 0,
+      }).catch(err => console.warn('[EstimateActionsPanel] TimeEntry create failed:', err));
+      setOmwActive(true);
+      setOmwMiles(0);
+      setOmwStarted(Date.now());
+      const interval = setInterval(() => setOmwMiles(m => parseFloat((m + 0.1).toFixed(1))), 3000);
+      setOmwInterval(interval);
+      toast.success('OMW started — tracking mileage');
+      onStatusChange('on_my_way');
+    } catch (err) {
+      console.error('[EstimateActionsPanel] OMW failed:', err);
+      toast.error(err?.message || 'Failed to start OMW');
+    }
   };
 
   const handleStopOMW = async () => {
     if (omwInterval) clearInterval(omwInterval);
     setOmwInterval(null);
     setOmwActive(false);
-    const running = await base44.entities.TimeEntry.filter({ status: 'running' });
-    const entry = running.find(e => e.client_name === estimate.client_name && e.project?.includes(String(estimate.estimate_number)));
-    if (entry) {
-      await base44.entities.TimeEntry.update(entry.id, {
-        end_time: new Date().toISOString(),
-        status: 'completed',
-        duration_seconds: Math.floor((Date.now() - new Date(entry.start_time).getTime()) / 1000),
-        miles_traveled: omwMiles,
-      });
-    }
-    await base44.entities.Estimate.update(estimate.id, { miles_traveled: omwMiles });
+    // Best-effort time entry close + mileage — do not block UI
+    base44.entities.TimeEntry.filter({ status: 'running' })
+      .then(running => {
+        const entry = running.find(e => e.client_name === estimate.client_name && e.project?.includes(String(estimate.estimate_number)));
+        if (entry) {
+          return base44.entities.TimeEntry.update(entry.id, {
+            end_time: new Date().toISOString(),
+            status: 'completed',
+            duration_seconds: Math.floor((Date.now() - new Date(entry.start_time).getTime()) / 1000),
+            miles_traveled: omwMiles,
+          });
+        }
+      })
+      .catch(err => console.warn('[EstimateActionsPanel] TimeEntry stop failed:', err));
+    base44.entities.Estimate.update(estimate.id, { miles_traveled: omwMiles })
+      .catch(err => console.warn('[EstimateActionsPanel] mileage update failed:', err));
     toast.success(`OMW stopped — ${omwMiles} mi tracked`);
   };
 
   // ── FINISH ───────────────────────────────────────────────────────────────
   const handleFinish = async () => {
     const now = new Date().toISOString();
-    await base44.entities.Estimate.update(estimate.id, {
-      status: 'visit_completed',
-      completed_time: now,
-      notes: finishNotes ? (estimate.notes ? estimate.notes + '\n\n' + finishNotes : finishNotes) : estimate.notes,
-    });
-    if (estimate.appointment_id) {
-      await base44.entities.Appointment.update(estimate.appointment_id, {
-        status: 'visit_completed',
-        completed_at: now,
-        notes: finishNotes,
-      });
+    try {
+      const mergedNotes = finishNotes
+        ? (estimate.notes ? `${estimate.notes}\n\n${finishNotes}` : finishNotes)
+        : undefined;
+      // Critical: status must succeed
+      await updateEstimateCritical(
+        estimate.id,
+        { status: 'visit_completed' },
+        {
+          completed_time: now,
+          ...(mergedNotes !== undefined ? { notes: mergedNotes } : {}),
+        }
+      );
+      // Best-effort appointment update
+      if (estimate.appointment_id) {
+        base44.entities.Appointment.update(estimate.appointment_id, {
+          status: 'visit_completed',
+          completed_at: now,
+          notes: finishNotes || '',
+        }).catch(err => console.warn('[EstimateActionsPanel] appointment finish update failed:', err));
+      }
+      toast.success('Visit marked as completed');
+      setFinishOpen(false);
+      onStatusChange('visit_completed');
+    } catch (err) {
+      console.error('[EstimateActionsPanel] finish visit failed:', err);
+      toast.error(err?.message || 'Failed to finish visit');
     }
-    toast.success('Visit marked as completed');
-    setFinishOpen(false);
-    onStatusChange('visit_completed');
   };
 
   // ── APPROVAL ─────────────────────────────────────────────────────────────
@@ -481,16 +524,20 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     setApprovalSaving(true);
     try {
       const now = new Date().toISOString();
-      await base44.entities.Estimate.update(estimate.id, {
-        status: 'approved',
-        sales_stage: 'won',
-        approved_at: now,
-        approved_by: currentUser?.email || currentUser?.full_name || 'Admin',
-        approval_note: declineReason.trim() || null,
-        declined_at: null,
-        declined_reason: null,
-        signed_at: null,
-      });
+      const approvedBy = currentUser?.email || currentUser?.full_name || 'Admin';
+      // Critical: status + sales_stage must succeed
+      await updateEstimateCritical(
+        estimate.id,
+        { status: 'approved', sales_stage: 'won' },
+        {
+          approved_at: now,
+          approved_by: approvedBy,
+          approval_note: declineReason.trim() || null,
+          declined_at: null,
+          declined_reason: null,
+          signed_at: null,
+        }
+      );
       logComm({
         event_type: 'estimate_approved',
         client_id: estimate.client_id || '',
@@ -517,16 +564,20 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     if (!estimate?.id) { toast.error('Estimate is missing. Cannot decline.'); return; }
     setApprovalSaving(true);
     try {
-      await base44.entities.Estimate.update(estimate.id, {
-        status: 'declined',
-        sales_stage: 'lost',
-        declined_at: new Date().toISOString(),
-        declined_reason: declineReason.trim(),
-        approved_at: null,
-        approved_by: null,
-        approval_note: null,
-        signed_at: null,
-      });
+      const now = new Date().toISOString();
+      // Critical: status + sales_stage must succeed
+      await updateEstimateCritical(
+        estimate.id,
+        { status: 'declined', sales_stage: 'lost' },
+        {
+          declined_at: now,
+          declined_reason: declineReason.trim(),
+          approved_at: null,
+          approved_by: null,
+          approval_note: null,
+          signed_at: null,
+        }
+      );
       logComm({
         event_type: 'estimate_declined',
         client_id: estimate.client_id || '',
