@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { ArrowLeft, Send, DollarSign, Printer, ExternalLink, FileCheck, Copy, Ban, CreditCard, Receipt, Pencil } from "lucide-react";
+import { ArrowLeft, Send, DollarSign, Printer, ExternalLink, FileCheck, Copy, Ban, CreditCard, Receipt, Pencil, MailCheck, CheckCheck, Info } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -52,6 +52,10 @@ export default function InvoiceDetailClean() {
   const [payForm,  setPayForm]  = useState({ amount: "", method: "cash", reference: "", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
   const [stripeLoading, setStripeLoading] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [markSentOpen, setMarkSentOpen] = useState(false);
+  const [resendOpen, setResendOpen] = useState(false);
+  const [manualSentForm, setManualSentForm] = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
+  const [estimateNum, setEstimateNum] = useState(null);
 
   const load = async () => {
     if (!invoiceId) { setLoading(false); return; }
@@ -62,17 +66,50 @@ export default function InvoiceDetailClean() {
 
   useEffect(() => { load(); }, [invoiceId]);
 
+  // Best-effort: load estimate number if invoice came from an estimate
+  useEffect(() => {
+    if (!invoice?.estimate_id) return;
+    base44.entities.Estimate.filter({ id: invoice.estimate_id })
+      .then(rows => { if (rows?.[0]?.estimate_number) setEstimateNum(rows[0].estimate_number); })
+      .catch(() => {});
+  }, [invoice?.estimate_id]);
+
   const derived = useMemo(() => invoice ? computeInvoiceDerivedFields(invoice) : { amount_paid: 0, balance_due: 0, payment_status: "unpaid" }, [invoice]);
   const isOverdue = invoice ? isInvoiceOverdue({ ...invoice, ...derived }) : false;
   const isPaid    = derived.payment_status === "paid";
   const isVoid    = invoice?.status === "void";
-  // canSend: allow re-send for draft/sent/viewed/partial — not paid/void
-  const canSend   = !isPaid && !isVoid && ['draft','sent','viewed','partial'].includes(invoice?.status);
-  const isResend  = ['sent','viewed','partial'].includes(invoice?.status);
   const canPay    = !isPaid && !isVoid;
   const canEdit   = !isVoid;
+  const canMarkSent = !isVoid && ['draft','sent','viewed','partial'].includes(invoice?.status);
 
-  const handleSend = async () => {
+  // Mark Sent Manual — no email sent
+  const handleMarkSentManual = async () => {
+    setSaving(true);
+    try {
+      const sentDate = manualSentForm.date ? new Date(manualSentForm.date).toISOString() : new Date().toISOString();
+      const patch = {
+        status: "sent",
+        sent_at: sentDate,
+        sent_source: "manual",
+        sent_manually: true,
+        last_contacted_at: sentDate,
+      };
+      if (manualSentForm.note.trim()) patch.manual_sent_note = manualSentForm.note.trim();
+      if (manualSentForm.method) patch.sent_method = manualSentForm.method;
+      await base44.entities.Invoice.update(invoiceId, patch);
+      setInvoice(prev => ({ ...prev, ...patch }));
+      setMarkSentOpen(false);
+      setManualSentForm({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
+      toast.success("Invoice marked as sent");
+    } catch (err) {
+      toast.error(err?.message || "Failed to mark as sent");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Mark Sent via Resend — sends email first, then marks sent
+  const handleResend = async () => {
     if (!invoice?.client_email) { toast.error("Client email required to send"); return; }
     setSaving(true);
     try {
@@ -82,9 +119,10 @@ export default function InvoiceDetailClean() {
         subject: `Invoice ${invoice.invoice_number} — Payment Due`,
         body: `Hi ${invoice.client_name},\n\nPlease find your invoice ${invoice.invoice_number}.\n\nTotal Due: ${formatCurrency(derived.balance_due)}${invoice.due_date ? `\nDue: ${format(new Date(invoice.due_date), "MMM d, yyyy")}` : ""}\n\nThank you!\n${co.name || ""}`,
       });
-      await base44.entities.Invoice.update(invoiceId, { status: "sent", sent_at: now });
-      setInvoice(prev => ({ ...prev, status: "sent", sent_at: now }));
-      toast.success("Invoice sent");
+      await base44.entities.Invoice.update(invoiceId, { status: "sent", sent_at: now, sent_source: "resend", last_contacted_at: now });
+      setInvoice(prev => ({ ...prev, status: "sent", sent_at: now, sent_source: "resend" }));
+      setResendOpen(false);
+      toast.success("Invoice sent via email");
     } catch (err) {
       toast.error(err?.message || "Failed to send invoice");
     } finally {
@@ -245,33 +283,32 @@ export default function InvoiceDetailClean() {
         <button onClick={() => navigate("/invoices")} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 flex-shrink-0">
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-bold text-slate-900 text-sm truncate">{invoice.invoice_number}</span>
-          <StatusBadge status={isOverdue ? "overdue" : invoice.status} />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-900 text-sm truncate">{invoice.invoice_number}</span>
+            <StatusBadge status={isOverdue ? "overdue" : invoice.status} />
+          </div>
+          {invoice.created_date && (
+            <div className="text-[11px] text-slate-400">Issued {format(new Date(invoice.created_date), "MMM d, yyyy")}</div>
+          )}
         </div>
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
-          {canSend && (
-            <Button size="sm" variant="outline" onClick={handleSend} disabled={saving} className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5">
-              <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : isResend ? "Resend" : "Send"}
-            </Button>
-          )}
           {canEdit && (
             <Button size="sm" variant="outline" onClick={handleEdit} className="gap-1.5">
               <Pencil className="w-3.5 h-3.5" />Edit
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={handleClientView} className="gap-1.5">
-            <ExternalLink className="w-3.5 h-3.5" />Client View
-          </Button>
-          {canPay && (
-            <Button size="sm" onClick={() => setPayOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5">
-              <DollarSign className="w-3.5 h-3.5" />Add Payment
-            </Button>
-          )}
-          {!isVoid && payments.length > 0 && (
-            <Button size="sm" variant="outline" onClick={handleOpenReceipt} className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-              <Receipt className="w-3.5 h-3.5" />Payment Receipt
-            </Button>
+          {canMarkSent && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setMarkSentOpen(true)} className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50">
+                <MailCheck className="w-3.5 h-3.5" />Mark Sent
+              </Button>
+              {invoice.client_email && (
+                <Button size="sm" variant="outline" onClick={() => setResendOpen(true)} disabled={saving} className="gap-1.5 border-cyan-300 text-cyan-700 hover:bg-cyan-50">
+                  <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send via Email"}
+                </Button>
+              )}
+            </>
           )}
           <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">
             <Printer className="w-3.5 h-3.5" />Print
@@ -460,7 +497,10 @@ export default function InvoiceDetailClean() {
           {/* Estimate link */}
           {invoice.estimate_id && (
             <div className="bg-cyan-50 border border-cyan-200 rounded-2xl px-4 py-3 text-sm text-cyan-700 flex items-center justify-between">
-              <span>Created from Estimate</span>
+              <div className="flex items-center gap-2">
+                <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{estimateNum ? `Created from Estimate #${estimateNum}` : "Created from Estimate"}</span>
+              </div>
               <button
                 onClick={() => navigate(`/estimate-detail?id=${invoice.estimate_id}`)}
                 className="text-xs font-medium underline hover:no-underline"
@@ -483,6 +523,22 @@ export default function InvoiceDetailClean() {
             <Copy className="w-4 h-4 text-slate-400" />
             <span className="text-sm text-slate-600">Copy Client Link</span>
           </button>
+          {/* Action row: Add Payment / Receipt / Client View */}
+          <div className="flex flex-wrap gap-2">
+            {canPay && (
+              <Button onClick={() => setPayOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-2" size="sm">
+                <DollarSign className="w-3.5 h-3.5" />Add Payment
+              </Button>
+            )}
+            {!isVoid && payments.length > 0 && (
+              <Button variant="outline" onClick={handleOpenReceipt} className="flex-1 gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50" size="sm">
+                <Receipt className="w-3.5 h-3.5" />Payment Receipt
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleClientView} className="flex-1 gap-1.5" size="sm">
+              <ExternalLink className="w-3.5 h-3.5" />Client View
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -647,6 +703,75 @@ export default function InvoiceDetailClean() {
                 <Printer className="w-4 h-4" />Print Receipt
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark Sent Manual Dialog */}
+      <Dialog open={markSentOpen} onOpenChange={setMarkSentOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MailCheck className="w-4 h-4 text-blue-600" />
+              Mark as Sent (Manual)
+            </DialogTitle>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Use this when the invoice was sent outside NexArtPro. No email will be sent.
+            </p>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sent Date</label>
+              <input type="date" value={manualSentForm.date} onChange={e => setManualSentForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Method / Channel</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {["email","text","printed","hand delivered","other"].map(m => (
+                  <button key={m} type="button" onClick={() => setManualSentForm(f => ({ ...f, method: m }))}
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-medium text-center capitalize transition-all ${manualSentForm.method === m ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}
+                  >{m}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Note (optional)</label>
+              <input value={manualSentForm.note} onChange={e => setManualSentForm(f => ({ ...f, note: e.target.value }))} placeholder="e.g. Handed to client at job site" className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none" />
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end pt-1">
+            <Button variant="outline" onClick={() => setMarkSentOpen(false)}>Cancel</Button>
+            <Button onClick={handleMarkSentManual} disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700 gap-1.5">
+              <CheckCheck className="w-3.5 h-3.5" />{saving ? "Saving…" : "Confirm Sent"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send via Email / Resend Dialog */}
+      <Dialog open={resendOpen} onOpenChange={setResendOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="w-4 h-4 text-cyan-600" />
+              Send Invoice via Email
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="bg-slate-50 rounded-xl p-3 space-y-1.5 text-sm">
+              <div className="flex justify-between"><span className="text-slate-400">To</span><span className="font-medium text-slate-700">{invoice?.client_email || "—"}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Subject</span><span className="font-medium text-slate-700 truncate ml-3">Invoice {invoice?.invoice_number} — Payment Due</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Amount</span><span className="font-bold text-slate-800">{formatCurrency(derived.balance_due)}</span></div>
+            </div>
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+              <p className="text-xs text-amber-700">The invoice will be emailed to the client. Status will be marked as <strong>sent</strong> only if email succeeds.</p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end pt-1">
+            <Button variant="outline" onClick={() => setResendOpen(false)}>Cancel</Button>
+            <Button onClick={handleResend} disabled={saving} className="bg-cyan-600 text-white hover:bg-cyan-700 gap-1.5">
+              <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send Now"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

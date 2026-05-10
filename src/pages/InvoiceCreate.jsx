@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { ArrowLeft, Plus, Trash2, CheckCircle, Circle, User, FileText, DollarSign } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CheckCircle, Circle, User, FileText, DollarSign, MailCheck, Send } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { calcDocumentTotals, calcLineTotal, formatCurrency } from "@/utils/invoiceCalc";
@@ -161,6 +161,74 @@ export default function InvoiceCreate() {
       }
     } catch (err) {
       alert(err?.message || (isEditMode ? "Failed to update invoice" : "Failed to create invoice"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save & Mark Sent Manually (edit mode only)
+  const handleSaveAndMarkSent = async () => {
+    if (!isEditMode || !ready.client || !ready.items || !ready.total) return;
+    setSaving(true);
+    try {
+      const payload = {
+        invoice_number: invoiceNumber,
+        client_id: selectedClient.id,
+        client_name: selectedClient.full_name || selectedClient.name || "",
+        client_email: selectedClient.email || "",
+        client_phone: selectedClient.phone || "",
+        client_address: selectedClient.address || selectedClient.billing_address || "",
+        line_items: lineItems,
+        subtotal: totals.subtotal, tax_rate: taxRate, tax_amount: totals.tax_total,
+        discount_amount: totals.discount_total, total: totals.total, balance_due: balanceDue,
+        notes, due_date: dueDate, payment_terms: paymentTerms,
+        // Mark sent manually
+        status: "sent", sent_at: new Date().toISOString(),
+        sent_source: "manual", sent_manually: true, last_contacted_at: new Date().toISOString(),
+      };
+      await base44.entities.Invoice.update(editInvoiceId, payload);
+      navigate(`/invoice-detail?id=${editInvoiceId}`);
+    } catch (err) {
+      alert(err?.message || "Failed to save and mark sent");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save & Send via Email (edit mode only)
+  const handleSaveAndResend = async () => {
+    if (!isEditMode || !ready.client || !ready.items || !ready.total) return;
+    const email = selectedClient?.email;
+    if (!email) { alert("Client email is required to send via email."); return; }
+    setSaving(true);
+    try {
+      // 1. Save changes
+      const payload = {
+        invoice_number: invoiceNumber,
+        client_id: selectedClient.id,
+        client_name: selectedClient.full_name || selectedClient.name || "",
+        client_email: email, client_phone: selectedClient.phone || "",
+        client_address: selectedClient.address || selectedClient.billing_address || "",
+        line_items: lineItems,
+        subtotal: totals.subtotal, tax_rate: taxRate, tax_amount: totals.tax_total,
+        discount_amount: totals.discount_total, total: totals.total, balance_due: balanceDue,
+        notes, due_date: dueDate, payment_terms: paymentTerms,
+      };
+      await base44.entities.Invoice.update(editInvoiceId, payload);
+      // 2. Send email
+      await base44.integrations.Core.SendEmail({
+        to: email,
+        subject: `Invoice ${invoiceNumber} — Payment Due`,
+        body: `Hi ${selectedClient.full_name || selectedClient.name || ""},\n\nPlease find your invoice ${invoiceNumber}.\n\nTotal Due: $${totals.total.toFixed(2)}${dueDate ? `\nDue: ${format(new Date(dueDate), "MMM d, yyyy")}` : ""}\n\nThank you!`,
+      });
+      // 3. Mark sent only after email success
+      const now = new Date().toISOString();
+      await base44.entities.Invoice.update(editInvoiceId, {
+        status: "sent", sent_at: now, sent_source: "resend", last_contacted_at: now,
+      });
+      navigate(`/invoice-detail?id=${editInvoiceId}`);
+    } catch (err) {
+      alert(err?.message || "Failed to save and send");
     } finally {
       setSaving(false);
     }
@@ -526,6 +594,26 @@ export default function InvoiceCreate() {
               </svg>
               {saving ? (isEditMode ? "Saving…" : "Creating…") : (isEditMode ? "Save Changes" : "Create Invoice")}
             </button>
+            {isEditMode && (
+              <>
+                <button
+                  onClick={handleSaveAndMarkSent}
+                  disabled={saving || readinessScore < 3}
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-blue-300 font-medium text-sm rounded-2xl transition-colors border border-blue-500/20"
+                >
+                  <MailCheck className="w-4 h-4" />
+                  Save & Mark Sent Manually
+                </button>
+                <button
+                  onClick={handleSaveAndResend}
+                  disabled={saving || readinessScore < 3 || !selectedClient?.email}
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-cyan-300 font-medium text-sm rounded-2xl transition-colors border border-cyan-500/20"
+                >
+                  <Send className="w-4 h-4" />
+                  Save & Send via Email
+                </button>
+              </>
+            )}
             <button
               onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}
               className="w-full h-12 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-medium text-sm rounded-2xl transition-colors"
