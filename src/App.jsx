@@ -38,6 +38,7 @@ import Customers from './pages/Customers';
 import Assignments from './pages/Assignments';
 import Workers from './pages/Workers';
 import InvoiceDetail from './pages/InvoiceDetailClean';
+import PublicInvoiceDocument from './components/client-portal/InvoiceViewModal';
 import CustomerProfile from './pages/CustomerProfile';
 import Payments from './pages/Payments';
 import IncomeExpenses from './pages/IncomeExpenses';
@@ -64,6 +65,7 @@ const PUBLIC_ROUTE_PREFIXES = [
   '/proposal-view',
   '/client-portal',
   '/verify-document',
+  '/document',
   '/',
   '/services',
   '/gallery',
@@ -186,6 +188,7 @@ const AppRoutes = () => (
     <Route path="/proposal-view" element={<PublicProposalView />} />
     <Route path="/client-portal" element={<ClientPortal />} />
     <Route path="/verify-document" element={<VerifyDocument />} />
+    <Route path="/document/:token" element={<PublicInvoiceDocument />} />
     <Route path="*" element={<PageNotFound />} />
   </Routes>
 );

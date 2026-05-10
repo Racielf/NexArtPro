@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { FileText, CreditCard, CheckCircle, Clock, AlertCircle, Mail, Phone, Printer } from "lucide-react";
 import { format } from "date-fns";
@@ -26,6 +27,11 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
   const [stripeLoading, setStripeLoading] = useState(false);
 
   if (!invoiceProp) return null;
+
+  // Normalize line items: support both line_items[] and groups[].items (Estimate → Invoice)
+  const lineItems = invoiceProp.line_items?.length
+    ? invoiceProp.line_items
+    : (invoiceProp.groups || []).flatMap(g => g.items || []);
 
   const derived  = computeInvoiceDerivedFields(invoiceProp);
   const isPaid   = derived.payment_status === "paid";
@@ -100,7 +106,7 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
         </div>
 
         {/* Line items */}
-        {(invoiceProp.line_items || []).length > 0 && (
+        {lineItems.length > 0 && (
           <div className="border border-slate-100 rounded-xl overflow-hidden">
             <table className="w-full">
               <thead>
@@ -112,7 +118,7 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {(invoiceProp.line_items || []).map((li, idx) => (
+                {lineItems.map((li, idx) => (
                   <tr key={li.id || idx}>
                     <td className="px-4 py-3">
                       <div className="text-sm font-medium text-slate-800">{li.name}</div>
@@ -181,15 +187,13 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
 
 /**
  * Standalone public route component: /document/:token
- * Looks up invoice by public_token, marks as viewed, renders InvoiceViewModal.
+ * Uses useParams() — registered in App.jsx as /document/:token
  */
-export default function PublicInvoiceDocument({ token: tokenProp }) {
+export default function PublicInvoiceDocument() {
+  const { token } = useParams();
   const [invoice,  setInvoice]  = useState(null);
   const [loading,  setLoading]  = useState(true);
   const [notFound, setNotFound] = useState(false);
-
-  // Support both prop-based and URL-based token
-  const token = tokenProp || (typeof window !== "undefined" ? window.location.pathname.split("/document/")[1] : "");
 
   useEffect(() => {
     if (!token) { setNotFound(true); setLoading(false); return; }
@@ -231,3 +235,4 @@ export default function PublicInvoiceDocument({ token: tokenProp }) {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { Trash2, Plus, BookOpen, GripVertical } from "lucide-react";
+import { Trash2, Plus, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, calcLineTotal } from "@/utils/invoiceCalc";
 

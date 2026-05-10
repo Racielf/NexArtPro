@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from "@/lib/invoiceHelpers";
 import { redirectToStripeCheckout } from "@/lib/stripeCheckout";
-import { formatCurrency } from "@/utils/invoiceCalc";
+import { formatCurrency, generatePublicToken } from "@/utils/invoiceCalc";
 import { toast } from "sonner";
 import { APP_CONFIG } from "@/lib/appConfig";
 
@@ -111,18 +111,29 @@ export default function InvoiceDetailClean() {
 
   const handlePrint = () => window.print();
 
-  const handleClientView = () => {
-    if (invoice?.public_token) {
-      window.open(`/document/${invoice.public_token}`, "_blank");
-    } else {
-      toast.info("No client link — send invoice first");
+  const handleClientView = async () => {
+    let token = invoice?.public_token;
+    if (!token) {
+      try {
+        token = generatePublicToken();
+        await base44.entities.Invoice.update(invoiceId, { public_token: token });
+        setInvoice(prev => ({ ...prev, public_token: token }));
+      } catch (err) {
+        toast.error("Could not generate client link: " + (err?.message || "unknown error"));
+        return;
+      }
     }
+    const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+    window.open(`${window.location.origin}${base}/document/${token}`, "_blank");
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" /></div>;
   if (!invoice) return <div className="p-8 text-center text-slate-400">Invoice not found.</div>;
 
-  const lineItems = invoice.line_items || [];
+  // Normalize: support line_items[] and groups[].items (Estimate → Invoice)
+  const lineItems = invoice.line_items?.length
+    ? invoice.line_items
+    : (invoice.groups || []).flatMap(g => g.items || []);
   const payments  = invoice.payments  || [];
 
   return (

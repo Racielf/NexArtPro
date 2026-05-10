@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { ArrowLeft, Plus, Trash2, CheckCircle, Circle, User, FileText, DollarSign } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { calcDocumentTotals, calcLineTotal, formatCurrency } from "@/utils/invoiceCalc";
+import { calcDocumentTotals, calcLineTotal, formatCurrency, generatePublicToken } from "@/utils/invoiceCalc";
 
 const PAYMENT_TERMS_OPTIONS = ["Due on receipt","Net 7","Net 15","Net 30","Net 45","Net 60"];
 const ITEM_TYPES = ["service","material","labor","fee","custom"];
@@ -105,6 +105,7 @@ export default function InvoiceCreate() {
         notes,
         due_date:         dueDate,
         payment_terms:    paymentTerms,
+        public_token:     generatePublicToken(),
         created_date:     today,
       };
       const created = await base44.entities.Invoice.create(payload);
