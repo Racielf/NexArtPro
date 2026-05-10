@@ -20,6 +20,7 @@ import { logZeroProfitConfirmation } from '@/lib/pricingAuditService';
 import { validateDocTypeFields } from '@/lib/documentTypeConfig';
 import { normalizeUserRole } from '@/lib/utils';
 import { archiveWithSnapshot } from '@/lib/softDelete';
+import { evaluateSendGuard } from '@/lib/estimateSendGuard';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function fmt(isoStr) {
@@ -537,27 +538,29 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
     }
   };
 
-  // ── Send handler (with pricing gate) ─────────────────────────────────────
+  // ── Send handler (with pricing gate — via shared estimateSendGuard) ──────
   const handleSendClick = () => {
-    if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
-    const dtv = validateDocTypeFields(estimate);
-    if (!dtv.valid) { dtv.errors.forEach(e => toast.error(e)); return; }
-    const pv = validateEstimatePricing(estimate);
-    if (pv.lossItems.length > 0 || pv.zeroProfitItems.length > 0) {
-      const gate = canSendDocument(role, pv);
-      if (!gate.allowed) { toast.error(gate.blockedReason); return; }
-      if (gate.requiresOverride) {
-        setLossValidation(pv);
-        setOverrideAction('send');
-        setOverrideModalOpen(true);
-        return;
-      }
-      if (gate.requiresConfirm) {
-        setLossValidation(pv);
-        setLossModalOpen(true);
-        return;
-      }
+    // Single guard call — same logic used by EstimateEditor header button.
+    const guard = evaluateSendGuard(estimate, currentUser);
+
+    if (!guard.allowed) {
+      toast.error(guard.blockedReason);
+      return;
     }
+
+    if (guard.requiresOverride) {
+      setLossValidation(guard.pricingValidation);
+      setOverrideAction('send');
+      setOverrideModalOpen(true);
+      return;
+    }
+
+    if (guard.requiresConfirm) {
+      setLossValidation(guard.pricingValidation);
+      setLossModalOpen(true);
+      return;
+    }
+
     onOpenSendReview?.();
   };
 

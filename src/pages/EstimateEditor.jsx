@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
+import { evaluateSendGuard } from '@/lib/estimateSendGuard';
+import { isEstimateLocked, getEstimateLockReason } from '@/lib/estimateLockGuard';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { X, Eye, Trash2, Send, ChevronRight, ChevronDown, ClipboardList, FileText, ShieldCheck, BrainCircuit } from 'lucide-react';
@@ -242,6 +244,8 @@ export default function EstimateEditor() {
   );
 
   const hasClient = !!estimate.client_name;
+  const isLocked = isEstimateLocked(estimate);
+  const lockReason = getEstimateLockReason(estimate);
 
   const STATUS_BADGE = {
     draft:             { label: 'Draft', cls: 'bg-slate-100 text-slate-600' },
@@ -373,11 +377,29 @@ export default function EstimateEditor() {
             <div className="flex items-center">
               <Button
                 size="sm"
+                disabled={isLocked}
+                title={isLocked ? lockReason : undefined}
                 onClick={() => {
-                  if (!estimate.client_email) { toast.error('Client email is required to send'); return; }
+                  // ── Hotfix: unified send gate — same path as EstimateActionsPanel ──
+                  const guard = evaluateSendGuard(estimate, currentUser);
+                  if (!guard.allowed) {
+                    toast.error(guard.blockedReason);
+                    return;
+                  }
+                  // requiresOverride / requiresConfirm: delegate to EstimateActionsPanel's
+                  // modal stack (user must click the sidebar "Review & Send" which has those
+                  // modals mounted). Show an informational toast directing them.
+                  if (guard.requiresOverride || guard.requiresConfirm) {
+                    toast.warning(
+                      guard.requiresOverride
+                        ? 'Pricing override required — use the sidebar Send button to proceed.'
+                        : 'Pricing confirmation required — use the sidebar Send button to proceed.',
+                    );
+                    return;
+                  }
                   setShowSendModal(true);
                 }}
-                className="rounded-r-none gap-1.5 h-8 px-3 text-xs font-semibold bg-slate-900 hover:bg-black text-white border-slate-900"
+                className="rounded-r-none gap-1.5 h-8 px-3 text-xs font-semibold bg-slate-900 hover:bg-black text-white border-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-3.5 h-3.5 flex-shrink-0" />
                 <span>Review &amp; Send</span>
@@ -447,6 +469,19 @@ export default function EstimateEditor() {
 
         {/* Canvas: main estimate editor — gets remaining space */}
         <div className="flex-1 min-w-0 overflow-auto bg-white rounded-xl border border-slate-100 px-6 py-5 xl:px-8 xl:py-6" style={{ boxShadow: '0 4px 16px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
+          {/* ── Hotfix: lock banner for signed/converted/approved ── */}
+          {isLocked && (
+            <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-900">This estimate is locked</p>
+                <p className="text-xs text-amber-700 mt-0.5">{lockReason}</p>
+              </div>
+            </div>
+          )}
+
           {!hasClient && (
             <div className="mb-5 bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
               <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><ClipboardList className="w-4 h-4 text-blue-500" /></div>
@@ -476,7 +511,8 @@ export default function EstimateEditor() {
             </button>
           </div>
 
-          <EstimateGroups ref={estimateGroupsRef} estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
+          {/* isPreview || isLocked ensures locked estimates are fully read-only */}
+          <EstimateGroups ref={estimateGroupsRef} estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview || isLocked} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
 
           {!isPreview && estimate?.id && <div className="mt-3"><PricingAuditHistory documentId={estimate.id} /></div>}
         </div>
