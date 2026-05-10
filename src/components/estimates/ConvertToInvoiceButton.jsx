@@ -76,7 +76,7 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
       }
 
       if (existing.length === 1) {
-        toast.info(`Invoice #${existing[0].invoice_number} already created`);
+        toast.info(`Invoice #${existing[0].invoice_number} already created. Opening final document.`);
         if (estimate.status !== 'converted') {
           await markEstimateConverted(estimate.id, existing[0].id);
         }
@@ -125,7 +125,7 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
 
       await markEstimateConverted(estimate.id, invoice.id);
 
-      toast.success(`Invoice #${invoiceNum} created successfully`);
+      toast.success(`Invoice #${invoiceNum} created. Review the final document before sending.`);
       onConverted?.();
       navigate(`/invoice-detail?id=${invoice.id}`);
     } finally {
