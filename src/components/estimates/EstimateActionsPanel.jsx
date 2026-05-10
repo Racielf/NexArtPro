@@ -293,7 +293,7 @@ function ActionButtonsBlock({
       label: 'Approve / Decline',
       icon: ThumbsUp,
       onClick: onApproveDecline,
-      hidden: isApprovalTerminalStatus(estimate?.status),
+      hidden: !canApproveOrDecline(estimate),
     },
   ];
 
@@ -549,8 +549,9 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       // Critical: status + sales_stage must succeed
       await updateEstimateCritical(
         estimate.id,
-        { status: 'approved', sales_stage: 'won' },
+        { status: 'approved' },
         {
+          sales_stage: 'won',
           approved_at: now,
           approved_by: approvedBy,
           approval_note: declineReason.trim() || null,
@@ -594,8 +595,9 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       // Critical: status + sales_stage must succeed
       await updateEstimateCritical(
         estimate.id,
-        { status: 'declined', sales_stage: 'lost' },
+        { status: 'declined' },
         {
+          sales_stage: 'lost',
           declined_at: now,
           declined_reason: declineReason.trim(),
           approved_at: null,
