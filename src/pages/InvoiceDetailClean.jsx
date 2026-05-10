@@ -68,6 +68,7 @@ export default function InvoiceDetailClean() {
   const isVoid    = invoice?.status === "void";
   // canSend: allow re-send for draft/sent/viewed/partial — not paid/void
   const canSend   = !isPaid && !isVoid && ['draft','sent','viewed','partial'].includes(invoice?.status);
+  const isResend  = ['sent','viewed','partial'].includes(invoice?.status);
   const canPay    = !isPaid && !isVoid;
   const canEdit   = !isVoid;
 
@@ -251,7 +252,7 @@ export default function InvoiceDetailClean() {
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           {canSend && (
             <Button size="sm" variant="outline" onClick={handleSend} disabled={saving} className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5">
-              <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send"}
+              <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : isResend ? "Resend" : "Send"}
             </Button>
           )}
           {canEdit && (
