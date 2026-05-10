@@ -1,4 +1,3 @@
-```javascript
 import { createClient } from '@base44/sdk';
 
 const base44 = createClient({
@@ -7,4 +6,3 @@ const base44 = createClient({
     "api_key": "ac9d17611edc42d0b1250abf094bf498"
   }
 });
-```
