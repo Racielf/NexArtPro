@@ -184,17 +184,31 @@ async function issueSigningAccessForPackage({ pkg }) {
   if (activeParticipant?.id) {
     const token = buildParticipantToken(pkg.id, activeParticipant.id);
     const fields = await buildTokenFields(token, now);
+    // token_hash persistence is critical — do NOT silence failures
     await base44.entities.SigningParticipant.update(activeParticipant.id, {
       ...fields,
       status: activeParticipant.status === 'pending' ? 'active' : activeParticipant.status,
       sent_at: activeParticipant.sent_at || pkg.sent_at || now,
-    }).catch(() => {});
+    });
+    // Post-write verification: confirm token_hash was saved
+    const verifyRows = await base44.entities.SigningParticipant.filter({ id: activeParticipant.id }).catch(() => []);
+    const verified = verifyRows?.[0];
+    if (!verified?.token_hash) {
+      throw new Error(`Token hash persistence failed for participant ${activeParticipant.id} — signing URL will not be returned`);
+    }
     return { token, signing_url: buildSigningUrl(token), scope: 'participant', participant_id: activeParticipant.id };
   }
 
   const token = buildPackageToken(pkg.document_id || pkg.id);
   const fields = await buildTokenFields(token, now);
-  await base44.entities.SigningPackage.update(pkg.id, fields).catch(() => {});
+  // token_hash persistence is critical — do NOT silence failures
+  await base44.entities.SigningPackage.update(pkg.id, fields);
+  // Post-write verification
+  const verifyPkgRows = await base44.entities.SigningPackage.filter({ id: pkg.id }).catch(() => []);
+  const verifiedPkg = verifyPkgRows?.[0];
+  if (!verifiedPkg?.token_hash) {
+    throw new Error(`Token hash persistence failed for package ${pkg.id} — signing URL will not be returned`);
+  }
   return { token, signing_url: buildSigningUrl(token), scope: 'package', participant_id: '' };
 }
 
@@ -425,6 +439,7 @@ async function resolveSigningBranding(currentUser = null, estimate = null) {
 
 export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', pdfName = '', pdfHash = '', currentUser = null }) {
   if (!estimate?.id) throw new Error('Estimate is required');
+  if (!pdfUrl) throw new Error('PDF URL is required to create a signing package. Generate and upload the PDF first.');
 
   const signingBranding = await resolveSigningBranding(currentUser, estimate);
 
@@ -440,9 +455,10 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
       token: '',
       company_id: signingBranding.companyId,
     };
-    if (pdfUrl && !normalizedReusable.source_pdf_url) patch.source_pdf_url = pdfUrl;
-    if (pdfName && !normalizedReusable.source_pdf_name) patch.source_pdf_name = pdfName;
-    if (pdfHash && !normalizedReusable.source_pdf_hash) patch.source_pdf_hash = pdfHash;
+    // Always update source_pdf_url if we have a new/better URL
+    if (pdfUrl && pdfUrl !== normalizedReusable.source_pdf_url) patch.source_pdf_url = pdfUrl;
+    if (pdfName && pdfName !== normalizedReusable.source_pdf_name) patch.source_pdf_name = pdfName;
+    if (pdfHash && pdfHash !== normalizedReusable.source_pdf_hash) patch.source_pdf_hash = pdfHash;
     if (signingBranding.signatureBrandLogoUrl && normalizedReusable.signature_brand_logo_url !== signingBranding.signatureBrandLogoUrl) {
       patch.signature_brand_logo_url = signingBranding.signatureBrandLogoUrl;
     }
@@ -456,7 +472,13 @@ export async function createSigningPackageForEstimate({ estimate, pdfUrl = '', p
       patch.audit_summary = nextAuditSummary;
     }
     if (Object.keys(patch).length > 0) {
-      await base44.entities.SigningPackage.update(normalizedReusable.id, patch).catch(() => {});
+      await base44.entities.SigningPackage.update(normalizedReusable.id, patch);
+      // Verify source_pdf_url persisted
+      const recheckRows = await base44.entities.SigningPackage.filter({ id: normalizedReusable.id }).catch(() => []);
+      const recheck = recheckRows?.[0];
+      if (!recheck?.source_pdf_url) {
+        throw new Error(`Signing package patch failed — source_pdf_url not persisted for package ${normalizedReusable.id}`);
+      }
     }
 
     const refreshedReusable = Object.keys(patch).length > 0 ? { ...normalizedReusable, ...patch } : normalizedReusable;

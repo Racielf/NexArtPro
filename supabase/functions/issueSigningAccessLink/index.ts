@@ -63,11 +63,24 @@ Deno.serve(async (req) => {
     if (activeParticipant?.id) {
       const rawToken = buildParticipantToken(pkg.id, activeParticipant.id);
       const tokenFields = await buildIssuedTokenFields(rawToken, now);
-      await entities.SigningParticipant.update(activeParticipant.id, {
-        ...tokenFields,
-        status: activeParticipant.status === 'pending' ? 'active' : activeParticipant.status,
-        sent_at: activeParticipant.sent_at || pkg.sent_at || now,
-      }).catch(() => {});
+
+      // token persistence is critical — do NOT silence with .catch
+      try {
+        await entities.SigningParticipant.update(activeParticipant.id, {
+          ...tokenFields,
+          status: activeParticipant.status === 'pending' ? 'active' : activeParticipant.status,
+          sent_at: activeParticipant.sent_at || pkg.sent_at || now,
+        });
+      } catch (updateErr: any) {
+        return json({ error: `Token persistence failed for participant: ${updateErr?.message}`, code: 'token_persistence_failed' }, 500);
+      }
+
+      // Post-write verification: confirm token_hash was actually saved
+      const verifyRows = await entities.SigningParticipant.filter({ id: activeParticipant.id }).catch(() => []);
+      const verified = verifyRows?.[0];
+      if (!verified?.token_hash) {
+        return json({ error: 'Token hash not persisted after update — signing URL will not be returned', code: 'token_persistence_failed' }, 500);
+      }
 
       return json({
         signing_url: buildSigningUrl(rawToken, app_base_url),
@@ -79,7 +92,20 @@ Deno.serve(async (req) => {
 
     const rawToken = buildPackageToken(pkg.document_id, pkg.id);
     const tokenFields = await buildIssuedTokenFields(rawToken, now);
-    await entities.SigningPackage.update(pkg.id, tokenFields).catch(() => {});
+
+    // token persistence is critical — do NOT silence with .catch
+    try {
+      await entities.SigningPackage.update(pkg.id, tokenFields);
+    } catch (updateErr: any) {
+      return json({ error: `Token persistence failed for package: ${updateErr?.message}`, code: 'token_persistence_failed' }, 500);
+    }
+
+    // Post-write verification
+    const verifyPkgRows = await entities.SigningPackage.filter({ id: pkg.id }).catch(() => []);
+    const verifiedPkg = verifyPkgRows?.[0];
+    if (!verifiedPkg?.token_hash) {
+      return json({ error: 'Package token hash not persisted — signing URL will not be returned', code: 'token_persistence_failed' }, 500);
+    }
 
     return json({
       signing_url: buildSigningUrl(rawToken, app_base_url),

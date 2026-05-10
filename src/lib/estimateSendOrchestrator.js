@@ -69,74 +69,78 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
 
   const documentConfig = { template: currentTemplate, options: currentOptions, included_attachment_ids: Array.isArray(includedAttachmentIds) ? includedAttachmentIds : [] };
   const ts = new Date().toISOString();
-  let generatedPdf = null;
   let pdfUrl = null;
   let pdfFilename = null;
   let pdfHash = '';
 
+  // ── A. PDF generation — MANDATORY ──────────────────────────────────────────
+  let generatedPdf;
   try {
     generatedPdf = await generateEstimatePdfBase64(estimate, currentOptions, currentTemplate);
-    pdfFilename = generatedPdf?.filename || null;
-    if (generatedPdf?.base64) pdfHash = await sha256HexFromBase64(generatedPdf.base64);
   } catch (err) {
-    console.warn('[executeSend] PDF generation/hash failed:', err?.message);
+    throw new Error(`PDF generation failed: ${err?.message || 'unknown error'}`);
+  }
+  if (!generatedPdf?.base64) {
+    throw new Error('PDF generation failed — base64 output is empty. Cannot send estimate.');
+  }
+  pdfFilename = generatedPdf.filename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`;
+  try {
+    pdfHash = await sha256HexFromBase64(generatedPdf.base64);
+  } catch (err) {
+    throw new Error(`PDF hash computation failed: ${err?.message}`);
   }
 
-  if (generatedPdf?.base64) {
-    try {
-      // Upload to Supabase Storage instead of legacy Base44 integrations
-      const blob = base64ToPdfBlob(generatedPdf.base64);
-      const filename = `estimates/${estimate.id || Date.now()}/${pdfFilename || 'estimate.pdf'}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filename, blob, { contentType: 'application/pdf', upsert: true });
-
-      if (uploadError) {
-        console.warn('[executeSend] Supabase Storage upload failed:', uploadError?.message);
-      } else {
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(uploadData.path);
-        pdfUrl = urlData?.publicUrl || null;
-      }
-    } catch (err) {
-      console.warn('[executeSend] PDF upload failed:', err?.message);
-    }
+  // ── B. PDF upload to Supabase Storage — MANDATORY ──────────────────────────
+  try {
+    const blob = base64ToPdfBlob(generatedPdf.base64);
+    const filename = `estimates/${estimate.id || Date.now()}/${pdfFilename}`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(filename, blob, { contentType: 'application/pdf', upsert: true });
+    if (uploadError) throw new Error(uploadError.message);
+    const { data: urlData } = supabase.storage.from('documents').getPublicUrl(uploadData.path);
+    pdfUrl = urlData?.publicUrl || null;
+    if (!pdfUrl) throw new Error('Storage returned no public URL after upload');
+  } catch (err) {
+    throw new Error(`PDF upload to storage failed: ${err?.message}. Cannot create signing package without a valid PDF URL.`);
   }
 
   let currentUser = null;
   try { currentUser = await base44.auth.me().catch(() => null); } catch {}
   currentUser = resolveAuthorizedSender(currentUser);
 
+  // ── C. Create signing package — requires pdfUrl ──────────────────────────
   let signingPackage = null;
   let finalLink = '';
-  try {
-    signingPackage = await createSigningPackageForEstimate({
-      estimate,
-      pdfUrl: pdfUrl || '',
-      pdfName: pdfFilename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`,
-      pdfHash,
-      currentUser,
-    });
+  // pdfUrl is now guaranteed to be non-null by section B above
+  signingPackage = await createSigningPackageForEstimate({
+    estimate,
+    pdfUrl,
+    pdfName: pdfFilename,
+    pdfHash,
+    currentUser,
+  });
 
-    finalLink = signingPackage?.signing_url || '';
-  } catch (err) {
-    console.warn('[executeSend] NexArtSign signing link generation failed:', err?.message);
-    // Don't throw — allow send to continue without signing link
-    // The link can be generated later via NexArtSign admin panel
+  finalLink = signingPackage?.signing_url || '';
+
+  // ── D. Validate signing link before sending email ─────────────────────────
+  if (!finalLink || !finalLink.includes('/sign-document?token=')) {
+    throw new Error(
+      `Signing link is invalid or missing. Got: "${finalLink}". ` +
+      'Email will NOT be sent without a valid /sign-document?token= link.'
+    );
   }
 
-  if (!generatedPdf?.base64) {
-    throw new Error('PDF generation failed. Cannot send estimate.');
-  }
-
+  // ── E. Build email attachments ────────────────────────────────────────────
   const emailAttachments = [];
-  emailAttachments.push({ filename: generatedPdf.filename || `Estimate-${estimate?.estimate_number || 'document'}.pdf`, content: generatedPdf.base64, contentType: 'application/pdf' });
+  emailAttachments.push({
+    filename: pdfFilename,
+    content: generatedPdf.base64,
+    contentType: 'application/pdf',
+  });
   emailAttachments.push(...getSelectedClientAttachments(estimate, includedAttachmentIds));
 
-  // Warn if signing link is missing but don't block the send
-  if (!finalLink || !finalLink.includes('/sign-document?token=')) {
-    console.warn('[executeSend] NexArtSign link missing — email will be sent without signing link');
-  }
-
+  // ── F. Send email ─────────────────────────────────────────────────────────
   let emailRes;
   try {
     emailRes = await base44.functions.invoke('sendEstimateEmail', {
@@ -155,38 +159,59 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
   }
   if (emailRes.data?.error) throw new Error(emailRes.data.error);
 
+  // ── G. Persist estimate state — critical fields NOT silenced ──────────────
   let snapshotId = null;
   try {
     await markEstimateSent(estimate.id, { documentConfig, estimate, currentUser });
-    await base44.entities.Estimate.update(estimate.id, {
-      signing_package_id: signingPackage?.id || estimate.signing_package_id || '',
-      signature_status: signingPackage?.id ? 'sent' : (estimate.signature_status || ''),
-      document_hash: pdfHash || estimate.document_hash || '',
-      document_hash_algorithm: pdfHash ? 'SHA-256' : estimate.document_hash_algorithm,
-      company_signature_name: currentUser.full_name || estimate.company_signature_name || '',
-      company_signature_email: currentUser.email || estimate.company_signature_email || '',
-      company_signature_role: currentUser.role || estimate.company_signature_role || '',
-      company_signed_at: estimate.company_signed_at || ts,
-    }).catch(() => {});
-    // Fetch latest snapshot using standard entity (RLS handles access)
+  } catch (err) {
+    console.warn('[executeSend] markEstimateSent failed (non-critical):', err?.message);
+  }
+
+  // Critical: signing_package_id and signature_status MUST persist
+  await base44.entities.Estimate.update(estimate.id, {
+    signing_package_id: signingPackage.id,
+    signature_status: 'sent',
+    document_hash: pdfHash,
+    document_hash_algorithm: 'SHA-256',
+    company_signature_name: currentUser.full_name || estimate.company_signature_name || '',
+    company_signature_email: currentUser.email || estimate.company_signature_email || '',
+    company_signature_role: currentUser.role || estimate.company_signature_role || '',
+    company_signed_at: estimate.company_signed_at || ts,
+  });
+  // Note: no .catch() — if this fails the caller must know
+
+  try {
     const snapshots = await base44.entities.EstimateSnapshot.filter({ estimate_id: estimate.id }, '-created_date', 1).catch(() => []);
     if (snapshots?.length) snapshotId = snapshots[0].id;
-  } catch (err) {
-    console.warn('[executeSend] post-send persistence failed:', err?.message);
-  }
+  } catch {}
 
   if (pdfUrl && snapshotId) {
     try {
-      await base44.entities.EstimateSnapshot.update(snapshotId, { pdf_file_url: pdfUrl, pdf_file_name: pdfFilename || `estimate-${estimate.estimate_number}.pdf`, pdf_file_hash: pdfHash || '', hash_algorithm: pdfHash ? 'SHA-256' : '' });
+      await base44.entities.EstimateSnapshot.update(snapshotId, {
+        pdf_file_url: pdfUrl,
+        pdf_file_name: pdfFilename,
+        pdf_file_hash: pdfHash,
+        hash_algorithm: 'SHA-256',
+      });
     } catch {}
   }
 
+  // ── H. Audit / comm log (best-effort) ────────────────────────────────────
   try { if (currentUser) await logSend({ estimate_id: estimate.id, estimate_number: estimate.estimate_number, user: currentUser, client_email: recipientEmail }).catch(() => {}); } catch {}
   try { await logComm({ event_type: 'estimate_sent', client_id: estimate.client_id || '', client_name: estimate.client_name, client_email: recipientEmail, estimate_id: estimate.id, appointment_id: estimate.appointment_id || '', subject, preview: `Total: $${(estimate.total || 0).toFixed(2)}` }); } catch {}
   try { await recordSuccessfulTransmission({ estimateId: estimate.id, snapshotId, recipientEmail, messageId: emailRes.data?.id, subject, clientName: estimate.client_name, estimateNumber: estimate.estimate_number, documentType: estimate.document_type }); } catch {}
 
-  return { success: true, messageId: emailRes.data?.id, secureLink: finalLink, pdfUrl, pdfHash, signingPackageId: signingPackage?.id || null, nexArtSignLinked: Boolean(signingPackage?.id) };
+  return {
+    success: true,
+    messageId: emailRes.data?.id,
+    secureLink: finalLink,
+    pdfUrl,
+    pdfHash,
+    signingPackageId: signingPackage.id,
+    nexArtSignLinked: true,
+  };
 }
+
 
 export async function logPricingOverride(estimate, lossValidation, recipientEmail) {
   const lossItems = Array.isArray(lossValidation?.lossItems) ? lossValidation.lossItems : [];
