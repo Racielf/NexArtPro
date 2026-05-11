@@ -47,7 +47,6 @@ export default function InvoiceCreate() {
   const [saving, setSaving]         = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${Date.now().toString().slice(-6)}`);
   const [loadingEdit, setLoadingEdit] = useState(isEditMode);
-  const [markSentSelectorOpen, setMarkSentSelectorOpen] = useState(false);
   const [markSentManualOpen,   setMarkSentManualOpen]   = useState(false);
   const [markSentResendOpen,   setMarkSentResendOpen]   = useState(false);
   const [manualSentForm, setManualSentForm] = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
@@ -643,14 +642,24 @@ export default function InvoiceCreate() {
               {saving ? (isEditMode ? "Saving…" : "Creating…") : (isEditMode ? "Save Changes" : "Create Invoice")}
             </button>
             {isEditMode && (
-              <button
-                onClick={() => { if (saving || readinessScore < 3) return; setMarkSentSelectorOpen(true); }}
-                disabled={saving || readinessScore < 3}
-                className="w-full h-12 flex items-center justify-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-blue-300 font-medium text-sm rounded-2xl transition-colors border border-blue-500/20"
-              >
-                <MailCheck className="w-4 h-4" />
-                Save & Mark Sent
-              </button>
+              <>
+                <button
+                  onClick={() => { if (saving || readinessScore < 3) return; setMarkSentResendOpen(true); }}
+                  disabled={saving || readinessScore < 3 || !selectedClient?.email}
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-cyan-300 font-medium text-sm rounded-2xl transition-colors border border-cyan-500/20"
+                >
+                  <Send className="w-4 h-4" />
+                  Save &amp; Send Email
+                </button>
+                <button
+                  onClick={() => { if (saving || readinessScore < 3) return; setMarkSentManualOpen(true); }}
+                  disabled={saving || readinessScore < 3}
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-blue-300 font-medium text-sm rounded-2xl transition-colors border border-blue-500/20"
+                >
+                  <MailCheck className="w-4 h-4" />
+                  Save &amp; Mark Sent Manual
+                </button>
+              </>
             )}
             <button
               onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}
@@ -664,41 +673,6 @@ export default function InvoiceCreate() {
       </div>
       </>
       )}
-
-      {/* Save & Mark Sent Selector Dialog (edit mode) */}
-      <Dialog open={markSentSelectorOpen} onOpenChange={setMarkSentSelectorOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MailCheck className="w-4 h-4 text-blue-600" />
-              Save & Mark Invoice as Sent
-            </DialogTitle>
-            <p className="text-xs text-slate-400 mt-0.5">Save changes, then choose how to mark as sent.</p>
-          </DialogHeader>
-          <div className="space-y-2.5 pt-1">
-            <button
-              onClick={() => { setMarkSentSelectorOpen(false); setMarkSentResendOpen(true); }}
-              disabled={!selectedClient?.email || saving}
-              className="w-full text-left p-3.5 rounded-xl border border-cyan-200 hover:bg-cyan-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-center gap-2 text-sm font-semibold text-cyan-700"><Send className="w-3.5 h-3.5" />Automatic via Resend</div>
-              <p className="text-xs text-slate-500 mt-1">Saves changes, sends the invoice via email, and marks as sent only if delivered successfully.</p>
-              {!selectedClient?.email && <p className="text-[10px] text-amber-600 mt-1">Client email required</p>}
-            </button>
-            <button
-              onClick={() => { setMarkSentSelectorOpen(false); setMarkSentManualOpen(true); }}
-              disabled={saving}
-              className="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-40"
-            >
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700"><CheckCheck className="w-3.5 h-3.5" />Manual Mark Sent</div>
-              <p className="text-xs text-slate-500 mt-1">Saves changes and marks as sent without sending email. Use this if you already sent outside NexArtPro.</p>
-            </button>
-          </div>
-          <div className="flex justify-end pt-1">
-            <Button variant="outline" onClick={() => setMarkSentSelectorOpen(false)}>Cancel</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Manual Mark Sent sub-dialog */}
       <Dialog open={markSentManualOpen} onOpenChange={setMarkSentManualOpen}>
