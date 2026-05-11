@@ -323,9 +323,9 @@ export default function InvoiceCreate() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 grid lg:grid-cols-3 gap-6">
+      <div className="w-full px-4 py-6 grid lg:grid-cols-[1fr_300px] gap-6">
         {/* LEFT: Form */}
-        <div className="lg:col-span-2 space-y-5">
+        <div className="min-w-0 space-y-5">
 
           {/* Invoice meta */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
