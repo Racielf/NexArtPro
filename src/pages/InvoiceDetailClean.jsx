@@ -11,6 +11,16 @@ import { formatCurrency } from "@/utils/invoiceCalc";
 import { toast } from "sonner";
 import useCompanyConfig from "@/hooks/useCompanyConfig";
 
+function buildCompanySnapshot(co) {
+  return { name: co?.name || "", email: co?.email || "", phone: co?.phone || "", address: co?.address || "", license: co?.license || "", logo_url: co?.logo_url || "", payment_methods: co?.payment_methods || "" };
+}
+
+function resolveInvoiceCompany(invoice, liveCompany) {
+  const snap = invoice?.company_snapshot;
+  if (snap && typeof snap === 'object' && snap.name) return { ...liveCompany, ...snap };
+  return liveCompany;
+}
+
 const PAYMENT_METHODS = ["cash","check","card_manual","bank_transfer","zelle","venmo","other"];
 
 function getPaymentMethodMeta(method) {
@@ -45,6 +55,7 @@ export default function InvoiceDetailClean() {
   const navigate  = useNavigate();
 
   const company = useCompanyConfig();
+  const invoiceCompany = resolveInvoiceCompany(invoice, company);
 
   const [invoice,  setInvoice]  = useState(null);
   const [loading,  setLoading]  = useState(true);
@@ -135,7 +146,7 @@ export default function InvoiceDetailClean() {
       const emailResult = await base44.integrations.Core.SendEmail({
         to: invoice.client_email,
         subject,
-        body: `Hi ${invoice.client_name},\n\nPlease find your invoice ${invoice.invoice_number}.\n\nTotal Due: ${formatCurrency(derived.balance_due)}${invoice.due_date ? `\nDue: ${format(new Date(invoice.due_date), "MMM d, yyyy")}` : ""}\n\nView Invoice: ${clientLink}\n\nThank you,\n${company.name}`,
+        body: `Hi ${invoice.client_name},\n\nPlease find your invoice ${invoice.invoice_number}.\n\nTotal Due: ${formatCurrency(derived.balance_due)}${invoice.due_date ? `\nDue: ${format(new Date(invoice.due_date), "MMM d, yyyy")}` : ""}\n\nView Invoice: ${clientLink}\n\nThank you,\n${invoiceCompany.name}`,
       });
       // Email succeeded — now mark sent
       const now = new Date().toISOString();
@@ -146,6 +157,7 @@ export default function InvoiceDetailClean() {
           resend_message_id: emailResult?.id || emailResult?.data?.id || null,
           resend_status: emailResult?.status || emailResult?.data?.status || "sent",
           last_contacted_at: now,
+          ...(!invoice?.company_snapshot ? { company_snapshot: buildCompanySnapshot(company) } : {}),
         },
       });
       setResendOpen(false);
@@ -228,9 +240,9 @@ export default function InvoiceDetailClean() {
   const handlePrintReceiptPopup = () => {
     const paidList = (invoice.payments || []);
     if (!paidList.length) return;
-    const companyName  = company.name;
-    const companyEmail = company.email || "";
-    const companyPhone = company.phone || "";
+    const companyName  = invoiceCompany.name;
+    const companyEmail = invoiceCompany.email || "";
+    const companyPhone = invoiceCompany.phone || "";
     const totalPaid    = paidList.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
     const rows = paidList.map(p => `
       <tr>
@@ -403,13 +415,13 @@ export default function InvoiceDetailClean() {
                 <div className="text-slate-400 text-sm mt-1">{invoice.invoice_number}</div>
               </div>
               <div className="text-right">
-                {company.logo_url ? (
-                  <img src={company.logo_url} alt={company.name} className="h-10 object-contain ml-auto mb-1" />
+                {invoiceCompany.logo_url ? (
+                  <img src={invoiceCompany.logo_url} alt={invoiceCompany.name} className="h-10 object-contain ml-auto mb-1" />
                 ) : null}
-                <div className="font-bold text-slate-900">{company.name}</div>
-                {company.email && <div className="text-xs text-slate-500">{company.email}</div>}
-                {company.phone && <div className="text-xs text-slate-500">{company.phone}</div>}
-                {company.address && <div className="text-xs text-slate-500 mt-0.5 whitespace-pre-line">{company.address}</div>}
+                <div className="font-bold text-slate-900">{invoiceCompany.name}</div>
+                {invoiceCompany.email && <div className="text-xs text-slate-500">{invoiceCompany.email}</div>}
+                {invoiceCompany.phone && <div className="text-xs text-slate-500">{invoiceCompany.phone}</div>}
+                {invoiceCompany.address && <div className="text-xs text-slate-500 mt-0.5 whitespace-pre-line">{invoiceCompany.address}</div>}
               </div>
             </div>
 

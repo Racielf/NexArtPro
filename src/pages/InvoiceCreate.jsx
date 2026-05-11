@@ -7,10 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { calcDocumentTotals, calcLineTotal, formatCurrency } from "@/utils/invoiceCalc";
 import { computeInvoiceDerivedFields } from "@/lib/invoiceHelpers";
+import useCompanyConfig from "@/hooks/useCompanyConfig";
 
 const PAYMENT_TERMS_OPTIONS = ["Due on receipt","Net 7","Net 15","Net 30","Net 45","Net 60"];
 const ITEM_TYPES = ["service","material","labor","fee","custom"];
 const today = format(new Date(), "yyyy-MM-dd");
+
+function buildCompanySnapshot(company) {
+  return {
+    name: company?.name || "",
+    email: company?.email || "",
+    phone: company?.phone || "",
+    address: company?.address || "",
+    license: company?.license || "",
+    logo_url: company?.logo_url || "",
+    payment_methods: company?.payment_methods || "",
+  };
+}
 
 function newLineItem() {
   return {
@@ -34,6 +47,7 @@ export default function InvoiceCreate() {
   const [searchParams] = useSearchParams();
   const editInvoiceId = searchParams.get("id");
   const isEditMode    = searchParams.get("mode") === "edit" && !!editInvoiceId;
+  const company = useCompanyConfig();
 
   const [clients, setClients]       = useState([]);
   const [clientSearch, setClientSearch] = useState("");
@@ -155,6 +169,7 @@ export default function InvoiceCreate() {
         notes,
         due_date:        dueDate,
         payment_terms:   paymentTerms,
+        company_snapshot: buildCompanySnapshot(company),
       };
       if (isEditMode) {
         // UPDATE — preserve payments[], status, and other existing fields
@@ -203,6 +218,7 @@ export default function InvoiceCreate() {
       notes,
       due_date:        dueDate,
       payment_terms:   paymentTerms,
+      company_snapshot: buildCompanySnapshot(company),
     };
   }
 

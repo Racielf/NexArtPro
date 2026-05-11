@@ -15,7 +15,8 @@ import useCompanyConfig from "@/hooks/useCompanyConfig";
  *   client_name (not customer_name), payments[] (not InvoicePayment entity),
  *   redirectToStripeCheckout() for Pay Now.
  *
- * Company branding: uses useCompanyConfig() for live settings from Settings > Company.
+ * Company branding: uses invoice.company_snapshot (priority)
+ * with useCompanyConfig() as fallback for old invoices.
  *
  * Props:
  *   invoice  — invoice object (required)
@@ -24,10 +25,16 @@ import useCompanyConfig from "@/hooks/useCompanyConfig";
  * Also exported as default for standalone /document/:token route.
  */
 export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
-  const company = useCompanyConfig();
+  const liveCompany = useCompanyConfig();
   const [stripeLoading, setStripeLoading] = useState(false);
 
   if (!invoiceProp) return null;
+
+  // Resolve company: snapshot embedded in invoice takes priority, live config is fallback
+  const snap = invoiceProp?.company_snapshot;
+  const invoiceCompany = (snap && typeof snap === 'object' && snap.name)
+    ? { ...liveCompany, ...snap }
+    : liveCompany;
 
   // Normalize line items: support both line_items[] and groups[].items (Estimate → Invoice)
   const lineItems = invoiceProp.line_items?.length
@@ -74,16 +81,16 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
       <div className="px-8 py-6 text-white" style={{ background: `linear-gradient(135deg, ${brandColor} 0%, #0F172A 100%)` }}>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            {company.logo_url ? (
-              <img src={company.logo_url} alt={company.name} className="h-10 object-contain rounded-lg" />
+            {invoiceCompany.logo_url ? (
+              <img src={invoiceCompany.logo_url} alt={invoiceCompany.name} className="h-10 object-contain rounded-lg" />
             ) : (
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                 <FileText className="w-5 h-5 text-white" />
               </div>
             )}
             <div>
-              <div className="font-bold text-lg">{company.name}</div>
-              {company.address && <div className="text-white/60 text-xs">{company.address}</div>}
+              <div className="font-bold text-lg">{invoiceCompany.name}</div>
+              {invoiceCompany.address && <div className="text-white/60 text-xs">{invoiceCompany.address}</div>}
             </div>
           </div>
           <div className="text-right">
@@ -92,8 +99,8 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
-          {company.email && <div className="flex items-center gap-1.5 text-white/70"><Mail className="w-3.5 h-3.5" />{company.email}</div>}
-          {company.phone && <div className="flex items-center gap-1.5 text-white/70"><Phone className="w-3.5 h-3.5" />{company.phone}</div>}
+          {invoiceCompany.email && <div className="flex items-center gap-1.5 text-white/70"><Mail className="w-3.5 h-3.5" />{invoiceCompany.email}</div>}
+          {invoiceCompany.phone && <div className="flex items-center gap-1.5 text-white/70"><Phone className="w-3.5 h-3.5" />{invoiceCompany.phone}</div>}
         </div>
       </div>
 
@@ -179,11 +186,11 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
           </div>
         )}
 
-        {/* Accepted Payment Methods — from company settings */}
-        {company.payment_methods && (
+        {/* Accepted Payment Methods — from company snapshot or settings */}
+        {invoiceCompany.payment_methods && (
           <div className="bg-slate-50 rounded-xl p-4 text-sm">
             <p className="font-medium text-slate-700 mb-1">Accepted Payment Methods</p>
-            <p className="text-slate-500 whitespace-pre-line">{company.payment_methods}</p>
+            <p className="text-slate-500 whitespace-pre-line">{invoiceCompany.payment_methods}</p>
           </div>
         )}
 
