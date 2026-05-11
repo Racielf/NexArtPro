@@ -83,6 +83,10 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   // Dynamic company branding — reads from Settings → Company, falls back to APP_CONFIG
+  // LOCKED AREA: Company Settings → Sidebar Branding
+  // Source: useCompanyConfig() reads app_users.username='admin'.company_settings from Supabase.
+  // Do not replace with APP_CONFIG-only branding unless explicitly authorized.
+  // See: docs/agent/LOCKED_AREAS.md
   const companyConfig = useCompanyConfig();
   const cc = {
     name:

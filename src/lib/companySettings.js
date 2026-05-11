@@ -64,6 +64,10 @@ async function saveCompanySettingsToSupabase(settings) {
   return payload.company_settings;
 }
 
+// LOCKED AREA: Company Settings persistence
+// Company settings are stored in app_users.username='admin'.company_settings (Supabase).
+// Do not move this back to localStorage-only storage.
+// See: docs/agent/LOCKED_AREAS.md
 export async function loadCompanySettings() {
   try {
     const settings = await loadCompanySettingsFromSupabase();
