@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { ArrowLeft, Send, DollarSign, Printer, ExternalLink, FileCheck, Copy, Ban, CreditCard, Receipt, Pencil, MailCheck, CheckCheck, Info } from "lucide-react";
+import { ArrowLeft, Send, DollarSign, Printer, ExternalLink, FileCheck, Copy, Ban, CreditCard, Receipt, Pencil, MailCheck, CheckCheck, Info, Layout } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { redirectToStripeCheckout } from "@/lib/stripeCheckout";
 import { formatCurrency } from "@/utils/invoiceCalc";
 import { toast } from "sonner";
 import useCompanyConfig from "@/hooks/useCompanyConfig";
+import InvoiceTemplateRenderer, { INVOICE_TEMPLATES } from "@/components/invoices/InvoiceTemplateRenderer";
 
 function buildCompanySnapshot(co) {
   return { name: co?.name || "", email: co?.email || "", phone: co?.phone || "", address: co?.address || "", license: co?.license || "", logo_url: co?.logo_url || "", payment_methods: co?.payment_methods || "" };
@@ -60,6 +61,7 @@ export default function InvoiceDetailClean() {
   const [invoice,  setInvoice]  = useState(null);
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(invoice?.template || 'clean');
   const [payOpen,  setPayOpen]  = useState(false);
   const [payForm,  setPayForm]  = useState({ amount: "", method: "cash", reference: "", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
   const [stripeLoading, setStripeLoading] = useState(false);
@@ -311,7 +313,7 @@ export default function InvoiceDetailClean() {
   if (!invoice) return <div className="p-8 text-center text-slate-400">Invoice not found.</div>;
 
   // Normalize: support line_items[] and groups[].items (Estimate → Invoice)
-  const lineItems = invoice.line_items?.length
+  const _lineItems = invoice.line_items?.length
     ? invoice.line_items
     : (invoice.groups || []).flatMap(g => g.items || []);
   const payments  = invoice.payments  || [];
@@ -406,110 +408,36 @@ export default function InvoiceDetailClean() {
             </div>
           )}
 
-          {/* Document card — invoice-print-document: only this is printed */}
-          <div className="invoice-print-document bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-6">
-            {/* Header */}
-            <div className="flex justify-between items-start pb-6 border-b border-slate-100">
-              <div>
-                <div className="text-3xl font-black text-slate-900 tracking-tight">INVOICE</div>
-                <div className="text-slate-400 text-sm mt-1">{invoice.invoice_number}</div>
-              </div>
-              <div className="text-right">
-                {invoiceCompany.logo_url ? (
-                  <img src={invoiceCompany.logo_url} alt={invoiceCompany.name} className="h-10 object-contain ml-auto mb-1" />
-                ) : null}
-                <div className="font-bold text-slate-900">{invoiceCompany.name}</div>
-                {invoiceCompany.email && <div className="text-xs text-slate-500">{invoiceCompany.email}</div>}
-                {invoiceCompany.phone && <div className="text-xs text-slate-500">{invoiceCompany.phone}</div>}
-                {invoiceCompany.address && <div className="text-xs text-slate-500 mt-0.5 whitespace-pre-line">{invoiceCompany.address}</div>}
-              </div>
+          {/* Template selector — no-print */}
+          <div className="flex items-center gap-2 mb-3 no-print">
+            <Layout className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Template</span>
+            <div className="flex gap-1.5 ml-1">
+              {INVOICE_TEMPLATES.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setSelectedTemplate(t.key)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
+                    selectedTemplate === t.key
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                  }`}
+                  title={t.desc}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Bill To + Dates */}
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div>
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Bill To</div>
-                <div className="font-semibold text-slate-800">{invoice.client_name || "—"}</div>
-                {invoice.client_email && <div className="text-sm text-slate-500">{invoice.client_email}</div>}
-                {invoice.client_phone && <div className="text-sm text-slate-500">{invoice.client_phone}</div>}
-                {invoice.client_address && <div className="text-sm text-slate-500 mt-1 whitespace-pre-line">{invoice.client_address}</div>}
-              </div>
-              <div className="space-y-1.5 text-sm">
-                {invoice.created_date && <div className="flex justify-between"><span className="text-slate-400">Issue Date</span><span>{format(new Date(invoice.created_date), "MMM d, yyyy")}</span></div>}
-                {invoice.due_date && <div className="flex justify-between"><span className="text-slate-400">Due Date</span><span className={isOverdue ? "text-red-600 font-medium" : ""}>{format(new Date(invoice.due_date), "MMM d, yyyy")}</span></div>}
-                {invoice.payment_terms && <div className="flex justify-between"><span className="text-slate-400">Terms</span><span>{invoice.payment_terms}</span></div>}
-              </div>
-            </div>
-
-            {/* Line items */}
-            {lineItems.length > 0 && (
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-slate-50 text-xs text-slate-400 rounded-xl">
-                    <th className="text-left px-4 py-2.5 font-medium rounded-l-xl">Description</th>
-                    <th className="text-right px-4 py-2.5 font-medium">Qty</th>
-                    <th className="text-right px-4 py-2.5 font-medium">Price</th>
-                    <th className="text-right px-4 py-2.5 font-medium rounded-r-xl">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {lineItems.map((li, idx) => (
-                    <tr key={li.id || idx}>
-                      <td className="px-4 py-3">
-                        <div className="text-sm font-medium text-slate-800">{li.name}</div>
-                        {li.description && <div className="text-xs text-slate-400">{li.description}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-slate-500">{li.quantity} {li.unit}</td>
-                      <td className="px-4 py-3 text-sm text-right text-slate-500">{formatCurrency(li.unit_price)}</td>
-                      <td className="px-4 py-3 text-sm text-right font-bold text-slate-800">{formatCurrency(li.line_total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {/* Totals */}
-            <div className="flex justify-end">
-              <div className="w-60 space-y-2 bg-slate-50 rounded-xl p-4 text-sm">
-                <div className="flex justify-between text-slate-500"><span>Subtotal</span><span>{formatCurrency(invoice.subtotal || 0)}</span></div>
-                {(invoice.discount_amount || 0) > 0 && <div className="flex justify-between text-emerald-600"><span>Discount</span><span>-{formatCurrency(invoice.discount_amount)}</span></div>}
-                {(invoice.tax_amount || 0) > 0 && <div className="flex justify-between text-slate-500"><span>Tax</span><span>{formatCurrency(invoice.tax_amount)}</span></div>}
-                <div className="flex justify-between border-t border-slate-200 pt-2 font-black text-slate-900 text-base">
-                  <span>Total</span><span>{formatCurrency(invoice.total || 0)}</span>
-                </div>
-                {derived.amount_paid > 0 && (
-                  <div className="flex justify-between text-emerald-600 text-sm">
-                    <span>Paid</span><span>-{formatCurrency(derived.amount_paid)}</span>
-                  </div>
-                )}
-                {derived.balance_due > 0 && (
-                  <div className="flex justify-between border-t border-slate-200 pt-2 font-bold text-red-600 text-base">
-                    <span>Balance Due</span><span>{formatCurrency(derived.balance_due)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {invoice.notes && (
-              <div className="bg-slate-50 rounded-xl p-4 text-sm">
-                <div className="font-medium text-slate-700 mb-1">Notes</div>
-                <p className="text-slate-500 whitespace-pre-line">{invoice.notes}</p>
-              </div>
-            )}
-
-            {/* Evidence / photos */}
-            {Array.isArray(invoice.attachments) && invoice.attachments.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Attachments</div>
-                <div className="flex flex-wrap gap-2">
-                  {invoice.attachments.map((att, i) => (
-                    <a key={i} href={att.file_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline border border-blue-100 rounded-lg px-2 py-1 bg-blue-50">
-                      {att.file_name || `File ${i+1}`}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* Document rendered via template — invoice-print-document: only this is printed */}
+          <div className="invoice-print-document bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <InvoiceTemplateRenderer
+              invoice={invoice}
+              company={invoiceCompany}
+              derived={derived}
+              template={selectedTemplate}
+            />
           </div>
         </div>
 
