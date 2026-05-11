@@ -28,6 +28,8 @@ function fmtDate(d) {
 export default function InvoiceModernTemplate({ invoice, company, derived }) {
   if (!invoice) return null;
   const co = company || {};
+  const logoUrl = co.logo_url || co.app_logo_url || '';
+  const coName  = co.displayName || co.name || '';
   const lineItems = invoice.line_items?.length
     ? invoice.line_items
     : (invoice.groups || []).flatMap(g => g.items || []);
@@ -42,13 +44,13 @@ export default function InvoiceModernTemplate({ invoice, company, derived }) {
       <div style={{ ...card(), background: DARK, color: 'white', padding: '28px 32px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-            {co.logo_url && (
+            {logoUrl && (
               <div style={{ width: 120, height: 120, borderRadius: 16, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: `2px solid ${ACCENT}` }}>
-                <img src={co.logo_url} alt={co.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                <img src={logoUrl} alt={coName} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               </div>
             )}
             <div>
-              <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: '-0.3px' }}>{co.name}</div>
+              <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: '-0.3px' }}>{coName}</div>
               {co.address && <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.7, marginTop: 4 }}>{co.address}</div>}
               <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.7 }}>
                 {[co.email, co.phone].filter(Boolean).join(' · ')}

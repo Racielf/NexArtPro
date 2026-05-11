@@ -8,22 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { calcDocumentTotals, calcLineTotal, formatCurrency } from "@/utils/invoiceCalc";
 import { computeInvoiceDerivedFields } from "@/lib/invoiceHelpers";
 import useCompanyConfig from "@/hooks/useCompanyConfig";
+import { buildInvoiceCompanySnapshot } from "@/lib/invoiceCompanySnapshot";
 
 const PAYMENT_TERMS_OPTIONS = ["Due on receipt","Net 7","Net 15","Net 30","Net 45","Net 60"];
 const ITEM_TYPES = ["service","material","labor","fee","custom"];
 const today = format(new Date(), "yyyy-MM-dd");
 
-function buildCompanySnapshot(company) {
-  return {
-    name: company?.name || "",
-    email: company?.email || "",
-    phone: company?.phone || "",
-    address: company?.address || "",
-    license: company?.license || "",
-    logo_url: company?.logo_url || "",
-    payment_methods: company?.payment_methods || "",
-  };
-}
+// buildCompanySnapshot is provided by @/lib/invoiceCompanySnapshot (buildInvoiceCompanySnapshot)
 
 function newLineItem() {
   return {
@@ -65,6 +56,7 @@ export default function InvoiceCreate() {
   const [markSentResendOpen,   setMarkSentResendOpen]   = useState(false);
   const [manualSentForm, setManualSentForm] = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
   const [existingPayments, setExistingPayments] = useState([]);
+  const [existingStatus,   setExistingStatus]   = useState(null);
 
   // Load clients
   useEffect(() => {
@@ -103,6 +95,8 @@ export default function InvoiceCreate() {
         }
         // Store existing payments so we can recalculate derived fields on save
         setExistingPayments(Array.isArray(inv.payments) ? inv.payments : []);
+        // Track status so we can guard company_snapshot refresh on save
+        setExistingStatus(inv.status || null);
       })
       .catch(() => {})
       .finally(() => setLoadingEdit(false));
@@ -169,7 +163,10 @@ export default function InvoiceCreate() {
         notes,
         due_date:        dueDate,
         payment_terms:   paymentTerms,
-        company_snapshot: buildCompanySnapshot(company),
+        // Refresh snapshot only for draft invoices — preserve for sent/paid/void
+        ...( !isEditMode || ['draft', null, undefined, ''].includes(existingStatus)
+          ? { company_snapshot: buildInvoiceCompanySnapshot(company) }
+          : {} ),
       };
       if (isEditMode) {
         // UPDATE — preserve payments[], status, and other existing fields
@@ -218,7 +215,8 @@ export default function InvoiceCreate() {
       notes,
       due_date:        dueDate,
       payment_terms:   paymentTerms,
-      company_snapshot: buildCompanySnapshot(company),
+      // buildInvoicePayload is only called from edit-mode send helpers (draft context)
+      company_snapshot: buildInvoiceCompanySnapshot(company),
     };
   }
 

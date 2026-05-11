@@ -11,16 +11,9 @@ import { formatCurrency } from "@/utils/invoiceCalc";
 import { toast } from "sonner";
 import useCompanyConfig from "@/hooks/useCompanyConfig";
 import InvoiceTemplateRenderer, { INVOICE_TEMPLATES } from "@/components/invoices/InvoiceTemplateRenderer";
+import { buildInvoiceCompanySnapshot, resolveInvoiceCompany } from "@/lib/invoiceCompanySnapshot";
 
-function buildCompanySnapshot(co) {
-  return { name: co?.name || "", email: co?.email || "", phone: co?.phone || "", address: co?.address || "", license: co?.license || "", logo_url: co?.logo_url || "", payment_methods: co?.payment_methods || "" };
-}
-
-function resolveInvoiceCompany(invoice, liveCompany) {
-  const snap = invoice?.company_snapshot;
-  if (snap && typeof snap === 'object' && snap.name) return { ...liveCompany, ...snap };
-  return liveCompany;
-}
+// buildInvoiceCompanySnapshot / resolveInvoiceCompany imported from @/lib/invoiceCompanySnapshot
 
 const PAYMENT_METHODS = ["cash","check","card_manual","bank_transfer","zelle","venmo","other"];
 
@@ -172,7 +165,7 @@ export default function InvoiceDetailClean() {
             resend_message_id: emailResult?.id || emailResult?.data?.id || null,
             resend_status: emailResult?.status || emailResult?.data?.status || "sent",
             last_contacted_at: now,
-            ...(!invoice?.company_snapshot ? { company_snapshot: buildCompanySnapshot(company) } : {}),
+            ...(!invoice?.company_snapshot ? { company_snapshot: buildInvoiceCompanySnapshot(company) } : {}),
           },
         });
         toast.success(isResend ? "Invoice resent successfully" : "Invoice sent successfully");

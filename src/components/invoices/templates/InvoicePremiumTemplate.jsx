@@ -24,6 +24,8 @@ function fmtDate(d) {
 export default function InvoicePremiumTemplate({ invoice, company, derived }) {
   if (!invoice) return null;
   const co = company || {};
+  const logoUrl = co.logo_url || co.app_logo_url || '';
+  const coName  = co.displayName || co.name || '';
   const lineItems = invoice.line_items?.length
     ? invoice.line_items
     : (invoice.groups || []).flatMap(g => g.items || []);
@@ -42,13 +44,13 @@ export default function InvoicePremiumTemplate({ invoice, company, derived }) {
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20 }}>
-            {co.logo_url && (
+            {logoUrl && (
               <div style={{ width: 130, height: 130, borderRadius: 20, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '3px solid rgba(255,255,255,0.3)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-                <img src={co.logo_url} alt={co.name} style={{ maxWidth: '92%', maxHeight: '92%', objectFit: 'contain' }} />
+                <img src={logoUrl} alt={coName} style={{ maxWidth: '92%', maxHeight: '92%', objectFit: 'contain' }} />
               </div>
             )}
-            <div style={{ paddingTop: co.logo_url ? 8 : 0 }}>
-              <div style={{ fontWeight: 900, fontSize: 24, letterSpacing: '-0.5px', textShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>{co.name}</div>
+            <div style={{ paddingTop: logoUrl ? 8 : 0 }}>
+              <div style={{ fontWeight: 900, fontSize: 24, letterSpacing: '-0.5px', textShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>{coName}</div>
               {co.address && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginTop: 8, whiteSpace: 'pre-line' }}>{co.address}</div>}
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7, marginTop: 2 }}>
                 {[co.email, co.phone].filter(Boolean).join(' · ')}
