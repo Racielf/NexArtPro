@@ -158,22 +158,30 @@ export default function InvoiceDetailClean() {
         subject,
         body: `Hi ${invoice.client_name},\n\nPlease find your invoice ${invoice.invoice_number}.\n\nTotal Due: ${formatCurrency(derived.balance_due)}${invoice.due_date ? `\nDue: ${format(new Date(invoice.due_date), "MMM d, yyyy")}` : ""}\n\nView Invoice: ${clientLink}\n\nThank you,\n${invoiceCompany.name}`,
       });
-      // Email succeeded — now mark sent
-      const now = new Date().toISOString();
-      await markInvoiceSentCritical({
-        source: "resend",
-        sentAt: now,
-        optionalPatch: {
-          resend_message_id: emailResult?.id || emailResult?.data?.id || null,
-          resend_status: emailResult?.status || emailResult?.data?.status || "sent",
-          last_contacted_at: now,
-          ...(!invoice?.company_snapshot ? { company_snapshot: buildCompanySnapshot(company) } : {}),
-        },
-      });
+
+      // EMAIL SUCCESS — close modal immediately, before status update
       setResendOpen(false);
-      toast.success(isResend ? "Invoice resent successfully" : "Invoice sent successfully");
+
+      // Attempt status update — failure here must NOT re-open the modal
+      const now = new Date().toISOString();
+      try {
+        await markInvoiceSentCritical({
+          source: "resend",
+          sentAt: now,
+          optionalPatch: {
+            resend_message_id: emailResult?.id || emailResult?.data?.id || null,
+            resend_status: emailResult?.status || emailResult?.data?.status || "sent",
+            last_contacted_at: now,
+            ...(!invoice?.company_snapshot ? { company_snapshot: buildCompanySnapshot(company) } : {}),
+          },
+        });
+        toast.success(isResend ? "Invoice resent successfully" : "Invoice sent successfully");
+      } catch (statusErr) {
+        // Email was sent — only status update failed
+        toast.error(statusErr?.message || "Email sent, but invoice status could not be updated.");
+      }
     } catch (err) {
-      // Email or critical update failed — status NOT changed
+      // Core.SendEmail failed — modal stays open, status unchanged
       toast.error(err?.message || "Failed to send invoice");
     } finally {
       setSaving(false);
