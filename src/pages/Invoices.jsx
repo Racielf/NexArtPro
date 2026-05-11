@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Plus, Search, FileText, Eye } from "lucide-react";
+import { Plus, Search, FileText, Eye, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from "@/lib/invoiceHelpers";
 import { formatCurrency } from "@/utils/invoiceCalc";
+import { toast } from "sonner";
 
 const STATUSES = ["all","draft","sent","viewed","partial","paid","overdue","void"];
 
@@ -33,6 +35,8 @@ export default function Invoices() {
   const [search, setSearch]         = useState("");
   const [searchParams]              = useSearchParams();
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting]     = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,6 +45,21 @@ export default function Invoices() {
       setLoading(false);
     });
   }, []);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await base44.entities.Invoice.delete(deleteTarget.id);
+      setInvoices(prev => prev.filter(i => i.id !== deleteTarget.id));
+      toast.success(`Invoice ${deleteTarget.invoice_number || ''} deleted`);
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error(err?.message || "Failed to delete invoice");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const enriched = invoices.map(inv => {
     const derived = computeInvoiceDerivedFields(inv);
@@ -57,7 +76,7 @@ export default function Invoices() {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      (inv.invoice_number || "").toLowerCase().includes(q) ||
+      (inv.invoice_number || "").toString().toLowerCase().includes(q) ||
       (inv.client_name    || "").toLowerCase().includes(q) ||
       (inv.client_email   || "").toLowerCase().includes(q)
     );
@@ -142,7 +161,7 @@ export default function Invoices() {
                 <th className="text-right text-xs font-semibold text-slate-500 px-4 py-3">Total</th>
                 <th className="text-right text-xs font-semibold text-slate-500 px-4 py-3">Balance</th>
                 <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3">Status</th>
-                <th className="px-4 py-3 w-10" />
+                <th className="px-4 py-3 w-20" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -177,12 +196,22 @@ export default function Invoices() {
                   </td>
                   <td className="px-4 py-3"><StatusBadge status={inv._status} /></td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={e => { e.stopPropagation(); navigate(`/invoice-detail?id=${inv.id}`); }}
-                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(`/invoice-detail?id=${inv.id}`); }}
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors"
+                        title="View"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); setDeleteTarget(inv); }}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -190,6 +219,46 @@ export default function Invoices() {
           </table>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-4 h-4" />
+              Delete Invoice
+            </DialogTitle>
+          </DialogHeader>
+          {deleteTarget && (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-600">
+                Are you sure you want to delete invoice <strong>{deleteTarget.invoice_number || deleteTarget.id?.slice(-6)}</strong>
+                {deleteTarget.client_name ? ` for ${deleteTarget.client_name}` : ""}?
+              </p>
+              {deleteTarget._status !== "draft" && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+                  ⚠️ This invoice has status <strong>{deleteTarget._status}</strong>. Deleting it cannot be undone.
+                </div>
+              )}
+              {(deleteTarget.amount_paid || 0) > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
+                  🚨 This invoice has <strong>{formatCurrency(deleteTarget.amount_paid)}</strong> in recorded payments. Deleting will remove all payment records.
+                </div>
+              )}
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+                <Button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="bg-red-600 hover:bg-red-700 text-white gap-1.5"
+                >
+                  {deleting ? "Deleting…" : "Delete Invoice"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

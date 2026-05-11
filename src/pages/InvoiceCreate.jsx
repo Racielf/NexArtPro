@@ -45,7 +45,7 @@ export default function InvoiceCreate() {
   const [dueDate, setDueDate]       = useState(format(addDays(new Date(), 30), "yyyy-MM-dd"));
   const [paymentTerms, setPaymentTerms] = useState("Net 30");
   const [saving, setSaving]         = useState(false);
-  const [invoiceNumber, setInvoiceNumber] = useState(`INV-${Date.now().toString().slice(-6)}`);
+  const [invoiceNumber, setInvoiceNumber] = useState(Date.now().toString().slice(-6));
   const [loadingEdit, setLoadingEdit] = useState(isEditMode);
   const [markSentManualOpen,   setMarkSentManualOpen]   = useState(false);
   const [markSentResendOpen,   setMarkSentResendOpen]   = useState(false);
