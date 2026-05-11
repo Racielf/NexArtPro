@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { APP_CONFIG } from "@/lib/appConfig";
 
 const co = APP_CONFIG?.company || {};
+const companyName = co.name || "R.C Art Construction LLC";
 
 /**
  * InvoiceViewModal — clean client-facing invoice view.
@@ -40,11 +41,16 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
 
   const handlePayNow = async () => {
     if (derived.balance_due <= 0) return;
+    if (!invoiceProp?.id) {
+      toast.error("This invoice is missing required payment information.");
+      return;
+    }
     setStripeLoading(true);
     try {
       await redirectToStripeCheckout(invoiceProp);
     } catch (err) {
-      toast.error(err?.message || "Payment error");
+      console.error("[InvoiceViewModal] Stripe checkout failed:", err);
+      toast.error(err?.message || "Unable to start online payment.");
     } finally {
       setStripeLoading(false);
     }
@@ -52,6 +58,18 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
 
   return (
     <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-xl max-w-2xl mx-auto">
+      {/* @media print: hide buttons, show only document */}
+      <style>{`
+        @media print {
+          .no-print-public { display: none !important; }
+          body { background: white !important; }
+          .public-invoice-print-document {
+            box-shadow: none !important; border: none !important;
+            margin: 0 auto !important;
+          }
+        }
+      `}</style>
+
       {/* Gradient header */}
       <div className="px-8 py-6 text-white" style={{ background: `linear-gradient(135deg, ${brandColor} 0%, #0F172A 100%)` }}>
         <div className="flex items-center justify-between mb-5">
@@ -60,7 +78,7 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
               <FileText className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="font-bold text-lg">{co.name || "R.C Art Construction LLC"}</div>
+              <div className="font-bold text-lg">{companyName}</div>
               {co.address && <div className="text-white/60 text-xs">{co.address}</div>}
             </div>
           </div>
@@ -88,7 +106,7 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
         </span>
       </div>
 
-      <div className="px-8 py-6 space-y-6">
+      <div className="public-invoice-print-document px-8 py-6 space-y-6">
         {/* Bill To + Dates */}
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
@@ -157,16 +175,16 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-1">
+        {/* Actions — hidden in print */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-1 no-print-public">
           <button onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors">
             <Printer className="w-4 h-4" />Print / Save PDF
           </button>
           {!isPaid && derived.balance_due > 0 ? (
             <button
               onClick={handlePayNow}
-              disabled={stripeLoading}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-colors"
+              disabled={stripeLoading || derived.balance_due <= 0}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50"
               style={{ backgroundColor: brandColor }}
             >
               <CreditCard className="w-4 h-4" />
@@ -179,7 +197,7 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
           ) : null}
         </div>
 
-        <div className="text-center text-xs text-slate-400 pt-1">Powered by NexArtPro · Secure document portal</div>
+        <div className="text-center text-xs text-slate-400 pt-1 no-print-public">Powered by NexArtPro · Secure document portal</div>
       </div>
     </div>
   );
@@ -237,4 +255,3 @@ export default function PublicInvoiceDocument() {
     </div>
   );
 }
-

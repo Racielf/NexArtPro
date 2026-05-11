@@ -497,7 +497,7 @@ export default function InvoiceDetailClean() {
         </div>
 
         {/* RIGHT: Financial summary + actions */}
-        <div className="space-y-4">
+        <div className="space-y-4 no-print">
           {/* Financial card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <h3 className="font-semibold text-slate-800 mb-4">Financial Summary</h3>
