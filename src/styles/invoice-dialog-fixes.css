@@ -1,0 +1,30 @@
+/* Invoice dialog containment fixes
+   Prevent long invoice links/emails from pushing Radix/shadcn dialogs outside their modal width.
+   Scope is intentionally limited to dialog surfaces to avoid touching invoice logic. */
+
+[role="dialog"] {
+  max-width: min(32rem, calc(100vw - 2rem));
+  overflow: hidden;
+}
+
+[role="dialog"] * {
+  min-width: 0;
+}
+
+[role="dialog"] a,
+[role="dialog"] span,
+[role="dialog"] p,
+[role="dialog"] div {
+  overflow-wrap: anywhere;
+}
+
+[role="dialog"] .break-all {
+  word-break: break-all;
+}
+
+@media (max-width: 640px) {
+  [role="dialog"] {
+    width: calc(100vw - 1.5rem) !important;
+    max-width: calc(100vw - 1.5rem) !important;
+  }
+}
