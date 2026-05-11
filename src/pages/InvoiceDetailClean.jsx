@@ -540,6 +540,29 @@ export default function InvoiceDetailClean() {
             <Copy className="w-4 h-4 text-slate-400" />
             <span className="text-sm text-slate-600">Copy Client Link</span>
           </button>
+          {/* Send Invoice via Email */}
+          {!isVoid && (
+            <button
+              onClick={() => {
+                if (!invoice?.client_email) { toast.error("Client email required to send"); return; }
+                setResendOpen(true);
+              }}
+              disabled={saving}
+              className={`w-full border rounded-2xl p-4 flex items-center gap-3 transition-colors ${
+                invoice?.client_email
+                  ? "bg-white border-slate-200 hover:bg-blue-50 hover:border-blue-200"
+                  : "bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed"
+              }`}
+            >
+              <Send className="w-4 h-4 text-blue-500 flex-shrink-0" />
+              <div className="text-left min-w-0">
+                <div className="text-sm text-slate-700 font-medium">Send Invoice via Email</div>
+                {!invoice?.client_email && (
+                  <div className="text-[11px] text-amber-500 mt-0.5">Client email not set</div>
+                )}
+              </div>
+            </button>
+          )}
           {/* Action row: Add Payment / Receipt / Client View */}
           <div className="flex flex-wrap gap-2">
             {canPay && (
