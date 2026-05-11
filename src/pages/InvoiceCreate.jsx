@@ -299,463 +299,181 @@ export default function InvoiceCreate() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {loadingEdit && (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-        </div>
-      )}
-      {!loadingEdit && (
-      <>
-      {/* Top bar */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <button
-          onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}
-          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <h1 className="font-bold text-slate-900 text-base">
-          {isEditMode ? `Edit Invoice` : "New Invoice"}
-        </h1>
-        {isEditMode && (
-          <span className="text-xs text-slate-400 font-mono">{invoiceNumber}</span>
-        )}
+      {loadingEdit && (<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" /></div>)}
+      {!loadingEdit && (<>
+
+      {/* Top bar — 48px compact */}
+      <div className="bg-white border-b border-slate-200 px-4 h-12 flex items-center gap-2.5 sticky top-0 z-10">
+        <button onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 flex-shrink-0"><ArrowLeft className="w-4 h-4" /></button>
+        <h1 className="font-semibold text-slate-800 text-sm">{isEditMode ? "Edit Invoice" : "New Invoice"}</h1>
+        {isEditMode && <span className="text-xs text-slate-400 font-mono bg-slate-100 px-2 py-0.5 rounded">{invoiceNumber}</span>}
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="outline" size="sm"
-            onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-            onClick={handleSave}
-            disabled={saving || !ready.client || !ready.items || !ready.total}
-          >
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}>Cancel</Button>
+          <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1.5" onClick={handleSave} disabled={saving || !ready.client || !ready.items || !ready.total}>
             {saving ? (isEditMode ? "Saving…" : "Creating…") : (isEditMode ? "Save Changes" : "Create Invoice")}
           </Button>
         </div>
       </div>
 
-      <div className="w-full px-4 py-6 grid lg:grid-cols-[1fr_300px] gap-6">
-        {/* LEFT: Form */}
-        <div className="min-w-0 space-y-5">
+      {/* Workspace */}
+      <div className="max-w-6xl mx-auto px-4 py-5 grid gap-5" style={{ gridTemplateColumns: "1fr 260px" }}>
+
+        {/* LEFT */}
+        <div className="min-w-0 space-y-3">
 
           {/* Invoice meta */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-500" />Invoice Details
-            </h2>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Invoice Number</label>
-                <input
-                  value={invoiceNumber}
-                  onChange={e => setInvoiceNumber(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Payment Terms</label>
-                <select
-                  value={paymentTerms}
-                  onChange={e => setPaymentTerms(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
-                >
-                  {PAYMENT_TERMS_OPTIONS.map(t => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Due Date</label>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={e => setDueDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Global Tax Rate (%)</label>
-                <input
-                  type="number" min="0" max="100" step="0.01"
-                  value={taxRate}
-                  onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <h2 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-blue-500" />Invoice Details</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div><label className="block text-[11px] font-medium text-slate-500 mb-1">Invoice #</label><input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" /></div>
+              <div><label className="block text-[11px] font-medium text-slate-500 mb-1">Terms</label><select value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white">{PAYMENT_TERMS_OPTIONS.map(t => <option key={t}>{t}</option>)}</select></div>
+              <div><label className="block text-[11px] font-medium text-slate-500 mb-1">Due Date</label><input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" /></div>
+              <div><label className="block text-[11px] font-medium text-slate-500 mb-1">Tax (%)</label><input type="number" min="0" max="100" step="0.01" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" /></div>
             </div>
           </div>
 
-          {/* Select Client */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <User className="w-4 h-4 text-blue-500" />Select Client
-            </h2>
+          {/* Client */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <h2 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-blue-500" />Client</h2>
             <div className="relative">
-              <input
-                value={clientSearch}
-                onChange={e => { setClientSearch(e.target.value); setShowClientDrop(true); setSelectedClient(null); }}
-                onFocus={() => setShowClientDrop(true)}
-                onBlur={() => setTimeout(() => setShowClientDrop(false), 150)}
-                placeholder="Search client by name or email…"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck="false"
-                name="nexart-client-search"
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
+              <input value={clientSearch} onChange={e => { setClientSearch(e.target.value); setShowClientDrop(true); setSelectedClient(null); }} onFocus={() => setShowClientDrop(true)} onBlur={() => setTimeout(() => setShowClientDrop(false), 150)} placeholder="Search by name or email…" autoComplete="off" autoCorrect="off" spellCheck="false" name="nexart-client-search" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
               {showClientDrop && filteredClients.length > 0 && (
-                <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
-                  {filteredClients.slice(0, 8).map(c => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onMouseDown={() => selectClient(c)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors"
-                    >
-                      <div className="text-sm font-medium text-slate-800">{c.full_name || c.name}</div>
-                      {c.email && <div className="text-xs text-slate-400">{c.email}</div>}
-                    </button>
-                  ))}
+                <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  {filteredClients.slice(0, 8).map(c => (<button key={c.id} type="button" onMouseDown={() => selectClient(c)} className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors"><div className="text-sm font-medium text-slate-800">{c.full_name || c.name}</div>{c.email && <div className="text-xs text-slate-400">{c.email}</div>}</button>))}
                 </div>
               )}
             </div>
             {selectedClient && (
-              <div className="mt-3 flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <div className="w-8 h-8 bg-blue-200 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm flex-shrink-0">
-                  {(selectedClient.full_name || selectedClient.name || "?")[0].toUpperCase()}
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-slate-800">{selectedClient.full_name || selectedClient.name}</div>
-                  <div className="text-xs text-slate-500">{selectedClient.email} {selectedClient.phone && `· ${selectedClient.phone}`}</div>
-                </div>
-                <button onClick={() => { setSelectedClient(null); setClientSearch(""); }} className="ml-auto text-slate-400 hover:text-red-500 text-xs">✕</button>
+              <div className="mt-2.5 flex items-center gap-2.5 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="w-7 h-7 bg-blue-200 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs flex-shrink-0">{(selectedClient.full_name || selectedClient.name || "?")[0].toUpperCase()}</div>
+                <div className="min-w-0"><div className="text-sm font-semibold text-slate-800 truncate">{selectedClient.full_name || selectedClient.name}</div><div className="text-xs text-slate-500 truncate">{selectedClient.email}{selectedClient.phone && ` \u00b7 ${selectedClient.phone}`}</div></div>
+                <button onClick={() => { setSelectedClient(null); setClientSearch(""); }} className="ml-auto text-slate-400 hover:text-red-500 text-xs flex-shrink-0">✕</button>
               </div>
             )}
           </div>
 
           {/* Line Items */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-blue-500" />Billable Items
-              </h2>
-              <Button type="button" size="sm" onClick={addItem} className="bg-blue-600 text-white gap-1.5">
-                <Plus className="w-3.5 h-3.5" />Add Item
-              </Button>
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5 text-blue-500" />Billable Items</h2>
+              <Button type="button" size="sm" onClick={addItem} className="h-7 text-xs bg-blue-600 text-white gap-1 px-2.5"><Plus className="w-3 h-3" />Add Item</Button>
             </div>
             {lineItems.length === 0 ? (
-              <div className="text-center py-10 text-slate-400 text-sm">No items. Click Add Item to begin.</div>
+              <div className="text-center py-8 text-slate-400 text-sm">No items. Click Add Item to begin.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-xs text-slate-500">
-                      <th className="text-left px-4 py-2.5 font-medium">Type</th>
-                      <th className="text-left px-4 py-2.5 font-medium">Item / Description</th>
-                      <th className="text-left px-4 py-2.5 font-medium w-20">Qty</th>
-                      <th className="text-left px-4 py-2.5 font-medium w-28">Unit Price</th>
-                      <th className="text-right px-4 py-2.5 font-medium w-24">Total</th>
-                      <th className="w-10" />
-                    </tr>
-                  </thead>
+                  <thead><tr className="bg-slate-50 border-b border-slate-100 text-[11px] text-slate-400 font-semibold uppercase tracking-wide"><th className="text-left px-3 py-2">Type</th><th className="text-left px-3 py-2">Item / Description</th><th className="text-left px-3 py-2 w-16">Qty</th><th className="text-left px-3 py-2 w-24">Price</th><th className="text-right px-3 py-2 w-20">Total</th><th className="w-8" /></tr></thead>
                   <tbody className="divide-y divide-slate-50">
                     {lineItems.map(li => (
-                      <tr key={li.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3">
-                          <select
-                            value={li.item_type}
-                            onChange={e => updateItem(li.id, "item_type", e.target.value)}
-                            className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none"
-                          >
-                            {ITEM_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            value={li.name}
-                            onChange={e => updateItem(li.id, "name", e.target.value)}
-                            placeholder="Item name"
-                            className="w-full text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 mb-1"
-                          />
-                          <input
-                            value={li.description}
-                            onChange={e => updateItem(li.id, "description", e.target.value)}
-                            placeholder="Description (optional)"
-                            className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none text-slate-500"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="number" min="0" step="0.01"
-                            value={li.quantity}
-                            onChange={e => updateItem(li.id, "quantity", parseFloat(e.target.value) || 0)}
-                            className="w-full text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="number" min="0" step="0.01"
-                            value={li.unit_price}
-                            onChange={e => updateItem(li.id, "unit_price", parseFloat(e.target.value) || 0)}
-                            className="w-full text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none"
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-sm font-semibold text-right text-slate-800">
-                          {formatCurrency(li.line_total)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button type="button" onClick={() => removeItem(li.id)} className="p-1 text-slate-300 hover:text-red-500 rounded transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
+                      <tr key={li.id} className="hover:bg-slate-50/60">
+                        <td className="px-3 py-2"><select value={li.item_type} onChange={e => updateItem(li.id, "item_type", e.target.value)} className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white focus:outline-none">{ITEM_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}</select></td>
+                        <td className="px-3 py-2"><input value={li.name} onChange={e => updateItem(li.id, "name", e.target.value)} placeholder="Item name" className="w-full text-sm border border-slate-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400 mb-1" /><input value={li.description} onChange={e => updateItem(li.id, "description", e.target.value)} placeholder="Description (optional)" className="w-full text-xs border border-slate-100 rounded-md px-2 py-1 focus:outline-none text-slate-400 bg-slate-50" /></td>
+                        <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={li.quantity} onChange={e => updateItem(li.id, "quantity", parseFloat(e.target.value) || 0)} className="w-full text-sm border border-slate-200 rounded-md px-2 py-1 focus:outline-none" /></td>
+                        <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={li.unit_price} onChange={e => updateItem(li.id, "unit_price", parseFloat(e.target.value) || 0)} className="w-full text-sm border border-slate-200 rounded-md px-2 py-1 focus:outline-none" /></td>
+                        <td className="px-3 py-2 text-sm font-semibold text-right text-slate-800">{formatCurrency(li.line_total)}</td>
+                        <td className="px-2 py-2"><button type="button" onClick={() => removeItem(li.id)} className="p-1 text-slate-300 hover:text-red-400 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-
-            {/* Totals */}
-            <div className="px-5 py-4 border-t border-slate-100 flex justify-end">
-              <div className="w-56 space-y-1.5 text-sm">
-                <div className="flex justify-between text-slate-500"><span>Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
-                {totals.discount_total > 0 && <div className="flex justify-between text-emerald-600"><span>Discount</span><span>-{formatCurrency(totals.discount_total)}</span></div>}
-                {totals.tax_total > 0 && <div className="flex justify-between text-slate-500"><span>Tax</span><span>{formatCurrency(totals.tax_total)}</span></div>}
-                <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-2 text-base">
-                  <span>Total</span><span>{formatCurrency(totals.total)}</span>
-                </div>
+            <div className="px-4 py-3 border-t border-slate-100 flex justify-end bg-slate-50/50">
+              <div className="w-52 space-y-1 text-sm">
+                <div className="flex justify-between text-slate-500 text-xs"><span>Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
+                {totals.discount_total > 0 && <div className="flex justify-between text-emerald-600 text-xs"><span>Discount</span><span>-{formatCurrency(totals.discount_total)}</span></div>}
+                {totals.tax_total > 0 && <div className="flex justify-between text-slate-500 text-xs"><span>Tax ({taxRate}%)</span><span>{formatCurrency(totals.tax_total)}</span></div>}
+                <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-1.5 text-sm"><span>Total</span><span>{formatCurrency(totals.total)}</span></div>
               </div>
             </div>
           </div>
 
           {/* Notes */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Notes (client-facing)</label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Payment instructions, thank-you message, special terms…"
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
-            />
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Notes (client-facing)</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Payment instructions, thank-you message, special terms…" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none" />
           </div>
         </div>
 
-        {/* RIGHT: Single dark invoice preview panel */}
-        <div
-          className="rounded-[28px] p-6 shadow-2xl flex flex-col gap-4 lg:sticky lg:top-20 self-start"
-          style={{ background: "linear-gradient(180deg, #0A0F1E 0%, #050A18 100%)" }}
-        >
-          {/* Header */}
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-400 mb-1">
-              Invoice Preview
-            </div>
-            <div className="text-3xl font-black text-white leading-tight">
-              {selectedClient
-                ? (selectedClient.full_name || selectedClient.name)
-                : "Select Client"}
-            </div>
-            <div className="text-slate-400 text-sm mt-0.5">Manual invoice</div>
+        {/* RIGHT: dark sidebar 260px */}
+        <div className="rounded-2xl p-4 shadow-xl flex flex-col gap-3 lg:sticky lg:top-14 self-start" style={{ background: "linear-gradient(180deg, #0A0F1E 0%, #050A18 100%)" }}>
+          <div className="pb-3 border-b border-white/10">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-400 mb-0.5">{isEditMode ? "Edit Mode" : "New Invoice"}</div>
+            <div className="text-base font-bold text-white leading-tight truncate">{selectedClient ? (selectedClient.full_name || selectedClient.name) : <span className="text-slate-500">No client</span>}</div>
+            {invoiceNumber && <div className="text-xs font-mono text-slate-500 mt-0.5">#{invoiceNumber}</div>}
           </div>
 
-          {/* Billable Items */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-3">
-              Billable Items
-            </div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-2">Items</div>
             {lineItems.filter(li => li.name && li.line_total > 0).length === 0 ? (
-              <p className="text-slate-500 text-sm italic">No billable items yet.</p>
+              <p className="text-slate-600 text-xs italic">No billable items yet.</p>
             ) : (
-              <div className="space-y-2">
-                {lineItems.filter(li => li.name && li.line_total > 0).slice(0, 5).map(li => (
-                  <div key={li.id} className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-slate-200 text-sm font-medium truncate">{li.name}</div>
-                      {li.quantity > 0 && li.unit_price > 0 && (
-                        <div className="text-slate-500 text-xs">{li.quantity} × {formatCurrency(li.unit_price)}</div>
-                      )}
-                    </div>
-                    <span className="text-white text-sm font-semibold flex-shrink-0">{formatCurrency(li.line_total)}</span>
+              <div className="space-y-1.5">
+                {lineItems.filter(li => li.name && li.line_total > 0).slice(0, 4).map(li => (
+                  <div key={li.id} className="flex items-start justify-between gap-2">
+                    <div className="min-w-0"><div className="text-slate-300 text-xs font-medium truncate">{li.name}</div>{li.quantity > 0 && li.unit_price > 0 && <div className="text-slate-600 text-[10px]">{li.quantity} × {formatCurrency(li.unit_price)}</div>}</div>
+                    <span className="text-white text-xs font-semibold flex-shrink-0">{formatCurrency(li.line_total)}</span>
                   </div>
                 ))}
-                {lineItems.filter(li => li.name && li.line_total > 0).length > 5 && (
-                  <div className="text-slate-500 text-xs">+{lineItems.filter(li => li.name && li.line_total > 0).length - 5} more items</div>
-                )}
+                {lineItems.filter(li => li.name && li.line_total > 0).length > 4 && <div className="text-slate-600 text-[10px]">+{lineItems.filter(li => li.name && li.line_total > 0).length - 4} more</div>}
               </div>
             )}
           </div>
 
-          {/* Totals */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-2.5">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 text-sm">Subtotal</span>
-              <span className="text-white font-semibold">{formatCurrency(totals.subtotal)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 text-sm">Tax ({taxRate.toFixed(2)}%)</span>
-              <span className="text-white font-semibold">{formatCurrency(totals.tax_total)}</span>
-            </div>
-            <div className="flex justify-between items-center border-t border-white/10 pt-2.5 mt-1">
-              <span className="text-slate-300 text-base font-medium">Total</span>
-              <span className="text-4xl font-black text-white leading-none">{formatCurrency(totals.total)}</span>
-            </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-1.5">
+            <div className="flex justify-between items-center"><span className="text-slate-500 text-xs">Subtotal</span><span className="text-slate-300 text-xs font-medium">{formatCurrency(totals.subtotal)}</span></div>
+            {taxRate > 0 && <div className="flex justify-between items-center"><span className="text-slate-500 text-xs">Tax ({taxRate}%)</span><span className="text-slate-300 text-xs font-medium">{formatCurrency(totals.tax_total)}</span></div>}
+            <div className="flex justify-between items-center border-t border-white/10 pt-1.5"><span className="text-slate-400 text-sm font-medium">Total</span><span className="text-2xl font-black text-white leading-none">{formatCurrency(totals.total)}</span></div>
           </div>
 
-          {/* Payment Terms */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-2">
-              Payment Terms
-            </div>
-            <div className="text-slate-300 text-sm font-medium mb-1">{paymentTerms || "Net 30"}</div>
-            <p className="text-slate-500 text-xs leading-relaxed">
-              Payment is due upon receipt unless otherwise agreed. Credit card payments may include processing fees when applicable.
-            </p>
-          </div>
-
-          {/* Invoice Readiness */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-3">
-              Invoice Readiness
-            </div>
-            <div className="space-y-2.5">
-              {[
-                { check: ready.client, label: "Client selected" },
-                { check: ready.items,  label: "At least one billable item" },
-                { check: ready.total,  label: "Total greater than $0" },
-              ].map(({ check, label }) => (
-                <div key={label} className="flex items-center gap-2.5">
-                  {check ? (
-                    <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  ) : (
-                    <svg className="w-4 h-4 flex-shrink-0 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1 4a1 1 0 00-1 1v3a1 1 0 002 0v-3a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                  <span className={`text-sm ${check ? "text-slate-200" : "text-amber-400"}`}>{label}</span>
-                </div>
-              ))}
-              {/* Due date — optional, never blocks */}
-              <div className="flex items-center gap-2.5">
-                <Circle className="w-4 h-4 flex-shrink-0 text-slate-600" />
-                <span className="text-sm text-slate-500">Due date (optional)</span>
+          <div className="space-y-1.5">
+            {[{ check: ready.client, label: "Client selected" }, { check: ready.items, label: "Billable item added" }, { check: ready.total, label: "Total > " }].map(({ check, label }) => (
+              <div key={label} className="flex items-center gap-2">
+                {check ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" /> : <Circle className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />}
+                <span className={	ext-xs }>{label}</span>
               </div>
-            </div>
+            ))}
           </div>
 
-          {/* Buttons */}
-          <div className="space-y-2.5 pt-1">
-            <button
-              onClick={handleSave}
-              disabled={saving || readinessScore < 3}
-              className="w-full h-14 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-base rounded-2xl transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+          <div className="space-y-2 pt-1 border-t border-white/10">
+            <button onClick={handleSave} disabled={saving || readinessScore < 3} className="w-full h-10 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               {saving ? (isEditMode ? "Saving…" : "Creating…") : (isEditMode ? "Save Changes" : "Create Invoice")}
             </button>
-            {isEditMode && (
-              <>
-                <button
-                  onClick={() => { if (saving || readinessScore < 3) return; setMarkSentResendOpen(true); }}
-                  disabled={saving || readinessScore < 3 || !selectedClient?.email}
-                  className="w-full h-12 flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-cyan-300 font-medium text-sm rounded-2xl transition-colors border border-cyan-500/20"
-                >
-                  <Send className="w-4 h-4" />
-                  Save &amp; Send Email
-                </button>
-                <button
-                  onClick={() => { if (saving || readinessScore < 3) return; setMarkSentManualOpen(true); }}
-                  disabled={saving || readinessScore < 3}
-                  className="w-full h-12 flex items-center justify-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-blue-300 font-medium text-sm rounded-2xl transition-colors border border-blue-500/20"
-                >
-                  <MailCheck className="w-4 h-4" />
-                  Save &amp; Mark Sent Manual
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}
-              className="w-full h-12 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-medium text-sm rounded-2xl transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {isEditMode ? "Back to Invoice" : "Back to Invoices"}
-            </button>
+            {isEditMode && (<>
+              <button onClick={() => { if (saving || readinessScore < 3) return; setMarkSentResendOpen(true); }} disabled={saving || readinessScore < 3 || !selectedClient?.email} className="w-full h-9 flex items-center justify-center gap-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-cyan-300 font-medium text-xs rounded-xl transition-colors border border-cyan-500/20"><Send className="w-3.5 h-3.5" />Save &amp; Send Email</button>
+              <button onClick={() => { if (saving || readinessScore < 3) return; setMarkSentManualOpen(true); }} disabled={saving || readinessScore < 3} className="w-full h-9 flex items-center justify-center gap-1.5 bg-blue-500/15 hover:bg-blue-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-blue-300 font-medium text-xs rounded-xl transition-colors border border-blue-500/20"><MailCheck className="w-3.5 h-3.5" />Save &amp; Mark Sent</button>
+            </>)}
+            <button onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")} className="w-full h-8 flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-400 font-medium text-xs transition-colors"><ArrowLeft className="w-3.5 h-3.5" />{isEditMode ? "Cancel edit" : "Back to Invoices"}</button>
           </div>
         </div>
       </div>
-      </>
-      )}
+      </>)}
 
-      {/* Manual Mark Sent sub-dialog */}
       <Dialog open={markSentManualOpen} onOpenChange={setMarkSentManualOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCheck className="w-4 h-4 text-blue-600" />
-              Mark as Sent Manually
-            </DialogTitle>
-            <p className="text-xs text-slate-400 mt-0.5">Use this only if the invoice was sent outside NexArtPro. No email will be sent.</p>
-          </DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2 text-sm"><CheckCheck className="w-4 h-4 text-blue-600" />Mark as Sent Manually</DialogTitle><p className="text-xs text-slate-400">No email sent. Use when invoice was delivered outside NexArtPro.</p></DialogHeader>
           <div className="space-y-3 pt-1">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sent Date</label>
-              <input type="date" value={manualSentForm.date} onChange={e => setManualSentForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Method / Channel</label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {["email","text","printed","hand delivered","other"].map(m => (
-                  <button key={m} type="button" onClick={() => setManualSentForm(f => ({ ...f, method: m }))}
-                    className={`py-2 px-1 rounded-xl border text-[11px] font-medium text-center capitalize transition-all ${manualSentForm.method === m ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}
-                  >{m}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Note (optional)</label>
-              <input value={manualSentForm.note} onChange={e => setManualSentForm(f => ({ ...f, note: e.target.value }))} placeholder="e.g. Handed to client at job site" className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none" />
-            </div>
+            <div><label className="block text-xs font-medium text-slate-700 mb-1">Sent Date</label><input type="date" value={manualSentForm.date} onChange={e => setManualSentForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" /></div>
+            <div><label className="block text-xs font-medium text-slate-700 mb-1">Method</label><div className="grid grid-cols-3 gap-1.5">{["email","text","printed","hand delivered","other"].map(m => (<button key={m} type="button" onClick={() => setManualSentForm(f => ({ ...f, method: m }))} className={`py-1.5 px-1 rounded-lg border text-[11px] font-medium text-center capitalize transition-all ${manualSentForm.method === m ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}>{m}</button>))}</div></div>
+            <div><label className="block text-xs font-medium text-slate-700 mb-1">Note (optional)</label><input value={manualSentForm.note} onChange={e => setManualSentForm(f => ({ ...f, note: e.target.value }))} placeholder="e.g. Handed to client at job site" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none" /></div>
           </div>
-          <div className="flex gap-3 justify-end pt-1">
-            <Button variant="outline" onClick={() => setMarkSentManualOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveAndMarkSent} disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700 gap-1.5">
-              <CheckCheck className="w-3.5 h-3.5" />{saving ? "Saving…" : "Confirm Sent"}
-            </Button>
-          </div>
+          <div className="flex gap-2 justify-end pt-1"><Button variant="outline" size="sm" onClick={() => setMarkSentManualOpen(false)}>Cancel</Button><Button size="sm" onClick={handleSaveAndMarkSent} disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700 gap-1.5"><CheckCheck className="w-3.5 h-3.5" />{saving ? "Saving…" : "Confirm Sent"}</Button></div>
         </DialogContent>
       </Dialog>
 
-      {/* Automatic via Resend sub-dialog */}
       <Dialog open={markSentResendOpen} onOpenChange={setMarkSentResendOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Send className="w-4 h-4 text-cyan-600" />
-              Send via Resend
-            </DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2 text-sm"><Send className="w-4 h-4 text-cyan-600" />Send via Resend</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-1">
-            <div className="bg-slate-50 rounded-xl p-3 space-y-1.5 text-sm">
-              <div className="flex justify-between"><span className="text-slate-400">To</span><span className="font-medium text-slate-700">{selectedClient?.email || "—"}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Invoice</span><span className="font-medium text-slate-700">{invoiceNumber}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Amount</span><span className="font-bold text-slate-800">{formatCurrency(totals.total)}</span></div>
-            </div>
-            <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-              <p className="text-xs text-amber-700">Changes will be saved first. Status will be marked <strong>sent</strong> only if email succeeds.</p>
-            </div>
+            <div className="bg-slate-50 rounded-xl p-3 space-y-1.5"><div className="flex justify-between"><span className="text-slate-400 text-xs">To</span><span className="font-medium text-slate-700 text-xs">{selectedClient?.email || "—"}</span></div><div className="flex justify-between"><span className="text-slate-400 text-xs">Invoice</span><span className="font-medium text-slate-700 text-xs">{invoiceNumber}</span></div><div className="flex justify-between"><span className="text-slate-400 text-xs">Amount</span><span className="font-bold text-slate-800 text-xs">{formatCurrency(totals.total)}</span></div></div>
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2"><p className="text-xs text-amber-700">Changes saved first. Status marked <strong>sent</strong> only if email succeeds.</p></div>
           </div>
-          <div className="flex gap-3 justify-end pt-1">
-            <Button variant="outline" onClick={() => setMarkSentResendOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveAndResend} disabled={saving} className="bg-cyan-600 text-white hover:bg-cyan-700 gap-1.5">
-              <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send via Resend"}
-            </Button>
-          </div>
+          <div className="flex gap-2 justify-end pt-1"><Button variant="outline" size="sm" onClick={() => setMarkSentResendOpen(false)}>Cancel</Button><Button size="sm" onClick={handleSaveAndResend} disabled={saving} className="bg-cyan-600 text-white hover:bg-cyan-700 gap-1.5"><Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send"}</Button></div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
