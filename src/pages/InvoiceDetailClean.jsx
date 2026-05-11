@@ -9,9 +9,8 @@ import { computeInvoiceDerivedFields, isInvoiceOverdue } from "@/lib/invoiceHelp
 import { redirectToStripeCheckout } from "@/lib/stripeCheckout";
 import { formatCurrency } from "@/utils/invoiceCalc";
 import { toast } from "sonner";
-import { APP_CONFIG } from "@/lib/appConfig";
+import useCompanyConfig from "@/hooks/useCompanyConfig";
 
-const co = APP_CONFIG?.company || {};
 const PAYMENT_METHODS = ["cash","check","card_manual","bank_transfer","zelle","venmo","other"];
 
 function getPaymentMethodMeta(method) {
@@ -44,6 +43,8 @@ export default function InvoiceDetailClean() {
   const [searchParams] = useSearchParams();
   const invoiceId = searchParams.get("id");
   const navigate  = useNavigate();
+
+  const company = useCompanyConfig();
 
   const [invoice,  setInvoice]  = useState(null);
   const [loading,  setLoading]  = useState(true);
@@ -134,7 +135,7 @@ export default function InvoiceDetailClean() {
       const emailResult = await base44.integrations.Core.SendEmail({
         to: invoice.client_email,
         subject,
-        body: `Hi ${invoice.client_name},\n\nPlease find your invoice ${invoice.invoice_number}.\n\nTotal Due: ${formatCurrency(derived.balance_due)}${invoice.due_date ? `\nDue: ${format(new Date(invoice.due_date), "MMM d, yyyy")}` : ""}\n\nView Invoice: ${clientLink}\n\nThank you!\n${co.name || ""}`,
+        body: `Hi ${invoice.client_name},\n\nPlease find your invoice ${invoice.invoice_number}.\n\nTotal Due: ${formatCurrency(derived.balance_due)}${invoice.due_date ? `\nDue: ${format(new Date(invoice.due_date), "MMM d, yyyy")}` : ""}\n\nView Invoice: ${clientLink}\n\nThank you,\n${company.name}`,
       });
       // Email succeeded — now mark sent
       const now = new Date().toISOString();
@@ -227,9 +228,9 @@ export default function InvoiceDetailClean() {
   const handlePrintReceiptPopup = () => {
     const paidList = (invoice.payments || []);
     if (!paidList.length) return;
-    const companyName  = co.name  || "R.C Art Construction LLC";
-    const companyEmail = co.email || "";
-    const companyPhone = co.phone || "";
+    const companyName  = company.name;
+    const companyEmail = company.email || "";
+    const companyPhone = company.phone || "";
     const totalPaid    = paidList.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
     const rows = paidList.map(p => `
       <tr>
@@ -402,9 +403,13 @@ export default function InvoiceDetailClean() {
                 <div className="text-slate-400 text-sm mt-1">{invoice.invoice_number}</div>
               </div>
               <div className="text-right">
-                <div className="font-bold text-slate-900">{co.name || "R.C Art Construction LLC"}</div>
-                {co.email && <div className="text-xs text-slate-500">{co.email}</div>}
-                {co.phone && <div className="text-xs text-slate-500">{co.phone}</div>}
+                {company.logo_url ? (
+                  <img src={company.logo_url} alt={company.name} className="h-10 object-contain ml-auto mb-1" />
+                ) : null}
+                <div className="font-bold text-slate-900">{company.name}</div>
+                {company.email && <div className="text-xs text-slate-500">{company.email}</div>}
+                {company.phone && <div className="text-xs text-slate-500">{company.phone}</div>}
+                {company.address && <div className="text-xs text-slate-500 mt-0.5 whitespace-pre-line">{company.address}</div>}
               </div>
             </div>
 

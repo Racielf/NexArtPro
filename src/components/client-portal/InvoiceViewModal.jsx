@@ -7,16 +7,15 @@ import { redirectToStripeCheckout } from "@/lib/stripeCheckout";
 import { computeInvoiceDerivedFields } from "@/lib/invoiceHelpers";
 import { formatCurrency } from "@/utils/invoiceCalc";
 import { toast } from "sonner";
-import { APP_CONFIG } from "@/lib/appConfig";
-
-const co = APP_CONFIG?.company || {};
-const companyName = co.name || "R.C Art Construction LLC";
+import useCompanyConfig from "@/hooks/useCompanyConfig";
 
 /**
  * InvoiceViewModal — clean client-facing invoice view.
  * Adapted from ZIP PublicDocument.jsx — uses NexArtPro schema:
  *   client_name (not customer_name), payments[] (not InvoicePayment entity),
  *   redirectToStripeCheckout() for Pay Now.
+ *
+ * Company branding: uses useCompanyConfig() for live settings from Settings > Company.
  *
  * Props:
  *   invoice  — invoice object (required)
@@ -25,6 +24,7 @@ const companyName = co.name || "R.C Art Construction LLC";
  * Also exported as default for standalone /document/:token route.
  */
 export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
+  const company = useCompanyConfig();
   const [stripeLoading, setStripeLoading] = useState(false);
 
   if (!invoiceProp) return null;
@@ -74,12 +74,16 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
       <div className="px-8 py-6 text-white" style={{ background: `linear-gradient(135deg, ${brandColor} 0%, #0F172A 100%)` }}>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
+            {company.logo_url ? (
+              <img src={company.logo_url} alt={company.name} className="h-10 object-contain rounded-lg" />
+            ) : (
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+            )}
             <div>
-              <div className="font-bold text-lg">{companyName}</div>
-              {co.address && <div className="text-white/60 text-xs">{co.address}</div>}
+              <div className="font-bold text-lg">{company.name}</div>
+              {company.address && <div className="text-white/60 text-xs">{company.address}</div>}
             </div>
           </div>
           <div className="text-right">
@@ -88,8 +92,8 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
-          {co.email && <div className="flex items-center gap-1.5 text-white/70"><Mail className="w-3.5 h-3.5" />{co.email}</div>}
-          {co.phone && <div className="flex items-center gap-1.5 text-white/70"><Phone className="w-3.5 h-3.5" />{co.phone}</div>}
+          {company.email && <div className="flex items-center gap-1.5 text-white/70"><Mail className="w-3.5 h-3.5" />{company.email}</div>}
+          {company.phone && <div className="flex items-center gap-1.5 text-white/70"><Phone className="w-3.5 h-3.5" />{company.phone}</div>}
         </div>
       </div>
 
@@ -175,6 +179,14 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
           </div>
         )}
 
+        {/* Accepted Payment Methods — from company settings */}
+        {company.payment_methods && (
+          <div className="bg-slate-50 rounded-xl p-4 text-sm">
+            <p className="font-medium text-slate-700 mb-1">Accepted Payment Methods</p>
+            <p className="text-slate-500 whitespace-pre-line">{company.payment_methods}</p>
+          </div>
+        )}
+
         {/* Actions — hidden in print */}
         <div className="flex flex-col sm:flex-row gap-3 pt-1 no-print-public">
           <button onClick={() => window.print()} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors">
@@ -197,7 +209,7 @@ export function InvoiceViewModal({ invoice: invoiceProp, onClose: _onClose }) {
           ) : null}
         </div>
 
-        <div className="text-center text-xs text-slate-400 pt-1 no-print-public">Powered by NexArtPro · Secure document portal</div>
+        <div className="text-center text-xs text-slate-400 pt-1 no-print-public">Powered by NexArtPro &middot; Secure document portal</div>
       </div>
     </div>
   );
