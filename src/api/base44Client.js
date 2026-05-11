@@ -313,8 +313,9 @@ const integrationsCore = {
 const integrationsProxy = { Core: integrationsCore };
 
 // ─── Auth proxy ───────────────────────────────────────────────────
-// Stub for base44.auth.me() / base44.auth.updateMe() used across the app.
-// Returns the current user from session/local storage until full Supabase Auth migration.
+// Drop-in replacement for base44.auth.me() / base44.auth.updateMe().
+// Settings -> Company now persists to Supabase app_users.company_settings.
+// localStorage remains a fallback only when app_users/migration is unavailable.
 const USER_PROFILE_KEY = 'nexartpro_user_profile';
 
 function getStoredUser() {
@@ -324,23 +325,104 @@ function getStoredUser() {
   } catch {}
   // Default admin user based on login
   return {
-    id: 'admin',
-    email: 'admin@rcartconstruction.com',
+    id: sessionStorage.getItem('local_user_id') || 'admin',
+    username: sessionStorage.getItem('local_username') || 'admin',
+    display_name: sessionStorage.getItem('local_display_name') || 'Admin',
+    email: sessionStorage.getItem('local_username') || 'admin@rcartconstruction.com',
     role: sessionStorage.getItem('user_role') || 'admin',
-    name: sessionStorage.getItem('user_name') || 'Admin',
+    name: sessionStorage.getItem('local_display_name') || 'Admin',
+    company_settings: {},
   };
+}
+
+function cacheUser(user) {
+  try { localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user)); } catch {}
+  return user;
+}
+
+function normalizeAppUser(row, fallback = {}) {
+  if (!row) return fallback;
+  const displayName = row.display_name || row.name || row.username || fallback.name || 'Admin';
+  return {
+    ...fallback,
+    ...row,
+    id: row.id || fallback.id || 'admin',
+    username: row.username || fallback.username || 'admin',
+    display_name: displayName,
+    name: row.name || displayName,
+    email: row.email || row.username || fallback.email || 'admin@rcartconstruction.com',
+    role: row.role || fallback.role || 'admin',
+    company_settings: row.company_settings || fallback.company_settings || {},
+  };
+}
+
+async function fetchCurrentAppUser() {
+  const fallback = getStoredUser();
+  const localUserId = sessionStorage.getItem('local_user_id');
+  const localUsername = sessionStorage.getItem('local_username') || fallback.username || 'admin';
+
+  try {
+    if (localUserId && localUserId !== 'admin') {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('id', localUserId)
+        .maybeSingle();
+      if (!error && data) return cacheUser(normalizeAppUser(data, fallback));
+    }
+
+    if (localUsername) {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('username', localUsername)
+        .maybeSingle();
+      if (!error && data) return cacheUser(normalizeAppUser(data, fallback));
+    }
+  } catch (err) {
+    console.warn('[SupabaseData] app_users lookup failed; using local fallback:', err?.message || err);
+  }
+
+  return fallback;
+}
+
+function buildAppUserUpdatePayload(current, updates = {}) {
+  const payload = {};
+  if ('company_settings' in updates) {
+    payload.company_settings = updates.company_settings || {};
+    payload.last_company_settings_update_at = new Date().toISOString();
+  }
+  if ('display_name' in updates) payload.display_name = updates.display_name;
+  if ('name' in updates) payload.name = updates.name;
+  if ('email' in updates) payload.email = updates.email;
+  if ('role' in updates) payload.role = updates.role;
+  if (!Object.keys(payload).length) payload.company_settings = current.company_settings || {};
+  return payload;
 }
 
 const authProxy = {
   async me() {
-    return getStoredUser();
+    return fetchCurrentAppUser();
   },
+
   async updateMe(updates) {
-    const current = getStoredUser();
+    const current = await fetchCurrentAppUser();
     const updated = { ...current, ...updates };
-    localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updated));
-    return updated;
+    const username = current.username || sessionStorage.getItem('local_username') || 'admin';
+    const payload = buildAppUserUpdatePayload(current, updates);
+
+    try {
+      let query = supabase.from('app_users').update(payload).select('*');
+      query = current.id && current.id !== 'admin' ? query.eq('id', current.id) : query.eq('username', username);
+      const { data, error } = await query.single();
+      if (error) throw error;
+      return cacheUser(normalizeAppUser(data, updated));
+    } catch (err) {
+      console.warn('[SupabaseData] auth.updateMe Supabase write failed; using local fallback:', err?.message || err);
+      return cacheUser(updated);
+    }
   },
+
   redirectToLogin(url) {
     window.location.href = url || '/';
   },
