@@ -56,20 +56,23 @@ export default function InvoiceDetailClean() {
   const navigate  = useNavigate();
 
   const company = useCompanyConfig();
-  const invoiceCompany = resolveInvoiceCompany(invoice, company);
 
-  const [invoice,  setInvoice]  = useState(null);
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState(invoice?.template || 'clean');
-  const [payOpen,  setPayOpen]  = useState(false);
-  const [payForm,  setPayForm]  = useState({ amount: "", method: "cash", reference: "", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
-  const [stripeLoading, setStripeLoading] = useState(false);
-  const [receiptOpen, setReceiptOpen] = useState(false);
-  const [markSentOpen, setMarkSentOpen] = useState(false);
-  const [resendOpen, setResendOpen] = useState(false);
-  const [manualSentForm, setManualSentForm] = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
-  const [estimateNum, setEstimateNum] = useState(null);
+  // ── All state declarations must come before any derived values ──
+  const [invoice,         setInvoice]         = useState(null);
+  const [loading,         setLoading]         = useState(true);
+  const [saving,          setSaving]          = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('clean'); // synced from DB via useEffect
+  const [payOpen,         setPayOpen]         = useState(false);
+  const [payForm,         setPayForm]         = useState({ amount: "", method: "cash", reference: "", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
+  const [stripeLoading,   setStripeLoading]   = useState(false);
+  const [receiptOpen,     setReceiptOpen]     = useState(false);
+  const [markSentOpen,    setMarkSentOpen]    = useState(false);
+  const [resendOpen,      setResendOpen]      = useState(false);
+  const [manualSentForm,  setManualSentForm]  = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
+  const [estimateNum,     setEstimateNum]     = useState(null);
+
+  // ── Derived values — safe to place after all useState declarations ──
+  const invoiceCompany = resolveInvoiceCompany(invoice, company);
 
   const load = async () => {
     if (!invoiceId) { setLoading(false); return; }
@@ -79,6 +82,11 @@ export default function InvoiceDetailClean() {
   };
 
   useEffect(() => { load(); }, [invoiceId]);
+
+  // Sync selectedTemplate from DB after invoice loads (preserves page-refresh state)
+  useEffect(() => {
+    if (invoice?.template) setSelectedTemplate(invoice.template);
+  }, [invoice?.template]);
 
   // Best-effort: load estimate number if invoice came from an estimate
   useEffect(() => {
@@ -218,6 +226,20 @@ export default function InvoiceDetailClean() {
     try { await redirectToStripeCheckout(invoice); }
     catch (err) { toast.error(err?.message || "Stripe error"); }
     finally { setStripeLoading(false); }
+  };
+
+  // Template persistence — optimistic update, rollback on error
+  const handleTemplateChange = async (templateKey) => {
+    const previous = selectedTemplate;
+    setSelectedTemplate(templateKey);
+    setInvoice(prev => prev ? { ...prev, template: templateKey } : prev);
+    try {
+      await base44.entities.Invoice.update(invoiceId, { template: templateKey });
+    } catch (err) {
+      setSelectedTemplate(previous);
+      setInvoice(prev => prev ? { ...prev, template: previous } : prev);
+      toast.error(err?.message || "Failed to update template");
+    }
   };
 
   // Print full invoice — window.print() uses browser CSS @media print
@@ -416,7 +438,7 @@ export default function InvoiceDetailClean() {
               {INVOICE_TEMPLATES.map(t => (
                 <button
                   key={t.key}
-                  onClick={() => setSelectedTemplate(t.key)}
+                  onClick={() => handleTemplateChange(t.key)}
                   className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
                     selectedTemplate === t.key
                       ? 'bg-blue-600 text-white border-blue-600 shadow-sm'

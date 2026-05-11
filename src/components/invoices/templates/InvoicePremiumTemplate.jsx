@@ -24,7 +24,9 @@ function fmtDate(d) {
 export default function InvoicePremiumTemplate({ invoice, company, derived }) {
   if (!invoice) return null;
   const co = company || {};
-  const lineItems = invoice.line_items || [];
+  const lineItems = invoice.line_items?.length
+    ? invoice.line_items
+    : (invoice.groups || []).flatMap(g => g.items || []);
   const isOverdue = invoice.due_date && new Date(invoice.due_date) < new Date() && (derived?.balance_due || 0) > 0;
   const isPaid = derived?.payment_status === 'paid';
   const payments = invoice.payments || [];
