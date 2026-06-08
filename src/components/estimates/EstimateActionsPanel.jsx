@@ -34,12 +34,14 @@ function fmtDate(dateStr) {
 }
 
 // ── next best action logic ────────────────────────────────────────────────────
-function getNextAction(estimate) {
+function getNextAction(estimate, omwActive) {
   const s = estimate?.status;
   if (!s || s === 'draft') return { text: 'Schedule a site visit to get started', icon: Calendar, color: 'blue' };
   if (s === 'scheduled') return { text: 'Head to the client site when ready', icon: Navigation2, color: 'orange' };
   if (s === 'on_my_way') return { text: 'Stop OMW when you arrive on site', icon: Navigation2, color: 'orange' };
-  if (s === 'visit_completed' && !estimate.sent_at) return { text: 'Review & send the estimate to the client', icon: Send, color: 'blue' };
+  if (s === 'visit_completed') {
+    if (!estimate.sent_at) return { text: 'Review & send the estimate to the client', icon: Send, color: 'blue' };
+  }
   if (s === 'sent' || s === 'viewed' || s === 'changes_requested') {
     return { text: 'Follow up or manually approve', icon: ThumbsUp, color: 'purple' };
   }
@@ -49,169 +51,118 @@ function getNextAction(estimate) {
   return null;
 }
 
-function getStatusPillClasses(status) {
-  const map = {
-    approved: 'bg-emerald-500/10 text-emerald-700 border-emerald-200',
-    signed: 'bg-emerald-500/10 text-emerald-700 border-emerald-200',
-    scheduled: 'bg-amber-500/10 text-amber-700 border-amber-200',
-    on_my_way: 'bg-amber-500/10 text-amber-700 border-amber-200',
-    visit_completed: 'bg-blue-500/10 text-blue-700 border-blue-200',
-    sent: 'bg-violet-500/10 text-violet-700 border-violet-200',
-    viewed: 'bg-violet-500/10 text-violet-700 border-violet-200',
-    changes_requested: 'bg-orange-500/10 text-orange-700 border-orange-200',
-    declined: 'bg-red-500/10 text-red-700 border-red-200',
-    converted: 'bg-slate-500/10 text-slate-700 border-slate-200',
-    draft: 'bg-slate-500/10 text-slate-700 border-slate-200',
-  };
+// ── pipeline row ─────────────────────────────────────────────────────────────
+const STEP_ICONS = {
+  Appointment: CalendarDays,
+  Visit:       MapPin,
+  Sent:        Mail,
+  Approval:    BadgeCheck,
+  'Signed by': CheckCircle,
+  Changes:     AlertCircle,
+};
 
-  return map[status] || map.draft;
-}
+const VARIANT_DOT = {
+  success: 'bg-emerald-500',
+  warning: 'bg-amber-400',
+  info:    'bg-blue-500',
+  neutral: 'bg-slate-300',
+  error:   'bg-red-500',
+};
+const VARIANT_VALUE = {
+  success: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+  warning: 'text-amber-700 bg-amber-50 border-amber-200',
+  info:    'text-blue-700 bg-blue-50 border-blue-200',
+  neutral: 'text-slate-400 bg-slate-50 border-slate-200',
+  error:   'text-red-600 bg-red-50 border-red-200',
+};
+const VARIANT_ICON = {
+  success: 'text-emerald-500 bg-emerald-50',
+  warning: 'text-amber-500 bg-amber-50',
+  info:    'text-blue-500 bg-blue-50',
+  neutral: 'text-slate-300 bg-slate-50',
+  error:   'text-red-400 bg-red-50',
+};
 
-function getDotClasses(variant) {
-  const map = {
-    success: 'bg-emerald-500',
-    warning: 'bg-amber-500',
-    info: 'bg-blue-500',
-    neutral: 'bg-slate-300',
-    error: 'bg-red-500',
-  };
-
-  return map[variant] || map.neutral;
-}
-
-function getTextClasses(variant) {
-  const map = {
-    success: 'text-emerald-700',
-    warning: 'text-amber-700',
-    info: 'text-blue-700',
-    neutral: 'text-slate-700',
-    error: 'text-red-700',
-  };
-
-  return map[variant] || map.neutral;
-}
-
-function getNextActionClasses(color) {
-  const map = {
-    green: {
-      wrap: 'border-emerald-300 bg-emerald-50/70',
-      line: 'border-emerald-500',
-      icon: 'text-emerald-600',
-      text: 'text-emerald-800',
-    },
-    orange: {
-      wrap: 'border-amber-300 bg-amber-50/80',
-      line: 'border-amber-500',
-      icon: 'text-amber-600',
-      text: 'text-amber-800',
-    },
-    red: {
-      wrap: 'border-red-300 bg-red-50/80',
-      line: 'border-red-500',
-      icon: 'text-red-600',
-      text: 'text-red-800',
-    },
-    purple: {
-      wrap: 'border-violet-300 bg-violet-50/80',
-      line: 'border-violet-500',
-      icon: 'text-violet-600',
-      text: 'text-violet-800',
-    },
-    blue: {
-      wrap: 'border-blue-300 bg-blue-50/80',
-      line: 'border-blue-500',
-      icon: 'text-blue-600',
-      text: 'text-blue-800',
-    },
-  };
-
-  return map[color] || map.blue;
-}
-
-function SummaryChip({ label, value, variant }) {
-  const icons = {
-    Appointment: CalendarDays,
-    Visit: MapPin,
-    Sent: Mail,
-    Approval: BadgeCheck,
-    'Signed by': CheckCircle,
-    Changes: AlertCircle,
-  };
-  const Icon = icons[label] || CalendarDays;
-
+function PipelineRow({ label, value, variant }) {
+  const Icon = STEP_ICONS[label] || CalendarDays;
+  const iconCls  = VARIANT_ICON[variant]  || VARIANT_ICON.neutral;
+  const valueCls = VARIANT_VALUE[variant] || VARIANT_VALUE.neutral;
+  const dotCls   = VARIANT_DOT[variant]   || VARIANT_DOT.neutral;
   return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <div className="flex min-w-0 items-center gap-2">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-50">
-          <Icon className={`h-3 w-3 ${getTextClasses(variant)}`} />
-        </div>
-        <span className="text-[11px] font-medium text-slate-500">{label}</span>
+    <div className="flex items-center gap-2.5">
+      {/* Step icon */}
+      <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${iconCls}`}>
+        <Icon className="w-3 h-3" />
       </div>
-      <span className={`inline-flex items-center gap-1 rounded-full border border-current/10 px-2 py-0.5 text-[10px] font-semibold ${getTextClasses(variant)}`}>
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${getDotClasses(variant)}`} />
+      {/* Label */}
+      <span className="flex-1 text-[11px] font-medium text-slate-600 truncate">{label}</span>
+      {/* Status badge */}
+      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border leading-none ${valueCls}`}>
+        <span className={`w-1 h-1 rounded-full flex-shrink-0 ${dotCls}`} />
         {value}
       </span>
     </div>
   );
 }
 
+// kept for backward compat if used elsewhere — delegates to PipelineRow
+function SummaryChip({ label, value, variant }) {
+  return <PipelineRow label={label} value={value} variant={variant} />;
+}
+
+// ── EstimateSummaryBlock ──────────────────────────────────────────────────────
 function EstimateSummaryBlock({ estimate }) {
-  const status = estimate?.status || 'draft';
-
+  const s = estimate?.status;
   return (
-    <div className="mx-3 mt-3 rounded-3xl border border-slate-800 bg-slate-900 px-4 py-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Estimate Total</p>
-          <p className="mt-1 text-[26px] font-black leading-none tracking-tight text-white">
-            ${(estimate?.total || 0).toFixed(2)}
-          </p>
-          {estimate?.client_name && (
-            <p className="mt-2 truncate text-[11px] font-medium text-slate-400">{estimate.client_name}</p>
-          )}
-        </div>
-
-        <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${getStatusPillClasses(status)}`}>
-          {status.replace(/_/g, ' ')}
-        </span>
+    <div className="px-4 pt-5 pb-4 border-b border-slate-100 text-center">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Estimate Total</p>
+      <p className="text-3xl font-bold text-slate-900 tabular-nums leading-none mb-3">
+        ${(estimate?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+      </p>
+      <div className="inline-flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+        <span className="text-[11px] font-semibold text-slate-400 capitalize">{s?.replace(/_/g, ' ') || 'Draft'}</span>
       </div>
     </div>
   );
 }
 
+// ── StatusOverviewBlock ───────────────────────────────────────────────────────
 function StatusOverviewBlock({ estimate }) {
   const s = estimate?.status;
   const hasAppointment = !!estimate?.appointment_id;
   const visitDone = ['visit_completed', 'sent', 'viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
-  const isSent = !!estimate?.sent_at || ['sent', 'viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
-  const isViewed = !!estimate?.viewed_at || ['viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
+  const isSent    = !!estimate?.sent_at || ['sent', 'viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
+  const isViewed  = !!estimate?.viewed_at || ['viewed', 'changes_requested', 'approved', 'signed', 'declined', 'converted'].includes(s);
   const isApproved = ['approved', 'signed', 'converted'].includes(s);
   const isDeclined = s === 'declined';
   const isSigned = s === 'signed';
   const isChangesReq = s === 'changes_requested';
 
   const apptSummaryVariant = hasAppointment ? (visitDone ? 'success' : 'info') : 'neutral';
-  const apptSummaryValue = hasAppointment
+  const apptSummaryValue   = hasAppointment
     ? (visitDone ? 'Completed' : (estimate?.scheduled_date ? fmtDate(estimate.scheduled_date) : 'Scheduled'))
     : 'Not scheduled';
+
   const sentVariant = isSent ? (isViewed ? 'info' : 'success') : 'neutral';
-  const sentValue = isSent ? (isViewed ? 'Viewed' : 'Sent') : 'Not sent';
+  const sentValue   = isSent ? (isViewed ? 'Viewed' : 'Sent') : 'Not sent';
+
   const approvalVariant = isSigned ? 'success' : isApproved ? 'success' : isDeclined ? 'error' : isChangesReq ? 'warning' : isSent ? 'warning' : 'neutral';
-  const approvalValue = isSigned ? 'Signed' : isApproved ? 'Approved' : isDeclined ? 'Declined' : isChangesReq ? 'Changes Req.' : isSent ? 'Pending' : '—';
+  const approvalValue   = isSigned ? 'Signed' : isApproved ? 'Approved' : isDeclined ? 'Declined' : isChangesReq ? 'Changes Req.' : isSent ? 'Pending' : '—';
 
   return (
-    <div className="mx-3 mt-3 rounded-3xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200/80">
-      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Status Overview</p>
-      <div className="divide-y divide-slate-50">
-        <SummaryChip label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
-        <SummaryChip label="Visit" value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
-        <SummaryChip label="Sent" value={sentValue} variant={sentVariant} />
-        <SummaryChip label="Approval" value={approvalValue} variant={approvalVariant} />
+    <div className="px-3 pt-3 pb-3 border-b border-slate-100">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Pipeline</p>
+      <div className="space-y-2">
+        <PipelineRow label="Appointment" value={apptSummaryValue} variant={apptSummaryVariant} />
+        <PipelineRow label="Visit"       value={visitDone ? 'Completed' : (s === 'on_my_way' ? 'In transit' : 'Pending')} variant={visitDone ? 'success' : s === 'on_my_way' ? 'warning' : 'neutral'} />
+        <PipelineRow label="Sent"        value={sentValue}   variant={sentVariant} />
+        <PipelineRow label="Approval"    value={approvalValue} variant={approvalVariant} />
         {isSigned && estimate?.signer_name && (
-          <SummaryChip label="Signed by" value={estimate.signer_name} variant="success" />
+          <PipelineRow label="Signed by" value={estimate.signer_name} variant="success" />
         )}
         {isChangesReq && estimate?.changes_requested_at && (
-          <SummaryChip label="Changes" value={fmt(estimate.changes_requested_at)} variant="warning" />
+          <PipelineRow label="Changes" value={fmt(estimate.changes_requested_at)} variant="warning" />
         )}
       </div>
     </div>
@@ -219,21 +170,37 @@ function StatusOverviewBlock({ estimate }) {
 }
 
 // ── NextActionBlock ───────────────────────────────────────────────────────────
-function NextActionBlock({ estimate }) {
-  const next = getNextAction(estimate);
+function NextActionBlock({ estimate, omwActive }) {
+  const next = getNextAction(estimate, omwActive);
   if (!next) return null;
-  const ui = getNextActionClasses(next.color);
-  const Icon = next.icon;
-
+  const iconBg = {
+    green:  'bg-emerald-100', orange: 'bg-amber-100',
+    red:    'bg-red-100',     purple: 'bg-violet-100', blue: 'bg-blue-100',
+  };
+  const iconColor = {
+    green:  'text-emerald-600', orange: 'text-amber-600',
+    red:    'text-red-600',     purple: 'text-violet-600', blue: 'text-blue-600',
+  };
+  const borderColor = {
+    green:  'border-emerald-200', orange: 'border-amber-200',
+    red:    'border-red-200',     purple: 'border-violet-200', blue: 'border-blue-200',
+  };
+  const bgColor = {
+    green:  'bg-emerald-50/70',
+    orange: 'bg-amber-50/70',
+    red:    'bg-red-50/70',
+    purple: 'bg-violet-50/70',
+    blue:   'bg-blue-50/70',
+  };
   return (
-    <div className={`mx-3 mt-3 rounded-2xl border px-3 py-3 shadow-sm ${ui.wrap}`}>
-      <div className={`flex items-start gap-2.5 border-l-4 pl-3 ${ui.line}`}>
-        <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${ui.icon}`} />
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Next Step</p>
-          <p className={`mt-1 text-[11px] font-semibold leading-snug ${ui.text}`}>{next.text}</p>
-        </div>
-      </div>
+    <div className={`mx-3 mt-3 mb-1 rounded-xl border px-3 py-3 flex items-start gap-2.5 ${borderColor[next.color] || 'border-blue-200'} ${bgColor[next.color] || 'bg-blue-50/70'}`}>
+    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${iconBg[next.color] || 'bg-blue-100'}`}>
+      <next.icon className={`w-3.5 h-3.5 ${iconColor[next.color] || 'text-blue-600'}`} />
+    </div>
+    <div className="min-w-0">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Next Step</p>
+      <p className="text-[11px] font-semibold text-slate-800 leading-snug">{next.text}</p>
+    </div>
     </div>
   );
 }
@@ -255,13 +222,13 @@ function getPrimaryAction(estimate, omwActive) {
 }
 
 const PRIMARY_BTN =
-  'w-full flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-3 py-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-black';
+  'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-sm transition-colors';
 
 const SECONDARY_BTN =
-  'w-full flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-xs font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50';
+  'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 transition-colors';
 
 const ACTIVE_OMW_BTN =
-  'w-full flex items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-left text-xs font-semibold text-amber-800 shadow-sm transition-all hover:bg-amber-100';
+  'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors';
 
 function ActionButtonsBlock({
   estimate,
@@ -315,8 +282,8 @@ function ActionButtonsBlock({
   ];
 
   return (
-    <div className="mx-3 mt-3 flex flex-1 flex-col gap-2">
-      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+    <div className="px-3 pb-3 pt-2.5 space-y-1.5 flex-1 flex flex-col">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pt-0.5 pb-1">
         Actions
       </p>
 
@@ -333,15 +300,15 @@ function ActionButtonsBlock({
         return (
           <React.Fragment key={action.id}>
             {index === 1 && (
-              <div className="my-1 h-px bg-slate-100" />
+              <div className="h-px bg-slate-100 my-0.5" />
             )}
 
             <button onClick={action.onClick} className={className}>
-              <Icon className={`h-3.5 w-3.5 flex-shrink-0 ${isPrimary ? 'text-indigo-300' : action.active ? 'text-amber-500' : 'text-slate-500'}`} />
+              <Icon className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
               <span className="truncate">{action.label}</span>
 
               {action.active && (
-                <span className="ml-auto h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500 animate-pulse" />
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
               )}
             </button>
           </React.Fragment>
@@ -632,13 +599,13 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
   };
 
   return (
-    <div className="w-56 xl:w-60 flex-shrink-0 flex min-h-0 flex-col overflow-y-auto border-r border-slate-200 bg-slate-50">
+    <div className="w-56 xl:w-60 flex-shrink-0 flex flex-col overflow-y-auto min-h-0 bg-white rounded-xl border border-slate-100 mx-0" style={{ boxShadow: '0 6px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
 
       <EstimateSummaryBlock estimate={estimate} />
 
       <StatusOverviewBlock estimate={estimate} />
 
-      <NextActionBlock estimate={estimate} />
+      <NextActionBlock estimate={estimate} omwActive={omwActive} />
 
       <ActionButtonsBlock
         estimate={estimate}
@@ -810,26 +777,26 @@ export default function EstimateActionsPanel({ estimate, onStatusChange, onOpenS
       />
 
       {/* ── MORE ACTIONS ──────────────────────────────────────────────────── */}
-      <div className="mx-3 mt-3 border-t border-slate-200 pt-3">
+      <div className="px-4 pt-2 pb-4 border-t border-slate-100 mt-auto">
         <Collapsible open={moreActionsOpen} onOpenChange={setMoreActionsOpen}>
           <CollapsibleTrigger asChild>
-            <button className="group flex w-full items-center justify-between px-1 py-1.5 transition-colors">
-              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">More Actions</span>
-              <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${moreActionsOpen ? 'rotate-180' : ''}`} />
+            <button className="w-full flex items-center justify-between px-2 py-2 rounded-xl hover:bg-slate-50 transition-colors">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">More</span>
+              <ChevronDown className={`w-3 h-3 text-slate-300 transition-transform ${moreActionsOpen ? 'rotate-180' : ''}`} />
             </button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-1.5 pb-3 pt-2">
+          <CollapsibleContent className="pt-1 space-y-1">
             <button
               onClick={handleDelete}
               disabled={!canDelete()}
-              className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-xs font-medium transition-colors ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors text-xs font-semibold border ${
                 canDelete()
-                  ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
-                  : 'cursor-not-allowed text-slate-400'
+                  ? 'bg-white border-red-100 hover:bg-red-50 hover:border-red-200 text-red-500'
+                  : 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed'
               }`}
               title={!canDelete() ? getDeleteBlockReason() : 'Delete this estimate'}
             >
-              <Trash2 className={`h-3.5 w-3.5 ${canDelete() ? 'text-red-500' : 'text-slate-300'}`} />
+              <Trash2 className={`w-3.5 h-3.5 ${canDelete() ? 'text-red-400' : 'text-slate-300'}`} />
               Delete Estimate
             </button>
           </CollapsibleContent>
