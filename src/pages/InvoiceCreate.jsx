@@ -426,10 +426,10 @@ export default function InvoiceCreate() {
           </div>
 
           <div className="space-y-1.5">
-            {[{ check: ready.client, label: "Client selected" }, { check: ready.items, label: "Billable item added" }, { check: ready.total, label: "Total > $0" }].map(({ check, label }) => (
+            {[{ check: ready.client, label: "Client selected" }, { check: ready.items, label: "Billable item added" }, { check: ready.total, label: "Total > " }].map(({ check, label }) => (
               <div key={label} className="flex items-center gap-2">
                 {check ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" /> : <Circle className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />}
-                <span className={`text-xs ${check ? "text-emerald-400" : "text-amber-400"}`}>{label}</span>
+                <span className={	ext-xs }>{label}</span>
               </div>
             ))}
           </div>

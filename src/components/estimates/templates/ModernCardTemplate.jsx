@@ -225,7 +225,7 @@ export default function ModernCardTemplate({ vm }) {
             )}
             {/* Contingency — only if client-visible and amount > 0 */}
             {ct.showContingencyToClient && ct.contingencyAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13, color: '#92400e', borderBottom: '1px solid #fef3c7', background: '#fffbeb', margin: '2px -4px', padding: '6px 4px', borderRadius: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#92400e', borderBottom: '1px solid #fef3c7', background: '#fffbeb', margin: '2px -4px', padding: '6px 4px', borderRadius: 4 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>
                     Contingency Reserve

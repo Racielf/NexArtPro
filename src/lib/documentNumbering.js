@@ -47,6 +47,6 @@ export async function getNextDocumentNumber(docType) {
     return floor;
   }
 
-  const maxNumber = Number(records[0][field]) || 0;
+  const maxNumber = records[0][field] || 0;
   return Math.max(maxNumber + 1, floor);
 }
