@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="NexArtPro — Professional construction management: estimates, work orders, invoices, and field operations." />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NexArtPro" />
+    <link rel="apple-touch-icon" href="/icon-512.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/icon-512.png" />
+
+    <!-- GitHub Pages SPA route restore -->
+    <script>
+      (function() {
+        var params = new URLSearchParams(window.location.search);
+        var p = params.get('p');
+        if (p) {
+          var q = params.get('q');
+          // Preserve the base path (/NexArtPro/) when restoring
+          var base = window.location.pathname.replace(/\/$/, '');
+          var restored = base + p + (q ? '?' + q : '') + window.location.hash;
+          window.history.replaceState(null, '', restored);
+        }
+      })();
+    </script>
+
+    <title>NexArt Pro</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
+  </body>
+</html>
+

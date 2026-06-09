@@ -1,0 +1,73 @@
+{
+  "name": "PriceBookEntry",
+  "type": "object",
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "description": "Display name for the price book item"
+    },
+    "service_id": {
+      "type": "string",
+      "description": "Linked Service entity ID (resolved by autolink or manual)"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "service",
+        "material",
+        "labor"
+      ],
+      "default": "service"
+    },
+    "category": {
+      "type": "string",
+      "description": "Category grouping"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measure"
+    },
+    "unit_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Client-facing selling price per unit"
+    },
+    "unit_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Internal cost per unit"
+    },
+    "book_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Market reference price (never drives totals)"
+    },
+    "markup": {
+      "type": "number",
+      "description": "Optional markup percentage"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "needs_review": {
+      "type": "boolean",
+      "default": false
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "seed",
+        "manual",
+        "csv_import"
+      ],
+      "default": "manual"
+    }
+  },
+  "required": [
+    "display_name"
+  ]
+}

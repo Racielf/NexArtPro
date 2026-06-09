@@ -1,0 +1,55 @@
+{
+  "name": "Service",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Service name (e.g. Drywall Install per sqft)"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "service",
+        "material",
+        "labor"
+      ],
+      "default": "service",
+      "description": "Item type: service, material, or labor"
+    },
+    "category": {
+      "type": "string",
+      "description": "Category grouping (e.g. Drywall, Paint, Tile, Flooring)"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measure (e.g. SQFT, LF, EA, HR)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Service description / scope"
+    },
+    "unit_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Client-facing selling price per unit (drives estimate totals)"
+    },
+    "unit_cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Internal cost per unit (drives margin calculations)"
+    },
+    "book_price": {
+      "type": "number",
+      "default": 0,
+      "description": "Market reference price (never drives totals)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this service is available for selection"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

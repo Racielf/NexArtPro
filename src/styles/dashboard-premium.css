@@ -1,0 +1,74 @@
+/* Premium Dashboard visual layer. Visual only: no logic, state, handlers or backend changes. */
+
+/* Dashboard uses a clock strip at the top; this scopes the polish to that surface and its direct content. */
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .w-full.bg-white.flex.items-center.justify-center.gap-4.py-2.border-b.border-slate-200 {
+  margin: 14px 18px 0;
+  width: calc(100% - 36px) !important;
+  border: 1px solid #dbe4ef !important;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%) !important;
+  box-shadow: 0 16px 36px rgba(15,23,42,.07), 0 2px 8px rgba(15,23,42,.04);
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .rounded-xl.shadow-sm {
+  border-color: #dbe4ef !important;
+  border-radius: 22px !important;
+  box-shadow: 0 14px 32px rgba(15,23,42,.065), 0 1px 4px rgba(15,23,42,.04) !important;
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease !important;
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .rounded-xl.shadow-sm:hover {
+  transform: translateY(-2px) !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 20px 44px rgba(15,23,42,.095), 0 4px 10px rgba(15,23,42,.05) !important;
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .rounded-xl.shadow-sm > div:first-child {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom-color: #e2e8f0 !important;
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .rounded-xl.shadow-sm > div:first-child span,
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .rounded-xl.shadow-sm > div:first-child a {
+  letter-spacing: .14em !important;
+  font-weight: 900 !important;
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .bg-emerald-50,
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .bg-blue-50,
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .bg-red-50,
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .bg-violet-50,
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .bg-amber-50 {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) a.bg-emerald-600 {
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, #047857 0%, #059669 55%, #10b981 100%) !important;
+  box-shadow: 0 14px 28px rgba(5,150,105,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) a.bg-emerald-600:hover {
+  background: linear-gradient(135deg, #065f46 0%, #047857 55%, #059669 100%) !important;
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .grid.grid-cols-2.divide-x.divide-y a {
+  transition: background 140ms ease, transform 140ms ease !important;
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .grid.grid-cols-2.divide-x.divide-y a:hover {
+  transform: translateY(-1px);
+  background: #f8fafc !important;
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .bg-white.border.border-slate-200.rounded-xl.px-4.py-3,
+.font-inter:has([href='/invoices']):has([href='/work-orders']) .bg-white.border.border-slate-200.rounded-xl.px-5.py-3 {
+  border-radius: 20px !important;
+  border-color: #dbe4ef !important;
+  box-shadow: 0 12px 30px rgba(15,23,42,.055) !important;
+}
+
+.font-inter:has([href='/invoices']):has([href='/work-orders']) button,
+.font-inter:has([href='/invoices']):has([href='/work-orders']) a {
+  -webkit-tap-highlight-color: transparent;
+}

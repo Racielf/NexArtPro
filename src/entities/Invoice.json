@@ -1,0 +1,217 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "invoice_number": {
+      "type": "number"
+    },
+    "work_order_id": {
+      "type": "string"
+    },
+    "estimate_id": {
+      "type": "string"
+    },
+    "source_proposal_id": {
+      "type": "string",
+      "description": "ID of the Proposal this invoice was converted from"
+    },
+    "source_proposal_number": {
+      "type": "number",
+      "description": "Proposal number at conversion time (snapshot)"
+    },
+    "source_close_outcome": {
+      "type": "string",
+      "description": "Deal close outcome from source Proposal (won / lost / no_response / withdrawn)"
+    },
+    "source_selected_pricing_option_id": {
+      "type": "string",
+      "description": "ID of the pricing option the client selected on the source Proposal"
+    },
+    "source_selected_pricing_option_title": {
+      "type": "string",
+      "description": "Title of the winning pricing option at conversion time (snapshot)"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "client_address": {
+      "type": "string"
+    },
+    "client_phone": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sent",
+        "cancelled"
+      ],
+      "default": "draft",
+      "description": "Workflow status only (draft/sent/cancelled). Payment status is derived from payment_status field."
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "groups": {
+      "type": "array",
+      "description": "Inherited work groups from estimate/work order",
+      "items": {
+        "type": "object"
+      }
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "subtotal": {
+      "type": "number"
+    },
+    "discount_type": {
+      "type": "string",
+      "enum": [
+        "percent",
+        "fixed"
+      ],
+      "default": "percent"
+    },
+    "discount_value": {
+      "type": "number",
+      "default": 0
+    },
+    "discount_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "tax_rate": {
+      "type": "number",
+      "default": 0
+    },
+    "tax_amount": {
+      "type": "number"
+    },
+    "total": {
+      "type": "number"
+    },
+    "payments": {
+      "type": "array",
+      "description": "SINGLE SOURCE OF TRUTH for payments. Array of payment records. All other payment fields are derived from this.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "card",
+              "check",
+              "transfer",
+              "other"
+            ]
+          },
+          "payment_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "note": {
+            "type": "string"
+          },
+          "recorded_by": {
+            "type": "string"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0,
+      "description": "DERIVED: sum(payments[].amount). Updated automatically when payments[] changes. Never manually written."
+    },
+    "balance_due": {
+      "type": "number",
+      "default": 0,
+      "description": "DERIVED: total - amount_paid. Updated automatically when payments[] changes."
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "unpaid",
+        "partial",
+        "paid"
+      ],
+      "default": "unpaid",
+      "description": "DERIVED from balance_due: unpaid if 0 paid, partial if 0 < paid < total, paid if paid >= total. Updated automatically."
+    },
+    "notes": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "payment_terms": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string"
+    },
+    "paid_at": {
+      "type": "string",
+      "description": "Timestamp when invoice was fully paid"
+    },
+    "sla_last_reviewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when SLA status was last reviewed"
+    },
+    "sla_last_reviewed_by": {
+      "type": "string",
+      "description": "Email or ID of person who last reviewed SLA status"
+    },
+    "sla_resolution_note": {
+      "type": "string",
+      "description": "Internal note explaining how SLA breaches were resolved (appended each time)"
+    },
+    "sla_resolved_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of breach type strings that have been resolved"
+    },
+    "sla_resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when all active SLA breaches were resolved"
+    },
+    "company_id": {
+      "type": "string",
+      "description": "Company identifier for multi-tenant support",
+      "default": "rc-art"
+    }
+  },
+  "required": [
+    "client_name"
+  ]
+}

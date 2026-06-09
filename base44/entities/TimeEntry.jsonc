@@ -1,0 +1,70 @@
+{
+  "name": "TimeEntry",
+  "type": "object",
+  "properties": {
+    "team_member": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "project": {
+      "type": "string"
+    },
+    "service": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "start_time": {
+      "type": "string"
+    },
+    "end_time": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "paused",
+        "completed"
+      ],
+      "default": "running"
+    },
+    "start_lat": {
+      "type": "number"
+    },
+    "start_lng": {
+      "type": "number"
+    },
+    "end_lat": {
+      "type": "number"
+    },
+    "end_lng": {
+      "type": "number"
+    },
+    "gps_track": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "miles_traveled": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "team_member",
+    "date"
+  ]
+}

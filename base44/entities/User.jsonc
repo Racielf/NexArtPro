@@ -1,0 +1,17 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "manager",
+        "sales"
+      ],
+      "default": "sales",
+      "description": "User role: admin (full access), manager (can override pricing), sales (standard access)"
+    }
+  },
+  "required": []
+}

@@ -1,0 +1,62 @@
+{
+  "name": "Lead",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "service": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "converted",
+        "declined"
+      ],
+      "default": "new"
+    },
+    "source": {
+      "type": "string",
+      "default": "website"
+    },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deleted_by": {
+      "type": "string"
+    },
+    "delete_reason": {
+      "type": "string"
+    },
+    "restored_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "restored_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "phone",
+    "email",
+    "address",
+    "service"
+  ]
+}

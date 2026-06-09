@@ -1,0 +1,44 @@
+{
+  "name": "BankAccount",
+  "type": "object",
+  "properties": {
+    "bank_name": {
+      "type": "string"
+    },
+    "account_name": {
+      "type": "string"
+    },
+    "account_type": {
+      "type": "string",
+      "enum": [
+        "checking",
+        "savings",
+        "credit_card",
+        "line_of_credit"
+      ],
+      "default": "checking"
+    },
+    "account_number_last4": {
+      "type": "string"
+    },
+    "current_balance": {
+      "type": "number",
+      "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "bank_name",
+    "account_type"
+  ]
+}
