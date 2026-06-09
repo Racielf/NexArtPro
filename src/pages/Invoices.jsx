@@ -48,6 +48,20 @@ export default function Invoices() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+
+    const derived = computeInvoiceDerivedFields(deleteTarget);
+    if (
+      (deleteTarget.payments && deleteTarget.payments.length > 0) ||
+      deleteTarget.status !== "draft" ||
+      derived.payment_status === "paid" ||
+      derived.payment_status === "partial" ||
+      derived.amount_paid > 0
+    ) {
+      toast.error("Cannot delete invoice with active payments or non-draft status.");
+      setDeleteTarget(null);
+      return;
+    }
+
     setDeleting(true);
     try {
       await base44.entities.Invoice.delete(deleteTarget.id);

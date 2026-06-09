@@ -144,7 +144,11 @@ export default function PublicInvoiceDocument() {
         setInvoice(inv);
         // Mark as viewed if first time seeing
         if (inv.status === "sent") {
-          await base44.entities.Invoice.update(inv.id, { status: "viewed" }).catch(() => {});
+          await base44.entities.Invoice.update(inv.id, {
+            status: "viewed",
+            viewed_at: new Date().toISOString(),
+            last_viewed_at: new Date().toISOString()
+          }).catch(() => {});
         }
         setLoading(false);
         return;
