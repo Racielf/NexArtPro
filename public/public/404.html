@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>NexArtSign — Redirecting...</title>
+  <script>
+    // GitHub Pages SPA redirect hack
+    // Converts the path into a query parameter that index.html can read
+    // and restore via History API
+    //
+    // Example:
+    //   /NexArtPro/sign-document?token=abc123
+    //   becomes: /NexArtPro/?p=/sign-document&q=token=abc123
+    //   then index.html restores the original URL silently
+
+    var pathSegmentsToKeep = 1; // Keep '/NexArtPro/' base path (1 segment)
+
+    var l = window.location;
+
+    // Build the redirect URL
+    var repo = l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/');
+    var path = l.pathname.slice(repo.length);
+    var search = l.search;
+
+    // Redirect to index.html with path encoded in query
+    l.replace(
+      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      repo + '/?p=' + encodeURIComponent(path) +
+      (search ? '&q=' + encodeURIComponent(search.slice(1)) : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body>
+  <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#020617;color:#94a3b8;font-family:system-ui">
+    <p>Preparing secure signing session…</p>
+  </div>
+</body>
+</html>

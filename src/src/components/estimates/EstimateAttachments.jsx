@@ -1,0 +1,206 @@
+/**
+ * EstimateAttachments — Upload & manage attachments on an estimate.
+ *
+ * Each attachment has an `intent`:
+ *   - internal_only  → company use, never sent to client
+ *   - send_to_client → included as download links in the client email
+ *
+ * Props:
+ *   attachments  — array from estimate.attachments (may be null/undefined)
+ *   onUpdate     — (newAttachments: array) => void — persist to parent
+ *   readOnly     — boolean, disables upload/edit
+ */
+import { useState } from 'react';
+import { Upload, Trash2, Lock, Send, FileText, Loader2, Check, X } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
+
+const INTENT_CONFIG = {
+  internal_only: {
+    label: 'Internal only',
+    shortLabel: 'Internal',
+    icon: Lock,
+    cls: 'bg-slate-100 text-slate-600 border-slate-200',
+    dot: 'bg-slate-400',
+  },
+  send_to_client: {
+    label: 'Send to client',
+    shortLabel: 'Client',
+    icon: Send,
+    cls: 'bg-blue-50 text-blue-700 border-blue-200',
+    dot: 'bg-blue-500',
+  },
+};
+
+export default function EstimateAttachments({ attachments = [], onUpdate, readOnly = false }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadIntent, setUploadIntent] = useState('internal_only');
+
+  const items = Array.isArray(attachments) ? attachments : [];
+
+  const handleUpload = async (e) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setUploading(true);
+    const newItems = [...items];
+    for (const file of files) {
+      try {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        newItems.push({
+          id: Math.random().toString(36).slice(2, 10),
+          file_url,
+          file_name: file.name,
+          intent: uploadIntent,
+          uploaded_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+    setUploading(false);
+    onUpdate(newItems);
+    // Reset the input so the same file can be re-uploaded
+    e.target.value = '';
+  };
+
+  const toggleIntent = (id) => {
+    const updated = items.map(a =>
+      a.id === id
+        ? { ...a, intent: a.intent === 'internal_only' ? 'send_to_client' : 'internal_only' }
+        : a
+    );
+    onUpdate(updated);
+  };
+
+  const removeAttachment = (id) => {
+    onUpdate(items.filter(a => a.id !== id));
+  };
+
+  const clientCount = items.filter(a => a.intent === 'send_to_client').length;
+
+  return (
+    <div className="space-y-3">
+      {/* Upload area */}
+      {!readOnly && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setUploadIntent('internal_only')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${
+                uploadIntent === 'internal_only'
+                  ? 'bg-slate-200 text-slate-700 border-slate-300'
+                  : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <Lock className="w-3 h-3" />
+              Internal
+            </button>
+            <button
+              type="button"
+              onClick={() => setUploadIntent('send_to_client')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${
+                uploadIntent === 'send_to_client'
+                  ? 'bg-blue-100 text-blue-700 border-blue-300'
+                  : 'bg-white text-slate-400 border-slate-200 hover:border-blue-200'
+              }`}
+            >
+              <Send className="w-3 h-3" />
+              Client
+            </button>
+          </div>
+          <label className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors">
+            {uploading ? (
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+            ) : (
+              <Upload className="w-4 h-4 text-slate-400" />
+            )}
+            <span className="text-xs font-medium text-slate-500">
+              {uploading ? 'Uploading…' : `Upload as ${uploadIntent === 'send_to_client' ? 'Client' : 'Internal'}`}
+            </span>
+            <input type="file" multiple className="hidden" onChange={handleUpload} disabled={uploading} />
+          </label>
+        </div>
+      )}
+
+      {/* File list */}
+      {items.length === 0 && !uploading && (
+        <p className="text-[11px] text-slate-400 text-center py-2">No attachments</p>
+      )}
+
+      {items.map((att) => {
+        const isIncluded = att.intent === 'send_to_client';
+        return (
+          <div key={att.id} className="flex items-center gap-2.5 py-2">
+           {/* File icon */}
+           <div className="w-6 h-6 bg-slate-50 border border-slate-200 rounded flex items-center justify-center flex-shrink-0">
+             <FileText className="w-3 h-3 text-slate-400" />
+           </div>
+
+           {/* File name */}
+           <a
+             href={att.file_url}
+             target="_blank"
+             rel="noopener noreferrer"
+             className="text-xs font-medium text-slate-700 hover:text-primary truncate flex-1 min-w-0"
+             title={att.file_name}
+           >
+             {att.file_name || 'file'}
+           </a>
+
+            {/* Status badge — click to toggle */}
+            {!readOnly ? (
+              <button
+                type="button"
+                onClick={() => toggleIntent(att.id)}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap flex-shrink-0 transition-colors ${
+                  isIncluded
+                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+                title={`Click to ${isIncluded ? 'exclude' : 'include'} from send`}
+              >
+                {isIncluded ? (
+                  <><Check className="w-3 h-3" />Included</>
+                ) : (
+                  <><X className="w-3 h-3" />Excluded</>
+                )}
+              </button>
+            ) : (
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap flex-shrink-0 ${
+                isIncluded
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-slate-100 text-slate-600'
+              }`}>
+                {isIncluded ? (
+                  <><Check className="w-3 h-3" />Included</>
+                ) : (
+                  <><X className="w-3 h-3" />Excluded</>
+                )}
+              </span>
+            )}
+
+            {/* Delete button */}
+            {!readOnly && (
+              <button
+                onClick={() => removeAttachment(att.id)}
+                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                title="Remove attachment"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Summary */}
+      {clientCount > 0 && (
+        <div className="flex items-center gap-1.5 text-[10px] text-blue-600 font-medium bg-blue-50 border border-blue-200 rounded-md px-2.5 py-1.5">
+          <Send className="w-3 h-3" />
+          {clientCount} file{clientCount > 1 ? 's' : ''} will be sent to client
+        </div>
+      )}
+    </div>
+  );
+}

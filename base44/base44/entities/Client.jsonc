@@ -1,0 +1,82 @@
+{
+  "name": "Client",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "Full name of the client"
+    },
+    "email": {
+      "type": "string",
+      "description": "Client email"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Client phone number"
+    },
+    "address": {
+      "type": "string",
+      "description": "Street address"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "property_value": {
+      "type": "number"
+    },
+    "beds": {
+      "type": "number"
+    },
+    "baths": {
+      "type": "number"
+    },
+    "sqft": {
+      "type": "number"
+    },
+    "preferred_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es",
+        "bilingual"
+      ],
+      "default": "en",
+      "description": "Client preferred document language"
+    },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of soft delete (null if active)"
+    },
+    "deleted_by": {
+      "type": "string",
+      "description": "User email who deleted the record"
+    },
+    "delete_reason": {
+      "type": "string",
+      "description": "Reason provided for deletion"
+    },
+    "restored_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of restoration (null if not restored)"
+    },
+    "restored_by": {
+      "type": "string",
+      "description": "User email who restored the record"
+    }
+  },
+  "required": [
+    "full_name",
+    "phone"
+  ]
+}

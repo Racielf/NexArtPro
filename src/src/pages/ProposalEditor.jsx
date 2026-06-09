@@ -1,0 +1,545 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { X, Eye, Send, Trash2 } from 'lucide-react';
+import SaveStateIndicator from '@/components/shared/SaveStateIndicator';
+import ProposalSidebarCustomer from '@/components/proposals/ProposalSidebarCustomer';
+import ProposalActionsPanel from '@/components/proposals/ProposalActionsPanel';
+import EstimateGroups from '@/components/estimates/EstimateGroups';
+import ProposalPreviewModal from '@/components/proposals/ProposalPreviewModal';
+import { createEstimateProxy, extractProposalChanges } from '@/components/proposals/ProposalEstimateGroupsAdapter';
+import ProposalSendModal from '@/components/proposals/ProposalSendModal';
+import CommTimeline from '@/components/shared/CommTimeline';
+import NewEstimateCustomerPanel from '@/components/estimates/NewEstimateCustomerPanel';
+import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
+import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
+import ProposalPricingOptions from '@/components/proposals/ProposalPricingOptions';
+import ProposalPresetPicker from '@/components/proposals/ProposalPresetPicker';
+import ProposalPresentationModeSelector from '@/components/proposals/ProposalPresentationModeSelector';
+import ContentLibraryPopover from '@/components/proposals/ContentLibraryPopover';
+import SmartSuggestionsPanel from '@/components/proposals/SmartSuggestionsPanel';
+import { generateSmartSuggestions } from '@/lib/smartSuggestions';
+import SalesDecisionPanel from '@/components/proposals/SalesDecisionPanel';
+import { runSalesDecisionEngine } from '@/lib/salesDecisionEngine';
+import { useQuery } from '@tanstack/react-query';
+
+const STATUS_BADGE = {
+  draft:                   { label: 'Draft',              cls: 'bg-slate-100 text-slate-600' },
+  review_needed:           { label: 'Review Needed',      cls: 'bg-amber-100 text-amber-700' },
+  sent:                    { label: 'Sent',               cls: 'bg-blue-100 text-blue-700' },
+  approved:                { label: 'Approved',           cls: 'bg-emerald-100 text-emerald-800' },
+  accepted:                { label: 'Accepted',           cls: 'bg-emerald-100 text-emerald-800' },
+  rejected:                { label: 'Rejected',           cls: 'bg-red-100 text-red-700' },
+  converted_to_invoice:    { label: 'Invoiced',           cls: 'bg-teal-700 text-white' },
+  converted_to_work_order: { label: 'Work Order',         cls: 'bg-purple-700 text-white' },
+  pending_adjustment:      { label: 'Pending Adjustment', cls: 'bg-amber-100 text-amber-800' },
+};
+
+export default function ProposalEditor() {
+  const navigate = useNavigate();
+  const urlParams = new URLSearchParams(window.location.search);
+  const proposalId = urlParams.get('id');
+  const isNew = urlParams.get('new') === '1';
+
+  const [proposal, setProposal] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+  const [saveError, setSaveError] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [proposalDetails, setProposalDetails] = useState({
+    scopeOfWork: '',
+    inclusions: '',
+    exclusions: '',
+    timeline: '',
+    presentation_mode: 'detailed',
+    pricingOptions: [],
+  });
+  const [showSend, setShowSend] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [isPreview, setIsPreview] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [decision, setDecision] = useState(null);
+  const [crmStats, setCrmStats] = useState({});
+  const pdfElementRef = useRef(null);
+
+  useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
+
+  // Load closed proposals for pattern analysis
+  const { data: closedProposals = [] } = useQuery({
+    queryKey: ['closed-proposals'],
+    queryFn: async () => {
+      const list = await base44.entities.Proposal.filter({ close_outcome: { $exists: true } });
+      return list;
+    },
+    staleTime: 1000 * 60 * 5, // 5 min cache
+  });
+
+  // Load CRM stats for current client
+  const { data: clientProposals = [] } = useQuery({
+    queryKey: ['client-proposals', proposal?.client_id],
+    queryFn: async () => {
+      if (!proposal?.client_id) return [];
+      return await base44.entities.Proposal.filter({ client_id: proposal.client_id }, '-created_date', 100);
+    },
+    enabled: !!proposal?.client_id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Generate suggestions whenever proposal or details change
+  useEffect(() => {
+    if (proposal && hasClient) {
+      const sugg = generateSmartSuggestions(proposal, proposalDetails, closedProposals);
+      setSuggestions(sugg);
+    } else {
+      setSuggestions([]);
+    }
+  }, [proposal?.id, proposal?.status, proposalDetails, closedProposals.length]);
+
+  // Generate sales decision engine guidance
+  useEffect(() => {
+    if (proposal && hasClient) {
+      // Calculate CRM stats for this client
+      const totalProposals = clientProposals.length;
+      const wonProposals = clientProposals.filter(p => p.close_outcome === 'won').length;
+      const stats = { totalProposals, wonProposals };
+      setCrmStats(stats);
+
+      // Run decision engine
+      const dec = runSalesDecisionEngine(proposal, proposalDetails, stats, closedProposals);
+      setDecision(dec);
+    } else {
+      setDecision(null);
+      setCrmStats({});
+    }
+  }, [proposal?.id, proposal?.client_id, proposal?.status, proposalDetails, closedProposals.length, clientProposals.length]);
+
+  useEffect(() => { load(); }, []);
+
+  // Load proposalDetails from proposal.proposal_details (dedicated field)
+  // Legacy fallback: if proposal_details is absent, try to parse from old JSON-in-notes format
+  useEffect(() => {
+    if (!proposal) return;
+    const empty = { scopeOfWork: '', inclusions: '', exclusions: '', timeline: '', presentation_mode: 'detailed', pricingOptions: [] };
+
+    if (proposal.proposal_details && Object.values(proposal.proposal_details).some(v => v)) {
+      setProposalDetails({ ...empty, ...proposal.proposal_details });
+      return;
+    }
+
+    // Legacy migration: attempt to read from old JSON-embedded notes (one-time upgrade path)
+    if (proposal.notes) {
+      try {
+        const parsed = JSON.parse(proposal.notes);
+        if (parsed?.proposalDetails) {
+          setProposalDetails({ ...empty, ...parsed.proposalDetails });
+          return;
+        }
+      } catch {
+        // notes is plain text — nothing to migrate
+      }
+    }
+
+    setProposalDetails(empty);
+  }, [proposal?.id]);
+
+  const load = async () => {
+    if (!proposalId) { setLoading(false); return; }
+    const list = await base44.entities.Proposal.filter({ id: proposalId });
+    if (list.length) setProposal(list[0]);
+    setLoading(false);
+  };
+
+  const handleSave = async (estimateData) => {
+    setSaving(true);
+    setSaveError(false);
+    setDirty(false);
+    
+    // EstimateGroups returns estimate format — adapter handles field filtering
+    // unit_cost is now persisted for shared pricing intelligence
+    const proposalChanges = extractProposalChanges(estimateData);
+
+    // Store proposalDetails in its own dedicated field — never in notes
+    proposalChanges.proposal_details = { ...proposalDetails };
+
+    // Preserve notes as plain text: if notes currently contains legacy JSON, clear it
+    if (proposal?.notes) {
+      try {
+        const parsed = JSON.parse(proposal.notes);
+        if (parsed?.proposalDetails) {
+          // Migrate: wipe the JSON blob from notes
+          proposalChanges.notes = '';
+        }
+      } catch {
+        // notes is already plain text — leave it untouched
+      }
+    }
+
+    const sanitized = { ...proposal, ...proposalChanges };
+    
+    try {
+      await base44.entities.Proposal.update(proposalId, sanitized);
+      setProposal(sanitized);
+      setSavedAt(Date.now());
+    } catch (err) {
+      console.error('[ProposalEditor] Save failed:', err);
+      setSaveError(true);
+      setDirty(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCustomerChange = async (customerData, clientRecord) => {
+    setSaving(true);
+    const updated = { ...proposal, ...customerData };
+    
+    // Auto-resolve document language from client preference
+    if (clientRecord) {
+      const autoLang = getAutoLanguageForClient({ document_language: proposal?.document_language }, clientRecord);
+      if (autoLang) {
+        updated.document_language = autoLang;
+      }
+    }
+    
+    await base44.entities.Proposal.update(proposalId, updated);
+    setProposal(updated);
+    setSaving(false);
+    if (customerData.client_name) toast.success('Customer saved');
+  };
+
+  const handleStatusChange = (newStatus, extra = {}) => {
+    setProposal(p => ({ ...p, status: newStatus, ...extra }));
+  };
+
+  const handleCancel = () => {
+    const isEmpty = !proposal?.client_name && !proposal?.title;
+    if (isNew && isEmpty) {
+      setShowDiscardConfirm(true);
+    } else {
+      navigate('/proposals');
+    }
+  };
+
+  const handleDiscard = async () => {
+    if (proposalId) await base44.entities.Proposal.delete(proposalId);
+    navigate('/proposals');
+  };
+
+  const handleSent = async () => {
+    const updated = { ...proposal, status: 'sent', sent_at: new Date().toISOString() };
+    await base44.entities.Proposal.update(proposalId, updated);
+    setProposal(updated);
+    setShowSend(false);
+    toast.success('Proposal sent — client link is now active');
+  };
+
+  if (loading) return (
+    <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+      <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!proposal) return (
+    <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+      <div className="text-center">
+        <p className="text-slate-500 mb-4">Proposal not found</p>
+        <button onClick={() => navigate('/proposals')} className="text-sm text-primary hover:underline">← Back to Proposals</button>
+      </div>
+    </div>
+  );
+
+  const hasClient = !!proposal.client_name;
+  const isLocked = ['converted_to_invoice', 'converted_to_work_order'].includes(proposal.status);
+  const statusBadge = STATUS_BADGE[proposal.status] || STATUS_BADGE.draft;
+  const totalFmt = proposal.total_amount != null
+    ? `$${parseFloat(proposal.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+    : '—';
+
+  return (
+    <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 font-inter">
+
+      {/* TOP BAR */}
+      <div className="bg-white border-b border-slate-200 flex-shrink-0 shadow-sm">
+        <div className="flex items-center px-4 h-12 gap-3">
+          {/* Left: Document title */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <h1 className="text-base font-bold text-slate-900 flex-shrink-0">
+              Proposal <span className="text-primary">#{proposal.proposal_number}</span>
+            </h1>
+            {hasClient && (
+              <span className="text-sm text-slate-500 truncate hidden sm:inline">· {proposal.client_name}</span>
+            )}
+          </div>
+
+          {/* Right: Status + Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${statusBadge.cls}`}>
+              {statusBadge.label}
+            </span>
+
+            <div className="w-px h-5 bg-slate-200 mx-1" />
+
+            <button
+              onClick={() => setShowPreview(true)}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Client View
+            </button>
+
+            <button
+              onClick={() => {
+                if (!proposal.client_email) { toast.error('Client email is required to send'); return; }
+                setShowSend(true);
+              }}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Send to Client
+            </button>
+
+            <SaveStateIndicator saving={saving} savedAt={savedAt} dirty={dirty} error={saveError} />
+
+            <button
+              onClick={handleCancel}
+              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* BODY */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* LEFT SIDEBAR */}
+        <div className="w-56 flex-shrink-0 border-r border-slate-200 overflow-y-auto bg-white flex flex-col min-h-0">
+          {isNew && !hasClient ? (
+            <NewEstimateCustomerPanel
+              estimate={proposal}
+              docType="Proposal"
+              docNumber={proposal?.proposal_number}
+              onCustomerSet={async (customerData, clientRecord) => {
+                await handleCustomerChange(customerData, clientRecord);
+              }}
+            />
+          ) : (
+            <ProposalSidebarCustomer
+              proposal={proposal}
+              onCustomerChange={handleCustomerChange}
+            />
+          )}
+          {hasClient && (
+            <div className="px-4 pb-5 pt-3 border-t border-slate-100 flex-shrink-0">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Communications</p>
+              <CommTimeline estimateId={proposal.id} />
+            </div>
+          )}
+        </div>
+
+        {/* ACTIONS PANEL */}
+        {hasClient && (
+          <ProposalActionsPanel
+            proposal={proposal}
+            onStatusChange={handleStatusChange}
+            onOpenPreview={() => setShowPreview(true)}
+            onOpenSend={() => setShowSend(true)}
+            pdfElementRef={pdfElementRef}
+          />
+        )}
+
+        {/* CANVAS */}
+        <div className="flex-1 overflow-auto px-4 py-3">
+          {!hasClient && (
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-center gap-2 text-sm text-amber-700">
+              <span className="font-semibold">Tip:</span> Add a customer in the left panel to unlock the full workflow.
+            </div>
+          )}
+          {hasClient && !isPreview && (
+            <div className="space-y-3 mb-4">
+              {decision && <SalesDecisionPanel decision={decision} />}
+              {suggestions.length > 0 && <SmartSuggestionsPanel suggestions={suggestions} />}
+            </div>
+          )}
+          <div ref={pdfElementRef}>
+            <div className="flex items-center gap-3 mb-3">
+              <button
+                onClick={() => setIsPreview(!isPreview)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full border transition-colors ${
+                  isPreview
+                    ? 'bg-amber-50 border-amber-300 text-amber-700'
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isPreview ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                {isPreview ? 'Preview Mode' : 'Editing'}
+              </button>
+            </div>
+            <EstimateGroups
+              estimate={createEstimateProxy(proposal)}
+              onSave={handleSave}
+              saving={saving}
+              readOnlyDiscountType={true}
+              isPreview={isPreview}
+              currentUser={currentUser}
+              onDirty={() => setDirty(true)}
+            />
+            
+            {/* PROPOSAL DETAILS SECTIONS */}
+            <div className="mt-8 space-y-6 max-w-2xl">
+
+              {/* Preset picker — accelerates authoring, fully editable after */}
+              {!isPreview && (
+                <ProposalPresetPicker
+                  proposalDetails={proposalDetails}
+                  onApply={preset => setProposalDetails(p => ({ ...p, ...preset, pricingOptions: p.pricingOptions }))}
+                />
+              )}
+
+              {/* Presentation Mode Selector — controls how pricing/scope display to client */}
+              {!isPreview && (
+                <ProposalPresentationModeSelector
+                  mode={proposalDetails.presentation_mode || 'detailed'}
+                  onChange={mode => setProposalDetails(p => ({ ...p, presentation_mode: mode }))}
+                />
+              )}
+
+              {/* Scope of Work */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <label className="block text-sm font-bold text-slate-900 mb-2">Scope of Work</label>
+                <textarea
+                  value={proposalDetails.scopeOfWork}
+                  onChange={e => setProposalDetails(p => ({ ...p, scopeOfWork: e.target.value }))}
+                  placeholder="Describe the work to be performed in detail..."
+                  className="w-full h-24 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                />
+                {!isPreview && (
+                  <ContentLibraryPopover
+                    type="scope"
+                    currentValue={proposalDetails.scopeOfWork}
+                    onInsert={v => setProposalDetails(p => ({ ...p, scopeOfWork: v }))}
+                    label="Scope of Work"
+                  />
+                )}
+              </div>
+
+              {/* Inclusions */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <label className="block text-sm font-bold text-slate-900 mb-2">What's Included</label>
+                <textarea
+                  value={proposalDetails.inclusions}
+                  onChange={e => setProposalDetails(p => ({ ...p, inclusions: e.target.value }))}
+                  placeholder="List items included in this proposal (one per line recommended)..."
+                  className="w-full h-24 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                />
+                {!isPreview && (
+                  <ContentLibraryPopover
+                    type="inclusion"
+                    currentValue={proposalDetails.inclusions}
+                    onInsert={v => setProposalDetails(p => ({ ...p, inclusions: v }))}
+                    label="What's Included"
+                  />
+                )}
+              </div>
+
+              {/* Exclusions */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <label className="block text-sm font-bold text-slate-900 mb-2">What's Excluded</label>
+                <textarea
+                  value={proposalDetails.exclusions}
+                  onChange={e => setProposalDetails(p => ({ ...p, exclusions: e.target.value }))}
+                  placeholder="List items NOT included in this proposal..."
+                  className="w-full h-24 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                />
+                {!isPreview && (
+                  <ContentLibraryPopover
+                    type="exclusion"
+                    currentValue={proposalDetails.exclusions}
+                    onInsert={v => setProposalDetails(p => ({ ...p, exclusions: v }))}
+                    label="What's Excluded"
+                  />
+                )}
+              </div>
+
+              {/* Timeline */}
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <label className="block text-sm font-bold text-slate-900 mb-4">Project Timeline</label>
+                <textarea
+                  value={proposalDetails.timeline}
+                  onChange={e => setProposalDetails(p => ({ ...p, timeline: e.target.value }))}
+                  placeholder="e.g. Start: Jan 15, 2026 | Duration: 5 days | Completion: Jan 20, 2026"
+                  className="w-full h-20 p-3 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                />
+                {!isPreview && (
+                  <ContentLibraryPopover
+                    type="timeline"
+                    currentValue={proposalDetails.timeline}
+                    onInsert={v => setProposalDetails(p => ({ ...p, timeline: v }))}
+                    label="Project Timeline"
+                  />
+                )}
+              </div>
+
+              {/* Investment Options — price anchoring (optional) */}
+              {!isPreview && (
+                <ProposalPricingOptions
+                  pricingOptions={proposalDetails.pricingOptions || []}
+                  onChange={opts => setProposalDetails(p => ({ ...p, pricingOptions: opts }))}
+                />
+              )}
+
+              {/* Persisted pricing audit trail — internal only */}
+              {!isPreview && proposal?.id && (
+                <PricingAuditHistory documentId={proposal.id} />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MODALS */}
+      <ProposalPreviewModal
+        proposal={proposal}
+        proposalDetails={proposalDetails}
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        onSend={() => setShowSend(true)}
+        language={proposal?.document_language}
+      />
+
+      {showSend && (
+        <ProposalSendModal
+          proposal={proposal}
+          onClose={() => setShowSend(false)}
+          onSent={handleSent}
+        />
+      )}
+
+      {showDiscardConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h2 className="text-base font-bold text-slate-900 mb-2">Discard this proposal?</h2>
+            <p className="text-sm text-slate-500 mb-6">
+              This proposal hasn't been saved yet. Cancelling will delete it permanently.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowDiscardConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                Keep Editing
+              </button>
+              <button onClick={handleDiscard}
+                className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-1.5">
+                <Trash2 className="w-3.5 h-3.5" /> Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

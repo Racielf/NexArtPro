@@ -1,0 +1,219 @@
+/**
+ * MaterialsSection — Optional structured materials block for estimates.
+ * Renders as an addable/removable section with a table of material items.
+ * Each item: name, description, qty, unit, unit_price, unit_cost (internal), line_total.
+ */
+import React, { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Plus, Trash2, X, Package, ChevronDown, ChevronRight } from 'lucide-react';
+import { calculateLineTotal } from '@/lib/estimateEngine';
+
+// Aligns with EstimateGroups GRID_COLS for visual continuity:
+// drag | name (flex) | qty | unit | sale price | internal cost | total | remove
+const MATERIALS_GRID = '28px minmax(0,1fr) 80px 80px 120px 120px 130px 32px';
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const UNITS = ['ea', 'bag', 'ton', 'cu yd', 'sq ft', 'ln ft', 'gal', 'box', 'roll', 'pallet', 'lump sum'];
+
+const emptyMaterial = () => ({
+  id: uid(),
+  name: '',
+  description: '',
+  quantity: 1,
+  unit: 'ea',
+  unit_price: 0,
+  unit_cost: 0,
+  line_total: 0,
+});
+
+function MaterialRow({ item, onUpdate, onRemove, showCost }) {
+  const update = (field, value) => {
+    const numericFields = new Set(['quantity', 'unit_price', 'unit_cost']);
+    const safeValue = numericFields.has(field) ? (parseFloat(value) || 0) : value;
+    const updated = { ...item, [field]: safeValue };
+    updated.line_total = calculateLineTotal(
+      field === 'quantity' ? safeValue : updated.quantity,
+      field === 'unit_price' ? safeValue : updated.unit_price,
+    );
+    onUpdate(updated);
+  };
+
+  return (
+    <div className="grid items-start gap-3 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+      style={{ gridTemplateColumns: MATERIALS_GRID }}>
+      {/* Spacer to align with services drag column */}
+      <div />
+
+      {/* Name + description */}
+      <div className="min-w-0 flex flex-col gap-1">
+        <Input
+          value={item.name}
+          onChange={e => update('name', e.target.value)}
+          placeholder="Material name"
+          className="h-9 text-sm font-semibold border-slate-200 px-2 rounded-md"
+        />
+        <Input
+          value={item.description}
+          onChange={e => update('description', e.target.value)}
+          placeholder="Description (optional)"
+          className="h-8 text-xs text-slate-500 border-slate-100 px-2 rounded-md"
+        />
+      </div>
+
+      {/* Qty */}
+      <Input type="number" value={item.quantity} onChange={e => update('quantity', e.target.value)}
+        className="h-9 text-sm text-center border-slate-200 font-semibold px-1 tabular-nums" min={0} />
+
+      {/* Unit */}
+      <select value={item.unit} onChange={e => update('unit', e.target.value)}
+        className="h-9 text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700 font-medium">
+        {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+      </select>
+
+      {/* Sale Price */}
+      <div className="relative h-9" title="Customer-facing sale price. This drives the material line total.">
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-700 pointer-events-none">$</span>
+        <Input type="number" step="0.01" value={item.unit_price}
+          onChange={e => update('unit_price', e.target.value)}
+          className="h-9 pl-5 pr-2 text-sm text-right font-bold border-slate-300 tabular-nums text-slate-900" min={0} />
+      </div>
+
+      {/* Internal Cost */}
+      {showCost ? (
+        <div className="relative h-9" title="Internal material cost. Used for margin only; not shown as a client charge.">
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-amber-600 pointer-events-none">$</span>
+          <Input type="number" step="0.01" value={item.unit_cost}
+            onChange={e => update('unit_cost', e.target.value)}
+            className="h-9 pl-5 pr-8 text-sm text-right font-semibold border-amber-300 bg-amber-50 text-amber-900 tabular-nums" min={0} />
+          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-wide text-amber-600 pointer-events-none px-1 rounded bg-amber-100 border border-amber-200">Int</span>
+        </div>
+      ) : <div />}
+
+      {/* Line total */}
+      <div className="h-9 flex items-center justify-end text-right text-sm font-bold text-slate-900 tabular-nums">
+        ${(parseFloat(item.line_total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+      </div>
+
+      {/* Remove */}
+      <button onClick={() => onRemove(item.id)}
+        className="h-9 flex justify-center items-center p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
+export default function MaterialsSection({ materials = [], onChange, showCost = false, includeMaterialsInClientDocument = true, billMaterialsToClient = true, onSettingsChange }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const hasMaterials = materials.length > 0;
+
+  // Not enabled yet — show add button
+  if (!hasMaterials) {
+    return (
+      <button
+        onClick={() => onChange([emptyMaterial()])}
+        className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-emerald-600 border border-dashed border-slate-200 hover:border-emerald-300 rounded-xl w-full py-2.5 justify-center transition-colors bg-white/60 hover:bg-white"
+      >
+        <Package className="w-4 h-4" />
+        Add materials section
+      </button>
+    );
+  }
+
+  const materialsSubtotal = materials.reduce((s, m) => s + (parseFloat(m.line_total) || 0), 0);
+  const materialsCost = materials.reduce((s, m) => s + (parseFloat(m.unit_cost) || 0) * (parseFloat(m.quantity) || 0), 0);
+
+  const updateItem = (updated) => onChange(materials.map(m => m.id === updated.id ? updated : m));
+  const removeItem = (id) => {
+    const next = materials.filter(m => m.id !== id);
+    onChange(next);
+  };
+  const addItem = () => onChange([...materials, emptyMaterial()]);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.04)' }}>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-6 py-3 bg-emerald-700 text-white">
+        <button onClick={() => setCollapsed(!collapsed)}
+          className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0">
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+        <div className="flex items-center gap-2 flex-1">
+          <Package className="w-3.5 h-3.5 opacity-70" />
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-white/50 leading-none mb-0.5">Client-facing section</p>
+            <span className="font-bold text-sm tracking-wide">Materials</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 ml-auto">
+          <span className="text-[11px] text-white/60">{materials.length} item{materials.length !== 1 ? 's' : ''}</span>
+          <span className="text-sm font-bold text-white tabular-nums">${materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          {showCost && materialsCost > 0 && (
+            <span className="text-[10px] font-semibold text-emerald-300 tabular-nums" title="Internal material cost, not a client-facing charge">internal cost ${materialsCost.toFixed(2)}</span>
+          )}
+          <label className="flex items-center gap-1.5 text-[10px] font-semibold text-white/80 whitespace-nowrap">
+            <input type="checkbox" checked={includeMaterialsInClientDocument} onChange={e => onSettingsChange?.({ includeMaterialsInClientDocument: e.target.checked })} className="accent-white" />
+            Show materials to client
+          </label>
+          <label className="flex items-center gap-1.5 text-[10px] font-semibold text-white/80 whitespace-nowrap">
+            <input type="checkbox" checked={billMaterialsToClient} onChange={e => onSettingsChange?.({ billMaterialsToClient: e.target.checked })} className="accent-white" />
+            Bill materials to client
+          </label>
+          <button onClick={() => onChange([])}
+            className="p-1 rounded hover:bg-red-500/30 text-white/40 hover:text-white transition-colors"
+            title="Remove materials section">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {!collapsed && (
+        <>
+          {/* Column headers — same grid as services */}
+          <div className="grid items-center gap-3 text-[10px] text-slate-500 font-bold uppercase tracking-widest px-4 py-2.5 bg-slate-50 border-b border-slate-200"
+            style={{ gridTemplateColumns: MATERIALS_GRID }}>
+            <div />
+            <div>Material</div>
+            <div className="text-center">Qty</div>
+            <div className="text-center">Unit</div>
+            <div className="text-right" title="Customer-facing sale price">Sale Price</div>
+            <div className={`text-right ${showCost ? 'text-amber-600' : ''}`} title="Internal cost only">{showCost ? 'Unit Cost' : ''}</div>
+            <div className="text-right">Total</div>
+            <div />
+          </div>
+
+          {/* Rows */}
+          <div className="min-h-[40px]">
+            {materials.map(item => (
+              <MaterialRow key={item.id} item={item} onUpdate={updateItem} onRemove={removeItem} showCost={showCost} />
+            ))}
+          </div>
+
+          {/* Section Total Row */}
+          <div className="px-6 py-3 border-t border-emerald-200 bg-emerald-50/50 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Materials Total</span>
+            <div className="flex items-center gap-5">
+              {showCost && materialsCost > 0 && (
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wide">Internal cost · </span>
+                  <span className="text-sm font-bold text-amber-700 tabular-nums">${materialsCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              <span className="text-base font-bold text-emerald-900 tabular-nums">
+                ${materialsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+
+          {/* Add row */}
+          <div className="px-6 py-2.5 border-t border-emerald-100 bg-white">
+            <button onClick={addItem}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-1.5 text-sm font-bold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-200 transition-colors">
+              <Plus className="w-4 h-4" />Add material item
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

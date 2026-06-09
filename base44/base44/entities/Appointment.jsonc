@@ -1,0 +1,96 @@
+{
+  "name": "Appointment",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string"
+    },
+    "customer_display_name": {
+      "type": "string"
+    },
+    "customer_phone": {
+      "type": "string"
+    },
+    "customer_email": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "service_type": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "appointment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_time": {
+      "type": "string"
+    },
+    "end_time": {
+      "type": "string"
+    },
+    "arrival_window": {
+      "type": "string"
+    },
+    "service_address": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "scheduled",
+        "confirmed",
+        "on_the_way",
+        "arrived",
+        "visit_completed",
+        "follow_up_needed",
+        "cancelled",
+        "no_show"
+      ],
+      "default": "new"
+    },
+    "assigned_worker_id": {
+      "type": "string"
+    },
+    "assigned_worker_name": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "notify_customer": {
+      "type": "boolean",
+      "default": true
+    },
+    "confirmation_sent_at": {
+      "type": "string"
+    },
+    "reminder_sent_at": {
+      "type": "string"
+    },
+    "omw_started_at": {
+      "type": "string"
+    },
+    "arrived_at": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string"
+    },
+    "estimate_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_display_name",
+    "appointment_date"
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "name": "Worker",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string"
+    },
+    "first_name": {
+      "type": "string"
+    },
+    "last_name": {
+      "type": "string"
+    },
+    "worker_type": {
+      "type": "string",
+      "enum": [
+        "employee",
+        "subcontractor",
+        "agent"
+      ],
+      "default": "employee"
+    },
+    "trade": {
+      "type": "string",
+      "enum": [
+        "electrician",
+        "plumber",
+        "carpenter",
+        "painter",
+        "hvac",
+        "general",
+        "supervisor",
+        "other"
+      ],
+      "default": "general"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "technician",
+        "lead",
+        "supervisor",
+        "subcontractor"
+      ],
+      "default": "technician"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "phone": {
+      "type": "string"
+    },
+    "alternate_phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "company_name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "emergency_contact": {
+      "type": "string"
+    },
+    "emergency_phone": {
+      "type": "string"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "license_number": {
+      "type": "string"
+    },
+    "license_expiry": {
+      "type": "string",
+      "format": "date"
+    },
+    "insurance_expiry": {
+      "type": "string",
+      "format": "date"
+    },
+    "hourly_rate": {
+      "type": "number"
+    },
+    "avatar_url": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "full_name"
+  ]
+}
