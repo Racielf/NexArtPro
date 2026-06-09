@@ -144,8 +144,13 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSave = () => {
-    if (!form.client_name.trim()) return;
-    onCustomerChange(form, null);
+    if (!form.client_name?.trim()) return;
+    onCustomerChange({
+      client_name: form.client_name.trim(),
+      client_email: form.client_email.trim(),
+      client_phone: form.client_phone.trim(),
+      client_address: form.client_address.trim()
+    }, null);
     setEditing(false);
     setShowSearch(false);
   };
@@ -180,9 +185,8 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
     return form.client_address || '';
   })();
 
-  // Only show the full card if there is a live linked client OR no broken FK.
-  // If clientNotFound is true, show the historical banner instead.
-  const hasDisplay = !clientNotFound && !!(linkedClient || estimate?.client_name || displayName);
+  // Only show the full card if there is a live linked client OR snapshot fields.
+  const hasDisplay = !!(linkedClient || estimate?.client_name || displayName);
 
   const encodedAddress = encodeURIComponent(displayAddress);
   const mapSrc = mapTab === 'map'

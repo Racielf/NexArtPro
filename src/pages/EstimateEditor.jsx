@@ -3,8 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Trash2, Send, ChevronRight, ChevronDown, ClipboardList, FileText, ShieldCheck, BrainCircuit } from 'lucide-react';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { X, Eye, Trash2, Send, ChevronDown, ClipboardList, FileText, ShieldCheck, BrainCircuit } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import SaveStateIndicator from '@/components/shared/SaveStateIndicator';
 import EstimateTemplateSelector from '@/components/estimates/EstimateTemplateSelector';
@@ -19,7 +19,6 @@ import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrder
 import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
-import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
 import { archiveWithSnapshot } from '@/lib/softDelete';
@@ -197,19 +196,21 @@ export default function EstimateEditor() {
   };
 
   const handleCustomerChange = async (customerData, clientRecord) => {
+    let finalData = { ...customerData };
+    if (clientRecord) {
+      const autoLang = getAutoLanguageForClient(estimate, clientRecord);
+      if (autoLang) {
+        finalData.document_language = autoLang;
+      }
+    }
+
+    // Update local state immediately (optimistic UI) so sidebar exits edit mode instantly
+    setEstimate(prev => prev ? { ...prev, ...finalData } : prev);
+    if (clientRecord) setClient(clientRecord);
+
     setSaving(true);
     try {
-      let finalData = { ...customerData };
-      if (clientRecord) {
-        const autoLang = getAutoLanguageForClient(estimate, clientRecord);
-        if (autoLang) {
-          finalData.document_language = autoLang;
-        }
-      }
       await base44.entities.Estimate.update(estimate.id, { ...finalData, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
-      const updated = { ...estimate, ...finalData };
-      setEstimate(updated);
-      if (clientRecord) setClient(clientRecord);
       if (customerData.client_name) toast.success('Customer saved');
     } catch (err) {
       console.error('[EstimateEditor.handleCustomerChange] Save failed:', err);
