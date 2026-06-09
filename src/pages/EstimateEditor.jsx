@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Trash2, Send, ChevronDown, ClipboardList, FileText, ShieldCheck, BrainCircuit } from 'lucide-react';
+import { X, Eye, Trash2, Send, ChevronDown, ClipboardList, ShieldCheck, BrainCircuit } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import SaveStateIndicator from '@/components/shared/SaveStateIndicator';
@@ -12,6 +12,7 @@ import EstimateDocumentOptions from '@/components/estimates/EstimateDocumentOpti
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
+import EstimateClientSidebar from '@/components/estimates/EstimateClientSidebar';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
@@ -43,6 +44,7 @@ export default function EstimateEditor() {
   const [healthResult, setHealthResult] = useState(null);
   const [pricingInsight, setPricingInsight] = useState(null);
   const [showBrainPanel, setShowBrainPanel] = useState(false);
+  const [editingCustomerSidebar, setEditingCustomerSidebar] = useState(false);
   const estimateGroupsRef = React.useRef(null);
   const statusRefreshTimerRef = React.useRef(null);
 
@@ -461,26 +463,28 @@ export default function EstimateEditor() {
       <div className="flex flex-1 gap-3 px-4 py-3 bg-slate-100 overflow-hidden min-w-0">
         {/* Left sidebar: customer panel */}
         <div className="w-72 xl:w-80 flex-shrink-0 overflow-y-auto flex flex-col min-h-0 bg-white rounded-xl border border-slate-100" style={{ boxShadow: '0 4px 16px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
-          {isNew && !hasClient ? (
-            <div className="flex flex-col items-center justify-center flex-1 px-5 py-10 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3"><FileText className="w-5 h-5 text-slate-400" /></div>
-              <p className="text-sm font-semibold text-slate-600 mb-1">No customer yet</p>
-              <p className="text-xs text-slate-400 mb-3">Link a customer to unlock the full estimate workflow</p>
-              <button onClick={() => { setDismissedCustomerModal(false); setShowNewCustomerModal(true); }} className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">+ Select or Create Customer</button>
-            </div>
-          ) : (
+          {hasClient && !editingCustomerSidebar ? (
             <>
               {estimate.id && <div className="px-4 py-3 border-b border-slate-100"><TransmissionPanel estimateId={estimate.id} /></div>}
-              <EstimateSidebarCustomer
+              <EstimateClientSidebar
                 estimate={estimate}
                 client={client}
-                onCustomerChange={handleCustomerChange}
-                onAttachmentsUpdate={async (newAttachments) => {
-                  await base44.entities.Estimate.update(estimate.id, { attachments: newAttachments, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
-                  setEstimate(e => ({ ...e, attachments: newAttachments }));
-                }}
+                onEditCustomer={() => setEditingCustomerSidebar(true)}
               />
             </>
+          ) : (
+            <EstimateSidebarCustomer
+              estimate={estimate}
+              client={client}
+              onCustomerChange={async (customerData, clientRecord) => {
+                await handleCustomerChange(customerData, clientRecord);
+                setEditingCustomerSidebar(false);
+              }}
+              onAttachmentsUpdate={async (newAttachments) => {
+                await base44.entities.Estimate.update(estimate.id, { attachments: newAttachments, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
+                setEstimate(e => ({ ...e, attachments: newAttachments }));
+              }}
+            />
           )}
         </div>
 
