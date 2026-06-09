@@ -28,6 +28,60 @@ import { archiveWithSnapshot } from '@/lib/softDelete';
 import { loadPriceBook, loadServices } from '@/lib/servicePersistence';
 import estimateCatalogPricingBrain from '@/brain/modules/estimateCatalogPricingBrain';
 
+// Monkeypatch base44.entities.Client to map name to full_name and vice versa transparently
+if (base44.entities.Client && !base44.entities.Client._isPatched) {
+  base44.entities.Client._isPatched = true;
+  const originalCreate = base44.entities.Client.create.bind(base44.entities.Client);
+  base44.entities.Client.create = async function (record) {
+    const payload = { ...record };
+    if ('full_name' in payload) {
+      payload.name = payload.full_name;
+      delete payload.full_name;
+    }
+    const res = await originalCreate(payload);
+    if (res && res.name && !res.full_name) {
+      res.full_name = res.name;
+    }
+    return res;
+  };
+
+  const originalUpdate = base44.entities.Client.update.bind(base44.entities.Client);
+  base44.entities.Client.update = async function (id, updates) {
+    const payload = { ...updates };
+    if ('full_name' in payload) {
+      payload.name = payload.full_name;
+      delete payload.full_name;
+    }
+    const res = await originalUpdate(id, payload);
+    if (res && res.name && !res.full_name) {
+      res.full_name = res.name;
+    }
+    return res;
+  };
+
+  const originalList = base44.entities.Client.list.bind(base44.entities.Client);
+  base44.entities.Client.list = async function (...args) {
+    const list = await originalList(...args);
+    (list || []).forEach(c => {
+      if (c && c.name && !c.full_name) {
+        c.full_name = c.name;
+      }
+    });
+    return list;
+  };
+
+  const originalFilter = base44.entities.Client.filter.bind(base44.entities.Client);
+  base44.entities.Client.filter = async function (...args) {
+    const list = await originalFilter(...args);
+    (list || []).forEach(c => {
+      if (c && c.name && !c.full_name) {
+        c.full_name = c.name;
+      }
+    });
+    return list;
+  };
+}
+
 export default function EstimateEditor() {
   const navigate = useNavigate();
   const urlParams = new URLSearchParams(window.location.search);
@@ -114,7 +168,20 @@ export default function EstimateEditor() {
       setPlanReference(est.plan_reference || '');
       if (est.client_id) {
         const cls = await base44.entities.Client.filter({ id: est.client_id });
-        if (cls.length) setClient(cls[0]);
+        if (cls.length) {
+          setClient(cls[0]);
+        } else {
+          // Check Customer table fallback since estimates might be linked to Customer IDs
+          const custs = await base44.entities.Customer.filter({ id: est.client_id });
+          if (custs.length) {
+            const cust = custs[0];
+            setClient({
+              ...cust,
+              full_name: cust.display_name || `${cust.first_name || ''} ${cust.last_name || ''}`.trim(),
+              address: cust.service_address || '',
+            });
+          }
+        }
       }
     }
     setLoading(false);
@@ -211,19 +278,63 @@ export default function EstimateEditor() {
       toast.error('This estimate is locked and cannot be edited.');
       return;
     }
-    let finalData = { ...customerData };
-    if (clientRecord) {
-      const autoLang = getAutoLanguageForClient(estimate, clientRecord);
-      if (autoLang) {
-        finalData.document_language = autoLang;
-      }
-    }
-
     setSaving(true);
+    let resolvedClientId = customerData.client_id;
+    let resolvedClientRecord = clientRecord;
+
     try {
+      if (resolvedClientId) {
+        // Validate if this ID is in the clients table
+        const cls = await base44.entities.Client.filter({ id: resolvedClientId });
+        if (cls.length === 0) {
+          // Check if a Client with the same email already exists in the clients table
+          const emailToFind = customerData.client_email || clientRecord?.email;
+          if (emailToFind) {
+            const existingCls = await base44.entities.Client.filter({ email: emailToFind });
+            if (existingCls.length > 0) {
+              resolvedClientId = existingCls[0].id;
+              resolvedClientRecord = existingCls[0];
+            }
+          }
+
+          // If still not resolved to a Client table ID, create a Client record to satisfy estimates fkey constraint
+          if (resolvedClientId === customerData.client_id) {
+            const nameToUse = customerData.client_name || clientRecord?.display_name || [clientRecord?.first_name, clientRecord?.last_name].filter(Boolean).join(' ') || 'Unnamed Client';
+            const emailToUse = customerData.client_email || clientRecord?.email || '';
+            const phoneToUse = customerData.client_phone || clientRecord?.phone || '';
+            const addressToUse = clientRecord?.service_address || clientRecord?.address || customerData.client_address || '';
+
+            const createdClient = await base44.entities.Client.create({
+              name: nameToUse,
+              email: emailToUse,
+              phone: phoneToUse,
+              address: addressToUse,
+              city: clientRecord?.city || '',
+              state: clientRecord?.state || '',
+              zip: clientRecord?.zip || '',
+            });
+
+            resolvedClientId = createdClient.id;
+            resolvedClientRecord = createdClient;
+          }
+        }
+      }
+
+      const finalData = { 
+        ...customerData, 
+        client_id: resolvedClientId 
+      };
+
+      if (resolvedClientRecord) {
+        const autoLang = getAutoLanguageForClient(estimate, resolvedClientRecord);
+        if (autoLang) {
+          finalData.document_language = autoLang;
+        }
+      }
+
       await base44.entities.Estimate.update(estimate.id, { ...finalData, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
       setEstimate(prev => prev ? { ...prev, ...finalData } : prev);
-      if (clientRecord) setClient(clientRecord);
+      if (resolvedClientRecord) setClient(resolvedClientRecord);
       if (customerData.client_name) toast.success('Customer saved');
     } catch (err) {
       console.error('[EstimateEditor.handleCustomerChange] Save failed:', err);
