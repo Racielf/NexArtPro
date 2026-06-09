@@ -10,7 +10,7 @@
  *   line_total  = quantity * unit_price
  *   line_margin = ((unit_price - unit_cost) / unit_price) * 100
  */
-import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -25,7 +25,6 @@ import { calculateLineTotal, runEstimateEngine, suggestPriceFromCost, getNegotia
 import { applyInternalJobCostAllocation, clearInternalJobCostAllocation } from '@/lib/internalJobCostAllocator';
 import EstimateAuditHistory from '@/components/estimates/internal/EstimateAuditHistory';
 import { logFieldChange } from '@/lib/pricingAuditService';
-import ConcreteMetrics from '@/components/estimates/internal/ConcreteMetrics';
 import MaterialsSection from '@/components/estimates/MaterialsSection';
 import OtherCostsSection from '@/components/estimates/OtherCostsSection';
 import { persistNewServiceToCatalog } from '@/lib/persistNewService';
@@ -428,7 +427,7 @@ function WorkGroup({ group, onUpdate, onRemove, showCost, isOnly, fixedItemIds =
           {!isPreview && (
             <div className="px-6 py-2.5 flex items-center gap-4 border-t border-slate-100 bg-white/80">
               <button onClick={addItem} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-100 px-3 py-1.5 text-sm font-bold text-primary hover:bg-blue-100 hover:border-blue-200 transition-colors"><Plus className="w-4 h-4" />Add line item</button>
-              <button type="button" disabled title="Coming soon" className="inline-flex items-center gap-1.5 text-sm text-slate-300 cursor-not-allowed"><BookOpen className="w-4 h-4" />Price book</button>
+              <button type="button" onClick={addItem} className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 transition-colors"><BookOpen className="w-4 h-4" />Price book</button>
               <button type="button" disabled title="Coming soon" className="inline-flex items-center gap-1.5 text-sm text-slate-300 cursor-not-allowed"><LayoutTemplate className="w-4 h-4" />Templates</button>
             </div>
           )}

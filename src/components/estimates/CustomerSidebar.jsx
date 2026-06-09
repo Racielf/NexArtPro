@@ -129,9 +129,23 @@ export default function CustomerSidebar({ estimate, client, onEditCustomer }) {
               <div className="p-4 space-y-4">
                 {/* Name */}
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-foreground text-sm truncate">{resolvedCustomer.name}</p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="font-semibold text-foreground text-sm truncate">{resolvedCustomer.name}</p>
+                    {onEditCustomer && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditCustomer();
+                        }}
+                        className="p-1 hover:bg-muted rounded-md transition-colors animate-pulse-once"
+                        title="Edit Customer"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    )}
+                  </div>
                   {estimate?.client_id && (
-                    <Link to={`/clients?id=${estimate.client_id}`}>
+                    <Link to={`/clients?id=${estimate.client_id}`} onClick={e => e.stopPropagation()}>
                       <Button variant="outline" size="sm" className="h-7 text-xs font-semibold px-2.5">
                         View details
                       </Button>
@@ -151,15 +165,6 @@ export default function CustomerSidebar({ estimate, client, onEditCustomer }) {
                       )}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {onEditCustomer && (
-                        <button 
-                          onClick={onEditCustomer}
-                          className="p-1.5 hover:bg-muted rounded-md transition-colors"
-                          title="Edit address"
-                        >
-                          <Pencil className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                      )}
                       <a 
                         href={`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`}
                         target="_blank"
