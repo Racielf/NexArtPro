@@ -15,6 +15,8 @@ import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCusto
 import CustomerSidebar from '@/components/estimates/CustomerSidebar';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
+import DocumentTypeRenderer from '@/components/documents/DocumentTypeRenderer';
+import { DEFAULT_OPTIONS } from '@/lib/estimateTemplates';
 import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
 import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrderButton';
 import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
@@ -538,7 +540,23 @@ export default function EstimateEditor() {
             </button>
           </div>
 
-          <EstimateGroups ref={estimateGroupsRef} estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
+          {isPreview ? (
+            <div className="bg-slate-100 p-6 rounded-xl border border-slate-200 flex justify-center mb-5 overflow-x-auto">
+              <div className="w-full max-w-4xl space-y-4 shadow-md rounded-lg overflow-hidden bg-white">
+                <DocumentTypeRenderer
+                  estimate={estimate}
+                  template={estimate.document_config?.template || 'clean'}
+                  options={{
+                    ...DEFAULT_OPTIONS,
+                    ...(estimate.document_config?.options || {}),
+                    hideInternalNotes: true,
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <EstimateGroups ref={estimateGroupsRef} estimate={estimate} onSave={handleSave} saving={saving} isPreview={false} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
+          )}
 
           {!isPreview && estimate?.id && <div className="mt-3"><PricingAuditHistory documentId={estimate.id} /></div>}
         </div>

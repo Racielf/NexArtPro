@@ -112,6 +112,44 @@ function applyFilters(query, filters) {
   return query;
 }
 
+// Helper to map record from DB
+function mapRecordFromDB(table, record) {
+  if (!record) return record;
+  if (table === 'estimates') {
+    if (record.metadata && typeof record.metadata === 'object' && record.metadata.document_config) {
+      record.document_config = record.metadata.document_config;
+    }
+  }
+  return record;
+}
+
+// Helper to prepare updates/creation payload for DB
+async function preparePayloadForDB(table, record, id = null) {
+  const payload = { ...record };
+  if (table === 'estimates') {
+    if ('document_config' in payload) {
+      let currentMetadata = {};
+      if (id) {
+        try {
+          const { data: existing } = await supabase.from('estimates').select('metadata').eq('id', id).maybeSingle();
+          if (existing && existing.metadata && typeof existing.metadata === 'object') {
+            currentMetadata = existing.metadata;
+          }
+        } catch (e) {
+          console.warn('[SupabaseData] failed to fetch existing metadata:', e);
+        }
+      }
+      payload.metadata = {
+        ...currentMetadata,
+        ...(payload.metadata || {}),
+        document_config: payload.document_config
+      };
+      delete payload.document_config;
+    }
+  }
+  return payload;
+}
+
 // ─── Entity class ─────────────────────────────────────────────────
 class SupabaseEntity {
   constructor(entityName) {
@@ -136,7 +174,7 @@ class SupabaseEntity {
       console.error(`[SupabaseData] ${this.entityName}.list error:`, error);
       throw error;
     }
-    return data || [];
+    return (data || []).map(r => mapRecordFromDB(this.table, r));
   }
 
   /**
@@ -155,7 +193,7 @@ class SupabaseEntity {
       console.error(`[SupabaseData] ${this.entityName}.filter error:`, error);
       throw error;
     }
-    return data || [];
+    return (data || []).map(r => mapRecordFromDB(this.table, r));
   }
 
   /**
@@ -164,7 +202,7 @@ class SupabaseEntity {
    * @returns {object} the created record with id
    */
   async create(record) {
-    const payload = { ...record };
+    const payload = await preparePayloadForDB(this.table, record);
     // Add timestamps if not present
     if (!payload.created_date) payload.created_date = new Date().toISOString();
     if (!payload.updated_date) payload.updated_date = new Date().toISOString();
@@ -174,7 +212,7 @@ class SupabaseEntity {
       console.error(`[SupabaseData] ${this.entityName}.create error:`, error);
       throw error;
     }
-    return data;
+    return mapRecordFromDB(this.table, data);
   }
 
   /**
@@ -183,13 +221,13 @@ class SupabaseEntity {
    * @param {object} updates - fields to update
    */
   async update(id, updates) {
-    const payload = { ...updates, updated_date: new Date().toISOString() };
+    const payload = await preparePayloadForDB(this.table, { ...updates, updated_date: new Date().toISOString() }, id);
     const { data, error } = await supabase.from(this.table).update(payload).eq('id', id).select().single();
     if (error) {
       console.error(`[SupabaseData] ${this.entityName}.update error:`, error);
       throw error;
     }
-    return data;
+    return mapRecordFromDB(this.table, data);
   }
 
   /**
