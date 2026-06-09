@@ -25,6 +25,10 @@ function randomTokenPart() {
 }
 
 export async function generatePublicShareToken(estimate) {
+  if (typeof window !== 'undefined' && window.location.pathname.includes('/send-estimate')) {
+    window.location.href = `/estimates/edit?id=${estimate?.id}`;
+    throw new Error('This legacy route is deprecated. Redirecting...');
+  }
   if (!estimate?.id) throw new Error('Estimate is required to generate public token');
 
   if (estimate.public_share_token) {

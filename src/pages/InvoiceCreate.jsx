@@ -1,617 +1,479 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import PageHeader from '@/components/shared/PageHeader';
-import PageShell from '@/components/layout/PageShell';
-import { getNextDocumentNumber } from '@/lib/documentNumbering';
-import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle2, FilePlus2, Plus, Receipt, Search, Trash2, UserPlus, XCircle, AlertCircle, X } from 'lucide-react';
-import { filterActiveRecords } from '@/lib/softDelete';
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { ArrowLeft, Plus, Trash2, CheckCircle, Circle, User, FileText, DollarSign, MailCheck, Send, CheckCheck } from "lucide-react";
+import { format, addDays } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { calcDocumentTotals, calcLineTotal, formatCurrency } from "@/utils/invoiceCalc";
+import { computeInvoiceDerivedFields } from "@/lib/invoiceHelpers";
+import useCompanyConfig from "@/hooks/useCompanyConfig";
+import { buildInvoiceCompanySnapshot } from "@/lib/invoiceCompanySnapshot";
 
-const getCreatedId = (created) =>
-  created?.id ||
-  created?._id ||
-  created?.data?.id ||
-  created?.data?._id ||
-  null;
+const PAYMENT_TERMS_OPTIONS = ["Due on receipt","Net 7","Net 15","Net 30","Net 45","Net 60"];
+const ITEM_TYPES = ["service","material","labor","fee","custom"];
+const today = format(new Date(), "yyyy-MM-dd");
 
-function money(value) {
-  return Number(value || 0);
-}
+// buildCompanySnapshot is provided by @/lib/invoiceCompanySnapshot (buildInvoiceCompanySnapshot)
 
-function newItem() {
+function newLineItem() {
   return {
-    id: `item-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    name: '',
-    description: '',
+    id: crypto.randomUUID(),
+    item_type: "service",
+    name: "",
+    description: "",
     quantity: 1,
+    unit: "each",
     unit_price: 0,
+    taxable: false,
+    tax_rate: 0,
+    discount: 0,
+    line_total: 0,
+    sort_order: 0,
   };
 }
-
-const emptyClientForm = {
-  full_name: '',
-  email: '',
-  phone: '',
-  address: '',
-  city: '',
-  state: 'OR',
-  zip: '',
-};
-
-const formatClientAddress = (client) => {
-  if (!client) return '';
-  const line1 = client.address || '';
-  const cityStateZip = [client.city, client.state, client.zip].filter(Boolean).join(', ').replace(', OR,', ', OR');
-  return [line1, cityStateZip].filter(Boolean).join(', ');
-};
-
-const getClientDisplayName = (client) =>
-  client.full_name || client.name || client.display_name || client.company_name || 'Unnamed Client';
-
-const getClientSearchText = (client) =>
-  [
-    client.full_name,
-    client.name,
-    client.display_name,
-    client.company_name,
-    client.phone,
-    client.email,
-    client.address,
-    client.city,
-    client.state,
-    client.zip,
-  ].filter(Boolean).join(' ').toLowerCase();
 
 export default function InvoiceCreate() {
   const navigate = useNavigate();
-  const [saving, setSaving] = useState(false);
-  const [clients, setClients] = useState([]);
-  const [loadingClients, setLoadingClients] = useState(true);
-  const [clientSearch, setClientSearch] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState('');
-  const [clientMode, setClientMode] = useState('existing');
-  const [clientForm, setClientForm] = useState(emptyClientForm);
-  const [createAttempted, setCreateAttempted] = useState(false);
-  const [form, setForm] = useState({
-    client_name: '',
-    client_email: '',
-    client_phone: '',
-    client_address: '',
-    title: '',
-    due_date: '',
-    tax_rate: 0,
-    notes: '',
-    payment_terms: 'Payment is due upon receipt unless otherwise agreed. Credit card payments may include processing fees when applicable.',
-  });
-  const [items, setItems] = useState([newItem()]);
+  const [searchParams] = useSearchParams();
+  const editInvoiceId = searchParams.get("id");
+  const isEditMode    = searchParams.get("mode") === "edit" && !!editInvoiceId;
+  const company = useCompanyConfig();
 
+  const [clients, setClients]       = useState([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showClientDrop, setShowClientDrop] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [lineItems, setLineItems]   = useState([newLineItem()]);
+  const [taxRate, setTaxRate]       = useState(0);
+  const [notes, setNotes]           = useState("");
+  const [dueDate, setDueDate]       = useState(format(addDays(new Date(), 30), "yyyy-MM-dd"));
+  const [paymentTerms, setPaymentTerms] = useState("Net 30");
+  const [saving, setSaving]         = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState(Date.now().toString().slice(-6));
+  const [loadingEdit, setLoadingEdit] = useState(isEditMode);
+  const [markSentManualOpen,   setMarkSentManualOpen]   = useState(false);
+  const [markSentResendOpen,   setMarkSentResendOpen]   = useState(false);
+  const [manualSentForm, setManualSentForm] = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
+  const [existingPayments, setExistingPayments] = useState([]);
+  const [existingStatus,   setExistingStatus]   = useState(null);
+
+  // Load clients
   useEffect(() => {
-    loadClients();
+    base44.entities.Client.list("-created_date", 200).catch(() => []).then(d => setClients(d || []));
   }, []);
 
-  const loadClients = async () => {
-    setLoadingClients(true);
-    try {
-      const data = await base44.entities.Client.list('-created_date');
-      setClients(filterActiveRecords(data || []));
-    } catch (err) {
-      console.warn('[InvoiceCreate] Client load failed:', err?.message);
-      toast.error('Could not load clients');
-    } finally {
-      setLoadingClients(false);
-    }
+  // Load existing invoice in edit mode
+  useEffect(() => {
+    if (!isEditMode) return;
+    setLoadingEdit(true);
+    base44.entities.Invoice.filter({ id: editInvoiceId })
+      .then(rows => {
+        const inv = rows?.[0];
+        if (!inv) { setLoadingEdit(false); return; }
+        setInvoiceNumber(inv.invoice_number || invoiceNumber);
+        setNotes(inv.notes || "");
+        setDueDate(inv.due_date || format(addDays(new Date(), 30), "yyyy-MM-dd"));
+        setPaymentTerms(inv.payment_terms || "Net 30");
+        setTaxRate(parseFloat(inv.tax_rate) || 0);
+        // Line items: support line_items[] or groups[].items
+        const items = inv.line_items?.length
+          ? inv.line_items
+          : (inv.groups || []).flatMap(g => g.items || []);
+        setLineItems(items.length ? items : [newLineItem()]);
+        // Pre-fill client display (read-only hint)
+        if (inv.client_name) {
+          setClientSearch(inv.client_name);
+          // Reconstruct a minimal client object so selectedClient is truthy
+          setSelectedClient({
+            id:       inv.client_id || "",
+            full_name: inv.client_name,
+            email:    inv.client_email || "",
+            phone:    inv.client_phone || "",
+            address:  inv.client_address || "",
+          });
+        }
+        // Store existing payments so we can recalculate derived fields on save
+        setExistingPayments(Array.isArray(inv.payments) ? inv.payments : []);
+        // Track status so we can guard company_snapshot refresh on save
+        setExistingStatus(inv.status || null);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingEdit(false));
+  }, [editInvoiceId, isEditMode]);
+
+  const totals = useMemo(() => calcDocumentTotals(lineItems, taxRate), [lineItems, taxRate]);
+  // In edit mode: recalculate derived fields using existing payments[] (never mutate payments)
+  const derivedFromPayments = useMemo(() => {
+    if (!isEditMode || existingPayments.length === 0) return null;
+    return computeInvoiceDerivedFields({ total: totals.total, payments: existingPayments });
+  }, [isEditMode, existingPayments, totals.total]);
+  const balanceDue = derivedFromPayments ? derivedFromPayments.balance_due : Math.max(0, totals.total);
+
+  const filteredClients = clients.filter(c => {
+    const q = clientSearch.toLowerCase();
+    return (c.full_name || c.name || "").toLowerCase().includes(q) ||
+           (c.email || "").toLowerCase().includes(q);
+  });
+
+  const selectClient = (c) => {
+    setSelectedClient(c);
+    setClientSearch(c.full_name || c.name || "");
+    setShowClientDrop(false);
   };
 
-  const filteredClients = useMemo(() => {
-    const query = clientSearch.trim().toLowerCase();
-    if (!query) return clients.slice(0, 8);
-    return clients.filter(client => getClientSearchText(client).includes(query)).slice(0, 10);
-  }, [clients, clientSearch]);
-
-  const selectedClient = clients.find(client => client.id === selectedClientId);
-
-  const clearSelectedClient = () => {
-    setSelectedClientId('');
-    setClientSearch('');
-    setForm(prev => ({
-      ...prev,
-      client_name: '',
-      client_email: '',
-      client_phone: '',
-      client_address: '',
+  const updateItem = (id, key, value) => {
+    setLineItems(prev => prev.map(li => {
+      if (li.id !== id) return li;
+      const updated = { ...li, [key]: value };
+      updated.line_total = calcLineTotal(updated);
+      return updated;
     }));
   };
 
-  const applyClientToInvoice = (client) => {
-    const address = formatClientAddress(client);
-    setSelectedClientId(client.id);
-    setClientMode('existing');
-    setForm(prev => ({
-      ...prev,
-      client_name: getClientDisplayName(client),
-      client_email: client.email || '',
-      client_phone: client.phone || '',
-      client_address: address,
-    }));
+  const removeItem = (id) => setLineItems(prev => prev.filter(li => li.id !== id));
+  const addItem    = ()  => setLineItems(prev => [...prev, newLineItem()]);
+
+  // Readiness
+  const ready = {
+    client:   !!selectedClient,
+    items:    lineItems.some(li => li.name.trim() && li.line_total > 0),
+    total:    totals.total > 0,
   };
+  const readinessScore = Object.values(ready).filter(Boolean).length;
 
-  const handleCreateInlineClient = async () => {
-    if (!clientForm.full_name.trim()) {
-      toast.error('Client name is required');
-      return null;
-    }
-    if (!clientForm.phone.trim() && !clientForm.email.trim()) {
-      toast.error('Add at least a phone or email for the client');
-      return null;
-    }
-
-    const created = await base44.entities.Client.create({
-      full_name: clientForm.full_name.trim(),
-      email: clientForm.email.trim(),
-      phone: clientForm.phone.trim(),
-      address: clientForm.address.trim(),
-      city: clientForm.city.trim(),
-      state: clientForm.state.trim(),
-      zip: clientForm.zip.trim(),
-    });
-
-    const nextClients = [created, ...clients];
-    setClients(nextClients);
-    setClientForm(emptyClientForm);
-    applyClientToInvoice(created);
-    toast.success('Client created and selected');
-    return created;
-  };
-
-  const totals = useMemo(() => {
-    const normalizedItems = items.map(item => {
-      const quantity = money(item.quantity);
-      const unit_price = money(item.unit_price);
-      const line_total = quantity * unit_price;
-      return {
-        ...item,
-        service_name: item.name,
-        quantity,
-        unit_price,
-        line_total,
-        total_price: line_total,
-      };
-    });
-    const subtotal = normalizedItems.reduce((sum, item) => sum + item.line_total, 0);
-    const tax_rate = money(form.tax_rate);
-    const tax_amount = subtotal * (tax_rate / 100);
-    const total = subtotal + tax_amount;
-    return { normalizedItems, subtotal, tax_rate, tax_amount, total };
-  }, [items, form.tax_rate]);
-
-  const validItems = useMemo(
-    () => totals.normalizedItems.filter(item => item.service_name?.trim() && item.line_total > 0),
-    [totals.normalizedItems]
-  );
-
-  const hasClient = Boolean(form.client_name.trim());
-  const hasItems = validItems.length > 0;
-  const hasTotal = totals.total > 0;
-  const canCreate = hasClient && hasItems && !saving;
-
-  const updateForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
-  const updateClientForm = (key, value) => setClientForm(prev => ({ ...prev, [key]: value }));
-  const updateItem = (id, key, value) => setItems(prev => prev.map(item => item.id === id ? { ...item, [key]: value } : item));
-  const removeItem = (id) => setItems(prev => prev.length === 1 ? prev : prev.filter(item => item.id !== id));
-
-  const handleCreate = async () => {
-    setCreateAttempted(true);
-
-    if (clientMode === 'new' && !selectedClientId) {
-      const createdClient = await handleCreateInlineClient();
-      if (!createdClient) return;
-    }
-
-    if (!hasClient) {
-      toast.error('Please select or create a client first');
-      return;
-    }
-
-    if (!hasItems) {
-      toast.error('Add at least one billable item with a service name and price');
-      return;
-    }
-
+  const handleSave = async () => {
+    if (!ready.client || !ready.items || !ready.total) return;
     setSaving(true);
     try {
-      const invoice_number = await getNextDocumentNumber('invoice');
-      const invoice = await base44.entities.Invoice.create({
-        invoice_number,
-        client_id: selectedClientId || '',
-        client_name: form.client_name.trim(),
-        client_email: form.client_email.trim(),
-        client_phone: form.client_phone.trim(),
-        client_address: form.client_address.trim(),
-        title: form.title.trim() || `Invoice #${invoice_number}`,
-        status: 'draft',
-        due_date: form.due_date || '',
-        line_items: validItems,
-        groups: [{
-          id: `group-${Date.now()}`,
-          name: 'Services',
-          items: validItems,
-        }],
-        subtotal: totals.subtotal,
-        tax_rate: totals.tax_rate,
-        tax_amount: totals.tax_amount,
-        discount_type: 'fixed',
-        discount_value: 0,
-        discount_amount: 0,
-        total: totals.total,
-        amount_paid: 0,
-        balance_due: totals.total,
-        payment_status: 'unpaid',
-        payments: [],
-        notes: form.notes,
-        payment_terms: form.payment_terms,
-        company_id: 'rc-art',
-      });
-
-      const newId = getCreatedId(invoice);
-      if (!newId) {
-        toast.error(`Invoice #${invoice_number} created but ID was not returned. Returning to list.`);
-        navigate('/invoices');
-        return;
+      const payload = {
+        invoice_number:  invoiceNumber,
+        client_id:       selectedClient.id,
+        client_name:     selectedClient.full_name || selectedClient.name || "",
+        client_email:    selectedClient.email || "",
+        client_phone:    selectedClient.phone || "",
+        client_address:  selectedClient.address || selectedClient.billing_address || "",
+        line_items:      lineItems,
+        subtotal:        totals.subtotal,
+        tax_rate:        taxRate,
+        tax_amount:      totals.tax_total,
+        discount_amount: totals.discount_total,
+        total:           totals.total,
+        balance_due:     balanceDue,
+        notes,
+        due_date:        dueDate,
+        payment_terms:   paymentTerms,
+        // Refresh snapshot only for draft invoices — preserve for sent/paid/void
+        ...( !isEditMode || ['draft', null, undefined, ''].includes(existingStatus)
+          ? { company_snapshot: buildInvoiceCompanySnapshot(company) }
+          : {} ),
+      };
+      if (isEditMode) {
+        // UPDATE — preserve payments[], status, and other existing fields
+        await base44.entities.Invoice.update(editInvoiceId, payload);
+        navigate(`/invoice-detail?id=${editInvoiceId}`);
+      } else {
+        // CREATE
+        const created = await base44.entities.Invoice.create({
+          ...payload,
+          status:         "draft",
+          payment_status: "unpaid",
+          amount_paid:    0,
+          payments:       [],
+          created_date:   today,
+        });
+        navigate(`/invoice-detail?id=${created.id}`);
       }
-      toast.success(`Invoice #${invoice_number} created`);
-      navigate(`/invoice-detail?id=${newId}`);
     } catch (err) {
-      toast.error(err?.message || 'Failed to create invoice');
+      alert(err?.message || (isEditMode ? "Failed to update invoice" : "Failed to create invoice"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ---- helpers ----
+  function buildInvoicePayload() {
+    // Recalculate derived fields from existing payments (never modify payments[] itself)
+    const derived = derivedFromPayments || { amount_paid: 0, balance_due: Math.max(0, totals.total), payment_status: "unpaid" };
+    return {
+      invoice_number:  invoiceNumber,
+      client_id:       selectedClient.id,
+      client_name:     selectedClient.full_name || selectedClient.name || "",
+      client_email:    selectedClient.email || "",
+      client_phone:    selectedClient.phone || "",
+      client_address:  selectedClient.address || selectedClient.billing_address || "",
+      line_items:      lineItems,
+      subtotal:        totals.subtotal,
+      tax_rate:        taxRate,
+      tax_amount:      totals.tax_total,
+      discount_amount: totals.discount_total,
+      total:           totals.total,
+      // Recalculated from payments[] — NOT from UI input
+      amount_paid:     derived.amount_paid,
+      balance_due:     derived.balance_due,
+      payment_status:  derived.payment_status,
+      notes,
+      due_date:        dueDate,
+      payment_terms:   paymentTerms,
+      // buildInvoicePayload is only called from edit-mode send helpers (draft context)
+      company_snapshot: buildInvoiceCompanySnapshot(company),
+    };
+  }
+
+  async function saveInvoiceChangesOnly() {
+    const payload = buildInvoicePayload();
+    await base44.entities.Invoice.update(editInvoiceId, payload);
+    return payload;
+  }
+
+  async function markSavedInvoiceSent({ source, sentAt, optionalPatch = {} }) {
+    const criticalPatch = { status: "sent", sent_at: sentAt, sent_source: source };
+    await base44.entities.Invoice.update(editInvoiceId, criticalPatch);
+    if (Object.keys(optionalPatch).length > 0) {
+      await base44.entities.Invoice.update(editInvoiceId, optionalPatch)
+        .catch(err => console.warn("[InvoiceCreate] optional sent metadata failed:", err?.message || err));
+    }
+  }
+  // ---- end helpers ----
+
+  // Save & Mark Sent Manual (called from manual modal confirm)
+  const handleSaveAndMarkSent = async () => {
+    if (!isEditMode || !ready.client || !ready.items || !ready.total) return;
+    setSaving(true);
+    try {
+      await saveInvoiceChangesOnly();
+      const sentAt = manualSentForm.date ? new Date(manualSentForm.date).toISOString() : new Date().toISOString();
+      await markSavedInvoiceSent({
+        source: "manual",
+        sentAt,
+        optionalPatch: {
+          sent_manually: true,
+          sent_method: manualSentForm.method || null,
+          manual_sent_note: manualSentForm.note.trim() || null,
+          last_contacted_at: sentAt,
+        },
+      });
+      navigate(`/invoice-detail?id=${editInvoiceId}`);
+    } catch (err) {
+      alert(err?.message || "Failed to save and mark sent");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save & Send via Resend (called from resend modal confirm)
+  const handleSaveAndResend = async () => {
+    if (!isEditMode || !ready.client || !ready.items || !ready.total) return;
+    const email = selectedClient?.email;
+    if (!email) { alert("Client email is required."); return; }
+    setSaving(true);
+    try {
+      // 1. Save
+      await saveInvoiceChangesOnly();
+      // 2. Email first
+      const emailResult = await base44.integrations.Core.SendEmail({
+        to: email,
+        subject: `Invoice ${invoiceNumber} — Payment Due`,
+        body: `Hi ${selectedClient.full_name || selectedClient.name || ""},\n\nPlease find your invoice ${invoiceNumber}.\n\nTotal Due: $${totals.total.toFixed(2)}${dueDate ? `\nDue: ${format(new Date(dueDate), "MMM d, yyyy")}` : ""}\n\nThank you!`,
+      });
+      // 3. Mark sent only after email success
+      const now = new Date().toISOString();
+      await markSavedInvoiceSent({
+        source: "resend",
+        sentAt: now,
+        optionalPatch: {
+          resend_message_id: emailResult?.id || emailResult?.data?.id || null,
+          resend_status: emailResult?.status || emailResult?.data?.status || "sent",
+          last_contacted_at: now,
+        },
+      });
+      navigate(`/invoice-detail?id=${editInvoiceId}`);
+    } catch (err) {
+      alert(err?.message || "Failed to save and send");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f0f2f5]">
-      <PageHeader
-        title="Create Invoice"
-        subtitle="Select an existing client or create one before billing."
-        actionLabel="Back to Invoices"
-        onAction={() => navigate('/invoices')}
-      />
-      <PageShell>
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
-          <div className="space-y-5">
+    <div className="min-h-screen bg-slate-50">
+      {loadingEdit && (<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" /></div>)}
+      {!loadingEdit && (<>
 
-            {/* CLIENT SECTION */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <h2 className="font-black text-slate-900">Billing Information</h2>
-                    <p className="text-xs text-slate-500 mt-0.5">Invoices should always be tied to a client record.</p>
-                  </div>
-                </div>
-                {!selectedClientId && (
-                  <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1">
-                    <button
-                      type="button"
-                      onClick={() => setClientMode('existing')}
-                      className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${clientMode === 'existing' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-                    >
-                      Existing
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setClientMode('new')}
-                      className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${clientMode === 'new' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-                    >
-                      New Client
-                    </button>
-                  </div>
-                )}
-              </div>
+      {/* Top bar — 48px compact */}
+      <div className="bg-white border-b border-slate-200 px-4 h-12 flex items-center gap-2.5 sticky top-0 z-10">
+        <button onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 flex-shrink-0"><ArrowLeft className="w-4 h-4" /></button>
+        <h1 className="font-semibold text-slate-800 text-sm">{isEditMode ? "Edit Invoice" : "New Invoice"}</h1>
+        {isEditMode && <span className="text-xs text-slate-400 font-mono bg-slate-100 px-2 py-0.5 rounded">{invoiceNumber}</span>}
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")}>Cancel</Button>
+          <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1.5" onClick={handleSave} disabled={saving || !ready.client || !ready.items || !ready.total}>
+            {saving ? (isEditMode ? "Saving…" : "Creating…") : (isEditMode ? "Save Changes" : "Create Invoice")}
+          </Button>
+        </div>
+      </div>
 
-              {/* Selected client card */}
-              {selectedClient && (
-                <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 font-black text-sm">
-                      {getClientDisplayName(selectedClient).charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-black text-blue-900 truncate">{getClientDisplayName(selectedClient)}</p>
-                      <p className="text-xs text-blue-700 truncate">{selectedClient.phone || ''}{selectedClient.phone && selectedClient.email ? ' · ' : ''}{selectedClient.email || ''}</p>
-                      {formatClientAddress(selectedClient) && (
-                        <p className="text-xs text-blue-600 mt-0.5 truncate">{formatClientAddress(selectedClient)}</p>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={clearSelectedClient}
-                    className="flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-red-600 transition-colors flex-shrink-0 mt-0.5"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    Change Client
-                  </button>
-                </div>
-              )}
+      {/* Workspace */}
+      <div className="max-w-6xl mx-auto px-4 py-5 grid gap-5" style={{ gridTemplateColumns: "1fr 260px" }}>
 
-              {!selectedClient && clientMode === 'existing' && (
-                <div className="space-y-3">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                    <Input
-                      type="search"
-                      value={clientSearch}
-                      onChange={e => setClientSearch(e.target.value)}
-                      placeholder="Search by name, phone, email, address, city, ZIP..."
-                      className="pl-9 pr-10"
-                      autoComplete="new-password"
-                      autoCorrect="off"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      name="invoice-client-lookup"
-                      id="invoice-client-lookup"
-                      inputMode="search"
-                    />
-                    {clientSearch && (
-                      <button
-                        type="button"
-                        onClick={() => setClientSearch('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full transition-colors"
-                        title="Clear search"
-                      >
-                        <X className="w-4 h-4 text-slate-400" />
-                      </button>
-                    )}
-                  </div>
+        {/* LEFT */}
+        <div className="min-w-0 space-y-3">
 
-                  <p className="text-xs text-slate-500">Search NexArtPro clients by name, phone, email, address, city, or ZIP.</p>
-
-                  <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden bg-slate-50">
-                    {loadingClients ? (
-                      <div className="px-4 py-6 text-sm text-slate-400 text-center">Loading clients...</div>
-                    ) : filteredClients.length === 0 ? (
-                      <div className="px-4 py-6 text-center">
-                        <p className="text-sm font-semibold text-slate-700">{clientSearch ? 'No matching client found' : 'No clients available'}</p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setClientMode('new');
-                            setClientForm(prev => ({ ...prev, full_name: clientSearch }));
-                          }}
-                          className="mt-2 text-sm font-bold text-blue-600 hover:underline"
-                        >
-                          Create "{clientSearch || 'New Client'}"
-                        </button>
-                        </div>
-                        ) : (
-                        <>
-                        <div className="px-4 py-2 bg-slate-100 text-xs text-slate-600 font-medium border-b border-slate-200">
-                          {clientSearch.trim() ? `${filteredClients.length} matching client${filteredClients.length !== 1 ? 's' : ''}` : `Showing ${filteredClients.length} client${filteredClients.length !== 1 ? 's' : ''}`}
-                        </div>
-                        {filteredClients.map(client => {
-                        const active = selectedClientId === client.id;
-                        return (
-                          <button
-                            key={client.id}
-                            type="button"
-                            onClick={() => applyClientToInvoice(client)}
-                            className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors ${active ? 'bg-blue-50' : 'bg-white hover:bg-slate-50'}`}
-                          >
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                              {active ? <CheckCircle2 className="w-4 h-4" /> : <span className="text-xs font-black">{getClientDisplayName(client).charAt(0).toUpperCase()}</span>}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-bold text-slate-900 truncate">{getClientDisplayName(client)}</p>
-                              <p className="text-xs text-slate-500 truncate">{client.phone || 'No phone'} · {client.email || 'No email'}</p>
-                              {formatClientAddress(client) && <p className="text-xs text-slate-400 truncate mt-0.5">{formatClientAddress(client)}</p>}
-                            </div>
-                          </button>
-                          );
-                          })
-                          }
-                          </>
-                          )}
-                  </div>
-                </div>
-              )}
-
-              {clientMode === 'new' && !selectedClient && (
-                <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-blue-700">
-                      <UserPlus className="w-4 h-4" />
-                      <p className="text-sm font-black">Create new client</p>
-                    </div>
-                    <button type="button" onClick={() => setClientMode('existing')} className="text-xs text-slate-500 hover:text-slate-700 underline">Back to search</button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Full Name *"><Input value={clientForm.full_name} onChange={e => updateClientForm('full_name', e.target.value)} placeholder="Customer / company name" /></Field>
-                    <Field label="Phone"><Input value={clientForm.phone} onChange={e => updateClientForm('phone', e.target.value)} placeholder="(503) 000-0000" /></Field>
-                    <Field label="Email"><Input value={clientForm.email} onChange={e => updateClientForm('email', e.target.value)} placeholder="client@email.com" /></Field>
-                    <Field label="Street Address"><Input value={clientForm.address} onChange={e => updateClientForm('address', e.target.value)} placeholder="Project / billing address" /></Field>
-                    <Field label="City"><Input value={clientForm.city} onChange={e => updateClientForm('city', e.target.value)} placeholder="Portland" /></Field>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="State"><Input value={clientForm.state} onChange={e => updateClientForm('state', e.target.value)} placeholder="OR" /></Field>
-                      <Field label="ZIP"><Input value={clientForm.zip} onChange={e => updateClientForm('zip', e.target.value)} placeholder="97201" /></Field>
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button type="button" variant="outline" onClick={handleCreateInlineClient}>
-                      <UserPlus className="w-4 h-4 mr-1" /> Save & Select Client
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {createAttempted && !hasClient && (
-                <p className="mt-2 text-xs font-semibold text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> A client is required to create an invoice.</p>
-              )}
-            </div>
-
-            {/* INVOICE DETAILS */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Receipt className="w-5 h-5 text-blue-600" />
-                <h2 className="font-black text-slate-900">Invoice Details</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Client">
-                  <Input value={form.client_name} onChange={e => updateForm('client_name', e.target.value)} placeholder="Select or create a client above" disabled={!!selectedClient} />
-                </Field>
-                <Field label="Invoice Title"><Input value={form.title} onChange={e => updateForm('title', e.target.value)} placeholder="e.g. Final painting invoice" /></Field>
-                <Field label="Email"><Input value={form.client_email} onChange={e => updateForm('client_email', e.target.value)} placeholder="client@email.com" /></Field>
-                <Field label="Phone"><Input value={form.client_phone} onChange={e => updateForm('client_phone', e.target.value)} placeholder="(503) 000-0000" /></Field>
-                <Field label="Billing Address"><Input value={form.client_address} onChange={e => updateForm('client_address', e.target.value)} placeholder="Project / billing address" /></Field>
-                <Field label="Due Date"><Input type="date" value={form.due_date} onChange={e => updateForm('due_date', e.target.value)} /></Field>
-              </div>
-            </div>
-
-            {/* BILLABLE ITEMS */}
-            <div className={`bg-white rounded-2xl border shadow-sm p-5 ${createAttempted && !hasItems ? 'border-red-300' : 'border-slate-200'}`}>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="font-black text-slate-900">Billable Items</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Simple invoice lines. Use estimates/work orders for detailed scope.</p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setItems(prev => [...prev, newItem()])}>
-                  <Plus className="w-4 h-4 mr-1" /> Add Line
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {items.map((item, idx) => {
-                  const lineTotal = money(item.quantity) * money(item.unit_price);
-                  return (
-                    <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-[1fr_90px_120px_38px] gap-3 items-end">
-                        <Field label={`Service ${idx + 1} *`}>
-                          <Input value={item.name} onChange={e => updateItem(item.id, 'name', e.target.value)} placeholder="Service name" />
-                        </Field>
-                        <Field label="Qty"><Input type="number" min="0" step="0.01" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} /></Field>
-                        <Field label="Unit Price ($)"><Input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => updateItem(item.id, 'unit_price', e.target.value)} /></Field>
-                        <button onClick={() => removeItem(item.id)} className="h-10 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 flex items-center justify-center">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <Input value={item.description} onChange={e => updateItem(item.id, 'description', e.target.value)} placeholder="Optional description" className="flex-1" />
-                        <span className="text-sm font-bold text-slate-700 tabular-nums whitespace-nowrap">
-                          Line total: <span className="text-blue-600">${lineTotal.toFixed(2)}</span>
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {createAttempted && !hasItems && (
-                <p className="mt-3 text-xs font-semibold text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Add at least one billable item with a service name and price.</p>
-              )}
-            </div>
-
-            {/* TAX / TERMS / NOTES */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Tax Rate %"><Input type="number" min="0" step="0.01" value={form.tax_rate} onChange={e => updateForm('tax_rate', e.target.value)} /></Field>
-              <Field label="Payment Terms"><Input value={form.payment_terms} onChange={e => updateForm('payment_terms', e.target.value)} /></Field>
-              <div className="md:col-span-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-1">Notes</label>
-                <textarea value={form.notes} onChange={e => updateForm('notes', e.target.value)} placeholder="Optional customer-facing notes" className="w-full min-h-[90px] rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/20" />
-              </div>
+          {/* Invoice meta */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <h2 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-blue-500" />Invoice Details</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div><label className="block text-[11px] font-medium text-slate-500 mb-1">Invoice #</label><input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" /></div>
+              <div><label className="block text-[11px] font-medium text-slate-500 mb-1">Terms</label><select value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white">{PAYMENT_TERMS_OPTIONS.map(t => <option key={t}>{t}</option>)}</select></div>
+              <div><label className="block text-[11px] font-medium text-slate-500 mb-1">Due Date</label><input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" /></div>
+              <div><label className="block text-[11px] font-medium text-slate-500 mb-1">Tax (%)</label><input type="number" min="0" max="100" step="0.01" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" /></div>
             </div>
           </div>
 
-          {/* PREVIEW PANEL */}
-          <div className="lg:sticky lg:top-6 h-fit bg-slate-950 text-white rounded-3xl shadow-2xl p-6 space-y-5">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Invoice Preview</p>
-              <h3 className="text-xl font-black mt-1 truncate">{form.client_name || 'Select Client'}</h3>
-              <p className="text-sm text-slate-400 mt-0.5">{form.title || 'Manual invoice'}</p>
-              {form.client_address && <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{form.client_address}</p>}
-              {form.due_date && <p className="text-xs text-slate-400 mt-1">Due: {form.due_date}</p>}
-            </div>
-
-            {/* Line items preview */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Billable Items</p>
-              {validItems.length === 0 ? (
-                <p className="text-xs text-slate-500 italic">No billable items yet.</p>
-              ) : (
-                validItems.map(item => (
-                  <div key={item.id} className="flex items-start justify-between gap-2 text-xs">
-                    <span className="text-slate-300 flex-1 truncate">{item.service_name} — {item.quantity} × ${money(item.unit_price).toFixed(2)}</span>
-                    <span className="font-bold text-white tabular-nums flex-shrink-0">${item.line_total.toFixed(2)}</span>
-                  </div>
-                ))
+          {/* Client */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <h2 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-blue-500" />Client</h2>
+            <div className="relative">
+              <input value={clientSearch} onChange={e => { setClientSearch(e.target.value); setShowClientDrop(true); setSelectedClient(null); }} onFocus={() => setShowClientDrop(true)} onBlur={() => setTimeout(() => setShowClientDrop(false), 150)} placeholder="Search by name or email…" autoComplete="off" autoCorrect="off" spellCheck="false" name="nexart-client-search" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+              {showClientDrop && filteredClients.length > 0 && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  {filteredClients.slice(0, 8).map(c => (<button key={c.id} type="button" onMouseDown={() => selectClient(c)} className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors"><div className="text-sm font-medium text-slate-800">{c.full_name || c.name}</div>{c.email && <div className="text-xs text-slate-400">{c.email}</div>}</button>))}
+                </div>
               )}
             </div>
-
-            <div className="space-y-2 rounded-2xl bg-white/5 border border-white/10 p-4">
-              <Row label="Subtotal" value={money(totals.subtotal).toFixed(2)} />
-              <Row label={`Tax (${money(totals.tax_rate).toFixed(2)}%)`} value={money(totals.tax_amount).toFixed(2)} />
-              <div className="h-px bg-white/10" />
-              <Row label="Total" value={money(totals.total).toFixed(2)} strong />
-            </div>
-
-            {form.payment_terms && (
-              <div className="rounded-xl bg-white/5 border border-white/10 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Terms</p>
-                <p className="text-xs text-slate-400 line-clamp-3">{form.payment_terms}</p>
+            {selectedClient && (
+              <div className="mt-2.5 flex items-center gap-2.5 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="w-7 h-7 bg-blue-200 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs flex-shrink-0">{(selectedClient.full_name || selectedClient.name || "?")[0].toUpperCase()}</div>
+                <div className="min-w-0"><div className="text-sm font-semibold text-slate-800 truncate">{selectedClient.full_name || selectedClient.name}</div><div className="text-xs text-slate-500 truncate">{selectedClient.email}{selectedClient.phone && ` \u00b7 ${selectedClient.phone}`}</div></div>
+                <button onClick={() => { setSelectedClient(null); setClientSearch(""); }} className="ml-auto text-slate-400 hover:text-red-500 text-xs flex-shrink-0">✕</button>
               </div>
             )}
+          </div>
 
-            {/* Readiness checklist */}
-            <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-1.5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Invoice Readiness</p>
-              <ReadinessItem ok={hasClient} label="Client selected" />
-              <ReadinessItem ok={hasItems} label="At least one billable item" />
-              <ReadinessItem ok={hasTotal} label="Total greater than $0" />
-              <ReadinessItem ok={Boolean(form.due_date)} label="Due date (optional)" optional />
+          {/* Line Items */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5 text-blue-500" />Billable Items</h2>
+              <Button type="button" size="sm" onClick={addItem} className="h-7 text-xs bg-blue-600 text-white gap-1 px-2.5"><Plus className="w-3 h-3" />Add Item</Button>
             </div>
-
-            <div className="space-y-2">
-              <Button onClick={handleCreate} disabled={saving} className="w-full h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black">
-                <FilePlus2 className="w-4 h-4 mr-2" />
-                {saving ? 'Creating...' : 'Create Invoice'}
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/invoices')} className="w-full h-11 rounded-2xl border-white/20 bg-white/5 text-white hover:bg-white/10">
-                <ArrowLeft className="w-4 h-4 mr-2" /> Back to Invoices
-              </Button>
+            {lineItems.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-sm">No items. Click Add Item to begin.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead><tr className="bg-slate-50 border-b border-slate-100 text-[11px] text-slate-400 font-semibold uppercase tracking-wide"><th className="text-left px-3 py-2">Type</th><th className="text-left px-3 py-2">Item / Description</th><th className="text-left px-3 py-2 w-16">Qty</th><th className="text-left px-3 py-2 w-24">Price</th><th className="text-right px-3 py-2 w-20">Total</th><th className="w-8" /></tr></thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {lineItems.map(li => (
+                      <tr key={li.id} className="hover:bg-slate-50/60">
+                        <td className="px-3 py-2"><select value={li.item_type} onChange={e => updateItem(li.id, "item_type", e.target.value)} className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white focus:outline-none">{ITEM_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}</select></td>
+                        <td className="px-3 py-2"><input value={li.name} onChange={e => updateItem(li.id, "name", e.target.value)} placeholder="Item name" className="w-full text-sm border border-slate-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400 mb-1" /><input value={li.description} onChange={e => updateItem(li.id, "description", e.target.value)} placeholder="Description (optional)" className="w-full text-xs border border-slate-100 rounded-md px-2 py-1 focus:outline-none text-slate-400 bg-slate-50" /></td>
+                        <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={li.quantity} onChange={e => updateItem(li.id, "quantity", parseFloat(e.target.value) || 0)} className="w-full text-sm border border-slate-200 rounded-md px-2 py-1 focus:outline-none" /></td>
+                        <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={li.unit_price} onChange={e => updateItem(li.id, "unit_price", parseFloat(e.target.value) || 0)} className="w-full text-sm border border-slate-200 rounded-md px-2 py-1 focus:outline-none" /></td>
+                        <td className="px-3 py-2 text-sm font-semibold text-right text-slate-800">{formatCurrency(li.line_total)}</td>
+                        <td className="px-2 py-2"><button type="button" onClick={() => removeItem(li.id)} className="p-1 text-slate-300 hover:text-red-400 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="px-4 py-3 border-t border-slate-100 flex justify-end bg-slate-50/50">
+              <div className="w-52 space-y-1 text-sm">
+                <div className="flex justify-between text-slate-500 text-xs"><span>Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
+                {totals.discount_total > 0 && <div className="flex justify-between text-emerald-600 text-xs"><span>Discount</span><span>-{formatCurrency(totals.discount_total)}</span></div>}
+                {totals.tax_total > 0 && <div className="flex justify-between text-slate-500 text-xs"><span>Tax ({taxRate}%)</span><span>{formatCurrency(totals.tax_total)}</span></div>}
+                <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-1.5 text-sm"><span>Total</span><span>{formatCurrency(totals.total)}</span></div>
+              </div>
             </div>
           </div>
+
+          {/* Notes */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Notes (client-facing)</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Payment instructions, thank-you message, special terms…" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none" />
+          </div>
         </div>
-      </PageShell>
+
+        {/* RIGHT: dark sidebar 260px */}
+        <div className="rounded-2xl p-4 shadow-xl flex flex-col gap-3 lg:sticky lg:top-14 self-start" style={{ background: "linear-gradient(180deg, #0A0F1E 0%, #050A18 100%)" }}>
+          <div className="pb-3 border-b border-white/10">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-400 mb-0.5">{isEditMode ? "Edit Mode" : "New Invoice"}</div>
+            <div className="text-base font-bold text-white leading-tight truncate">{selectedClient ? (selectedClient.full_name || selectedClient.name) : <span className="text-slate-500">No client</span>}</div>
+            {invoiceNumber && <div className="text-xs font-mono text-slate-500 mt-0.5">#{invoiceNumber}</div>}
+          </div>
+
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-2">Items</div>
+            {lineItems.filter(li => li.name && li.line_total > 0).length === 0 ? (
+              <p className="text-slate-600 text-xs italic">No billable items yet.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {lineItems.filter(li => li.name && li.line_total > 0).slice(0, 4).map(li => (
+                  <div key={li.id} className="flex items-start justify-between gap-2">
+                    <div className="min-w-0"><div className="text-slate-300 text-xs font-medium truncate">{li.name}</div>{li.quantity > 0 && li.unit_price > 0 && <div className="text-slate-600 text-[10px]">{li.quantity} × {formatCurrency(li.unit_price)}</div>}</div>
+                    <span className="text-white text-xs font-semibold flex-shrink-0">{formatCurrency(li.line_total)}</span>
+                  </div>
+                ))}
+                {lineItems.filter(li => li.name && li.line_total > 0).length > 4 && <div className="text-slate-600 text-[10px]">+{lineItems.filter(li => li.name && li.line_total > 0).length - 4} more</div>}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-1.5">
+            <div className="flex justify-between items-center"><span className="text-slate-500 text-xs">Subtotal</span><span className="text-slate-300 text-xs font-medium">{formatCurrency(totals.subtotal)}</span></div>
+            {taxRate > 0 && <div className="flex justify-between items-center"><span className="text-slate-500 text-xs">Tax ({taxRate}%)</span><span className="text-slate-300 text-xs font-medium">{formatCurrency(totals.tax_total)}</span></div>}
+            <div className="flex justify-between items-center border-t border-white/10 pt-1.5"><span className="text-slate-400 text-sm font-medium">Total</span><span className="text-2xl font-black text-white leading-none">{formatCurrency(totals.total)}</span></div>
+          </div>
+
+          <div className="space-y-1.5">
+            {[{ check: ready.client, label: "Client selected" }, { check: ready.items, label: "Billable item added" }, { check: ready.total, label: "Total > $0" }].map(({ check, label }) => (
+              <div key={label} className="flex items-center gap-2">
+                {check ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" /> : <Circle className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />}
+                <span className={`text-xs ${check ? "text-emerald-400" : "text-amber-400"}`}>
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2 pt-1 border-t border-white/10">
+            <button onClick={handleSave} disabled={saving || readinessScore < 3} className="w-full h-10 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              {saving ? (isEditMode ? "Saving…" : "Creating…") : (isEditMode ? "Save Changes" : "Create Invoice")}
+            </button>
+            {isEditMode && (<>
+              <button onClick={() => { if (saving || readinessScore < 3) return; setMarkSentResendOpen(true); }} disabled={saving || readinessScore < 3 || !selectedClient?.email} className="w-full h-9 flex items-center justify-center gap-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-cyan-300 font-medium text-xs rounded-xl transition-colors border border-cyan-500/20"><Send className="w-3.5 h-3.5" />Save &amp; Send Email</button>
+              <button onClick={() => { if (saving || readinessScore < 3) return; setMarkSentManualOpen(true); }} disabled={saving || readinessScore < 3} className="w-full h-9 flex items-center justify-center gap-1.5 bg-blue-500/15 hover:bg-blue-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-blue-300 font-medium text-xs rounded-xl transition-colors border border-blue-500/20"><MailCheck className="w-3.5 h-3.5" />Save &amp; Mark Sent</button>
+            </>)}
+            <button onClick={() => isEditMode ? navigate(`/invoice-detail?id=${editInvoiceId}`) : navigate("/invoices")} className="w-full h-8 flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-400 font-medium text-xs transition-colors"><ArrowLeft className="w-3.5 h-3.5" />{isEditMode ? "Cancel edit" : "Back to Invoices"}</button>
+          </div>
+        </div>
+      </div>
+      </>)}
+
+      <Dialog open={markSentManualOpen} onOpenChange={setMarkSentManualOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="flex items-center gap-2 text-sm"><CheckCheck className="w-4 h-4 text-blue-600" />Mark as Sent Manually</DialogTitle><p className="text-xs text-slate-400">No email sent. Use when invoice was delivered outside NexArtPro.</p></DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div><label className="block text-xs font-medium text-slate-700 mb-1">Sent Date</label><input type="date" value={manualSentForm.date} onChange={e => setManualSentForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" /></div>
+            <div><label className="block text-xs font-medium text-slate-700 mb-1">Method</label><div className="grid grid-cols-3 gap-1.5">{["email","text","printed","hand delivered","other"].map(m => (<button key={m} type="button" onClick={() => setManualSentForm(f => ({ ...f, method: m }))} className={`py-1.5 px-1 rounded-lg border text-[11px] font-medium text-center capitalize transition-all ${manualSentForm.method === m ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}>{m}</button>))}</div></div>
+            <div><label className="block text-xs font-medium text-slate-700 mb-1">Note (optional)</label><input value={manualSentForm.note} onChange={e => setManualSentForm(f => ({ ...f, note: e.target.value }))} placeholder="e.g. Handed to client at job site" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none" /></div>
+          </div>
+          <div className="flex gap-2 justify-end pt-1"><Button variant="outline" size="sm" onClick={() => setMarkSentManualOpen(false)}>Cancel</Button><Button size="sm" onClick={handleSaveAndMarkSent} disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700 gap-1.5"><CheckCheck className="w-3.5 h-3.5" />{saving ? "Saving…" : "Confirm Sent"}</Button></div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={markSentResendOpen} onOpenChange={setMarkSentResendOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="flex items-center gap-2 text-sm"><Send className="w-4 h-4 text-cyan-600" />Send via Resend</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="bg-slate-50 rounded-xl p-3 space-y-1.5"><div className="flex justify-between"><span className="text-slate-400 text-xs">To</span><span className="font-medium text-slate-700 text-xs">{selectedClient?.email || "—"}</span></div><div className="flex justify-between"><span className="text-slate-400 text-xs">Invoice</span><span className="font-medium text-slate-700 text-xs">{invoiceNumber}</span></div><div className="flex justify-between"><span className="text-slate-400 text-xs">Amount</span><span className="font-bold text-slate-800 text-xs">{formatCurrency(totals.total)}</span></div></div>
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2"><p className="text-xs text-amber-700">Changes saved first. Status marked <strong>sent</strong> only if email succeeds.</p></div>
+          </div>
+          <div className="flex gap-2 justify-end pt-1"><Button variant="outline" size="sm" onClick={() => setMarkSentResendOpen(false)}>Cancel</Button><Button size="sm" onClick={handleSaveAndResend} disabled={saving} className="bg-cyan-600 text-white hover:bg-cyan-700 gap-1.5"><Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send"}</Button></div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function Field({ label, children }) {
-  return <div><label className="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-1">{label}</label>{children}</div>;
-}
-
-function Row({ label, value, strong }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-slate-400">{label}</span>
-      <span className={strong ? 'text-2xl font-black' : 'font-bold'}>${value}</span>
-    </div>
-  );
-}
-
-function ReadinessItem({ ok, label, optional }) {
-  return (
-    <div className="flex items-center gap-2">
-      {ok ? (
-        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-      ) : optional ? (
-        <div className="w-3.5 h-3.5 rounded-full border border-slate-600 flex-shrink-0" />
-      ) : (
-        <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-      )}
-      <span className={`text-xs ${ok ? 'text-slate-300' : optional ? 'text-slate-500' : 'text-amber-300'}`}>{label}</span>
-    </div>
-  );
-}

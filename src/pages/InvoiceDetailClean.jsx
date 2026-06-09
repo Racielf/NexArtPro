@@ -1,664 +1,821 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import {
-  ArrowLeft,
-  CheckCircle,
-  CheckCircle2,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  DollarSign,
-  ExternalLink,
-  FileCheck,
-  Mail,
-  MapPin,
-  Phone,
-  Printer,
-  Receipt,
-  Send,
-  Settings2,
-} from 'lucide-react';
-import { format } from 'date-fns';
-import StatusBadge from '@/components/shared/StatusBadge';
-import PaymentInputModal from '@/components/invoices/PaymentInputModal';
-import PaymentHistory from '@/components/invoices/PaymentHistory';
-import QuickContactActions from '@/components/invoices/QuickContactActions';
-import PaymentReceiptPreviewModal from '@/components/payments/PaymentReceiptPreviewModal';
-import { buildReceipt } from '@/components/payments/paymentReceiptUtils';
-import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
-import { normalizeLineItem } from '@/lib/lineItemNormalizer';
-import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
-import { getInvoiceNextAction } from '@/lib/nextActionLogic';
-import { buildTimelineEvent, appendCollectionTimelineEvent } from '@/lib/invoiceCollectionTimeline';
-import { markInvoiceContacted, getLastContactedDisplay } from '@/lib/invoiceActionHelpers';
-import { markInvoicePaid } from '@/lib/invoicePaymentRecorder';
-import InvoiceVisibilityPanel, { getInvoiceViewSettings } from '@/components/invoices/InvoiceVisibilityPanel';
-import { useAuth } from '@/lib/AuthContext';
-import { APP_CONFIG } from '@/lib/appConfig';
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { ArrowLeft, Send, DollarSign, Printer, ExternalLink, FileCheck, Copy, Ban, CreditCard, Receipt, Pencil, MailCheck, CheckCheck, Info, Layout } from "lucide-react";
+import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { computeInvoiceDerivedFields, isInvoiceOverdue } from "@/lib/invoiceHelpers";
+import { redirectToStripeCheckout } from "@/lib/stripeCheckout";
+import { formatCurrency } from "@/utils/invoiceCalc";
+import { toast } from "sonner";
+import useCompanyConfig from "@/hooks/useCompanyConfig";
+import InvoiceTemplateRenderer, { INVOICE_TEMPLATES } from "@/components/invoices/InvoiceTemplateRenderer";
+import { buildInvoiceCompanySnapshot, resolveInvoiceCompany } from "@/lib/invoiceCompanySnapshot";
 
-const co = APP_CONFIG.company;
+// buildInvoiceCompanySnapshot / resolveInvoiceCompany imported from @/lib/invoiceCompanySnapshot
 
-function paymentStatusLabel(status) {
-  if (status === 'paid') return 'Paid';
-  if (status === 'partial') return 'Partially Paid';
-  return 'Balance Due';
+const PAYMENT_METHODS = ["cash","check","card_manual","bank_transfer","zelle","venmo","other"];
+
+function getPaymentMethodMeta(method) {
+  switch (method) {
+    case "cash":         return { label: "Cash",          notesLabel: "Cash notes",               notesPlaceholder: "Drawer, received by, or optional note…",  notesRequired: false };
+    case "check":        return { label: "Check",         notesLabel: "Check number / reference",  notesPlaceholder: "Check #1234",                            notesRequired: true  };
+    case "card_manual":  return { label: "Card Manual",   notesLabel: "Card authorization / last 4",notesPlaceholder: "Auth code or last 4 digits",             notesRequired: true  };
+    case "bank_transfer":return { label: "Bank Transfer", notesLabel: "Transfer reference",        notesPlaceholder: "ACH / wire / reference number",          notesRequired: true  };
+    case "zelle":        return { label: "Zelle",         notesLabel: "Zelle confirmation",        notesPlaceholder: "Confirmation ID or sender name",         notesRequired: true  };
+    case "venmo":        return { label: "Venmo",         notesLabel: "Venmo reference",           notesPlaceholder: "Venmo username or transaction note",     notesRequired: true  };
+    default:             return { label: "Other",         notesLabel: "Payment note",              notesPlaceholder: "Describe payment source",                notesRequired: true  };
+  }
+}
+
+function StatusBadge({ status }) {
+  const map = {
+    draft:   "bg-slate-100 text-slate-600",
+    sent:    "bg-blue-100 text-blue-700",
+    viewed:  "bg-cyan-100 text-cyan-700",
+    partial: "bg-amber-100 text-amber-700",
+    paid:    "bg-emerald-100 text-emerald-700",
+    overdue: "bg-red-100 text-red-700",
+    void:    "bg-slate-100 text-slate-400",
+  };
+  const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Draft";
+  return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[status] || map.draft}`}>{label}</span>;
 }
 
 export default function InvoiceDetailClean() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const actor = user?.email || user?.id || 'unknown';
-  const invoiceId = new URLSearchParams(window.location.search).get('id');
+  const [searchParams] = useSearchParams();
+  const invoiceId = searchParams.get("id");
+  const navigate  = useNavigate();
 
-  const [invoice, setInvoice] = useState(null);
-  const [workOrder, setWorkOrder] = useState(null);
-  const [evidenceEval, setEvidenceEval] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [receiptModal, setReceiptModal] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [showCustomize, setShowCustomize] = useState(false);
-  const [previousBalance, setPreviousBalance] = useState(0);
+  const company = useCompanyConfig();
 
-  useEffect(() => { loadInvoice(); }, [invoiceId]);
+  // ── All state declarations must come before any derived values ──
+  const [invoice,         setInvoice]         = useState(null);
+  const [loading,         setLoading]         = useState(true);
+  const [saving,          setSaving]          = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('clean'); // synced from DB via useEffect
+  const [payOpen,         setPayOpen]         = useState(false);
+  const [payForm,         setPayForm]         = useState({ amount: "", method: "cash", reference: "", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
+  const [stripeLoading,   setStripeLoading]   = useState(false);
+  const [receiptOpen,     setReceiptOpen]     = useState(false);
+  const [markSentOpen,    setMarkSentOpen]    = useState(false);
+  const [resendOpen,      setResendOpen]      = useState(false);
+  const [manualSentForm,  setManualSentForm]  = useState({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
+  const [estimateNum,     setEstimateNum]     = useState(null);
 
-  const loadInvoice = async () => {
+  // ── Derived values — safe to place after all useState declarations ──
+  const invoiceCompany = resolveInvoiceCompany(invoice, company);
+
+  const load = async () => {
     if (!invoiceId) { setLoading(false); return; }
-    setLoading(true);
-    setPreviousBalance(0);
-    const list = await base44.entities.Invoice.filter({ id: invoiceId });
-    const inv = list?.[0];
-
-    if (inv) {
-      setInvoice(inv);
-      setNotes(inv.notes || '');
-      setDueDate(inv.due_date || '');
-
-      if (inv.client_id) {
-        try {
-          const clientInvoices = await base44.entities.Invoice.filter({ client_id: inv.client_id });
-          const bal = (clientInvoices || [])
-            .filter(o => o.id !== inv.id)
-            .reduce((sum, o) => {
-              const d = computeInvoiceDerivedFields(o);
-              return d.payment_status === 'paid' ? sum : sum + d.balance_due;
-            }, 0);
-          setPreviousBalance(bal);
-        } catch (err) {
-          console.warn('[InvoiceDetailClean] Client balance load failed:', err?.message);
-        }
-      }
-
-      if (inv.work_order_id) {
-        try {
-          const woList = await base44.entities.WorkOrder.filter({ id: inv.work_order_id });
-          const wo = woList?.[0];
-          if (wo) {
-            const photos = await base44.entities.ProjectPhoto.filter({ work_order_id: inv.work_order_id });
-            const enriched = { ...wo, photos_count: photos?.length || 0 };
-            setWorkOrder(enriched);
-            setEvidenceEval(evaluateWorkOrderEvidence(enriched));
-          }
-        } catch (err) {
-          console.warn('[InvoiceDetailClean] WorkOrder load failed:', err?.message);
-        }
-      }
-    }
+    const rows = await base44.entities.Invoice.filter({ id: invoiceId }).catch(() => []);
+    setInvoice(rows[0] || null);
     setLoading(false);
   };
 
-  const derived = useMemo(() => computeInvoiceDerivedFields(invoice), [invoice]);
-  const viewSettings = useMemo(() => getInvoiceViewSettings(invoice), [invoice]);
-  const isPaid = derived.payment_status === 'paid';
-  const isPartial = derived.payment_status === 'partial';
-  const overdue = isInvoiceOverdue(invoice);
-  const nextAction = getInvoiceNextAction(invoice);
-  const currentInvoiceTotal = invoice?.total || 0;
-  const totalOwed = previousBalance + derived.balance_due;
+  useEffect(() => { load(); }, [invoiceId]);
 
-  const allItems = useMemo(() => {
-    if (!invoice) return [];
-    const groupItems = invoice.groups?.flatMap(g => g.items || []) || [];
-    const raw = groupItems.length > 0 ? groupItems : (invoice.line_items || []);
-    return raw.map(normalizeLineItem);
-  }, [invoice]);
+  // Sync selectedTemplate from DB after invoice loads (preserves page-refresh state)
+  useEffect(() => {
+    if (invoice?.template) setSelectedTemplate(invoice.template);
+  }, [invoice?.template]);
 
-  const receipt = invoice ? buildReceipt(invoice, {
-    payment_method: invoice.payment_method || 'cash',
-    previous_balance: invoice.total,
-    amount_paid: derived.amount_paid,
-  }) : null;
+  // Best-effort: load estimate number if invoice came from an estimate
+  useEffect(() => {
+    if (!invoice?.estimate_id) return;
+    base44.entities.Estimate.filter({ id: invoice.estimate_id })
+      .then(rows => { if (rows?.[0]?.estimate_number) setEstimateNum(rows[0].estimate_number); })
+      .catch(() => {});
+  }, [invoice?.estimate_id]);
 
-  const saveInvoicePatch = async (patch, msg) => {
-    setSaving(true);
-    await base44.entities.Invoice.update(invoiceId, patch);
-    setInvoice(prev => ({ ...prev, ...patch }));
-    setSaving(false);
-    if (msg) toast.success(msg);
-  };
+  const derived = useMemo(() => invoice ? computeInvoiceDerivedFields(invoice) : { amount_paid: 0, balance_due: 0, payment_status: "unpaid" }, [invoice]);
+  const isOverdue = invoice ? isInvoiceOverdue({ ...invoice, ...derived }) : false;
+  const isPaid    = derived.payment_status === "paid";
+  const isVoid    = invoice?.status === "void";
+  const canPay    = !isPaid && !isVoid;
+  const canEdit     = !isVoid;
+  const canMarkSent = !isVoid && invoice?.status === "draft"; // only draft, disappears after sent
+  const canSendEmail = !isVoid; // visible always unless void; disabled if no email
 
-  const handleViewSettingChange = async (key, value) => {
-    const updated = { ...viewSettings, [key]: value };
-    await saveInvoicePatch({ view_settings: updated });
-  };
-
-  const handleSaveNotes = async () => {
-    await saveInvoicePatch({ notes, due_date: dueDate }, 'Invoice updated');
-  };
-
-  const handleSend = async () => {
-    if (!invoice.client_email) { toast.error('Client email required'); return; }
-    if (workOrder && evidenceEval && !evidenceEval.isComplete) {
-      if (!confirm('Incomplete execution evidence. Send anyway?')) return;
+  // Helper: critical update (status/sent_at/sent_source) + optional best-effort metadata
+  const markInvoiceSentCritical = async ({ source, sentAt, optionalPatch = {} }) => {
+    const criticalPatch = { status: "sent", sent_at: sentAt, sent_source: source };
+    await base44.entities.Invoice.update(invoiceId, criticalPatch); // throws on failure
+    let optionalApplied = {};
+    if (Object.keys(optionalPatch).length > 0) {
+      await base44.entities.Invoice.update(invoiceId, optionalPatch)
+        .then(() => { optionalApplied = optionalPatch; })
+        .catch(err => console.warn("[InvoiceDetailClean] optional sent metadata failed:", err?.message || err));
     }
+    setInvoice(prev => ({ ...prev, ...criticalPatch, ...optionalApplied }));
+  };
+
+  // Manual Mark Sent — no email
+  const handleMarkSentManual = async () => {
     setSaving(true);
     try {
-      const now = new Date().toISOString();
-      await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now, last_contacted_at: now });
-      await base44.integrations.Core.SendEmail({
-        to: invoice.client_email,
-        subject: `Invoice #${invoice.invoice_number} - Payment Due`,
-        body: `Hi ${invoice.client_name},\n\nPlease find your invoice #${invoice.invoice_number}.\n\nTotal Due: $${(invoice.total || 0).toFixed(2)}${dueDate ? `\nDue Date: ${dueDate}` : ''}\n\nThank you for your business!\n\n${co.name}`,
+      const sentAt = manualSentForm.date ? new Date(manualSentForm.date).toISOString() : new Date().toISOString();
+      await markInvoiceSentCritical({
+        source: "manual",
+        sentAt,
+        optionalPatch: {
+          sent_manually: true,
+          sent_method: manualSentForm.method || null,
+          manual_sent_note: manualSentForm.note.trim() || null,
+          last_contacted_at: sentAt,
+        },
       });
-      setInvoice(prev => ({ ...prev, status: 'sent', sent_at: now, last_contacted_at: now }));
-      toast.success('Invoice sent to client');
+      setMarkSentOpen(false);
+      setManualSentForm({ date: format(new Date(), "yyyy-MM-dd"), method: "email", note: "" });
+      toast.success("Invoice marked as sent");
     } catch (err) {
-      toast.error(err?.message || 'Failed to send invoice');
+      toast.error(err?.message || "Failed to mark as sent");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleMarkPaid = async () => {
+  // Send Email (Automatic via Resend) — email FIRST, status only on success
+  const handleResend = async () => {
+    if (!invoice?.client_email) { toast.error("Client email required to send"); return; }
     setSaving(true);
     try {
-      const { updates } = await markInvoicePaid(invoice, actor, 'Marked as paid');
-      setInvoice(prev => ({ ...prev, ...updates }));
-      toast.success('Invoice marked as paid');
+      const clientLink = `${window.location.origin}/document/${invoiceId}`;
+      const isResend = ['sent','viewed','partial'].includes(invoice?.status);
+      const subject = isResend
+        ? `Resend: Invoice ${invoice.invoice_number} — Payment Due`
+        : `Invoice ${invoice.invoice_number} — Payment Due`;
+      const emailResult = await base44.integrations.Core.SendEmail({
+        to: invoice.client_email,
+        subject,
+        body: `Hi ${invoice.client_name},\n\nPlease find your invoice ${invoice.invoice_number}.\n\nTotal Due: ${formatCurrency(derived.balance_due)}${invoice.due_date ? `\nDue: ${format(new Date(invoice.due_date), "MMM d, yyyy")}` : ""}\n\nView Invoice: ${clientLink}\n\nThank you,\n${invoiceCompany.name}`,
+      });
+
+      // EMAIL SUCCESS — close modal immediately, before status update
+      setResendOpen(false);
+
+      // Attempt status update — failure here must NOT re-open the modal
+      const now = new Date().toISOString();
+      try {
+        await markInvoiceSentCritical({
+          source: "resend",
+          sentAt: now,
+          optionalPatch: {
+            resend_message_id: emailResult?.id || emailResult?.data?.id || null,
+            resend_status: emailResult?.status || emailResult?.data?.status || "sent",
+            last_contacted_at: now,
+            ...(!invoice?.company_snapshot ? { company_snapshot: buildInvoiceCompanySnapshot(company) } : {}),
+          },
+        });
+        toast.success(isResend ? "Invoice resent successfully" : "Invoice sent successfully");
+      } catch (statusErr) {
+        // Email was sent — only status update failed
+        toast.error(statusErr?.message || "Email sent, but invoice status could not be updated.");
+      }
     } catch (err) {
-      toast.error(err?.message || 'Unable to mark invoice as paid');
+      // Core.SendEmail failed — modal stays open, status unchanged
+      toast.error(err?.message || "Failed to send invoice");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleMarkContacted = async () => {
-    await markInvoiceContacted(invoiceId, base44);
-    const timelineEvent = buildTimelineEvent('client_contacted', actor);
-    const timeline = appendCollectionTimelineEvent(invoice, timelineEvent);
-    setInvoice(prev => ({ ...prev, last_contacted_at: new Date().toISOString(), collection_timeline: timeline }));
-    toast.success('Marked as contacted');
+  const handleVoid = async () => {
+    if (!confirm("Void this invoice?")) return;
+    await base44.entities.Invoice.update(invoiceId, { status: "void", voided_at: new Date().toISOString() });
+    setInvoice(prev => ({ ...prev, status: "void" }));
+    toast.success("Invoice voided");
   };
 
-  const handlePrint = () => {
-    const invoiceDate = invoice.created_date
-      ? new Date(invoice.created_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-      : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const handleRecordPayment = async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(payForm.amount) || 0;
+    if (!amount || amount <= 0) { toast.error("Enter a valid amount"); return; }
+    const meta = getPaymentMethodMeta(payForm.method);
+    if (meta.notesRequired && !payForm.notes.trim()) {
+      toast.error(`${meta.notesLabel} is required`);
+      return;
+    }
+    setSaving(true);
+    try {
+      const entry = {
+        id: crypto.randomUUID(),
+        amount,
+        method: payForm.method,
+        method_label: meta.label,
+        notes: payForm.notes,
+        reference: payForm.notes,
+        paid_at: payForm.paid_at,
+        created_at: new Date().toISOString(),
+      };
+      const payments = [...(invoice.payments || []), entry];
+      await base44.entities.Invoice.update(invoiceId, { payments });
+      setInvoice(prev => ({ ...prev, payments }));
+      setPayOpen(false);
+      setPayForm({ amount: "", method: "cash", notes: "", paid_at: format(new Date(), "yyyy-MM-dd") });
+      toast.success("Payment recorded");
+    } catch (err) {
+      toast.error(err?.message || "Failed to record payment");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    const lineRows = allItems.map(item => `
+  const handleStripe = async () => {
+    setStripeLoading(true);
+    try { await redirectToStripeCheckout(invoice); }
+    catch (err) { toast.error(err?.message || "Stripe error"); }
+    finally { setStripeLoading(false); }
+  };
+
+  // Template persistence — optimistic update, rollback on error
+  const handleTemplateChange = async (templateKey) => {
+    const previous = selectedTemplate;
+    setSelectedTemplate(templateKey);
+    setInvoice(prev => prev ? { ...prev, template: templateKey } : prev);
+    try {
+      await base44.entities.Invoice.update(invoiceId, { template: templateKey });
+    } catch (err) {
+      setSelectedTemplate(previous);
+      setInvoice(prev => prev ? { ...prev, template: previous } : prev);
+      toast.error(err?.message || "Failed to update template");
+    }
+  };
+
+  // Print full invoice — window.print() uses browser CSS @media print
+  const handlePrint = () => window.print();
+
+  // Navigate to edit mode — warns if payments exist
+  const handleEdit = () => {
+    if ((invoice.payments || []).length > 0) {
+      const ok = confirm("This invoice already has payments. Editing totals can affect the balance. Continue?");
+      if (!ok) return;
+    }
+    navigate(`/invoice-create?id=${invoiceId}&mode=edit`);
+  };
+
+  // Receipt — opens in-app Dialog (not a popup)
+  const handleOpenReceipt = () => {
+    if (!(invoice?.payments?.length)) return;
+    setReceiptOpen(true);
+  };
+
+  // Legacy popup kept only as fallback for Print Receipt button inside the dialog
+  const handlePrintReceiptPopup = () => {
+    const paidList = (invoice.payments || []);
+    if (!paidList.length) return;
+    const companyName  = invoiceCompany.name;
+    const companyEmail = invoiceCompany.email || "";
+    const companyPhone = invoiceCompany.phone || "";
+    const totalPaid    = paidList.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+    const rows = paidList.map(p => `
       <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top">
-          <strong style="color:#0f172a">${item.service_name || item.name || ''}</strong>
-          ${item.description ? `<br><span style="color:#64748b;font-size:12px">${item.description}</span>` : ''}
-        </td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;color:#475569">${item.quantity || ''}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;color:#475569">$${(item.unit_price || 0).toFixed(2)}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#0f172a">$${(item.line_total || item.total_price || 0).toFixed(2)}</td>
-      </tr>`).join('');
-
-    const sourceRef = (() => {
-      if (!viewSettings.show_linked_records) return '';
-      if (invoice.source_proposal_number) return `<p style="margin:2px 0;color:#64748b;font-size:12px">Created from Proposal #${invoice.source_proposal_number}${invoice.source_selected_pricing_option_title ? ` — ${invoice.source_selected_pricing_option_title}` : ''}</p>`;
-      if (invoice.estimate_id) return `<p style="margin:2px 0;color:#64748b;font-size:12px">Created from Estimate</p>`;
-      if (invoice.work_order_id) return `<p style="margin:2px 0;color:#64748b;font-size:12px">Linked Work Order</p>`;
-      return '';
-    })();
-
-    const payTerms = invoice.payment_terms || 'Payment is due upon receipt unless otherwise agreed.';
-    const statusBg = isPaid ? '#dcfce7' : isPartial ? '#fef9c3' : '#fee2e2';
-    const statusColor = isPaid ? '#166534' : isPartial ? '#854d0e' : '#991b1b';
-
-    const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice #${invoice.invoice_number}</title>
+        <td>${p.paid_at ? new Date(p.paid_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}</td>
+        <td style="text-transform:capitalize">${(p.method || "cash").replace(/_/g, " ")}</td>
+        <td>${p.reference ? `<span style="color:#64748b;font-size:12px">#${p.reference}</span>` : ""}</td>
+        <td>${p.notes || ""}</td>
+        <td style="text-align:right;font-weight:700">$${parseFloat(p.amount || 0).toFixed(2)}</td>
+      </tr>`).join("");
+    const html = `<!DOCTYPE html><html><head><title>Payment Receipt — ${invoice.invoice_number}</title>
     <style>
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Helvetica Neue',Arial,sans-serif;color:#0f172a;background:white;padding:48px;font-size:14px;line-height:1.5}
-      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:24px;border-bottom:2px solid #0f172a}
-      .company-name{font-size:22px;font-weight:900;color:#0f172a}
-      .company-meta{font-size:12px;color:#64748b;margin-top:4px}
-      .doc-title{font-size:36px;font-weight:900;color:#0f172a;text-align:right}
-      .doc-number{font-size:13px;color:#64748b;text-align:right;margin-top:2px}
-      .status-badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;background:${statusBg};color:${statusColor};margin-top:6px}
-      .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:28px 0}
-      .block{padding:16px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc}
-      .block-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin-bottom:8px}
-      .block p{margin:2px 0;color:#0f172a;font-size:13px}
-      .block .name{font-weight:700;font-size:14px}
-      .block .meta{color:#64748b;font-size:12px}
-      table{width:100%;border-collapse:collapse;margin:24px 0}
-      thead tr{background:#0f172a}
-      thead th{padding:10px 12px;text-align:left;color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
-      thead th:last-child,thead th:nth-child(3){text-align:right}
-      thead th:nth-child(2){text-align:center}
-      .totals{margin-left:auto;width:280px;margin-top:8px}
-      .totals-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #f1f5f9}
-      .totals-row.total{border-top:2px solid #0f172a;border-bottom:none;padding-top:12px;margin-top:4px;font-weight:900;font-size:18px}
-      .totals-row.balance{color:#dc2626;font-weight:900;font-size:16px;border-bottom:none;padding-top:6px}
-      .totals-row.paid{color:#16a34a;font-weight:700}
-      .box{padding:16px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;margin-top:20px}
-      .box-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin-bottom:8px}
-      .footer{margin-top:48px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
-      @media print{body{padding:24px}}
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: -apple-system, sans-serif; color: #1e293b; padding: 40px; max-width: 680px; margin: 0 auto; }
+      .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 2px solid #e2e8f0; }
+      .company { font-size: 20px; font-weight: 800; color: #0f172a; }
+      .company-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+      .badge { background: #dcfce7; color: #15803d; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; }
+      .title { font-size: 28px; font-weight: 900; color: #0f172a; margin-bottom: 4px; }
+      .subtitle { font-size: 13px; color: #64748b; margin-bottom: 24px; }
+      .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 28px; }
+      .meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; }
+      .meta-value { font-size: 14px; font-weight: 600; color: #1e293b; margin-top: 2px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+      th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+      td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+      .total-row { background: #f0fdf4; }
+      .total-row td { font-size: 15px; font-weight: 800; color: #15803d; border: none; padding: 14px 12px; }
+      .footer { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 32px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
     </style></head><body>
-
     <div class="header">
       <div>
-        <div class="company-name">${co.name}</div>
-        <div class="company-meta">${[co.city, co.email, co.phone].filter(Boolean).join(' · ')}</div>
+        <div class="company">${companyName}</div>
+        <div class="company-sub">${[companyEmail, companyPhone].filter(Boolean).join(" · ")}</div>
       </div>
-      <div>
-        <div class="doc-title">INVOICE</div>
-        <div class="doc-number">#${invoice.invoice_number}</div>
-        <div class="status-badge">${paymentStatusLabel(derived.payment_status)}</div>
-      </div>
+      <div class="badge">PAYMENT RECEIPT</div>
     </div>
-
-    <div class="grid2">
-      <div class="block">
-        <div class="block-label">Bill To</div>
-        <p class="name">${invoice.client_name || ''}</p>
-        ${viewSettings.show_client_address && invoice.client_address ? `<p class="meta">${invoice.client_address}</p>` : ''}
-        ${viewSettings.show_client_phone && invoice.client_phone ? `<p class="meta">${invoice.client_phone}</p>` : ''}
-        ${viewSettings.show_client_email && invoice.client_email ? `<p class="meta">${invoice.client_email}</p>` : ''}
-      </div>
-      <div class="block">
-        <div class="block-label">Invoice Details</div>
-        <p><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
-        <p><strong>Date:</strong> ${invoiceDate}</p>
-        <p><strong>Due:</strong> ${invoice.due_date || 'Upon receipt'}</p>
-        ${sourceRef}
-      </div>
+    <div class="title">Receipt</div>
+    <div class="subtitle">Invoice #${invoice.invoice_number} · ${invoice.client_name || ""}</div>
+    <div class="meta">
+      <div><div class="meta-label">Billed To</div><div class="meta-value">${invoice.client_name || "—"}</div></div>
+      <div><div class="meta-label">Invoice Total</div><div class="meta-value">$${parseFloat(invoice.total || 0).toFixed(2)}</div></div>
+      <div><div class="meta-label">Amount Paid</div><div class="meta-value" style="color:#15803d">$${totalPaid.toFixed(2)}</div></div>
+      <div><div class="meta-label">Balance Due</div><div class="meta-value" style="color:${totalPaid >= (invoice.total || 0) ? "#15803d" : "#dc2626"}">$${Math.max(0, (invoice.total || 0) - totalPaid).toFixed(2)}</div></div>
     </div>
-
     <table>
-      <thead><tr>
-        <th>Service / Description</th>
-        <th style="text-align:center">Qty</th>
-        <th style="text-align:right">Unit Price</th>
-        <th style="text-align:right">Total</th>
-      </tr></thead>
-      <tbody>${lineRows}</tbody>
+      <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Notes</th><th style="text-align:right">Amount</th></tr></thead>
+      <tbody>${rows}
+        <tr class="total-row"><td colspan="4">Total Paid</td><td style="text-align:right">$${totalPaid.toFixed(2)}</td></tr>
+      </tbody>
     </table>
-
-    <div class="totals">
-      <div class="totals-row"><span>Subtotal</span><span>$${(invoice.subtotal || 0).toFixed(2)}</span></div>
-      ${invoice.discount_amount > 0 ? `<div class="totals-row"><span>Discount</span><span>-$${(invoice.discount_amount || 0).toFixed(2)}</span></div>` : ''}
-      ${viewSettings.show_tax && invoice.tax_rate > 0 ? `<div class="totals-row"><span>Tax (${invoice.tax_rate}%)</span><span>$${(invoice.tax_amount || 0).toFixed(2)}</span></div>` : ''}
-      <div class="totals-row total"><span>Total</span><span>$${(invoice.total || 0).toFixed(2)}</span></div>
-      ${derived.amount_paid > 0 ? `<div class="totals-row paid"><span>Amount Paid</span><span>-$${derived.amount_paid.toFixed(2)}</span></div>` : ''}
-      <div class="totals-row balance"><span>Balance Due</span><span>$${derived.balance_due.toFixed(2)}</span></div>
-    </div>
-
-    ${viewSettings.show_terms ? `<div class="box"><div class="box-title">Payment Terms</div><p style="font-size:13px;color:#475569">${payTerms}</p></div>` : ''}
-    <div class="box">
-      <div class="box-title">Payment Instructions</div>
-      <p style="font-size:13px;color:#475569">Please contact us if you need a payment link or have billing questions.${[co.email, co.phone].filter(Boolean).map(v => ` · ${v}`).join('')}</p>
-    </div>
-    ${viewSettings.show_notes && invoice.notes ? `<div class="box"><div class="box-title">Notes</div><p style="font-size:13px;color:#475569;white-space:pre-wrap">${invoice.notes}</p></div>` : ''}
-
-    <div class="footer">Generated by ${APP_CONFIG.document.generator} · ${co.name}</div>
+    <div class="footer">This receipt was generated by NexArtPro · ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</div>
     </body></html>`;
-
-    const win = window.open('', '_blank');
-    win.document.write(content);
+    const win = window.open("", "_blank", "width=780,height=900");
+    if (!win) { toast.error("Please allow popups to print the receipt"); return; }
+    win.document.write(html);
     win.document.close();
-    win.print();
+    win.onload = () => { win.print(); };
   };
 
-  if (loading) {
-    return <div className="fixed inset-0 flex items-center justify-center bg-white z-50"><div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" /></div>;
-  }
+  const handleClientView = () => {
+    const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+    window.open(`${window.location.origin}${base}/document/${invoiceId}`, "_blank");
+  };
 
-  if (!invoice) {
-    return <div className="fixed inset-0 flex items-center justify-center bg-white z-50"><div className="text-center"><p className="text-slate-500 mb-4">Invoice not found</p><Button onClick={() => navigate('/invoices')}>Back to Invoices</Button></div></div>;
-  }
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" /></div>;
+  if (!invoice) return <div className="p-8 text-center text-slate-400">Invoice not found.</div>;
 
-  const invoiceDate = invoice.created_date
-    ? format(new Date(invoice.created_date), 'MMM d, yyyy')
-    : format(new Date(), 'MMM d, yyyy');
-
-  const sourceReference = (() => {
-    if (invoice.source_proposal_number) return `Proposal #${invoice.source_proposal_number}${invoice.source_selected_pricing_option_title ? ` — ${invoice.source_selected_pricing_option_title}` : ''}`;
-    if (invoice.estimate_id) return 'Estimate';
-    if (invoice.work_order_id) return 'Work Order';
-    return null;
-  })();
-
-  const hasPendingChanges = dueDate !== (invoice.due_date || '') || notes !== (invoice.notes || '');
+  // Normalize: support line_items[] and groups[].items (Estimate → Invoice)
+  const _lineItems = invoice.line_items?.length
+    ? invoice.line_items
+    : (invoice.groups || []).flatMap(g => g.items || []);
+  const payments  = invoice.payments  || [];
 
   return (
-    <>
-      {receiptModal && receipt && <PaymentReceiptPreviewModal receipt={receipt} onClose={() => setReceiptModal(false)} />}
-      <PaymentInputModal
-        open={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        invoice={invoice}
-        onPaymentAdded={(updates) => setInvoice(prev => ({ ...prev, ...updates }))}
-      />
+    <div className="min-h-screen bg-slate-50">
+      {/* @media print: show only invoice-print-document, hide everything else */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          .invoice-print-document, .invoice-print-document * { visibility: visible !important; }
+          .invoice-print-document {
+            position: absolute !important; left: 0 !important; top: 0 !important;
+            width: 100% !important; max-width: none !important;
+            box-shadow: none !important; border: none !important;
+            margin: 0 !important; padding: 24px !important;
+            background: white !important;
+          }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+      {/* Top bar */}
+      <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center gap-2 sticky top-0 z-10 flex-wrap no-print">
+        <button onClick={() => navigate("/invoices")} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 flex-shrink-0">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-900 text-sm truncate">{invoice.invoice_number}</span>
+            <StatusBadge status={isOverdue ? "overdue" : invoice.status} />
+          </div>
+          {invoice.created_date && (
+            <div className="text-[11px] text-slate-400">Issued {format(new Date(invoice.created_date), "MMM d, yyyy")}</div>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+          {canEdit && (
+            <Button size="sm" variant="outline" onClick={handleEdit} className="gap-1.5">
+              <Pencil className="w-3.5 h-3.5" />Edit
+            </Button>
+          )}
+          {canSendEmail && (
+            <Button
+              size="sm" variant="outline"
+              onClick={() => {
+                if (!invoice?.client_email) { toast.error("Client email required"); return; }
+                setResendOpen(true);
+              }}
+              disabled={saving || !invoice?.client_email}
+              className="gap-1.5 border-cyan-300 text-cyan-700 hover:bg-cyan-50 disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {['sent','viewed','partial'].includes(invoice?.status) ? "Resend Email" : "Send Email"}
+            </Button>
+          )}
+          {canMarkSent && (
+            <Button size="sm" variant="outline" onClick={() => setMarkSentOpen(true)} className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50">
+              <MailCheck className="w-3.5 h-3.5" />Mark Sent
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5">
+            <Printer className="w-3.5 h-3.5" />Print
+          </Button>
+          {!isVoid && !isPaid && (
+            <Button size="sm" variant="outline" onClick={handleVoid} className="border-red-200 text-red-600 hover:bg-red-50 gap-1.5">
+              <Ban className="w-3.5 h-3.5" />Void
+            </Button>
+          )}
+        </div>
+      </div>
 
-      <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 overflow-hidden">
+      <div className="max-w-5xl mx-auto px-4 py-6 grid lg:grid-cols-3 gap-6">
+        {/* LEFT: Invoice Document */}
+        <div className="lg:col-span-2">
 
-        {/* ── Top bar ── */}
-        <div className="bg-white border-b border-slate-200 flex items-center justify-between px-4 py-2.5 flex-shrink-0 gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <button onClick={() => navigate('/invoices')} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0">
-              <ArrowLeft className="w-4 h-4 text-slate-500" />
-            </button>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-slate-800 flex items-center gap-1.5 truncate">
-                <Receipt className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                Invoice #{invoice.invoice_number}
-              </p>
-              <p className="text-xs text-slate-400 truncate">{invoice.client_name}</p>
+          {/* Payment History above fold */}
+          {payments.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5">
+              <h3 className="text-sm font-semibold text-emerald-800 mb-3">Payment History</h3>
+              <div className="space-y-2">
+                {payments.map((pay, i) => (
+                  <div key={pay.id || i} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-emerald-100">
+                    <div>
+                      <span className="text-sm font-medium text-slate-700 capitalize">{(pay.method || "cash").replace(/_/g," ")}</span>
+                      {pay.paid_at && <span className="text-xs text-slate-400 ml-2">{format(new Date(pay.paid_at), "MMM d, yyyy")}</span>}
+                      {pay.notes && <div className="text-xs text-slate-400">{pay.notes}</div>}
+                    </div>
+                    <span className="font-bold text-emerald-700">{formatCurrency(pay.amount)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <StatusBadge status={isPaid ? 'paid' : isPartial ? 'partial' : invoice.status} />
+          )}
+
+          {/* Template selector — no-print */}
+          <div className="flex items-center gap-2 mb-3 no-print">
+            <Layout className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Template</span>
+            <div className="flex gap-1.5 ml-1">
+              {INVOICE_TEMPLATES.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => handleTemplateChange(t.key)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
+                    selectedTemplate === t.key
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                  }`}
+                  title={t.desc}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
-            {!isPaid && (
-              <Button size="sm" onClick={() => setPaymentModalOpen(true)} className="gap-1.5 bg-primary hover:bg-primary/90 text-white">
+          {/* Document rendered via template — invoice-print-document: only this is printed */}
+          <div className="invoice-print-document bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <InvoiceTemplateRenderer
+              invoice={invoice}
+              company={invoiceCompany}
+              derived={derived}
+              template={selectedTemplate}
+            />
+          </div>
+        </div>
+
+        {/* RIGHT: Financial summary + actions */}
+        <div className="space-y-4 no-print">
+          {/* Financial card */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h3 className="font-semibold text-slate-800 mb-4">Financial Summary</h3>
+            <div className="bg-slate-50 rounded-xl p-3 text-center mb-3">
+              <div className="text-xs text-slate-400 mb-1">Total</div>
+              <div className="font-black text-2xl text-slate-900">{formatCurrency(invoice.total || 0)}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-emerald-50 rounded-xl p-3 text-center">
+                <div className="text-xs text-emerald-600 mb-1">Paid</div>
+                <div className="font-bold text-emerald-700">{formatCurrency(derived.amount_paid)}</div>
+              </div>
+              <div className="bg-red-50 rounded-xl p-3 text-center">
+                <div className="text-xs text-red-500 mb-1">Balance</div>
+                <div className="font-bold text-red-600">{formatCurrency(derived.balance_due)}</div>
+              </div>
+            </div>
+            {canPay && (
+              <Button onClick={() => setPayOpen(true)} className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white gap-2">
+                <DollarSign className="w-4 h-4" />Record Payment
+              </Button>
+            )}
+            {isPaid && (
+              <div className="mt-3 flex items-center justify-center gap-2 text-emerald-600 text-sm font-semibold">
+                <FileCheck className="w-4 h-4" />Paid in Full
+              </div>
+            )}
+          </div>
+
+          {/* Pay Now / Stripe */}
+          {canPay && derived.balance_due > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+              <h3 className="font-semibold text-slate-800 mb-3">Online Payment</h3>
+              <Button
+                onClick={handleStripe}
+                disabled={stripeLoading}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                {stripeLoading ? "Redirecting…" : "Pay Now via Stripe"}
+              </Button>
+              <p className="text-[11px] text-slate-400 text-center mt-2">Secure payment powered by Stripe</p>
+            </div>
+          )}
+
+          {/* Estimate link */}
+          {invoice.estimate_id && (
+            <div className="bg-cyan-50 border border-cyan-200 rounded-2xl px-4 py-3 text-sm text-cyan-700 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{estimateNum ? `Created from Estimate #${estimateNum}` : "Created from Estimate"}</span>
+              </div>
+              <button
+                onClick={() => navigate(`/estimate-detail?id=${invoice.estimate_id}`)}
+                className="text-xs font-medium underline hover:no-underline"
+              >
+                View
+              </button>
+            </div>
+          )}
+
+          {/* Copy client link — always available, uses invoice ID */}
+          <button
+            onClick={async () => {
+              const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+              const url = `${window.location.origin}${base}/document/${invoiceId}`;
+              await navigator.clipboard.writeText(url);
+              toast.success("Client link copied");
+            }}
+            className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 hover:bg-slate-50 transition-colors"
+          >
+            <Copy className="w-4 h-4 text-slate-400" />
+            <span className="text-sm text-slate-600">Copy Client Link</span>
+          </button>
+          {/* Send Invoice via Email */}
+          {!isVoid && (
+            <button
+              onClick={() => {
+                if (!invoice?.client_email) { toast.error("Client email required to send"); return; }
+                setResendOpen(true);
+              }}
+              disabled={saving}
+              className={`w-full border rounded-2xl p-4 flex items-center gap-3 transition-colors ${
+                invoice?.client_email
+                  ? "bg-white border-slate-200 hover:bg-blue-50 hover:border-blue-200"
+                  : "bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed"
+              }`}
+            >
+              <Send className="w-4 h-4 text-blue-500 flex-shrink-0" />
+              <div className="text-left min-w-0">
+                <div className="text-sm text-slate-700 font-medium">Send Invoice via Email</div>
+                {!invoice?.client_email && (
+                  <div className="text-[11px] text-amber-500 mt-0.5">Client email not set</div>
+                )}
+              </div>
+            </button>
+          )}
+          {/* Action row: Add Payment / Receipt / Client View */}
+          <div className="flex flex-wrap gap-2">
+            {canPay && (
+              <Button onClick={() => setPayOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-2" size="sm">
                 <DollarSign className="w-3.5 h-3.5" />Add Payment
               </Button>
             )}
-            {invoice.status === 'draft' && (
-              <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50" onClick={handleSend} disabled={saving}>
-                <Send className="w-3.5 h-3.5 mr-1" />Send
+            {!isVoid && payments.length > 0 && (
+              <Button variant="outline" onClick={handleOpenReceipt} className="flex-1 gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50" size="sm">
+                <Receipt className="w-3.5 h-3.5" />Payment Receipt
               </Button>
             )}
-            {invoice.status === 'sent' && !isPaid && (
-              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleMarkPaid} disabled={saving}>
-                <CheckCircle className="w-3.5 h-3.5 mr-1" />Mark Paid
-              </Button>
-            )}
-            {derived.payment_status !== 'unpaid' && (
-              <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 gap-1.5" onClick={() => setReceiptModal(true)}>
-                <FileCheck className="w-3.5 h-3.5" />Receipt
-              </Button>
-            )}
-            <Button size="sm" variant="outline" onClick={handlePrint}>
-              <Printer className="w-3.5 h-3.5 mr-1" />Print
+            <Button variant="outline" onClick={handleClientView} className="flex-1 gap-1.5" size="sm">
+              <ExternalLink className="w-3.5 h-3.5" />Client View
             </Button>
           </div>
         </div>
-
-        {/* ── Page body: single scrollable column ── */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-
-            {/* ══ CUSTOMER-FACING INVOICE DOCUMENT ══ */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-
-              {/* Company header */}
-              <div className="bg-slate-900 text-white px-7 py-6 flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-lg font-black tracking-tight leading-none">{co.name}</p>
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    {co.city && <span className="text-xs text-slate-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{co.city}</span>}
-                    {co.email && <span className="text-xs text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" />{co.email}</span>}
-                    {co.phone && <span className="text-xs text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3" />{co.phone}</span>}
-                  </div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-2xl font-black tracking-tighter text-white">INVOICE</p>
-                  <p className="text-sm font-bold text-slate-400 mt-1">#{invoice.invoice_number}</p>
-                  <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold ${isPaid ? 'bg-emerald-500 text-white' : isPartial ? 'bg-amber-400 text-slate-900' : overdue ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
-                    {paymentStatusLabel(derived.payment_status)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Bill To + Invoice Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 border-b border-slate-100">
-                <div className="px-6 py-5 sm:border-r border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Bill To</p>
-                  <p className="font-bold text-slate-900">{invoice.client_name}</p>
-                  {viewSettings.show_client_address && invoice.client_address && <p className="text-sm text-slate-500 mt-1">{invoice.client_address}</p>}
-                  {viewSettings.show_client_phone && invoice.client_phone && <p className="text-sm text-slate-500 mt-0.5">{invoice.client_phone}</p>}
-                  {viewSettings.show_client_email && invoice.client_email && <p className="text-sm text-slate-500 mt-0.5">{invoice.client_email}</p>}
-                </div>
-                <div className="px-6 py-5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Invoice Details</p>
-                  <div className="space-y-1">
-                    <DocRow label="Invoice #" value={`#${invoice.invoice_number}`} />
-                    <DocRow label="Date" value={invoiceDate} />
-                    <DocRow label="Due" value={invoice.due_date || 'Upon receipt'} />
-                    {viewSettings.show_linked_records && sourceReference && <DocRow label="Reference" value={sourceReference} />}
-                  </div>
-                </div>
-              </div>
-
-              {/* Line items */}
-              <div>
-                <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-100 grid grid-cols-[1fr_72px_96px_96px] gap-3">
-                  {['Service / Description', 'Qty', 'Unit Price', 'Total'].map((h, i) => (
-                    <p key={h} className={`text-[10px] font-bold uppercase tracking-widest text-slate-400 ${i > 0 ? 'text-right' : ''}`}>{h}</p>
-                  ))}
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {allItems.length === 0 && (
-                    <p className="px-6 py-8 text-sm text-slate-400 italic text-center">No billable items on this invoice.</p>
-                  )}
-                  {allItems.map((item, idx) => (
-                    <div key={item.id || idx} className="px-6 py-3.5 grid grid-cols-[1fr_72px_96px_96px] gap-3 items-start">
-                      <div>
-                        <p className="font-semibold text-slate-900 text-sm">{item.service_name || item.name || 'Service'}</p>
-                        {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
-                      </div>
-                      <p className="text-sm text-slate-500 text-right">{item.quantity || 0}</p>
-                      <p className="text-sm text-slate-500 text-right">${(item.unit_price || 0).toFixed(2)}</p>
-                      <p className="font-bold text-slate-900 text-sm text-right">${(item.line_total || item.total_price || 0).toFixed(2)}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Totals */}
-                <div className="border-t border-slate-100 px-6 py-5 flex justify-end">
-                  <div className="w-56 space-y-2">
-                    <TotalRow label="Subtotal" value={invoice.subtotal || 0} />
-                    {invoice.discount_amount > 0 && <TotalRow label="Discount" value={-invoice.discount_amount} />}
-                    {viewSettings.show_tax && invoice.tax_rate > 0 && <TotalRow label={`Tax (${invoice.tax_rate}%)`} value={invoice.tax_amount || 0} />}
-                    <div className="h-px bg-slate-200" />
-                    <TotalRow label="Total" value={invoice.total || 0} strong />
-                    {derived.amount_paid > 0 && (
-                      <TotalRow label="Amount Paid" value={-derived.amount_paid} paidStyle />
-                    )}
-                    {derived.amount_paid > 0 && <div className="h-px bg-slate-200" />}
-                    <TotalRow label="Balance Due" value={derived.balance_due} strong accent={!isPaid} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment terms + notes */}
-              <div className="border-t border-slate-100 px-6 py-5 bg-slate-50/60 space-y-4">
-                {viewSettings.show_terms && (
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Payment Terms</p>
-                    <p className="text-sm text-slate-600">{invoice.payment_terms || 'Payment is due upon receipt unless otherwise agreed.'}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Payment Instructions</p>
-                  <p className="text-sm text-slate-600">
-                    Please contact us if you need a payment link or have billing questions.
-                    {co.email ? ` · ${co.email}` : ''}
-                    {co.phone ? ` · ${co.phone}` : ''}
-                  </p>
-                </div>
-                {viewSettings.show_notes && invoice.notes && (
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Notes</p>
-                    <p className="text-sm text-slate-600 whitespace-pre-wrap">{invoice.notes}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* ══ END INVOICE DOCUMENT ══ */}
-
-            {/* ── Admin / Collections Tools (collapsed by default) ── */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <button
-                onClick={() => setShowAdmin(p => !p)}
-                className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-slate-50 transition-colors"
-              >
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Admin / Collections Tools</span>
-                {showAdmin ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-              </button>
-
-              {showAdmin && (
-                <div className="border-t border-slate-100 divide-y divide-slate-100">
-
-                  {/* Quick edit: due date + notes */}
-                  <div className="px-5 py-4 space-y-3">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Edit Invoice</p>
-                    <div>
-                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Due Date</label>
-                      <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="h-8 text-sm mt-1 border-slate-200 max-w-xs" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Customer Notes</label>
-                      <textarea
-                        value={notes}
-                        onChange={e => setNotes(e.target.value)}
-                        className="w-full mt-1 min-h-[80px] rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary resize-y"
-                        placeholder="Customer-facing notes..."
-                      />
-                    </div>
-                    {hasPendingChanges && (
-                      <Button size="sm" variant="outline" onClick={handleSaveNotes} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save Changes'}
-                      </Button>
-                    )}
-                    {invoice.sent_at && <p className="text-xs text-slate-500">Sent {format(new Date(invoice.sent_at), 'MMM d, yyyy')}</p>}
-                    {invoice.last_contacted_at && <p className="text-xs text-slate-500">Last contact {getLastContactedDisplay(invoice.last_contacted_at)}</p>}
-                    {invoice.paid_at && <p className="text-xs text-emerald-600 font-semibold">Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}</p>}
-                  </div>
-
-                  {/* Collection activity */}
-                  {nextAction && !isPaid && (
-                    <div className="px-5 py-4 space-y-2">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Collection Activity</p>
-                      <div className={`p-3 rounded-xl text-xs flex items-start gap-2 border ${nextAction.bg}`}>
-                        <nextAction.icon className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${nextAction.color}`} />
-                        <div>
-                          <p className={`font-semibold ${nextAction.color}`}>{nextAction.label}</p>
-                          {nextAction.sub && <p className={`text-[11px] mt-0.5 ${nextAction.color}`}>{nextAction.sub}</p>}
-                        </div>
-                      </div>
-                      {invoice.status === 'sent' && !isPaid && (
-                        <button className="w-full text-xs py-1.5 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600" onClick={handleMarkContacted}>
-                          Mark as Contacted
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Quick contact actions */}
-                  <div className="px-5 py-4">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Contact Actions</p>
-                    <QuickContactActions invoice={invoice} isOverdue={overdue} />
-                  </div>
-
-                  {/* Linked records */}
-                  {(invoice.estimate_id || invoice.work_order_id || evidenceEval) && (
-                    <div className="px-5 py-4 space-y-2">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Linked Records</p>
-                      {invoice.estimate_id && (
-                        <button onClick={() => navigate(`/estimate-editor?id=${invoice.estimate_id}`)} className="flex items-center gap-1.5 text-xs text-primary hover:underline">
-                          <ExternalLink className="w-3 h-3" />View Estimate
-                        </button>
-                      )}
-                      {invoice.work_order_id && (
-                        <button onClick={() => navigate(`/work-orders/${invoice.work_order_id}`)} className="flex items-center gap-1.5 text-xs text-primary hover:underline">
-                          <ExternalLink className="w-3 h-3" />View Work Order
-                        </button>
-                      )}
-                      {evidenceEval && (
-                        <div className={`mt-1 px-2.5 py-2 rounded-lg text-xs flex items-center gap-2 ${evidenceEval.isComplete ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
-                          {evidenceEval.isComplete
-                            ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            : <Clock className="w-3.5 h-3.5 text-amber-600" />}
-                          <span className={evidenceEval.isComplete ? 'text-emerald-700' : 'text-amber-700'}>
-                            {evidenceEval.isComplete ? 'Execution evidence complete' : `Missing: ${evidenceEval.missingItems.join(', ')}`}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Payment history */}
-                  <div className="px-5 py-4">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Payment History</p>
-                    <PaymentHistory invoice={invoice} onPaymentRemoved={(updates) => setInvoice(prev => ({ ...prev, ...updates }))} />
-                  </div>
-
-                  {/* Customize */}
-                  <div className="px-5 py-4">
-                    <button
-                      onClick={() => setShowCustomize(p => !p)}
-                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 font-semibold"
-                    >
-                      <Settings2 className="w-3.5 h-3.5" />
-                      {showCustomize ? 'Hide' : 'Show'} Visibility Settings
-                    </button>
-                    {showCustomize && (
-                      <div className="mt-3">
-                        <InvoiceVisibilityPanel invoice={invoice} saving={saving} onChange={handleViewSettingChange} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-          </div>
-        </div>
       </div>
-    </>
-  );
-}
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+      {/* Record Payment Dialog */}
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-blue-600" />
+              Record Payment Received
+            </DialogTitle>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Log a payment your company received. This is NOT a client online payment.
+            </p>
+          </DialogHeader>
+          {(() => {
+            const meta = getPaymentMethodMeta(payForm.method);
+            return (
+              <form onSubmit={handleRecordPayment} className="space-y-3.5 pt-1">
+                {/* Amount */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount ($) *</label>
+                  <input
+                    required type="number" step="0.01" min="0.01"
+                    value={payForm.amount}
+                    onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))}
+                    placeholder={`Balance due: ${formatCurrency(derived.balance_due)}`}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
 
-function DocRow({ label, value }) {
-  return (
-    <div className="flex items-start justify-between gap-4 text-sm">
-      <span className="text-slate-400 flex-shrink-0">{label}</span>
-      <span className="font-semibold text-slate-800 text-right">{value}</span>
-    </div>
-  );
-}
+                {/* Method pill grid */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Method</label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {PAYMENT_METHODS.map(m => {
+                      const icons = { cash:"💵", check:"📝", card_manual:"💳", bank_transfer:"🏦", zelle:"⚡", venmo:"📱", other:"🔖" };
+                      return (
+                        <button key={m} type="button"
+                          onClick={() => setPayForm(f => ({ ...f, method: m, notes: "" }))}
+                          className={`py-2 px-1 rounded-xl border text-[11px] font-medium transition-all text-center leading-tight ${
+                            payForm.method === m ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          <span className="block text-base mb-0.5">{icons[m]}</span>
+                          {m.replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase())}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-function TotalRow({ label, value, strong, accent, paidStyle }) {
-  const colorCls = accent
-    ? 'text-red-600 font-black'
-    : paidStyle
-    ? 'text-emerald-600 font-semibold'
-    : strong
-    ? 'text-lg font-black text-slate-900'
-    : 'font-semibold text-slate-700';
+                {/* card_manual warning */}
+                {payForm.method === "card_manual" && (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                    Manual card records an external card payment. It does not charge the card through Stripe.
+                  </p>
+                )}
 
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className={strong ? 'font-bold text-slate-900' : 'text-slate-500'}>{label}</span>
-      <span className={`tabular-nums ${colorCls}`}>
-        {value < 0 ? '-' : ''}${Math.abs(value || 0).toFixed(2)}
-      </span>
+                {/* Dynamic notes/reference field */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {meta.notesLabel}{meta.notesRequired ? " *" : " (optional)"}
+                  </label>
+                  <input
+                    value={payForm.notes}
+                    onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder={meta.notesPlaceholder}
+                    required={meta.notesRequired}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Date</label>
+                  <input type="date"
+                    value={payForm.paid_at}
+                    onChange={e => setPayForm(f => ({ ...f, paid_at: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 justify-end pt-1">
+                  <Button type="button" variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700">
+                    {saving ? "Saving…" : "Record Payment"}
+                  </Button>
+                </div>
+              </form>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Receipt Dialog */}
+      <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-emerald-600" />
+              Payment Receipt
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            {/* Meta */}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-slate-50 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Invoice</div>
+                <div className="font-semibold">{invoice?.invoice_number}</div>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Client</div>
+                <div className="font-semibold truncate">{invoice?.client_name || "—"}</div>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Invoice Total</div>
+                <div className="font-semibold">{formatCurrency(invoice?.total || 0)}</div>
+              </div>
+              <div className="bg-emerald-50 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 mb-0.5">Amount Paid</div>
+                <div className="font-bold text-emerald-700">{formatCurrency(derived.amount_paid)}</div>
+              </div>
+            </div>
+
+            {/* Balance badge */}
+            <div className={`rounded-xl px-4 py-3 flex justify-between items-center ${
+              derived.balance_due <= 0 ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"
+            }`}>
+              <span className={`text-sm font-semibold ${derived.balance_due <= 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                {derived.balance_due <= 0 ? "Paid in Full" : "Balance Due"}
+              </span>
+              <span className={`font-black text-lg ${derived.balance_due <= 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                {formatCurrency(Math.max(0, derived.balance_due))}
+              </span>
+            </div>
+
+            {/* Payment rows */}
+            <div className="border border-slate-100 rounded-xl overflow-hidden">
+              <div className="bg-slate-50 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Payment History</div>
+              <div className="divide-y divide-slate-50">
+                {payments.map((pay, i) => (
+                  <div key={pay.id || i} className="px-4 py-3 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-slate-800 capitalize">
+                        {(pay.method_label || pay.method || "cash").replace(/_/g," ")}
+                      </div>
+                      {pay.notes && <div className="text-xs text-slate-400 truncate">{pay.notes}</div>}
+                      {pay.paid_at && (
+                        <div className="text-xs text-slate-400">{format(new Date(pay.paid_at), "MMM d, yyyy")}</div>
+                      )}
+                    </div>
+                    <span className="font-bold text-emerald-700 flex-shrink-0">{formatCurrency(pay.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setReceiptOpen(false)}>Close</Button>
+              <Button onClick={handlePrintReceiptPopup} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
+                <Printer className="w-4 h-4" />Print Receipt
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark Sent Manual Dialog — only path, no selector */}
+      <Dialog open={markSentOpen} onOpenChange={setMarkSentOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCheck className="w-4 h-4 text-blue-600" />
+              Mark as Sent Manually
+            </DialogTitle>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Use this only if the invoice was sent outside NexArtPro. No email will be sent.
+            </p>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Sent Date</label>
+              <input type="date" value={manualSentForm.date} onChange={e => setManualSentForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Method / Channel</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {["email","text","printed","hand delivered","other"].map(m => (
+                  <button key={m} type="button" onClick={() => setManualSentForm(f => ({ ...f, method: m }))}
+                    className={`py-2 px-1 rounded-xl border text-[11px] font-medium text-center capitalize transition-all ${manualSentForm.method === m ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}
+                  >{m}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Note (optional)</label>
+              <input value={manualSentForm.note} onChange={e => setManualSentForm(f => ({ ...f, note: e.target.value }))} placeholder="e.g. Handed to client at job site" className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none" />
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end pt-1">
+            <Button variant="outline" onClick={() => setMarkSentOpen(false)}>Cancel</Button>
+            <Button onClick={handleMarkSentManual} disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700 gap-1.5">
+              <CheckCheck className="w-3.5 h-3.5" />{saving ? "Saving…" : "Mark as Sent"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Invoice Email / Resend Email Dialog */}
+      <Dialog open={resendOpen} onOpenChange={setResendOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="w-4 h-4 text-cyan-600" />
+              {['sent','viewed','partial'].includes(invoice?.status) ? "Resend Invoice Email" : "Send Invoice Email"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="bg-slate-50 rounded-xl p-3 space-y-1.5 text-sm">
+              <div className="flex justify-between"><span className="text-slate-400">To</span><span className="font-medium text-slate-700">{invoice?.client_email || "—"}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Invoice</span><span className="font-medium text-slate-700">{invoice?.invoice_number}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Amount</span><span className="font-bold text-slate-800">{formatCurrency(derived.balance_due)}</span></div>
+              <div className="flex justify-between items-start gap-2"><span className="text-slate-400 flex-shrink-0">Link</span><span className="font-medium text-slate-500 text-xs truncate">{window.location.origin}/document/{invoiceId}</span></div>
+            </div>
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+              <p className="text-xs text-amber-700">The invoice will be marked as <strong>sent</strong> only if the email is delivered successfully.</p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end pt-1">
+            <Button variant="outline" onClick={() => setResendOpen(false)}>Cancel</Button>
+            <Button onClick={handleResend} disabled={saving} className="bg-cyan-600 text-white hover:bg-cyan-700 gap-1.5">
+              <Send className="w-3.5 h-3.5" />{saving ? "Sending…" : "Send Email"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/lib/supabaseClient';
-import { markEstimateSent } from '@/lib/estimateSalesLifecycle';
+import { markEstimateSent, generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
 import { createSigningPackageForEstimate } from '@/lib/nexArtSign';
 import { validateEstimatePricing, checkAttachmentCompleteness } from '@/lib/pricingValidation';
 import { validateDocTypeFields } from '@/lib/documentTypeConfig';
@@ -34,6 +34,10 @@ function resolveAuthorizedSender(currentUser = null) {
 }
 
 export async function validateBeforeSend(estimate, recipientEmail) {
+  if (typeof window !== 'undefined' && window.location.pathname.includes('/send-estimate')) {
+    window.location.href = `/estimates/edit?id=${estimate?.id}`;
+    return { valid: false, errors: ['Redirecting from deprecated route...'] };
+  }
   if (!recipientEmail) return { valid: false, errors: ['Recipient email is required'] };
   const dtv = validateDocTypeFields(estimate);
   if (!dtv.valid) return { valid: false, errors: dtv.errors };
@@ -65,6 +69,10 @@ async function sha256HexFromBase64(base64) {
 }
 
 export async function executeSend({ estimate, recipientEmail, subject, message, currentTemplate, currentOptions, includedAttachmentIds = [], appConfig }) {
+  if (typeof window !== 'undefined' && window.location.pathname.includes('/send-estimate')) {
+    window.location.href = `/estimates/edit?id=${estimate?.id}`;
+    throw new Error('This legacy route is deprecated. Redirecting...');
+  }
   if (!recipientEmail) throw new Error('Recipient email is required');
 
   const documentConfig = { template: currentTemplate, options: currentOptions, included_attachment_ids: Array.isArray(includedAttachmentIds) ? includedAttachmentIds : [] };
@@ -116,12 +124,17 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
       pdfHash,
       currentUser,
     });
-
-    finalLink = signingPackage?.signing_url || '';
   } catch (err) {
     console.warn('[executeSend] NexArtSign signing link generation failed:', err?.message);
-    // Don't throw — allow send to continue without signing link
-    // The link can be generated later via NexArtSign admin panel
+  }
+
+  // Determine email link contract: client-portal view by default (with public token)
+  const directSigning = currentOptions?.directSigning === true || estimate?.document_config?.options?.directSigning === true;
+  if (directSigning && signingPackage?.signing_url) {
+    finalLink = signingPackage.signing_url;
+  } else {
+    const token = estimate.public_share_token || await generatePublicShareToken(estimate);
+    finalLink = `${window.location.origin}/client-estimate?token=${encodeURIComponent(token)}`;
   }
 
   if (!generatedPdf?.base64) {

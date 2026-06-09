@@ -3,7 +3,7 @@ import SettingsSection from '@/components/settings/SettingsSection';
 import SettingsCard from '@/components/settings/SettingsCard';
 import SettingsRow from '@/components/settings/SettingsRow';
 import { Button } from '@/components/ui/button';
-import { Upload, Save, RefreshCw, Trash2, Loader2, CheckCircle, XCircle, Image } from 'lucide-react';
+import { Upload, Save, RefreshCw, Trash2, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { loadCompanySettings, saveCompanySettings } from '@/lib/companySettings';
 import { validateImageFile, optimizeImage } from '@/lib/imageOptimizer';

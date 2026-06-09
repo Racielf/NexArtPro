@@ -17,8 +17,8 @@ import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import CommTimeline from '@/components/shared/CommTimeline';
 
 
-export default function EstimateSidebarCustomer({ estimate, client: clientProp, onCustomerChange, onAttachmentsUpdate }) {
-  const [editing, setEditing] = useState(!estimate?.client_name);
+export default function EstimateSidebarCustomer({ estimate, client: clientProp, onCustomerChange, onAttachmentsUpdate, forceEditing }) {
+  const [editing, setEditing] = useState(forceEditing || !estimate?.client_name);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [linkedClient, setLinkedClient] = useState(clientProp || null);
   const [clientNotFound, setClientNotFound] = useState(false);
@@ -138,19 +138,28 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
       client_phone: estimate?.client_phone || '',
       client_address: estimate?.client_address || '',
     });
-    setEditing(!estimate?.client_name);
-  }, [estimate?.id, estimate?.client_name]);
+    setEditing(forceEditing || !estimate?.client_name);
+  }, [estimate?.id, estimate?.client_name, forceEditing]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleSave = () => {
-    if (!form.client_name.trim()) return;
-    onCustomerChange(form, null);
-    setEditing(false);
-    setShowSearch(false);
+  const handleSave = async () => {
+    if (!form.client_name?.trim()) return;
+    try {
+      await onCustomerChange({
+        client_name: form.client_name.trim(),
+        client_email: form.client_email.trim(),
+        client_phone: form.client_phone.trim(),
+        client_address: form.client_address.trim()
+      }, null);
+      setEditing(false);
+      setShowSearch(false);
+    } catch (err) {
+      console.error('[EstimateSidebarCustomer.handleSave] Failed:', err);
+    }
   };
 
-  const handleSelectClient = (client) => {
+  const handleSelectClient = async (client) => {
     const addr = [client.address, client.city, client.state, client.zip].filter(Boolean).join(', ');
     const data = {
       client_id: client.id,
@@ -160,10 +169,14 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
       client_address: addr,
     };
     setForm({ client_name: client.full_name, client_email: client.email || '', client_phone: client.phone || '', client_address: addr });
-    onCustomerChange(data, client);
-    setEditing(false);
-    setShowSearch(false);
-    setSearch('');
+    try {
+      await onCustomerChange(data, client);
+      setEditing(false);
+      setShowSearch(false);
+      setSearch('');
+    } catch (err) {
+      console.error('[EstimateSidebarCustomer.handleSelectClient] Failed:', err);
+    }
   };
 
   // ── Resolve display values: client entity takes priority over estimate fields ──
@@ -180,9 +193,8 @@ export default function EstimateSidebarCustomer({ estimate, client: clientProp, 
     return form.client_address || '';
   })();
 
-  // Only show the full card if there is a live linked client OR no broken FK.
-  // If clientNotFound is true, show the historical banner instead.
-  const hasDisplay = !clientNotFound && !!(linkedClient || estimate?.client_name || displayName);
+  // Only show the full card if there is a live linked client OR snapshot fields.
+  const hasDisplay = !!(linkedClient || estimate?.client_name || displayName);
 
   const encodedAddress = encodeURIComponent(displayAddress);
   const mapSrc = mapTab === 'map'

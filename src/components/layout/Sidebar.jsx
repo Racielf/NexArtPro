@@ -28,6 +28,7 @@ import {
 import { isAdmin } from '@/lib/roleUtils';
 import { useAuth } from '@/lib/AuthContext';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
+import useCompanyConfig from '@/hooks/useCompanyConfig';
 
 const navGroups = [
   { items: [{ path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
@@ -81,16 +82,36 @@ const bottomNavItems = [
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  // Sidebar must not depend on async company settings; keep it render-safe.
+  // Dynamic company branding — reads from Settings → Company, falls back to APP_CONFIG
+  // LOCKED AREA: Company Settings → Sidebar Branding
+  // Source: useCompanyConfig() reads app_users.username='admin'.company_settings from Supabase.
+  // Do not replace with APP_CONFIG-only branding unless explicitly authorized.
+  // See: docs/agent/LOCKED_AREAS.md
+  const companyConfig = useCompanyConfig();
   const cc = {
-    name: appConfig.company?.name || appConfig.appName || 'NexArtPro',
-    displayName: appConfig.company?.displayName || '',
-    logo_url: appConfig.company?.logo_url || appConfig.app?.logo_url || '',
+    name:
+      companyConfig?.displayName ||
+      companyConfig?.name ||
+      appConfig.company?.displayName ||
+      appConfig.company?.name ||
+      appConfig.appName ||
+      'NexArtPro',
+    displayName:
+      companyConfig?.name ||
+      appConfig.company?.name ||
+      '',
+    logo_url:
+      companyConfig?.logo_url ||
+      companyConfig?.app_logo_url ||
+      appConfig.company?.logo_url ||
+      appConfig.app?.logo_url ||
+      '',
   };
+  const sidebarLogoUrl = cc.logo_url;
+
   const { user } = useAuth();
   const canAccessAdmin = user?.role === 'admin' || isAdmin();
   const visibleNavGroups = canAccessAdmin ? [...navGroups, adminNavGroup] : navGroups;
-  const sidebarLogoUrl = cc.logo_url || appConfig.company.logo_url || '';
 
   const [mobileOpen, setMobileOpen] = useState(false);
 

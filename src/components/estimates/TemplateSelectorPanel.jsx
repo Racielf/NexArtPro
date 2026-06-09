@@ -97,10 +97,45 @@ function ModernCardPreview() {
   );
 }
 
+function FieldClassicPreview() {
+  return (
+    <svg viewBox="0 0 120 80" className="w-full h-full">
+      {/* Compact Header */}
+      {/* Company info (left) */}
+      <rect x="6" y="5" width="6" height="6" rx="1" fill="#3b82f6" opacity="0.6" />
+      <rect x="15" y="5" width="24" height="2.5" rx="0.5" fill="#1f2937" opacity="0.8" />
+      <rect x="15" y="9" width="16" height="1.5" rx="0.5" fill="#9ca3af" opacity="0.4" />
+      {/* Doc info + Total box (right) */}
+      <rect x="90" y="4" width="24" height="2" rx="0.5" fill="#9ca3af" opacity="0.5" />
+      <rect x="85" y="8" width="29" height="7" rx="1.5" fill="#f9fafb" stroke="#e5e7eb" strokeWidth="0.5" />
+      <rect x="95" y="10" width="15" height="3" rx="0.5" fill="#3b82f6" opacity="0.8" />
+      {/* Accent blue line at bottom of header */}
+      <rect x="0" y="18" width="120" height="2" fill="#3b82f6" />
+      {/* 2-col client/project */}
+      <rect x="6" y="24" width="50" height="10" rx="1" fill="#f9fafb" />
+      <rect x="60" y="24" width="54" height="10" rx="1" fill="#f9fafb" />
+      {/* Services Table */}
+      <rect x="6" y="38" width="108" height="2" rx="0.5" fill="#e5e7eb" />
+      <rect x="6" y="42" width="108" height="1.5" rx="0.5" fill="#f9fafb" />
+      <rect x="6" y="45" width="108" height="1.5" rx="0.5" fill="white" />
+      <rect x="6" y="48" width="108" height="1.5" rx="0.5" fill="#f9fafb" />
+      {/* Materials Table (Green header) */}
+      <rect x="6" y="53" width="108" height="2" rx="0.5" fill="#059669" />
+      <rect x="6" y="57" width="108" height="1.5" rx="0.5" fill="#f9fafb" />
+      <rect x="6" y="60" width="108" height="1.5" rx="0.5" fill="white" />
+      {/* Totals */}
+      <rect x="74" y="65" width="40" height="8" rx="1.5" fill="#f9fafb" stroke="#e5e7eb" strokeWidth="0.5" />
+      {/* Footer */}
+      <rect x="0" y="76" width="120" height="4" rx="1" fill="#f9fafb" />
+    </svg>
+  );
+}
+
 const PREVIEW_MAP = {
   clean: CleanPreview,
   premium: PremiumPreview,
   modern_card: ModernCardPreview,
+  field_classic: FieldClassicPreview,
 };
 
 const BADGES = {

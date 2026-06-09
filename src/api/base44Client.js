@@ -112,6 +112,96 @@ function applyFilters(query, filters) {
   return query;
 }
 
+const MISSING_ESTIMATE_COLUMNS = [
+  'materials_subtotal',
+  'other_costs_total',
+  'net_profit',
+  'net_profit_pct',
+  'discount_type',
+  'discount_value',
+  'internal_notes',
+  'exclusions',
+  'warranty_terms',
+  'payment_terms',
+  'legal_terms',
+  'scope_summary',
+  'assumptions',
+  'change_request_policy',
+  'included_scope_bullets',
+  'contingency_type',
+  'contingency_value',
+  'contingency_amount',
+  'show_contingency_to_client',
+  'uncertainty_note',
+  'document_config',
+  'discount_amount',
+  'deposit_amount',
+  'total_cost',
+  'service_cost',
+  'materials_cost',
+  'gross_margin'
+];
+
+// Helper to map record from DB
+function mapRecordFromDB(table, record) {
+  if (!record) return record;
+  if (table === 'estimates') {
+    if (record.metadata && typeof record.metadata === 'object') {
+      MISSING_ESTIMATE_COLUMNS.forEach(col => {
+        if (col in record.metadata) {
+          record[col] = record.metadata[col];
+        }
+      });
+    }
+  }
+  return record;
+}
+
+// Helper to prepare updates/creation payload for DB
+async function preparePayloadForDB(table, record, id = null) {
+  const payload = { ...record };
+
+  // Clean up empty strings for date/timestamp fields to prevent type errors in PostgreSQL
+  Object.keys(payload).forEach(key => {
+    if ((key.endsWith('_date') || key.endsWith('_at') || key === 'valid_until' || key === 'issued') && payload[key] === '') {
+      payload[key] = null;
+    }
+  });
+
+  if (table === 'estimates') {
+    let currentMetadata = {};
+    if (id) {
+      try {
+        const { data: existing } = await supabase.from('estimates').select('metadata').eq('id', id).maybeSingle();
+        if (existing && existing.metadata && typeof existing.metadata === 'object') {
+          currentMetadata = existing.metadata;
+        }
+      } catch (e) {
+        console.warn('[SupabaseData] failed to fetch existing metadata:', e);
+      }
+    }
+
+    let hasMissingField = false;
+    const nextMetadata = { ...currentMetadata };
+
+    MISSING_ESTIMATE_COLUMNS.forEach(col => {
+      if (col in payload) {
+        nextMetadata[col] = payload[col];
+        delete payload[col];
+        hasMissingField = true;
+      }
+    });
+
+    if (hasMissingField || 'metadata' in payload) {
+      payload.metadata = {
+        ...nextMetadata,
+        ...(payload.metadata || {})
+      };
+    }
+  }
+  return payload;
+}
+
 // ─── Entity class ─────────────────────────────────────────────────
 class SupabaseEntity {
   constructor(entityName) {
@@ -136,7 +226,7 @@ class SupabaseEntity {
       console.error(`[SupabaseData] ${this.entityName}.list error:`, error);
       throw error;
     }
-    return data || [];
+    return (data || []).map(r => mapRecordFromDB(this.table, r));
   }
 
   /**
@@ -155,7 +245,7 @@ class SupabaseEntity {
       console.error(`[SupabaseData] ${this.entityName}.filter error:`, error);
       throw error;
     }
-    return data || [];
+    return (data || []).map(r => mapRecordFromDB(this.table, r));
   }
 
   /**
@@ -164,7 +254,7 @@ class SupabaseEntity {
    * @returns {object} the created record with id
    */
   async create(record) {
-    const payload = { ...record };
+    const payload = await preparePayloadForDB(this.table, record);
     // Add timestamps if not present
     if (!payload.created_date) payload.created_date = new Date().toISOString();
     if (!payload.updated_date) payload.updated_date = new Date().toISOString();
@@ -174,7 +264,7 @@ class SupabaseEntity {
       console.error(`[SupabaseData] ${this.entityName}.create error:`, error);
       throw error;
     }
-    return data;
+    return mapRecordFromDB(this.table, data);
   }
 
   /**
@@ -183,13 +273,13 @@ class SupabaseEntity {
    * @param {object} updates - fields to update
    */
   async update(id, updates) {
-    const payload = { ...updates, updated_date: new Date().toISOString() };
+    const payload = await preparePayloadForDB(this.table, { ...updates, updated_date: new Date().toISOString() }, id);
     const { data, error } = await supabase.from(this.table).update(payload).eq('id', id).select().single();
     if (error) {
       console.error(`[SupabaseData] ${this.entityName}.update error:`, error);
       throw error;
     }
-    return data;
+    return mapRecordFromDB(this.table, data);
   }
 
   /**
@@ -313,8 +403,9 @@ const integrationsCore = {
 const integrationsProxy = { Core: integrationsCore };
 
 // ─── Auth proxy ───────────────────────────────────────────────────
-// Stub for base44.auth.me() / base44.auth.updateMe() used across the app.
-// Returns the current user from session/local storage until full Supabase Auth migration.
+// Drop-in replacement for base44.auth.me() / base44.auth.updateMe().
+// Settings -> Company now persists to Supabase app_users.company_settings.
+// localStorage remains a fallback only when app_users/migration is unavailable.
 const USER_PROFILE_KEY = 'nexartpro_user_profile';
 
 function getStoredUser() {
@@ -324,23 +415,104 @@ function getStoredUser() {
   } catch {}
   // Default admin user based on login
   return {
-    id: 'admin',
-    email: 'admin@rcartconstruction.com',
+    id: sessionStorage.getItem('local_user_id') || 'admin',
+    username: sessionStorage.getItem('local_username') || 'admin',
+    display_name: sessionStorage.getItem('local_display_name') || 'Admin',
+    email: sessionStorage.getItem('local_username') || 'admin@rcartconstruction.com',
     role: sessionStorage.getItem('user_role') || 'admin',
-    name: sessionStorage.getItem('user_name') || 'Admin',
+    name: sessionStorage.getItem('local_display_name') || 'Admin',
+    company_settings: {},
   };
+}
+
+function cacheUser(user) {
+  try { localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user)); } catch {}
+  return user;
+}
+
+function normalizeAppUser(row, fallback = {}) {
+  if (!row) return fallback;
+  const displayName = row.display_name || row.name || row.username || fallback.name || 'Admin';
+  return {
+    ...fallback,
+    ...row,
+    id: row.id || fallback.id || 'admin',
+    username: row.username || fallback.username || 'admin',
+    display_name: displayName,
+    name: row.name || displayName,
+    email: row.email || row.username || fallback.email || 'admin@rcartconstruction.com',
+    role: row.role || fallback.role || 'admin',
+    company_settings: row.company_settings || fallback.company_settings || {},
+  };
+}
+
+async function fetchCurrentAppUser() {
+  const fallback = getStoredUser();
+  const localUserId = sessionStorage.getItem('local_user_id');
+  const localUsername = sessionStorage.getItem('local_username') || fallback.username || 'admin';
+
+  try {
+    if (localUserId && localUserId !== 'admin') {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('id', localUserId)
+        .maybeSingle();
+      if (!error && data) return cacheUser(normalizeAppUser(data, fallback));
+    }
+
+    if (localUsername) {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('username', localUsername)
+        .maybeSingle();
+      if (!error && data) return cacheUser(normalizeAppUser(data, fallback));
+    }
+  } catch (err) {
+    console.warn('[SupabaseData] app_users lookup failed; using local fallback:', err?.message || err);
+  }
+
+  return fallback;
+}
+
+function buildAppUserUpdatePayload(current, updates = {}) {
+  const payload = {};
+  if ('company_settings' in updates) {
+    payload.company_settings = updates.company_settings || {};
+    payload.last_company_settings_update_at = new Date().toISOString();
+  }
+  if ('display_name' in updates) payload.display_name = updates.display_name;
+  if ('name' in updates) payload.name = updates.name;
+  if ('email' in updates) payload.email = updates.email;
+  if ('role' in updates) payload.role = updates.role;
+  if (!Object.keys(payload).length) payload.company_settings = current.company_settings || {};
+  return payload;
 }
 
 const authProxy = {
   async me() {
-    return getStoredUser();
+    return fetchCurrentAppUser();
   },
+
   async updateMe(updates) {
-    const current = getStoredUser();
+    const current = await fetchCurrentAppUser();
     const updated = { ...current, ...updates };
-    localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updated));
-    return updated;
+    const username = current.username || sessionStorage.getItem('local_username') || 'admin';
+    const payload = buildAppUserUpdatePayload(current, updates);
+
+    try {
+      let query = supabase.from('app_users').update(payload).select('*');
+      query = current.id && current.id !== 'admin' ? query.eq('id', current.id) : query.eq('username', username);
+      const { data, error } = await query.single();
+      if (error) throw error;
+      return cacheUser(normalizeAppUser(data, updated));
+    } catch (err) {
+      console.warn('[SupabaseData] auth.updateMe Supabase write failed; using local fallback:', err?.message || err);
+      return cacheUser(updated);
+    }
   },
+
   redirectToLogin(url) {
     window.location.href = url || '/';
   },

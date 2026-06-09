@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MapPin, Mail, Phone, Bell, BellOff, ExternalLink, Pencil } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export default function EstimateClientSidebar({ estimate, client }) {
+export default function EstimateClientSidebar({ estimate, client, onEditCustomer }) {
   const [mapTab, setMapTab] = useState('map');
 
   const address = estimate?.client_address || client?.address || '';
@@ -38,17 +38,29 @@ export default function EstimateClientSidebar({ estimate, client }) {
           <div className="w-2 h-2 rounded-full bg-primary" />
           <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Customer</span>
         </div>
-        <button className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          {onEditCustomer && (
+            <button
+              type="button"
+              onClick={onEditCustomer}
+              className="p-1 hover:bg-slate-200 rounded text-slate-500 hover:text-slate-700 transition-colors"
+              title="Edit customer info"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* PROPERTY IMAGE WITH STATS OVERLAY */}
       <div className="relative flex-shrink-0">
         <img
-          src={fallbackImg}
+          src={streetViewUrl}
           alt="Property"
           className="w-full object-cover"
           style={{ height: 140 }}
