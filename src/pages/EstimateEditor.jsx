@@ -12,7 +12,7 @@ import EstimateDocumentOptions from '@/components/estimates/EstimateDocumentOpti
 import EstimateActionsPanel from '@/components/estimates/EstimateActionsPanel';
 import EstimateGroups from '@/components/estimates/EstimateGroups';
 import EstimateSidebarCustomer from '@/components/estimates/EstimateSidebarCustomer';
-import EstimateClientSidebar from '@/components/estimates/EstimateClientSidebar';
+import CustomerSidebar from '@/components/estimates/CustomerSidebar';
 import EstimateSendReview from '@/components/estimates/EstimateSendReview';
 import EstimatePreviewModal from '@/components/estimates/EstimatePreviewModal';
 import NewProposalCustomerModal from '@/components/proposals/NewProposalCustomerModal';
@@ -462,11 +462,22 @@ export default function EstimateEditor() {
       {/* ── MAIN LAYOUT ── */}
       <div className="flex flex-1 gap-3 px-4 py-3 bg-slate-100 overflow-hidden min-w-0">
         {/* Left sidebar: customer panel */}
-        <div className="w-72 xl:w-80 flex-shrink-0 overflow-y-auto flex flex-col min-h-0 bg-white rounded-xl border border-slate-100" style={{ boxShadow: '0 4px 16px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
+        <div 
+          className={`w-72 xl:w-80 flex-shrink-0 overflow-y-auto flex flex-col min-h-0 ${
+            hasClient && !editingCustomerSidebar 
+              ? 'bg-transparent border-none shadow-none gap-4' 
+              : 'bg-white rounded-xl border border-slate-100'
+          }`}
+          style={hasClient && !editingCustomerSidebar ? {} : { boxShadow: '0 4px 16px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}
+        >
           {hasClient && !editingCustomerSidebar ? (
             <>
-              {estimate.id && <div className="px-4 py-3 border-b border-slate-100"><TransmissionPanel estimateId={estimate.id} /></div>}
-              <EstimateClientSidebar
+              {estimate.id && (
+                <div className="px-4 py-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                  <TransmissionPanel estimateId={estimate.id} />
+                </div>
+              )}
+              <CustomerSidebar
                 estimate={estimate}
                 client={client}
                 onEditCustomer={() => setEditingCustomerSidebar(true)}
