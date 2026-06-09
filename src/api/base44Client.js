@@ -112,12 +112,46 @@ function applyFilters(query, filters) {
   return query;
 }
 
+const MISSING_ESTIMATE_COLUMNS = [
+  'materials_subtotal',
+  'other_costs_total',
+  'net_profit',
+  'net_profit_pct',
+  'discount_type',
+  'discount_value',
+  'internal_notes',
+  'exclusions',
+  'warranty_terms',
+  'payment_terms',
+  'legal_terms',
+  'scope_summary',
+  'assumptions',
+  'change_request_policy',
+  'included_scope_bullets',
+  'contingency_type',
+  'contingency_value',
+  'contingency_amount',
+  'show_contingency_to_client',
+  'uncertainty_note',
+  'document_config',
+  'discount_amount',
+  'deposit_amount',
+  'total_cost',
+  'service_cost',
+  'materials_cost',
+  'gross_margin'
+];
+
 // Helper to map record from DB
 function mapRecordFromDB(table, record) {
   if (!record) return record;
   if (table === 'estimates') {
-    if (record.metadata && typeof record.metadata === 'object' && record.metadata.document_config) {
-      record.document_config = record.metadata.document_config;
+    if (record.metadata && typeof record.metadata === 'object') {
+      MISSING_ESTIMATE_COLUMNS.forEach(col => {
+        if (col in record.metadata) {
+          record[col] = record.metadata[col];
+        }
+      });
     }
   }
   return record;
@@ -126,25 +160,43 @@ function mapRecordFromDB(table, record) {
 // Helper to prepare updates/creation payload for DB
 async function preparePayloadForDB(table, record, id = null) {
   const payload = { ...record };
+
+  // Clean up empty strings for date/timestamp fields to prevent type errors in PostgreSQL
+  Object.keys(payload).forEach(key => {
+    if ((key.endsWith('_date') || key.endsWith('_at') || key === 'valid_until' || key === 'issued') && payload[key] === '') {
+      payload[key] = null;
+    }
+  });
+
   if (table === 'estimates') {
-    if ('document_config' in payload) {
-      let currentMetadata = {};
-      if (id) {
-        try {
-          const { data: existing } = await supabase.from('estimates').select('metadata').eq('id', id).maybeSingle();
-          if (existing && existing.metadata && typeof existing.metadata === 'object') {
-            currentMetadata = existing.metadata;
-          }
-        } catch (e) {
-          console.warn('[SupabaseData] failed to fetch existing metadata:', e);
+    let currentMetadata = {};
+    if (id) {
+      try {
+        const { data: existing } = await supabase.from('estimates').select('metadata').eq('id', id).maybeSingle();
+        if (existing && existing.metadata && typeof existing.metadata === 'object') {
+          currentMetadata = existing.metadata;
         }
+      } catch (e) {
+        console.warn('[SupabaseData] failed to fetch existing metadata:', e);
       }
+    }
+
+    let hasMissingField = false;
+    const nextMetadata = { ...currentMetadata };
+
+    MISSING_ESTIMATE_COLUMNS.forEach(col => {
+      if (col in payload) {
+        nextMetadata[col] = payload[col];
+        delete payload[col];
+        hasMissingField = true;
+      }
+    });
+
+    if (hasMissingField || 'metadata' in payload) {
       payload.metadata = {
-        ...currentMetadata,
-        ...(payload.metadata || {}),
-        document_config: payload.document_config
+        ...nextMetadata,
+        ...(payload.metadata || {})
       };
-      delete payload.document_config;
     }
   }
   return payload;
