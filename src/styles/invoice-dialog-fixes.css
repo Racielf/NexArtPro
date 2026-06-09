@@ -2,7 +2,10 @@
    Prevent long invoice links/emails from pushing Radix/shadcn dialogs outside their modal width.
    Scope is intentionally limited to dialog surfaces to avoid touching invoice logic. */
 
-[role="dialog"] {
+[role="dialog"].max-w-sm,
+[role="dialog"].max-w-md,
+[role="dialog"].max-w-lg,
+[role="dialog"]:not([class*="max-w-"]) {
   max-width: min(32rem, calc(100vw - 2rem));
   overflow: hidden;
 }

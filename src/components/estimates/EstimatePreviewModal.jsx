@@ -74,7 +74,11 @@ export default function EstimatePreviewModal({ estimate, open, onClose, onSend }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] p-0 flex flex-col" showCloseButton={false}>
+      <DialogContent
+        className="max-w-5xl max-h-[90vh] p-0 flex flex-col"
+        style={{ maxWidth: 'min(64rem, calc(100vw - 2rem))' }}
+        showCloseButton={false}
+      >
         <DocumentViewerShell
           title={title}
           actions={actions}
