@@ -57,6 +57,10 @@ import NexArtAgent from './pages/NexArtAgent';
 
 import FieldWorkOrders from './pages/FieldWorkOrders';
 import FieldWorkOrderDetail from './pages/FieldWorkOrderDetail';
+import Projects from './pages/projects/Projects';
+import ProjectDetail from './pages/projects/ProjectDetail';
+
+const INVESTOR_HUB_ENABLED = import.meta.env.VITE_INVESTOR_HUB_ENABLED === 'true';
 
 const PUBLIC_ROUTE_PREFIXES = [
   '/client-estimate',
@@ -180,6 +184,12 @@ const AppRoutes = () => (
       <Route path="/nexartsign" element={<NexArtSign />} />
       <Route path="/nexartsign-field-editor" element={<NexArtSignFieldEditor />} />
       <Route path="/agent" element={<NexArtAgent />} />
+      {INVESTOR_HUB_ENABLED && (
+        <>
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/projects/:id" element={<ProjectDetail />} />
+        </>
+      )}
     </Route>
 
     <Route path="/client-estimate" element={<ClientEstimateView />} />

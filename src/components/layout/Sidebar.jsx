@@ -24,7 +24,10 @@ import {
   Menu,
   X,
   MoreHorizontal,
+  Building2,
 } from 'lucide-react';
+
+const INVESTOR_HUB_ENABLED = import.meta.env.VITE_INVESTOR_HUB_ENABLED === 'true';
 import { isAdmin } from '@/lib/roleUtils';
 import { useAuth } from '@/lib/AuthContext';
 import { APP_CONFIG as appConfig } from '@/lib/appConfig';
@@ -70,6 +73,13 @@ const adminNavGroup = {
   ],
 };
 
+const projectsNavGroup = {
+  label: 'Projects',
+  items: [
+    { path: '/projects', label: 'Projects', icon: Building2 },
+  ],
+};
+
 /* Bottom nav items for mobile — the 4 most-used + More */
 const bottomNavItems = [
   { path: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -89,7 +99,8 @@ export default function Sidebar() {
   };
   const { user } = useAuth();
   const canAccessAdmin = user?.role === 'admin' || isAdmin();
-  const visibleNavGroups = canAccessAdmin ? [...navGroups, adminNavGroup] : navGroups;
+  const baseGroups = INVESTOR_HUB_ENABLED ? [...navGroups, projectsNavGroup] : navGroups;
+  const visibleNavGroups = canAccessAdmin ? [...baseGroups, adminNavGroup] : baseGroups;
   const sidebarLogoUrl = cc.logo_url || appConfig.company.logo_url || '';
 
   const [mobileOpen, setMobileOpen] = useState(false);
