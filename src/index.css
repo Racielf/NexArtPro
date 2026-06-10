@@ -341,8 +341,10 @@
 .app-topbar {
   flex-shrink: 0;
   height: 48px;
-  background: white;
-  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--nexart-cream-50) / 0.42);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid hsl(var(--nexart-burnt-400) / 0.16);
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -426,7 +428,7 @@
 }
 .sidebar-link:hover {
   background: rgba(255,255,255,0.05);
-  color: #e2e8f0;
+  color: hsl(var(--nexart-cream-50));
 }
 .sidebar-link-active {
   background: hsl(var(--nexart-burnt-400) / 0.16) !important;
