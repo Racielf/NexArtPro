@@ -430,6 +430,9 @@
   background: rgba(255,255,255,0.05);
   color: hsl(var(--nexart-cream-50));
 }
+.sidebar-link:hover .sidebar-link-icon {
+  color: hsl(var(--nexart-cream-50));
+}
 .sidebar-link-active {
   background: hsl(var(--nexart-burnt-400) / 0.16) !important;
   color: hsl(var(--nexart-cream-50)) !important;
@@ -636,6 +639,14 @@
 /* ═══════════════════════════════════════════════════════════════
    DASHBOARD RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
+
+/* Base — cream topbar matching app-topbar treatment */
+.dash-topbar {
+  background: hsl(var(--nexart-cream-50) / 0.42);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid hsl(var(--nexart-burnt-400) / 0.16);
+}
 
 /* Mobile: stack everything vertically, reduce padding */
 @media (max-width: 767px) {

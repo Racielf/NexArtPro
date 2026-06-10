@@ -521,7 +521,7 @@ export default function Dashboard() {
       <DigitalClock />
 
       {/* TOPBAR */}
-      <div className="dash-topbar sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-2 shadow-sm">
+      <div className="dash-topbar sticky top-0 z-50 px-4 py-2 shadow-sm">
         <div className="dash-topbar-inner max-w-screen-2xl mx-auto flex items-center gap-3">
           <div className="dash-topbar-brand border-r border-slate-200 pr-3 flex-shrink-0">
             <h1 className="text-[13px] font-bold text-slate-800 leading-none">RC Art Contractors</h1>
@@ -542,7 +542,7 @@ export default function Dashboard() {
             <Button asChild variant="outline" size="sm" className="h-7 px-2.5 text-[10px] text-slate-600 border-slate-200 hover:bg-slate-50">
               <Link to="/work-orders"><Plus className="w-3 h-3 mr-0.5" />WO</Link>
             </Button>
-            <Button asChild size="sm" className="h-7 px-3 text-[10px] bg-blue-600 hover:bg-blue-700 text-white border-0">
+            <Button asChild size="sm" className="h-7 px-3 text-[10px]">
               <Link to="/estimates"><Plus className="w-3 h-3 mr-0.5" />Estimate</Link>
             </Button>
           </div>
