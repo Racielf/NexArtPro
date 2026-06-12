@@ -5,6 +5,20 @@ import { clearLocalSession, normalizeLocalRole } from '@/lib/roleUtils';
 
 const AuthContext = createContext();
 
+// Auth bootstrap must never hang the app forever (e.g. supabase-js lock
+// deadlocks in dev/HMR, or unreachable network). If it exceeds this budget,
+// we fall back to a safe unauthenticated state instead of an infinite spinner.
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 8000;
+
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 function persistSessionProfile(profile, authUser) {
   const role = normalizeLocalRole(profile?.role);
   sessionStorage.setItem('local_auth', 'true');
@@ -86,19 +100,39 @@ export const AuthProvider = ({ children }) => {
 
   const checkAppState = useCallback(async () => {
     setIsLoadingAuth(true);
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error('Supabase session check failed:', error);
+    try {
+      const { data, error } = await withTimeout(
+        supabase.auth.getSession(),
+        AUTH_BOOTSTRAP_TIMEOUT_MS,
+        'Auth session check'
+      );
+      if (error) {
+        console.error('Supabase session check failed:', error);
+        clearLocalSession();
+        setUser(null);
+        setSession(null);
+        setIsAuthenticated(false);
+        setAuthError({ type: 'auth_required', message: error.message });
+        setIsLoadingAuth(false);
+        setIsLoadingPublicSettings(false);
+        return;
+      }
+      await withTimeout(
+        applySession(data?.session || null),
+        AUTH_BOOTSTRAP_TIMEOUT_MS,
+        'Auth profile load'
+      );
+    } catch (timeoutError) {
+      // Safe no-auth fallback: the app renders instead of spinning forever.
+      console.error('Auth bootstrap timed out:', timeoutError);
       clearLocalSession();
       setUser(null);
       setSession(null);
       setIsAuthenticated(false);
-      setAuthError({ type: 'auth_required', message: error.message });
+      setAuthError({ type: 'auth_timeout', message: timeoutError.message });
       setIsLoadingAuth(false);
       setIsLoadingPublicSettings(false);
-      return;
     }
-    await applySession(data?.session || null);
   }, [applySession]);
 
   useEffect(() => {
