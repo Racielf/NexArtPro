@@ -1,9 +1,9 @@
 # Investor Hub Schema — Local Validation Report
-**Phase:** 5.1 — Validate Investor Hub SQL  
-**Date:** 2026-06-10  
+**Phase:** 5.1 / 5.2 — Validate Investor Hub SQL  
+**Date:** 2026-06-10 (5.1) / 2026-06-11 (5.2)  
 **Branch:** `integration/investor-hub-schema`  
 **Commit:** `1dae8d9`  
-**Status:** ⛔ BLOCKED — no compatible staging target available
+**Status:** ⏸️ PAUSED — Option A approved but blocked on staging project cost ($10/month, owner approval pending)
 
 ---
 
@@ -134,6 +134,37 @@ This tests: sequences, functions, triggers (including immutability), project_num
 
 ---
 
+## Phase 5.2 — Staging Creation Attempt (2026-06-11)
+
+Option A (create `nexartpro-staging`) was selected and attempted via Supabase MCP.
+
+**Execution log:**
+
+| Step | Result |
+|------|--------|
+| `list_organizations` | One org: `R.C Art Construction` (`vwxjylyfjlmoqssaubtb`) |
+| `get_cost` (type: project) | **$10.00 / month — recurring** |
+| `create_project` | **NOT EXECUTED** — stopped per cost guardrail |
+
+**Outcome: ⛔ BLOCKED ON COST APPROVAL**
+
+- Supabase MCP returned a recurring monthly charge of $10/month for a new project in this org
+- Per owner rules, no recurring cost may be confirmed automatically
+- Owner decision (2026-06-11): **do not approve the $10/month yet — pause Option A**
+- Project creation not executed
+- Production (`nexartpro` / `hdiejuqbhqhebrpneymo`) untouched
+- SQL not applied to any database
+- Bridge not applied — remains in `supabase/drafts/`
+
+**Paths forward (owner to decide with no time pressure):**
+
+1. Approve $10/month and create `nexartpro-staging` (full validation, can be deleted after 1 month)
+2. Validate locally by installing Docker + Supabase CLI (free, requires local setup)
+3. Apply to production `nexartpro` with backup + explicit written approval
+4. Pause Investor Hub validation until staging has budget
+
+---
+
 ## Pending Decisions for User
 
 1. **Staging target decision:** Create `nexartpro-staging` project (stop for cost approval), use production with approval, or validate with modified SQL on nexartwo-staging?
@@ -152,5 +183,5 @@ Phase 6 React UI (connecting stubs to real data) can proceed independently of st
 
 ---
 
-*Phase 5.1 — Local Validation Report*  
+*Phase 5.1 / 5.2 — Local Validation Report*  
 *R.C Art Construction LLC — NexArtPro*
