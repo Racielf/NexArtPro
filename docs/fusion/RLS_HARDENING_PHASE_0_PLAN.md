@@ -33,8 +33,14 @@ Production is NEVER the first place a policy is dropped.
 > **STATUS UPDATE 2026-06-11:** owner visually confirmed in the Supabase Dashboard for `nexartpro` (`hdiejuqbhqhebrpneymo`): **scheduled physical backups exist and restore buttons are visible**. Important caveat recorded: **Storage objects are NOT included in database backups** — signed PDFs/photos in Supabase Storage need a separate backup strategy before any risky operation involving Storage.
 
 - [x] **Confirm backup availability** — VERIFIED 2026-06-11: scheduled physical backups visible in Dashboard, restore buttons present. Storage objects NOT covered.
-- [ ] **PITR or daily?** — Determine if the plan includes Point-in-Time Recovery or only daily backups. Record granularity and retention window.
-- [ ] **Confirm restore procedure** — read the Supabase restore docs for the active plan; write the exact steps (dashboard restore vs. support ticket vs. `pg_dump`/`pg_restore`).
+- [x] **PITR or daily?** — DOCUMENTED 2026-06-12: Dashboard shows a list of **scheduled physical backups with per-backup restore buttons** — this UI pattern corresponds to **daily physical backups WITHOUT PITR** (when the PITR add-on is active, Supabase replaces the daily list with a point-in-time selector). Status recorded as: **daily physical backups, PITR presumed NOT enabled**. Final confirmation: Dashboard → Database → Backups → check for a "Point in Time" tab/section. Granularity: 1/day; data written after the last daily snapshot would be lost in a restore.
+- [x] **Confirm restore procedure** — DOCUMENTED 2026-06-12 (from Dashboard observation + Supabase platform behavior):
+  1. Dashboard → Project `nexartpro` → Database → Backups → choose backup → **Restore**.
+  2. Restore is **in-place**: it overwrites the current production database with the snapshot. There is no built-in "restore to new project" button — restoring to a separate project requires a manual `pg_dump`/`pg_restore` (needs local CLI) or a support request.
+  3. During restore the project is temporarily unavailable (downtime).
+  4. Everything written AFTER the snapshot timestamp is lost — including rows created the same day.
+  5. **Storage is NOT restored** — `storage.objects` metadata rows return to snapshot state but the files themselves are not part of the DB backup; mismatches are possible (see Storage Backup Strategy, §10).
+  6. Complement before each RLS phase: `npx supabase db dump` (schema + policies) as a logical snapshot that allows policy-only rollback without a full in-place restore — far safer for RLS work, where data is never touched.
 - [ ] **Restore target strategy** — decide in advance: restore in-place (overwrites production) vs. restore to a new project (cost implications — same $10/month consideration). Document the choice before it is ever needed under pressure.
 - [ ] **Manual logical backup as belt-and-suspenders** — before each RLS phase, capture a `pg_dump --schema-only` of policies + full data dump if size permits. (Requires local CLI/psql from §4 — another reason local setup precedes everything.)
 - [ ] **Rollback approval** — only the owner approves a production rollback. Record the explicit channel (this chat) and rule: agent proposes, owner approves, nothing automatic.
@@ -146,6 +152,48 @@ Only documentation committed.
 ```
 
 Phase RLS-0 is complete when: backup/restore checklist (§3) is fully checked, local stack is running (per LOCAL_VALIDATION_SETUP_PLAN.md), and production policy state is reproduced locally. Then RLS-1 may be proposed for owner approval.
+
+---
+
+## 10. Storage Backup Strategy
+
+> Added 2026-06-12. **Database backups do NOT include Storage objects.** Signed PDFs, estimate documents, logos, photos, and attachments live in Supabase Storage and need their own backup path before any risky production operation.
+
+### 10.1 Buckets in use (verified read-only 2026-06-12)
+
+| Bucket | Public | Objects | Size | Contents (per app usage) |
+|---|---|---|---|---|
+| `documents` | **true** ⚠️ | 24 | ~169 MB | Signed PDFs, estimate documents, uploads via `nexartClient.integrations.Core.UploadFile` |
+
+This is the **only** bucket in production. All critical objects (signed PDFs, estimate documents, company logos, project photos, attachments) live in it.
+
+**⚠️ Security flag (do not act yet — recorded for hardening phases):** the bucket is `public: true`, meaning any object is readable by URL without authentication. Combined with `documents`-table metadata being anon-readable (see audit `0508599`), object URLs are discoverable. Bucket privacy + signed URLs should be evaluated in RLS-2 (documents phase). **No objects are deleted, moved, or modified in Phase 0.**
+
+### 10.2 Rules
+
+- Do NOT delete, move, or rename any Storage object during backup work.
+- Storage backup must exist BEFORE any production change that touches documents, signing, or estimates flows.
+- Backup destination must be OUTSIDE Supabase (local disk + ideally one off-site copy).
+
+### 10.3 Future backup options (choose when executing, not now)
+
+1. **Supabase CLI export** — `npx supabase storage cp -r ss:///documents ./storage-backup/documents --experimental` (CLI ≥ 1.151; available in verified 2.106.0). Simple, scriptable, repeatable.
+2. **Download/export script** — Node script using `@supabase/supabase-js` with service role key: `storage.from('documents').list()` + `download()` per object. More control, supports manifest with checksums.
+3. **Manual bucket export** — Dashboard → Storage → download objects manually. Acceptable once for 24 objects; not repeatable.
+4. **Separate backup location** — versioned folder outside Supabase, e.g. `D:\Backups\nexartpro-storage\YYYY-MM-DD\` plus an off-site/cloud copy for the ~169 MB.
+
+Recommended: option 1 or 2, run before RLS-2, with a manifest (object path, size, hash, date) committed to `docs/fusion/` as evidence.
+
+### 10.4 Phase 0 status fields
+
+```text
+PITR status:                       presumed NOT enabled (daily list UI) — final check pending in Dashboard
+Daily backup status:               CONFIRMED — scheduled physical backups with restore buttons
+Restore method:                    Dashboard in-place restore (overwrites production; downtime; post-snapshot data lost)
+                                   + npx supabase db dump as policy-level logical snapshot before each RLS phase
+Storage backup required:           YES — bucket `documents` (24 objects, ~169 MB, public) not covered by DB backups
+Owner approval required before any restore: YES — agent proposes, owner approves in writing; nothing automatic
+```
 
 ---
 
