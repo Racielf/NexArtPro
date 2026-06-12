@@ -189,7 +189,7 @@ INSERT INTO investors (name, type, status) VALUES ('Test Investor','person','act
 
 -- 10.7 project_investors FK (use ids from 10.5/10.6)
 INSERT INTO project_investors (project_id, investor_id, role, ownership_percentage)
-VALUES ('<project-uuid>','<investor-uuid>','partner',50.00) RETURNING id;
+VALUES ('<project-uuid>','<investor-uuid>','equity_partner',50.00) RETURNING id;
 -- expected: success; repeat with random project_id → must FAIL with FK violation
 
 -- 10.8 capital_contributions insert
