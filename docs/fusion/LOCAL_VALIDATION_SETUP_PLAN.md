@@ -32,24 +32,20 @@
 
 ## 3. Windows Prerequisites
 
-| Tool | Status today | Notes |
+> **STATUS UPDATE 2026-06-11 — owner-side verification COMPLETED.** All prerequisites confirmed installed and working:
+
+| Tool | Status | Verified version |
 |---|---|---|
-| Docker Desktop | NOT installed | Required — Supabase local runs on Docker. Installs WSL2 automatically if missing |
-| WSL2 | Unknown | Docker Desktop installer handles it; may require one reboot |
-| Supabase CLI | NOT installed | Install via Scoop (recommended on Windows) or direct download |
+| WSL2 | ✓ VERIFIED | WSL 2.7.8.0 — default version 2 |
+| Docker Desktop | ✓ VERIFIED | Docker 29.5.3 |
+| Docker Compose | ✓ VERIFIED | v5.1.4 |
+| Supabase CLI | ✓ VERIFIED (via npx) | 2.106.0 |
 | Git | ✓ Present | |
 | Node/npm | ✓ Present | Build already passing |
 
-Supabase CLI install options (choose one, **do not run now**):
+**Note on CLI invocation:** Supabase CLI runs via `npx`. All `supabase ...` commands in this plan should be executed as `npx supabase ...` on this machine.
 
-```powershell
-# Option 1 — Scoop (recommended)
-scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-scoop install supabase
-
-# Option 2 — direct download
-# https://github.com/supabase/cli/releases (supabase_windows_amd64.zip → add to PATH)
-```
+§4 verification commands: all passed (owner-side, 2026-06-11). The execution steps in §7–§8 remain **NOT RUN** — `supabase init`, `supabase start`, and `db reset` are still pending owner go-ahead.
 
 ---
 

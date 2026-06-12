@@ -30,7 +30,9 @@ Production is NEVER the first place a policy is dropped.
 
 ## 3. Backup / Restore Checklist (owner + agent, before RLS-1)
 
-- [ ] **Confirm backup availability** — Supabase Dashboard → Project `nexartpro` → Database → Backups. Record what exists.
+> **STATUS UPDATE 2026-06-11:** owner visually confirmed in the Supabase Dashboard for `nexartpro` (`hdiejuqbhqhebrpneymo`): **scheduled physical backups exist and restore buttons are visible**. Important caveat recorded: **Storage objects are NOT included in database backups** — signed PDFs/photos in Supabase Storage need a separate backup strategy before any risky operation involving Storage.
+
+- [x] **Confirm backup availability** — VERIFIED 2026-06-11: scheduled physical backups visible in Dashboard, restore buttons present. Storage objects NOT covered.
 - [ ] **PITR or daily?** — Determine if the plan includes Point-in-Time Recovery or only daily backups. Record granularity and retention window.
 - [ ] **Confirm restore procedure** — read the Supabase restore docs for the active plan; write the exact steps (dashboard restore vs. support ticket vs. `pg_dump`/`pg_restore`).
 - [ ] **Restore target strategy** — decide in advance: restore in-place (overwrites production) vs. restore to a new project (cost implications — same $10/month consideration). Document the choice before it is ever needed under pressure.
@@ -44,7 +46,7 @@ Production is NEVER the first place a policy is dropped.
 
 - Execution environment comes from **`docs/fusion/LOCAL_VALIDATION_SETUP_PLAN.md`** (Docker Desktop + Supabase CLI + `supabase init/start`).
 - Additional requirement for RLS work: **reproduce the current production policy state locally** before testing cleanup. Method: export production policies read-only (`pg_policies` catalog query → generate `CREATE POLICY` statements into a local-only seed file) so the local DB starts as permissive as production. Drops are then tested against a faithful replica of the problem.
-- Docker + Supabase CLI **must be installed and verified** before any policy cleanup is tested anywhere.
+- Docker + Supabase CLI **must be installed and verified** before any policy cleanup is tested anywhere. → **VERIFIED 2026-06-11:** WSL 2.7.8.0 (default v2), Docker 29.5.3, Docker Compose v5.1.4, Supabase CLI 2.106.0 via `npx`. Local stack itself (`init`/`start`/`db reset`) still NOT run — pending owner go-ahead.
 - Production is never the first target. No exceptions.
 
 ---
