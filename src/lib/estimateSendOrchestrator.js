@@ -156,24 +156,54 @@ export async function executeSend({ estimate, recipientEmail, subject, message, 
   if (emailRes.data?.error) throw new Error(emailRes.data.error);
 
   let snapshotId = null;
+  // ── Hotfix: post-send persistence must throw on failure, not silently swallow.
+  // The email has already been sent at this point. If status/snapshot/audit fail
+  // to persist, the estimate would appear as 'draft' in the DB while the client
+  // already received the email — a data integrity inconsistency.
+  // Throwing here propagates to EstimateSendReview.handleSend's catch block,
+  // which calls logSendFailure + setSentError (correct failure UX).
+  let persistenceError = null;
   try {
     await markEstimateSent(estimate.id, { documentConfig, estimate, currentUser });
-    await base44.entities.Estimate.update(estimate.id, {
-      signing_package_id: signingPackage?.id || estimate.signing_package_id || '',
-      signature_status: signingPackage?.id ? 'sent' : (estimate.signature_status || ''),
-      document_hash: pdfHash || estimate.document_hash || '',
-      document_hash_algorithm: pdfHash ? 'SHA-256' : estimate.document_hash_algorithm,
-      company_signature_name: currentUser.full_name || estimate.company_signature_name || '',
-      company_signature_email: currentUser.email || estimate.company_signature_email || '',
-      company_signature_role: currentUser.role || estimate.company_signature_role || '',
-      company_signed_at: estimate.company_signed_at || ts,
-    }).catch(() => {});
-    // Fetch latest snapshot using standard entity (RLS handles access)
+  } catch (err) {
+    persistenceError = `markEstimateSent failed: ${err?.message || String(err)}`;
+  }
+
+  if (!persistenceError) {
+    try {
+      await base44.entities.Estimate.update(estimate.id, {
+        signing_package_id: signingPackage?.id || estimate.signing_package_id || '',
+        signature_status: signingPackage?.id ? 'sent' : (estimate.signature_status || ''),
+        document_hash: pdfHash || estimate.document_hash || '',
+        document_hash_algorithm: pdfHash ? 'SHA-256' : estimate.document_hash_algorithm,
+        company_signature_name: currentUser.full_name || estimate.company_signature_name || '',
+        company_signature_email: currentUser.email || estimate.company_signature_email || '',
+        company_signature_role: currentUser.role || estimate.company_signature_role || '',
+        company_signed_at: estimate.company_signed_at || ts,
+      });
+    } catch (err) {
+      persistenceError = `Estimate status update failed: ${err?.message || String(err)}`;
+    }
+  }
+
+  if (persistenceError) {
+    const err = new Error(
+      `Email sent, but post-send persistence failed: ${persistenceError}. ` +
+      'The estimate may still appear as Draft — please refresh and verify the status.'
+    );
+    err.phase = 'post_send_persistence';
+    err.emailSent = true;
+    throw err;
+  }
+
+  // Fetch latest snapshot (non-blocking — snapshot update is best-effort)
+  try {
     const snapshots = await base44.entities.EstimateSnapshot.filter({ estimate_id: estimate.id }, '-created_date', 1).catch(() => []);
     if (snapshots?.length) snapshotId = snapshots[0].id;
   } catch (err) {
-    console.warn('[executeSend] post-send persistence failed:', err?.message);
+    console.warn('[executeSend] snapshot fetch failed (non-blocking):', err?.message);
   }
+
 
   if (pdfUrl && snapshotId) {
     try {

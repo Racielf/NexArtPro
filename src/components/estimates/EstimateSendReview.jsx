@@ -13,6 +13,7 @@ import AttachmentWarningModal from './internal/AttachmentWarningModal';
 import { validateEstimatePricing } from '@/lib/pricingValidation';
 import { getDocTypeConfig } from '@/lib/documentTypeConfig';
 import { validateBeforeSend, executeSend, logPricingOverride, logSendFailure } from '@/lib/estimateSendOrchestrator';
+import { isEstimateLocked, getEstimateLockReason } from '@/lib/estimateLockGuard';
 import { generatePublicShareToken } from '@/lib/estimateSalesLifecycle';
 import SendReviewSidePanel from './SendReviewSidePanel';
 import SendReviewBanners from './SendReviewBanners';
@@ -248,6 +249,13 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
   };
 
   const handleConfirmSend = async () => {
+    // ── Hotfix: defensive lock check — belt-and-suspenders in case this modal
+    // is opened for a locked estimate through an unexpected code path.
+    if (isEstimateLocked(estimate)) {
+      toast.error(getEstimateLockReason(estimate));
+      return;
+    }
+
     const moneyOk = await runMoneyBrainBeforeSend();
     if (!moneyOk) return;
 
@@ -296,7 +304,11 @@ export default function EstimateSendReview({ estimate, open, onClose, onSent, on
       onSent?.();
     } catch (error) {
       await logSendFailure(estimate, recipientEmail, subject, error);
-      const errMsg = error?.message || 'Failed to send email';
+      // ── Hotfix: distinguish persistence failure from email failure ──
+      // err.emailSent === true means the email was delivered but DB update failed.
+      const errMsg = error?.emailSent
+        ? `Email delivered, but status update failed: ${error.message} Check the estimate status and refresh.`
+        : (error?.message || 'Failed to send email');
       setSentError(errMsg);
       toast.error(errMsg);
     } finally {
