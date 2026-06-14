@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,19 +12,19 @@
     --card-foreground: 222 25% 12%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 25% 12%;
-    --primary: 213 88% 48%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 213 18% 94%;
-    --secondary-foreground: 222 22% 26%;
+    --primary: 40 60% 50%;
+    --primary-foreground: 228 57% 7%;
+    --secondary: 43 8% 93%;
+    --secondary-foreground: 228 35% 18%;
     --muted: 213 18% 94%;
     --muted-foreground: 220 12% 48%;
-    --accent: 213 16% 91%;
-    --accent-foreground: 222 25% 12%;
+    --accent: 43 10% 93%;
+    --accent-foreground: 228 57% 15%;
     --destructive: 0 84% 58%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 12% 87%;
     --input: 220 12% 87%;
-    --ring: 213 88% 48%;
+    --ring: 40 60% 50%;
     --chart-1: 213 88% 48%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -32,15 +32,23 @@
     --chart-5: 27 87% 67%;
     --cta-orange: 25 90% 50%;
     --radius: 0.75rem;
-    --sidebar-background: 222 26% 11%;
-    --sidebar-foreground: 215 14% 60%;
-    --sidebar-primary: 213 88% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 22% 19%;
-    --sidebar-accent-foreground: 215 14% 92%;
-    --sidebar-border: 222 22% 17%;
-    --sidebar-ring: 213 88% 55%;
+    --sidebar-background: 228 57% 7%;
+    --sidebar-foreground: 43 30% 68%;
+    --sidebar-primary: 40 60% 50%;
+    --sidebar-primary-foreground: 228 57% 7%;
+    --sidebar-accent: 225 45% 13%;
+    --sidebar-accent-foreground: 43 55% 85%;
+    --sidebar-border: 225 45% 10%;
+    --sidebar-ring: 40 60% 50%;
     --font-inter: 'Inter', sans-serif;
+    /* — NexArt V3 brand tokens — */
+    --nexart-ink-950: 228 57% 7%;
+    --nexart-ink-900: 225 60% 9%;
+    --nexart-ink-800: 223 55% 15%;
+    --nexart-cream-50: 43 73% 94%;
+    --nexart-burnt-400: 40 60% 50%;
+    --nexart-burnt-500: 38 63% 44%;
+    --font-display: "Fraunces", serif;
   }
 
   .dark {
@@ -333,8 +341,10 @@
 .app-topbar {
   flex-shrink: 0;
   height: 48px;
-  background: white;
-  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--nexart-cream-50) / 0.42);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid hsl(var(--nexart-burnt-400) / 0.16);
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -356,7 +366,7 @@
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: #1a2233;
+  background: hsl(var(--sidebar-background));
   border-right: 1px solid rgba(255,255,255,0.06);
 }
 
@@ -380,7 +390,7 @@
 .sidebar-brand-logo-fallback {
   width: 32px; height: 32px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; background: #2563EB;
+  flex-shrink: 0; background: hsl(var(--nexart-burnt-400));
 }
 .sidebar-brand-name {
   font-weight: 600; font-size: 13px; line-height: 1.2;
@@ -418,14 +428,17 @@
 }
 .sidebar-link:hover {
   background: rgba(255,255,255,0.05);
-  color: #e2e8f0;
+  color: hsl(var(--nexart-cream-50));
+}
+.sidebar-link:hover .sidebar-link-icon {
+  color: hsl(var(--nexart-cream-50));
 }
 .sidebar-link-active {
-  background: rgba(37,99,235,0.18) !important;
-  color: #93c5fd !important;
-  border-left-color: #3b82f6;
+  background: hsl(var(--nexart-burnt-400) / 0.16) !important;
+  color: hsl(var(--nexart-cream-50)) !important;
+  border-left-color: hsl(var(--nexart-burnt-400));
 }
-.sidebar-link-active .sidebar-link-icon { color: #60a5fa !important; }
+.sidebar-link-active .sidebar-link-icon { color: hsl(var(--nexart-cream-50)) !important; }
 
 .sidebar-link-icon {
   width: 15px; height: 15px; flex-shrink: 0;
@@ -489,7 +502,7 @@
     top: 0; left: 0; right: 0;
     z-index: 40;
     height: 56px;
-    background: #1a2233;
+    background: hsl(var(--sidebar-background));
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
@@ -511,7 +524,7 @@
   .sidebar-mobile-logo-fallback {
     width: 28px; height: 28px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    background: #2563EB;
+    background: hsl(var(--nexart-burnt-400));
   }
   .sidebar-mobile-name {
     font-size: 14px; font-weight: 700; color: #f1f5f9;
@@ -563,7 +576,7 @@
     bottom: 0; left: 0; right: 0;
     z-index: 40;
     height: 64px;
-    background: #1a2233;
+    background: hsl(var(--sidebar-background));
     border-top: 1px solid rgba(255,255,255,0.08);
     padding: 0 4px;
     padding-bottom: env(safe-area-inset-bottom, 0);
@@ -582,12 +595,12 @@
     padding: 4px 0;
     -webkit-tap-highlight-color: transparent;
   }
-  .sidebar-bottom-item:active { color: #93c5fd; }
+  .sidebar-bottom-item:active { color: hsl(var(--nexart-cream-50)); }
   .sidebar-bottom-item-active {
-    color: #60a5fa !important;
+    color: hsl(var(--nexart-burnt-400)) !important;
   }
   .sidebar-bottom-item-active svg {
-    filter: drop-shadow(0 0 6px rgba(96,165,250,0.4));
+    filter: drop-shadow(0 0 6px hsl(var(--nexart-burnt-400) / 0.45));
   }
 
   /* Sidebar link touch targets */
@@ -626,6 +639,14 @@
 /* ═══════════════════════════════════════════════════════════════
    DASHBOARD RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
+
+/* Base — cream topbar matching app-topbar treatment */
+.dash-topbar {
+  background: hsl(var(--nexart-cream-50) / 0.42);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid hsl(var(--nexart-burnt-400) / 0.16);
+}
 
 /* Mobile: stack everything vertically, reduce padding */
 @media (max-width: 767px) {
