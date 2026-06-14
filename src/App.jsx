@@ -59,6 +59,11 @@ import FieldWorkOrders from './pages/FieldWorkOrders';
 import FieldWorkOrderDetail from './pages/FieldWorkOrderDetail';
 import Projects from './pages/projects/Projects';
 import ProjectDetail from './pages/projects/ProjectDetail';
+import ProjectOverview from './pages/projects/ProjectOverview';
+import ProjectFinancials from './pages/projects/ProjectFinancials';
+import ProjectInvestors from './pages/projects/ProjectInvestors';
+import ProjectCapital from './pages/projects/ProjectCapital';
+import FlipAnalysis from './pages/projects/FlipAnalysis';
 
 const INVESTOR_HUB_ENABLED = import.meta.env.VITE_INVESTOR_HUB_ENABLED === 'true';
 
@@ -187,7 +192,13 @@ const AppRoutes = () => (
       {INVESTOR_HUB_ENABLED && (
         <>
           <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/:id" element={<ProjectDetail />} />
+          <Route path="/projects/:id" element={<ProjectDetail />}>
+            <Route index           element={<ProjectOverview />} />
+            <Route path="financials"   element={<ProjectFinancials />} />
+            <Route path="investors"    element={<ProjectInvestors />} />
+            <Route path="capital"      element={<ProjectCapital />} />
+            <Route path="flip-analysis" element={<FlipAnalysis />} />
+          </Route>
         </>
       )}
     </Route>
