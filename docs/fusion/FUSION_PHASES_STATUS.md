@@ -22,7 +22,7 @@
 | 4 | Schema SQL Investor Hub | ✅ Completa | `integration/investor-hub-schema` | `2b6740f` |
 | 5 | UI React Investor Hub | ✅ Completa | `integration/investor-hub-react-ui` | `1c98091` |
 | **6** | **Bridge Projects ↔ Work Orders** | **✅ Completa** | `integration/projects-workorders-bridge` | ver abajo |
-| 7 | QA final y cleanup | ⏸ Pendiente | `integration/final-cleanup` | — |
+| 7 | QA final y cleanup | ✅ Completa | `integration/final-cleanup` | ver abajo |
 
 ---
 
@@ -194,34 +194,55 @@ src/lib/
 
 ---
 
-### ⏸ Fase 7 — QA Final y Cleanup
+### ✅ Fase 7 — QA Final y Cleanup
 
 **Rama:** `integration/final-cleanup`  
-**Estado:** No iniciada
+**Estado:** Completa
 
-**PRs en orden:**
-1. PR baseline + documentación
-2. PR rename base44 → nexartClient
-3. PR theme tokens V3
-4. PR layout polish
-5. PR feature flags + project shell
-6. PR investor schema + RLS + QA
-7. PR investor React UI
-8. PR projects/work orders bridge
-9. PR cleanup final
+**Tareas completadas:**
+
+| Tarea | Estado |
+|-------|--------|
+| `ProjectOverview.jsx` — wired flip_analyses (shared cache) | ✅ |
+| Eliminar `supabase/drafts/` bridge draft obsoleto | ✅ |
+| Activar `VITE_INVESTOR_HUB_ENABLED=true` para QA | ✅ |
+| Build limpio con módulo activo | ✅ `✓ built in 6.12s` |
+| Dev server QA — HTTP 200, Projects visible en sidebar | ✅ |
+| RLS hardening draft en `supabase/drafts/20260613_investor_hub_rls_hardening_draft.sql` | ✅ Pendiente de aplicar |
+
+**RLS hardening — pendiente de aplicar:**  
+El draft en `supabase/drafts/20260613_investor_hub_rls_hardening_draft.sql` implementa:
+- `admin` → acceso total a todas las tablas Investor Hub
+- `office_agent` → SELECT en `projects` únicamente
+- `field_agent` → sin acceso (bloqueado por RLS)
+
+Usa `investor_user_role()` helper que lee `app_users.role` vía `auth.uid()`.  
+**Antes de aplicar:** verificar que roles en `app_users` son `admin` / `office_agent` (no `administrador` / `capataz`).
+
+**Branches para merge a master (en orden):**
+1. `integration/rename-base44` (o ya mergeado)
+2. `feature/v3-theme-tokens`
+3. `feature/v3-layout-polish`
+4. `integration/projects-investor-shell`
+5. `integration/investor-hub-schema`
+6. `integration/investor-hub-react-ui`
+7. `integration/projects-workorders-bridge`
+8. `integration/final-cleanup` ← este
 
 ---
 
 ## Estado del repo en esta sesión
 
 ```
-Branch activo:   integration/projects-workorders-bridge
-Último commit:   Phase 6 complete (ver git log)
+Branch activo:   integration/final-cleanup
+Último commit:   Phase 7 cleanup (ver git log)
 Working tree:    limpio
 Bridge:          supabase/migrations/ (aplicado a producción)
-Producción:      10 tablas Investor Hub + flip_analyses + work_orders.project_id
-Feature flag:    VITE_INVESTOR_HUB_ENABLED=false (app → no muestra Projects)
-Dev server:      npm run dev → localhost:5173 / 5174
+Producción:      11 tablas: 9 Investor Hub + flip_analyses + work_orders.project_id
+Feature flag:    VITE_INVESTOR_HUB_ENABLED=true (QA activo)
+RLS:             Scaffold (true) — hardening en supabase/drafts/ pendiente de aplicar
+Dev server:      npm run dev → localhost:5173
+Próximo paso:    Merge branches a master + aplicar RLS hardening tras validar roles
 ```
 
 ---
