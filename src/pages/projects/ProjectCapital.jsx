@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import CapitalContributionForm from '@/components/projects/CapitalContributionForm';
 import { calcTotalCapital, formatCurrency } from '@/lib/projectsApi';
+import { nexartClient } from '@/api/nexartClient';
 
 const STATUS_COLOR = {
   pending:  'bg-yellow-100 text-yellow-800',
@@ -17,9 +20,40 @@ const STATUS_COLOR = {
 export default function ProjectCapital() {
   const { project } = useOutletContext();
   const [showForm, setShowForm] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Phase 5: replace [] with useQuery for capital_contributions
-  const contributions = [];
+  const { data: contributions = [], isLoading } = useQuery({
+    queryKey: ['capital-contributions', project.id],
+    queryFn: () => nexartClient.entities.CapitalContribution.filter(
+      { project_id: project.id },
+      '-created_at',
+      200,
+      '*, investor:investors(id, name)'
+    ),
+    staleTime: 1000 * 60 * 2,
+    enabled: Boolean(project.id),
+  });
+
+  const { data: investors = [] } = useQuery({
+    queryKey: ['investors-active'],
+    queryFn: () => nexartClient.entities.Investor.filter({ status: 'active' }, '-created_at', 100),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const createContribution = useMutation({
+    mutationFn: (formData) => nexartClient.entities.CapitalContribution.create({
+      project_id: project.id,
+      company_id: 'rc-art',
+      ...formData,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['capital-contributions', project.id] });
+      setShowForm(false);
+      toast.success('Contribution recorded.');
+    },
+    onError: (err) => toast.error(`Failed to save: ${err.message}`),
+  });
+
   const total = calcTotalCapital(contributions);
 
   return (
@@ -42,12 +76,9 @@ export default function ProjectCapital() {
           <CardHeader><CardTitle className="text-base">New Contribution</CardTitle></CardHeader>
           <CardContent>
             <CapitalContributionForm
-              investors={[]}
-              onSubmit={(data) => {
-                // Phase 5: wire to nexartClient.entities.CapitalContribution.create
-                console.log('new contribution', { project_id: project.id, ...data });
-                setShowForm(false);
-              }}
+              investors={investors}
+              isLoading={createContribution.isPending}
+              onSubmit={(data) => createContribution.mutate(data)}
               onCancel={() => setShowForm(false)}
             />
           </CardContent>
@@ -57,7 +88,11 @@ export default function ProjectCapital() {
       <Card>
         <CardHeader><CardTitle className="text-base">History</CardTitle></CardHeader>
         <CardContent>
-          {contributions.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : contributions.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">No contributions recorded yet.</p>
           ) : (
             <Table>
@@ -80,7 +115,7 @@ export default function ProjectCapital() {
                     <TableCell>
                       <Badge className={STATUS_COLOR[c.status] ?? ''}>{c.status}</Badge>
                     </TableCell>
-                    <TableCell>{c.received_at ?? '—'}</TableCell>
+                    <TableCell>{c.date ?? '—'}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{c.notes ?? ''}</TableCell>
                   </TableRow>
                 ))}

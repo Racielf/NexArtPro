@@ -21,6 +21,8 @@ const TABLE_MAP = {
   AuthSecurityLog:       'auth_security_logs',
   BankAccount:           'bank_accounts',
   BankTransaction:       'bank_transactions',
+  CapitalCall:           'capital_calls',
+  CapitalContribution:   'capital_contributions',
   Client:                'clients',
   CommEvent:             'comm_events',
   Customer:              'customers',
@@ -29,6 +31,8 @@ const TABLE_MAP = {
   EstimateSnapshot:      'estimate_snapshots',
   EstimateTransmission:  'estimate_transmissions',
   EstimateVersionHistory:'estimate_version_histories',
+  Investor:              'investors',
+  InvestorCompany:       'investor_companies',
   Invoice:               'invoices',
   JobAssignment:         'job_assignments',
   Lead:                  'leads',
@@ -36,7 +40,12 @@ const TABLE_MAP = {
   Payment:               'payments',
   PriceBookEntry:        'price_book_entries',
   PricingAuditEvent:     'pricing_audit_events',
+  Project:               'projects',
+  ProjectDisbursement:   'project_disbursements',
+  ProjectExpense:        'project_expenses',
+  ProjectInvestor:       'project_investors',
   ProjectPhoto:          'project_photos',
+  ProjectRefund:         'project_refunds',
   Proposal:              'proposals',
   PublicDocumentAccess:   'public_document_access',
   RecoveryVault:         'recovery_vault',
@@ -58,6 +67,14 @@ const TABLE_MAP = {
   WorkerDocument:        'worker_documents',
   WorkerNote:            'worker_notes',
 };
+
+// ─── Timestamp style per table ───────────────────────────────────
+// Investor Hub tables use created_at/updated_at (TWO convention).
+// All other MAIN tables use created_date/updated_date.
+const USES_AT_TIMESTAMPS = new Set([
+  'projects', 'project_expenses', 'project_refunds', 'project_disbursements',
+  'investor_companies', 'investors', 'project_investors', 'capital_contributions', 'capital_calls',
+]);
 
 // ─── Sort parser ──────────────────────────────────────────────────
 // NexArt-compatible sorting uses '-field_name' for descending, 'field_name' for ascending
@@ -142,12 +159,13 @@ class SupabaseEntity {
   /**
    * Filter records by conditions.
    * @param {object} conditions - e.g. { client_id: 'abc', status: 'active' }
-   * @param {string} sort - e.g. '-created_date'
+   * @param {string} sort - e.g. '-created_date' or '-created_at' for investor tables
    * @param {number} limit - max records
+   * @param {string} columns - Supabase select expression, supports joins e.g. '*, investor:investors(id,name)'
    */
-  async filter(conditions = {}, sort = '-created_date', limit = 1000) {
+  async filter(conditions = {}, sort = '-created_date', limit = 1000, columns = '*') {
     const { column, ascending } = parseSort(sort);
-    let query = supabase.from(this.table).select('*');
+    let query = supabase.from(this.table).select(columns);
     query = applyFilters(query, conditions);
     query = query.order(column, { ascending }).limit(limit);
     const { data, error } = await query;
@@ -165,9 +183,13 @@ class SupabaseEntity {
    */
   async create(record) {
     const payload = { ...record };
-    // Add timestamps if not present
-    if (!payload.created_date) payload.created_date = new Date().toISOString();
-    if (!payload.updated_date) payload.updated_date = new Date().toISOString();
+    if (USES_AT_TIMESTAMPS.has(this.table)) {
+      // Investor Hub tables: DB handles created_at via DEFAULT now(); only set updated_at
+      if (!payload.updated_at) payload.updated_at = new Date().toISOString();
+    } else {
+      if (!payload.created_date) payload.created_date = new Date().toISOString();
+      if (!payload.updated_date) payload.updated_date = new Date().toISOString();
+    }
 
     const { data, error } = await supabase.from(this.table).insert(payload).select().single();
     if (error) {
@@ -183,7 +205,8 @@ class SupabaseEntity {
    * @param {object} updates - fields to update
    */
   async update(id, updates) {
-    const payload = { ...updates, updated_date: new Date().toISOString() };
+    const tsField = USES_AT_TIMESTAMPS.has(this.table) ? 'updated_at' : 'updated_date';
+    const payload = { ...updates, [tsField]: new Date().toISOString() };
     const { data, error } = await supabase.from(this.table).update(payload).eq('id', id).select().single();
     if (error) {
       console.error(`[SupabaseData] ${this.entityName}.update error:`, error);
