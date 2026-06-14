@@ -21,7 +21,7 @@
 | 3 | Shell Projects / Investor Hub | ✅ Completa | `integration/projects-investor-shell` → merge | `184e8e1` |
 | 4 | Schema SQL Investor Hub | ✅ Completa | `integration/investor-hub-schema` | `2b6740f` |
 | 5 | UI React Investor Hub | ✅ Completa | `integration/investor-hub-react-ui` | `1c98091` |
-| **6** | **Bridge Projects ↔ Work Orders** | **🔄 En progreso** | `integration/projects-workorders-bridge` | — |
+| **6** | **Bridge Projects ↔ Work Orders** | **✅ Completa** | `integration/projects-workorders-bridge` | ver abajo |
 | 7 | QA final y cleanup | ⏸ Pendiente | `integration/final-cleanup` | — |
 
 ---
@@ -164,31 +164,33 @@ src/lib/
 
 ---
 
-### 🔄 Fase 6 — Bridge Projects ↔ Work Orders
+### ✅ Fase 6 — Bridge Projects ↔ Work Orders
 
 **Rama:** `integration/projects-workorders-bridge`  
-**Estado:** En progreso  
-**Objetivo:** Conectar Work Orders existentes con Projects.
+**Estado:** Completa  
+**Objetivo:** Conectar Work Orders con Projects + tabla flip_analyses + React UI.
 
-**Decisiones críticas pendientes / tomadas:**
+**Migraciones aplicadas a producción (`hdiejuqbhqhebrpneymo`):**
 
-| Decisión | Estado |
-|----------|--------|
-| Añadir `work_orders.project_id UUID` | Bridge en `supabase/drafts/` — requiere aprobación explícita para aplicar |
-| Crear tabla `flip_analyses` | Pendiente — diseñada en CLAUDE.md §8 Fase 5 |
-| `actual_labor` alimenta `profit_neto` | A definir: ¿desde `work_order_expenses` o manual? |
-| `project_financial_summaries` view | Deferred desde Phase 4 |
+| Migración | Aplicada | Descripción |
+|-----------|----------|-------------|
+| `20260613_flip_analyses.sql` | ✅ 2026-06-13 | Tabla `flip_analyses` (9 campos financieros + trigger updated_at + RLS) |
+| `20260613_work_orders_project_bridge.sql` | ✅ 2026-06-13 | `ALTER TABLE work_orders ADD COLUMN project_id UUID` + índice |
 
-**Archivos a crear/modificar:**
-```
-supabase/migrations/20260613_flip_analyses.sql       ← nueva tabla
-src/pages/projects/FlipAnalysis.jsx                  ← conectar a datos reales
-src/pages/projects/ProjectFinancials.jsx             ← conectar a datos reales
-src/components/projects/FlipAnalysisPanel.jsx        ← ya funciona con datos
-```
+**Archivos React creados/modificados:**
 
-**Regla crítica:** El bridge (`work_orders.project_id`) toca una tabla de producción existente.  
-Requiere: 1) aprobación explícita del owner, 2) aplicar SOLO DESPUÉS de confirmar que `flip_analyses` y `project_financials_summary` están validados.
+| Archivo | Cambio |
+|---------|--------|
+| `src/api/nexartClient.js` | `FlipAnalysis: 'flip_analyses'` + `'flip_analyses'` en `USES_AT_TIMESTAMPS` |
+| `src/components/projects/FlipAnalysisForm.jsx` | **Nuevo** — form react-hook-form + zod para análisis financiero |
+| `src/pages/projects/FlipAnalysis.jsx` | Reescrito — useQuery + useMutation para `flip_analyses`, edición inline |
+| `src/pages/projects/ProjectFinancials.jsx` | Reescrito — useQuery comparte cache `['flip-analyses', id]` con FlipAnalysis |
+
+**Decisiones tomadas:**
+- `actual_labor`/`materials`/`services` se capturan manualmente en `flip_analyses` (no se agrega desde `work_order_expenses` todavía — ese vínculo es Phase 6.5 o futura)
+- `profit_gross` y `profit_neto` se calculan **client-side** en `buildFinancialSummary()` — no como columnas GENERATED en Postgres (evita conflictos en update)
+- `project_financial_summaries` view → deferred a Phase 7 o standalone tarea futura
+- Ambas tabs (Financials y Flip Analysis) comparten el mismo queryKey `['flip-analyses', project.id]` — una actualización invalida ambas
 
 ---
 
@@ -213,13 +215,13 @@ Requiere: 1) aprobación explícita del owner, 2) aplicar SOLO DESPUÉS de confi
 ## Estado del repo en esta sesión
 
 ```
-Branch activo:   integration/investor-hub-react-ui
-Último commit:   1c98091 — Phase 5 complete
+Branch activo:   integration/projects-workorders-bridge
+Último commit:   Phase 6 complete (ver git log)
 Working tree:    limpio
-Bridge:          supabase/drafts/ (NO en migrations)
-Producción:      intacta — solo tablas nuevas añadidas
+Bridge:          supabase/migrations/ (aplicado a producción)
+Producción:      10 tablas Investor Hub + flip_analyses + work_orders.project_id
 Feature flag:    VITE_INVESTOR_HUB_ENABLED=false (app → no muestra Projects)
-Dev server:      npm run dev → localhost:5173
+Dev server:      npm run dev → localhost:5173 / 5174
 ```
 
 ---

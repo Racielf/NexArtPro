@@ -31,6 +31,7 @@ const TABLE_MAP = {
   EstimateSnapshot:      'estimate_snapshots',
   EstimateTransmission:  'estimate_transmissions',
   EstimateVersionHistory:'estimate_version_histories',
+  FlipAnalysis:          'flip_analyses',
   Investor:              'investors',
   InvestorCompany:       'investor_companies',
   Invoice:               'invoices',
@@ -74,6 +75,7 @@ const TABLE_MAP = {
 const USES_AT_TIMESTAMPS = new Set([
   'projects', 'project_expenses', 'project_refunds', 'project_disbursements',
   'investor_companies', 'investors', 'project_investors', 'capital_contributions', 'capital_calls',
+  'flip_analyses',
 ]);
 
 // ─── Sort parser ──────────────────────────────────────────────────
