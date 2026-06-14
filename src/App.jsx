@@ -58,6 +58,9 @@ import NexArtAgent from './pages/NexArtAgent';
 import FieldWorkOrders from './pages/FieldWorkOrders';
 import FieldWorkOrderDetail from './pages/FieldWorkOrderDetail';
 import Projects from './pages/projects/Projects';
+import ProjectNew from './pages/projects/ProjectNew';
+import Investors from './pages/investors/Investors';
+import InvestorNew from './pages/investors/InvestorNew';
 import ProjectDetail from './pages/projects/ProjectDetail';
 import ProjectOverview from './pages/projects/ProjectOverview';
 import ProjectFinancials from './pages/projects/ProjectFinancials';
@@ -192,6 +195,9 @@ const AppRoutes = () => (
       {INVESTOR_HUB_ENABLED && (
         <>
           <Route path="/projects" element={<Projects />} />
+          <Route path="/projects/new" element={<ProjectNew />} />
+          <Route path="/investors" element={<Investors />} />
+          <Route path="/investors/new" element={<InvestorNew />} />
           <Route path="/projects/:id" element={<ProjectDetail />}>
             <Route index           element={<ProjectOverview />} />
             <Route path="financials"   element={<ProjectFinancials />} />

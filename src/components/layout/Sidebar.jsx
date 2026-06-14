@@ -25,6 +25,7 @@ import {
   X,
   MoreHorizontal,
   Building2,
+  Handshake,
 } from 'lucide-react';
 
 const INVESTOR_HUB_ENABLED = import.meta.env.VITE_INVESTOR_HUB_ENABLED === 'true';
@@ -37,30 +38,30 @@ const navGroups = [
   {
     label: 'Operations',
     items: [
-      { path: '/leads', label: 'Leads', icon: Users },
-      { path: '/customers', label: 'Customers', icon: UserSquare },
+      { path: '/leads',        label: 'Leads',        icon: Users },
+      { path: '/customers',    label: 'Customers',    icon: UserSquare },
       { path: '/appointments', label: 'Appointments', icon: Calendar },
-      { path: '/estimates', label: 'Estimates', icon: FileText },
-      { path: '/proposals', label: 'Proposals', icon: ScrollText },
+      { path: '/estimates',    label: 'Estimates',    icon: FileText },
+      { path: '/proposals',    label: 'Proposals',    icon: ScrollText },
     ],
   },
   {
     label: 'Execution',
     items: [
-      { path: '/work-orders', label: 'Work Orders', icon: ClipboardList },
-      { path: '/assignments', label: 'Assignments', icon: UserCheck },
-      { path: '/workers', label: 'Workers', icon: HardHat },
-      { path: '/time-tracking', label: 'Time Tracking', icon: Clock },
+      { path: '/work-orders',  label: 'Work Orders',   icon: ClipboardList },
+      { path: '/assignments',  label: 'Assignments',   icon: UserCheck },
+      { path: '/workers',      label: 'Workers',       icon: HardHat },
+      { path: '/time-tracking',label: 'Time Tracking', icon: Clock },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { path: '/invoices', label: 'Invoices', icon: Receipt },
-      { path: '/payments', label: 'Payments', icon: CreditCard },
+      { path: '/invoices',        label: 'Invoices',          icon: Receipt },
+      { path: '/payments',        label: 'Payments',          icon: CreditCard },
       { path: '/income-expenses', label: 'Income & Expenses', icon: TrendingUp },
-      { path: '/payroll', label: 'Payroll', icon: DollarSign },
-      { path: '/reports', label: 'Reports', icon: BarChart2 },
+      { path: '/payroll',         label: 'Payroll',           icon: DollarSign },
+      { path: '/reports',         label: 'Reports',           icon: BarChart2 },
     ],
   },
 ];
@@ -68,49 +69,47 @@ const navGroups = [
 const adminNavGroup = {
   label: 'Admin',
   items: [
-    { path: '/nexartsign', label: 'NexArtSign', icon: FileSignature },
-    { path: '/recovery-center', label: 'Recovery Center', icon: RotateCcw },
+    { path: '/nexartsign',     label: 'NexArtSign',     icon: FileSignature },
+    { path: '/recovery-center',label: 'Recovery Center',icon: RotateCcw },
   ],
 };
 
 const projectsNavGroup = {
   label: 'Projects',
   items: [
-    { path: '/projects', label: 'Projects', icon: Building2 },
+    { path: '/projects',  label: 'Projects',  icon: Building2 },
+    { path: '/investors', label: 'Investors', icon: Handshake },
   ],
 };
 
-/* Bottom nav items for mobile — the 4 most-used + More */
+/* Bottom nav items for mobile */
 const bottomNavItems = [
-  { path: '/dashboard', label: 'Home', icon: LayoutDashboard },
-  { path: '/work-orders', label: 'WO', icon: ClipboardList },
-  { path: '/estimates', label: 'Estimates', icon: FileText },
-  { path: '/invoices', label: 'Invoices', icon: Receipt },
+  { path: '/dashboard',  label: 'Home',      icon: LayoutDashboard },
+  { path: '/work-orders',label: 'WO',        icon: ClipboardList },
+  { path: '/estimates',  label: 'Estimates', icon: FileText },
+  { path: '/invoices',   label: 'Invoices',  icon: Receipt },
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  // Sidebar must not depend on async company settings; keep it render-safe.
   const cc = {
-    name: appConfig.company?.name || appConfig.appName || 'NexArtPro',
+    name:        appConfig.company?.name        || appConfig.appName || 'NexArtPro',
     displayName: appConfig.company?.displayName || '',
-    logo_url: appConfig.company?.logo_url || appConfig.app?.logo_url || '',
+    logo_url:    appConfig.company?.logo_url    || appConfig.app?.logo_url || '',
   };
   const { user } = useAuth();
-  const canAccessAdmin = user?.role === 'admin' || isAdmin();
-  const baseGroups = INVESTOR_HUB_ENABLED ? [...navGroups, projectsNavGroup] : navGroups;
+  const canAccessAdmin  = user?.role === 'admin' || isAdmin();
+  const baseGroups      = INVESTOR_HUB_ENABLED ? [...navGroups, projectsNavGroup] : navGroups;
   const visibleNavGroups = canAccessAdmin ? [...baseGroups, adminNavGroup] : baseGroups;
-  const sidebarLogoUrl = cc.logo_url || appConfig.company.logo_url || '';
+  const sidebarLogoUrl  = cc.logo_url || appConfig.company.logo_url || '';
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Close sidebar on route change
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
 
-  // Prevent scroll when sidebar is open on mobile
   useEffect(() => {
     if (mobileOpen) {
       document.body.style.overflow = 'hidden';
@@ -124,9 +123,7 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* ═══════════════════════════════════════ */}
-      {/* MOBILE TOP BAR — visible on < lg only  */}
-      {/* ═══════════════════════════════════════ */}
+      {/* MOBILE TOP BAR */}
       <div className="sidebar-mobile-topbar">
         <button
           onClick={() => setMobileOpen(true)}
@@ -145,12 +142,10 @@ export default function Sidebar() {
           )}
           <span className="sidebar-mobile-name">{cc.name || appConfig.appName}</span>
         </div>
-        <div style={{ width: 40 }} /> {/* spacer for centering */}
+        <div style={{ width: 40 }} />
       </div>
 
-      {/* ═══════════════════════════════════════ */}
-      {/* MOBILE OVERLAY                          */}
-      {/* ═══════════════════════════════════════ */}
+      {/* MOBILE OVERLAY */}
       {mobileOpen && (
         <div
           className="sidebar-overlay"
@@ -158,11 +153,8 @@ export default function Sidebar() {
         />
       )}
 
-      {/* ═══════════════════════════════════════ */}
-      {/* SIDEBAR — slides in on mobile           */}
-      {/* ═══════════════════════════════════════ */}
+      {/* SIDEBAR */}
       <div className={`sidebar-container ${mobileOpen ? 'sidebar-open' : ''}`}>
-        {/* Close button — mobile only */}
         <button
           onClick={() => setMobileOpen(false)}
           className="sidebar-close-btn"
@@ -237,9 +229,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════ */}
-      {/* MOBILE BOTTOM NAV                       */}
-      {/* ═══════════════════════════════════════ */}
+      {/* MOBILE BOTTOM NAV */}
       <nav className="sidebar-bottom-nav">
         {bottomNavItems.map(item => {
           const Icon = item.icon;
