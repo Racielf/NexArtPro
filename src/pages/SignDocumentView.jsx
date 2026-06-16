@@ -910,14 +910,57 @@ export default function SignDocumentView() {
         </div>
       )}
 
+      {/* ── Hotfix: inline consent in sign step ────────────────────────────
+       *  The Sign & Approve button requires accepted===true. If the user
+       *  navigated back from the consent step, or arrived at this step via
+       *  any path that bypassed renderConsent, accepted is still false and
+       *  the button is permanently disabled with no visible explanation.
+       *  Fix: show the legal consent checkbox inline inside renderSign too.
+       * ───────────────────────────────────────────────────────────────────── */}
+      <label style={{ ...S.check, marginBottom:16, background: accepted ? '#ecfdf5' : '#f8fafc', border: accepted ? '1px solid #a7f3d0' : '1px solid #e2e8f0', cursor:'pointer' }}>
+        <input
+          type="checkbox"
+          checked={accepted}
+          onChange={e => { setAccepted(e.target.checked); setIdentityConfirmed(e.target.checked); }}
+          style={{ marginTop:2, accentColor:'#1e40af', width:18, height:18, flexShrink:0 }}
+          disabled={isComplete}
+        />
+        <span style={{ fontSize:13, lineHeight:1.5 }}>
+          <strong style={{ color: accepted ? '#065f46' : '#334155' }}>
+            {accepted ? '✓ Legal consent confirmed' : 'I confirm I am the intended signer, I have reviewed this document, and I agree to sign electronically.'}
+          </strong>
+        </span>
+      </label>
+
       <div style={{ padding:12, borderRadius:10, background:'#f0f9ff', border:'1px solid #bae6fd', color:'#0c4a6e', fontSize:13, marginBottom:20, lineHeight:1.6 }}>
         <ShieldCheck style={{ width:14, height:14, display:'inline', verticalAlign:'-2px', marginRight:4 }} />
         Your signature will lock this document, generate a NexArtSign certificate, and keep the record for verification.
       </div>
 
-      <button onClick={handleApprove} disabled={acting || !name.trim() || !accepted || !sigReady || missingRequiredFields.length > 0 || (otpRequired && !otpVerified)} style={{ ...S.btn, ...S.success, width:'100%', fontSize:15, padding:'14px 24px', ...(acting || !name.trim() || !sigReady ? S.disabled : {}) }}>
+      <button
+        onClick={handleApprove}
+        disabled={acting || !name.trim() || !accepted || !sigReady || missingRequiredFields.length > 0 || (otpRequired && !otpVerified)}
+        style={{
+          ...S.btn, ...S.success, width:'100%', fontSize:15, padding:'14px 24px',
+          ...(acting || !name.trim() || !accepted || !sigReady || missingRequiredFields.length > 0 || (otpRequired && !otpVerified) ? S.disabled : {})
+        }}
+      >
         {acting ? <Loader2 className="animate-spin" style={{ width:18, height:18 }} /> : <><CheckCircle style={{ width:18, height:18 }} /> Sign &amp; Approve Document</>}
       </button>
+
+      {/* ── Inline blocker feedback ── show why the button is disabled ── */}
+      {(!name.trim() || !accepted || !sigReady || missingRequiredFields.length > 0 || (otpRequired && !otpVerified)) && !acting && (
+        <div style={{ marginTop:10, padding:'10px 14px', borderRadius:10, background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', fontSize:12, lineHeight:1.6 }}>
+          <strong>Before signing, please complete:</strong>
+          <ul style={{ margin:'4px 0 0 16px', padding:0 }}>
+            {!name.trim() && <li>Enter your full legal name</li>}
+            {!accepted && <li>Check the legal consent box above</li>}
+            {sigMethod === 'drawn' && !sigImageDataUrl && <li>Draw your signature in the canvas</li>}
+            {missingRequiredFields.length > 0 && <li>{missingRequiredFields.length} required field{missingRequiredFields.length > 1 ? 's' : ''} incomplete — go back to complete them</li>}
+            {otpRequired && !otpVerified && <li>Verify your identity with the one-time code</li>}
+          </ul>
+        </div>
+      )}
 
       <div style={{ borderTop:'1px solid #e2e8f0', marginTop:24, paddingTop:20 }}>
         <p style={{ fontSize:13, fontWeight:600, color:'#64748b', marginBottom:8 }}>Need to decline?</p>
