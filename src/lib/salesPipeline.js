@@ -31,10 +31,13 @@ const STATUS_TO_STAGE = {
  * Derive sales stage — use persisted sales_stage if available, fallback to status mapping.
  */
 export function deriveSalesStage(estimate) {
+  if (estimate.status && STATUS_TO_STAGE[estimate.status]) {
+    return STATUS_TO_STAGE[estimate.status];
+  }
   if (estimate.sales_stage && PIPELINE_STAGES.some(s => s.key === estimate.sales_stage)) {
     return estimate.sales_stage;
   }
-  return STATUS_TO_STAGE[estimate.status] || 'lead';
+  return 'lead';
 }
 
 /**

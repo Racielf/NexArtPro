@@ -17,6 +17,24 @@ function buildInitialPaymentState(total = 0) {
   };
 }
 
+async function markEstimateConverted(estimateId, invoiceId) {
+  const now = new Date().toISOString();
+
+  // 1. Critical update — must succeed (status only)
+  await base44.entities.Estimate.update(estimateId, {
+    status: 'converted',
+  });
+
+  // 2. Optional metadata — best effort (sales_stage, timestamps, invoice link)
+  await base44.entities.Estimate.update(estimateId, {
+    sales_stage: 'converted',
+    invoice_id: invoiceId,
+    converted_at: now,
+    converted_to_invoice_at: now,
+    last_activity_at: now,
+  }).catch(err => console.warn('Optional converted metadata update failed:', err));
+}
+
 /**
  * Enabled when the estimate has approval evidence:
  *  - status approved/signed, OR
@@ -58,7 +76,10 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
       }
 
       if (existing.length === 1) {
-        toast.info(`Invoice #${existing[0].invoice_number} already created`);
+        toast.info(`Invoice #${existing[0].invoice_number} already created. Opening final document.`);
+        if (estimate.status !== 'converted') {
+          await markEstimateConverted(estimate.id, existing[0].id);
+        }
         navigate(`/invoice-detail?id=${existing[0].id}`);
         setLoading(false);
         return;
@@ -102,7 +123,9 @@ export default function ConvertToInvoiceButton({ estimate, onConverted, asDropdo
         company_id: estimate.company_id || 'rc-art',
       });
 
-      toast.success(`Invoice #${invoiceNum} created successfully`);
+      await markEstimateConverted(estimate.id, invoice.id);
+
+      toast.success(`Invoice #${invoiceNum} created. Review the final document before sending.`);
       onConverted?.();
       navigate(`/invoice-detail?id=${invoice.id}`);
     } finally {
