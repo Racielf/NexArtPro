@@ -188,13 +188,13 @@ async function issueSigningAccessForPackage({ pkg }) {
       ...fields,
       status: activeParticipant.status === 'pending' ? 'active' : activeParticipant.status,
       sent_at: activeParticipant.sent_at || pkg.sent_at || now,
-    }).catch(() => {});
+    });
     return { token, signing_url: buildSigningUrl(token), scope: 'participant', participant_id: activeParticipant.id };
   }
 
   const token = buildPackageToken(pkg.document_id || pkg.id);
   const fields = await buildTokenFields(token, now);
-  await base44.entities.SigningPackage.update(pkg.id, fields).catch(() => {});
+  await base44.entities.SigningPackage.update(pkg.id, fields);
   return { token, signing_url: buildSigningUrl(token), scope: 'package', participant_id: '' };
 }
 
