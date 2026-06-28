@@ -8,11 +8,23 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { nexartClient } from '@/api/nexartClient';
 
-const TYPE_LABELS = { person: 'Individual', company: 'LLC / Company' };
+const TYPE_LABELS = {
+  individual:  'Individual',
+  llc:         'LLC',
+  corporation: 'Corp',
+  trust:       'Trust',
+  fund:        'Fund',
+  person:      'Individual',
+  company:     'LLC / Company',
+};
+
 const STATUS_COLOR = {
+  lead:     'bg-yellow-100 text-yellow-800',
   active:   'bg-green-100 text-green-800',
   inactive: 'bg-gray-100 text-gray-500',
 };
+
+const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
 export default function Investors() {
   const navigate = useNavigate();
@@ -111,13 +123,21 @@ function InvestorCard({ investor }) {
           <div className="min-w-0">
             <p className="font-semibold truncate">{investor.name}</p>
             <p className="text-xs text-muted-foreground">
-              {TYPE_LABELS[investor.type] ?? investor.type}
+              {TYPE_LABELS[investor.investor_type ?? investor.type] ?? investor.investor_type ?? investor.type}
+              {investor.investment_company && ` · ${investor.investment_company}`}
             </p>
           </div>
           <Badge className={STATUS_COLOR[investor.status] ?? ''}>
             {investor.status}
           </Badge>
         </div>
+
+        {investor.estimated_capital > 0 && (
+          <p className="text-sm font-medium text-foreground">
+            {fmt.format(investor.estimated_capital)}
+            <span className="text-xs font-normal text-muted-foreground ml-1">available</span>
+          </p>
+        )}
 
         <div className="text-sm space-y-1">
           {investor.phone && (
@@ -131,10 +151,19 @@ function InvestorCard({ investor }) {
           )}
         </div>
 
-        {investor.notes && (
-          <p className="text-xs text-muted-foreground line-clamp-2 border-t pt-2">
-            {investor.notes}
-          </p>
+        {(investor.return_preference || investor.time_horizon) && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {investor.return_preference && (
+              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                {investor.return_preference === 'equity' ? 'Equity' : 'Fixed Rate'}
+              </span>
+            )}
+            {investor.time_horizon && (
+              <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                {investor.time_horizon === 'short_term' ? '6-12m' : investor.time_horizon === 'mid_term' ? '12-24m' : '24m+'}
+              </span>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
