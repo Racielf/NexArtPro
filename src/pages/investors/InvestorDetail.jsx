@@ -39,7 +39,7 @@ export default function InvestorDetail() {
   const { data: investor, isLoading, isError } = useQuery({
     queryKey: ['investor', id],
     queryFn: async () => {
-      const rows = await nexartClient.entities.Investor.filter({ id });
+      const rows = await nexartClient.entities.Investor.filter({ id }, '-created_at', 1);
       if (!rows.length) throw new Error('Investor not found');
       return rows[0];
     },
