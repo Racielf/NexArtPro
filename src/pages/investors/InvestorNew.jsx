@@ -21,12 +21,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { nexartClient } from '@/api/nexartClient';
 
 const schema = z.object({
-  name:   z.string().min(2, 'Name is required'),
-  type:   z.enum(['person', 'company']).default('person'),
-  phone:  z.string().default(''),
-  email:  z.string().email('Invalid email').or(z.literal('')).default(''),
-  status: z.enum(['active', 'inactive']).default('active'),
-  notes:  z.string().default(''),
+  name:      z.string().min(2, 'Name is required'),
+  type:      z.enum(['person', 'company']).default('person'),
+  phone:     z.string().default(''),
+  email:     z.string().email('Invalid email').or(z.literal('')).default(''),
+  address:   z.string().default(''),
+  city:      z.string().default(''),
+  state:     z.string().default(''),
+  zip:       z.string().default(''),
+  status:    z.enum(['active', 'inactive']).default('active'),
+  tax_id:    z.string().default(''),
+  tax_notes: z.string().default(''),
+  notes:     z.string().default(''),
 });
 
 export default function InvestorNew() {
@@ -41,7 +47,9 @@ export default function InvestorNew() {
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: '', type: 'person', phone: '', email: '', status: 'active', notes: '',
+      name: '', type: 'person', phone: '', email: '',
+      address: '', city: '', state: '', zip: '',
+      status: 'active', tax_id: '', tax_notes: '', notes: '',
     },
   });
 
@@ -58,7 +66,7 @@ export default function InvestorNew() {
   });
 
   return (
-    <div className="p-6 max-w-xl mx-auto">
+    <div className="p-6 max-w-2xl mx-auto">
       <Button
         variant="ghost"
         size="sm"
@@ -80,9 +88,10 @@ export default function InvestorNew() {
         onSubmit={handleSubmit((data) => createInvestor.mutate(data))}
         className="space-y-6"
       >
+        {/* SECTION 1 — Contact Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Investor Info</CardTitle>
+            <CardTitle className="text-base">Contact Info</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
@@ -140,7 +149,6 @@ export default function InvestorNew() {
                   {...register('phone')}
                 />
               </div>
-
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -156,7 +164,72 @@ export default function InvestorNew() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                placeholder="123 Main St"
+                {...register('address')}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  placeholder="Portland"
+                  {...register('city')}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="state">State</Label>
+                <Input
+                  id="state"
+                  placeholder="OR"
+                  maxLength={2}
+                  className="uppercase"
+                  {...register('state')}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="zip">ZIP</Label>
+                <Input
+                  id="zip"
+                  placeholder="97201"
+                  {...register('zip')}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* SECTION 2 — Legal & Tax */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Legal &amp; Tax</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="tax_id">SSN / EIN</Label>
+              <Input
+                id="tax_id"
+                placeholder="XX-XXXXXXX"
+                {...register('tax_id')}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="tax_notes">Tax Notes</Label>
+              <Textarea
+                id="tax_notes"
+                placeholder="1099 requirements, entity type details..."
+                rows={3}
+                {...register('tax_notes')}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notes">General Notes</Label>
               <Textarea
                 id="notes"
                 placeholder="Partnership terms, relationship notes..."
