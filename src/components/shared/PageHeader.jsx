@@ -18,12 +18,12 @@ import { Plus } from 'lucide-react';
 export default function PageHeader({ title, subtitle, eyebrow, actionLabel, onAction, disabled, actions, children }) {
   const hasActions = actions || children || (actionLabel && onAction);
   return (
-    <div className="page-header flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-border">
+    <div className="page-header flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-background/80 border-b border-border">
       <div className="min-w-0">
         {eyebrow && (
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">{eyebrow}</p>
         )}
-        <h1 className="page-header-title text-[18px] font-bold text-foreground leading-tight tracking-tight truncate">{title}</h1>
+        <h1 className="page-header-title text-[18px] font-bold font-display text-foreground leading-tight tracking-tight truncate">{title}</h1>
         {subtitle && (
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         )}

@@ -14,6 +14,18 @@ const VARIANTS = {
   orange:   'bg-orange-50 text-orange-700 border-orange-200',
 };
 
+const DOT_COLOR = {
+  success: 'bg-emerald-500',
+  info:    'bg-blue-500',
+  sky:     'bg-sky-500',
+  warning: 'bg-amber-500',
+  danger:  'bg-red-500',
+  neutral: 'bg-slate-400',
+  purple:  'bg-violet-500',
+  teal:    'bg-teal-500',
+  orange:  'bg-orange-500',
+};
+
 const statusConfig = {
   // Appointments
   scheduled:        { label: 'Scheduled',        variant: 'info' },
@@ -56,12 +68,15 @@ const statusConfig = {
   contacted: { label: 'Contacted', variant: 'warning' },
 };
 
-export default function StatusBadge({ status }) {
+export default function StatusBadge({ status, dot = true }) {
   const cfg = statusConfig[status];
   const label = cfg?.label ?? status ?? '—';
-  const cls = VARIANTS[cfg?.variant] ?? VARIANTS.neutral;
+  const variant = cfg?.variant ?? 'neutral';
+  const cls = VARIANTS[variant] ?? VARIANTS.neutral;
+  const dotCls = DOT_COLOR[variant] ?? DOT_COLOR.neutral;
   return (
-    <Badge variant="outline" className={`text-[11px] font-medium border whitespace-nowrap ${cls}`}>
+    <Badge variant="outline" className={`text-[11px] font-medium border whitespace-nowrap gap-1.5 ${cls}`}>
+      {dot && <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotCls}`} />}
       {label}
     </Badge>
   );

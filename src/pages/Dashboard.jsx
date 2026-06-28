@@ -21,9 +21,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaCh
 /* Card shell — white, subtle border, no colored header */
 function Card({ title, icon: Icon, link, linkLabel = 'Ver todas', children, className = '', bodyClass = '' }) {
   return (
-    <div className={`flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 overflow-hidden ${className}`}>
+    <div className={`flex flex-col bg-white border border-border rounded-xl shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 overflow-hidden ${className}`}>
       {/* Clean header */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/40 flex-shrink-0">
         <div className="flex items-center gap-2">
           {Icon && <Icon className="w-3.5 h-3.5 text-slate-400" />}
           <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600">{title}</span>
@@ -45,7 +45,7 @@ function Card({ title, icon: Icon, link, linkLabel = 'Ver todas', children, clas
 /* List row */
 function Row({ children }) {
   return (
-    <div className="px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/70 transition-colors duration-150 cursor-pointer">
+    <div className="px-4 py-2.5 border-b border-border/20 last:border-0 hover:bg-muted/40 transition-colors duration-150 cursor-pointer">
       {children}
     </div>
   );
@@ -65,11 +65,11 @@ function Empty({ text, sub, icon: Icon }) {
 /* KPI chip in topbar */
 function KpiChip({ label, value, dot, loading, tooltip }) {
   return (
-    <div title={tooltip} className="flex items-center gap-1.5 px-2.5 py-[5px] bg-white border border-slate-200 rounded-lg flex-shrink-0 shadow-sm hover:shadow hover:-translate-y-[1px] transition-all duration-150 cursor-default select-none">
+    <div title={tooltip} className="flex items-center gap-1.5 px-2.5 py-[5px] bg-amber-50/70 border border-border rounded-lg flex-shrink-0 shadow-sm hover:shadow hover:-translate-y-[1px] transition-all duration-150 cursor-default select-none">
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
       <div className="leading-none">
-        <div className="text-[8px] text-slate-400 uppercase tracking-wider">{label}</div>
-        <div className={`text-[13px] font-bold tabular-nums leading-tight ${loading ? 'text-slate-300' : 'text-slate-800'}`}>
+        <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{label}</div>
+        <div className={`text-[13px] font-bold tabular-nums leading-tight ${loading ? 'text-muted-foreground/40' : 'text-foreground'}`}>
           {loading ? '···' : value}
         </div>
       </div>
@@ -94,18 +94,18 @@ function DigitalClock() {
   const ss = String(now.getSeconds()).padStart(2, '0');
   const dateStr = now.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   return (
-    <div className="dash-clock w-full bg-white flex items-center justify-center gap-4 py-2 border-b border-slate-200 select-none">
+    <div className="dash-clock w-full bg-amber-50/60 flex items-center justify-center gap-4 py-2 border-b border-border select-none">
       <div className="flex items-end gap-1 tabular-nums leading-none">
-        <span className="text-3xl font-black text-slate-800" style={{ letterSpacing: '-1px' }}>
-          {hh}<span className="text-blue-500">:</span>{mm}
+        <span className="text-3xl font-black text-foreground" style={{ letterSpacing: '-1px' }}>
+          {hh}<span className="text-primary">:</span>{mm}
         </span>
         <div className="flex flex-col mb-0.5 ml-1 gap-0">
-          <span className="text-sm font-bold text-blue-500 leading-none">{ampm}</span>
-          <span className="text-sm font-semibold text-slate-400 tabular-nums leading-none">{ss}</span>
+          <span className="text-sm font-bold text-primary leading-none">{ampm}</span>
+          <span className="text-sm font-semibold text-muted-foreground tabular-nums leading-none">{ss}</span>
         </div>
       </div>
-      <div className="w-px h-6 bg-slate-200" />
-      <p className="text-[10px] text-slate-400 capitalize">{dateStr}</p>
+      <div className="w-px h-6 bg-border" />
+      <p className="text-[10px] text-muted-foreground capitalize">{dateStr}</p>
     </div>
   );
 }
