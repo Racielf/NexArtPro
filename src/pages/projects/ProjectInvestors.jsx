@@ -54,20 +54,24 @@ export default function ProjectInvestors() {
 
   return (
     <div className="max-w-4xl space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Investors</h2>
-          <p className="text-sm text-muted-foreground">
-            Equity partners for {project.name}.
-            {projectInvestors.length > 0 && (
-              <span className={totalEquity === 100 ? ' text-green-600' : ' text-yellow-600'}>
-                {' '}{totalEquity.toFixed(1)}% allocated.
-              </span>
-            )}
-          </p>
-        </div>
+      {/* Control Room banner — nexartwo dark pattern */}
+      <div className="investor-control-room">
+        <div className="investor-control-room-badge">Investor Hub</div>
+        <h2 className="investor-control-room-title">{project.name}</h2>
+        <p className="investor-control-room-sub">
+          Equity partners and capital allocation.
+          {projectInvestors.length > 0 && (
+            <span className={totalEquity === 100 ? ' text-green-400' : ' text-yellow-300'}>
+              {' '}{totalEquity.toFixed(1)}% allocated{totalEquity === 100 ? ' — fully subscribed.' : '.'}
+            </span>
+          )}
+        </p>
         {!showForm && (
-          <Button size="sm" onClick={() => setShowForm(true)}>
+          <Button
+            size="sm"
+            onClick={() => setShowForm(true)}
+            className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30"
+          >
             <UserPlus className="w-4 h-4 mr-2" />
             Add Investor
           </Button>

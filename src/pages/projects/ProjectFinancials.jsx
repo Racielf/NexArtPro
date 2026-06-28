@@ -22,7 +22,7 @@ export default function ProjectFinancials() {
   return (
     <div className="max-w-2xl space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Financials</h2>
+        <h2 className="text-lg font-semibold font-display">Financials</h2>
         <p className="text-sm text-muted-foreground">Cost breakdown and profit projections for {project.name}.</p>
       </div>
       {isLoading ? (

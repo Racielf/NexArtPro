@@ -6,26 +6,26 @@
 
 @layer base {
   :root {
-    --background: 213 22% 97%;
-    --foreground: 222 25% 12%;
+    --background: 43 38% 95%;
+    --foreground: 228 57% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222 25% 12%;
+    --card-foreground: 228 57% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 25% 12%;
-    --primary: 40 60% 50%;
+    --popover-foreground: 228 57% 12%;
+    --primary: 40 62% 50%;
     --primary-foreground: 228 57% 7%;
-    --secondary: 43 8% 93%;
+    --secondary: 43 20% 91%;
     --secondary-foreground: 228 35% 18%;
-    --muted: 213 18% 94%;
-    --muted-foreground: 220 12% 48%;
-    --accent: 43 10% 93%;
+    --muted: 43 30% 91%;
+    --muted-foreground: 228 25% 45%;
+    --accent: 43 25% 90%;
     --accent-foreground: 228 57% 15%;
     --destructive: 0 84% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 12% 87%;
-    --input: 220 12% 87%;
-    --ring: 40 60% 50%;
-    --chart-1: 213 88% 48%;
+    --border: 38 35% 83%;
+    --input: 38 35% 83%;
+    --ring: 40 62% 50%;
+    --chart-1: 40 62% 50%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
@@ -34,21 +34,30 @@
     --radius: 0.75rem;
     --sidebar-background: 228 57% 7%;
     --sidebar-foreground: 43 30% 68%;
-    --sidebar-primary: 40 60% 50%;
+    --sidebar-primary: 40 62% 50%;
     --sidebar-primary-foreground: 228 57% 7%;
     --sidebar-accent: 225 45% 13%;
     --sidebar-accent-foreground: 43 55% 85%;
     --sidebar-border: 225 45% 10%;
-    --sidebar-ring: 40 60% 50%;
+    --sidebar-ring: 40 62% 50%;
     --font-inter: 'Inter', sans-serif;
     /* — NexArt V3 brand tokens — */
     --nexart-ink-950: 228 57% 7%;
     --nexart-ink-900: 225 60% 9%;
     --nexart-ink-800: 223 55% 15%;
     --nexart-cream-50: 43 73% 94%;
-    --nexart-burnt-400: 40 60% 50%;
+    --nexart-burnt-400: 40 62% 50%;
     --nexart-burnt-500: 38 63% 44%;
     --font-display: "Fraunces", serif;
+    /* — raw hex tokens for rgba / gradients — */
+    --ink-900: #0a1226;
+    --cream-50: #fbf5e6;
+    --burnt-400: #cc9a34;
+    --burnt-500: #b07f1d;
+    --orange-500: #df6b2a;
+    --border-warm: #e0d2a4;
+    --shadow-card: 0 1px 2px rgba(10,18,38,.06), 0 1px 3px rgba(10,18,38,.04);
+    --shadow-lift: 0 6px 16px rgba(10,18,38,.08), 0 2px 4px rgba(10,18,38,.05);
   }
 
   .dark {
@@ -341,10 +350,10 @@
 .app-topbar {
   flex-shrink: 0;
   height: 48px;
-  background: hsl(var(--nexart-cream-50) / 0.42);
+  background: rgba(251, 245, 230, 0.72);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid hsl(var(--nexart-burnt-400) / 0.16);
+  border-bottom: 1px solid var(--border-warm);
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -390,7 +399,7 @@
 .sidebar-brand-logo-fallback {
   width: 32px; height: 32px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; background: hsl(var(--nexart-burnt-400));
+  flex-shrink: 0; background: linear-gradient(135deg, var(--burnt-400), var(--orange-500));
 }
 .sidebar-brand-name {
   font-weight: 600; font-size: 13px; line-height: 1.2;
@@ -524,7 +533,7 @@
   .sidebar-mobile-logo-fallback {
     width: 28px; height: 28px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    background: hsl(var(--nexart-burnt-400));
+    background: linear-gradient(135deg, var(--burnt-400), var(--orange-500));
   }
   .sidebar-mobile-name {
     font-size: 14px; font-weight: 700; color: #f1f5f9;
@@ -642,10 +651,10 @@
 
 /* Base — cream topbar matching app-topbar treatment */
 .dash-topbar {
-  background: hsl(var(--nexart-cream-50) / 0.42);
+  background: rgba(251, 245, 230, 0.8);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid hsl(var(--nexart-burnt-400) / 0.16);
+  border-bottom: 1px solid var(--border-warm);
 }
 
 /* Mobile: stack everything vertically, reduce padding */
@@ -840,4 +849,96 @@
     min-height: 44px;
     font-size: 16px !important; /* prevents iOS zoom */
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   V3 + NEXARTWO DESIGN UTILITIES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Display font */
+.font-display { font-family: var(--font-display); }
+
+/* nexartwo stat-card */
+.nexart-stat-card {
+  background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(251,248,242,.98));
+  border: 1px solid var(--border-warm);
+  border-radius: 14px;
+  padding: 20px;
+  transition: all .25s cubic-bezier(.4,0,.2,1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.nexart-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  opacity: 0;
+  transition: opacity .25s;
+}
+.nexart-stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+.nexart-stat-card:hover::before { opacity: 1; }
+.nexart-stat-card.accent::before  { background: var(--burnt-400); }
+.nexart-stat-card.success::before { background: #16a34a; }
+.nexart-stat-card.danger::before  { background: #dc2626; }
+.nexart-stat-card.info::before    { background: #2563eb; }
+
+/* Glass topbar supplement */
+.nexart-glass-topbar {
+  background: rgba(251,245,230,.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-warm);
+}
+
+/* Investor Hub Control Room banner */
+.investor-control-room {
+  background: linear-gradient(135deg, #2d1f0e 0%, #3d2a12 50%, #2a1d0a 100%);
+  border: 1px solid rgba(204,154,52,.25);
+  border-radius: 14px;
+  padding: 24px 28px;
+  color: #f5d989;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.investor-control-room::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(204,154,52,.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+.investor-control-room-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 6px;
+}
+.investor-control-room-sub {
+  font-size: 13px;
+  color: rgba(245,217,137,.7);
+  margin: 0 0 18px;
+}
+.investor-control-room-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #f5d989;
+  margin-bottom: 12px;
+}
+.investor-control-room-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
 }

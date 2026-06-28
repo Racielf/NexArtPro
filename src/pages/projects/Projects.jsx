@@ -19,7 +19,7 @@ export default function Projects() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Projects</h1>
+          <h1 className="text-2xl font-semibold font-display">Projects</h1>
           <p className="text-sm text-muted-foreground">Flip projects, capital contributions, and investor returns.</p>
         </div>
         <Button onClick={() => navigate('/projects/new')}>
