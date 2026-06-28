@@ -33,8 +33,12 @@ export default function WorkOrderDetail() {
   const [showPreview, setShowPreview] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingAssignment, setEditingAssignment] = useState('');
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => { loadWorkOrder(); }, [id]);
+  useEffect(() => {
+    nexartClient.entities.Project.list('-created_at', 100).then(setProjects).catch(() => {});
+  }, []);
 
   const loadWorkOrder = async () => {
     if (!id) { setLoading(false); return; }
@@ -61,6 +65,12 @@ export default function WorkOrderDetail() {
     setSavingExecution(false);
     setWorkOrder(prev => prev ? { ...prev, ...execution } : prev);
     toast.success('Execution notes saved');
+  };
+
+  const saveProject = async (projectId) => {
+    await nexartClient.entities.WorkOrder.update(id, { project_id: projectId || null });
+    setWorkOrder(prev => prev ? { ...prev, project_id: projectId || null } : prev);
+    toast.success(projectId ? 'Project linked.' : 'Project unlinked.');
   };
 
   const saveTaskAssignment = async (taskId, newAssignment) => {
@@ -95,7 +105,7 @@ export default function WorkOrderDetail() {
     await nexartClient.entities.WorkOrder.update(id, { tasks: updatedTasks });
   };
 
-  const toggleTask = (taskId) => {
+  const _toggleTask = (taskId) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     const nextStatus = task.status === 'completed' ? 'pending' : task.status === 'in_progress' ? 'completed' : 'in_progress';
@@ -131,7 +141,7 @@ export default function WorkOrderDetail() {
 
   const groupItems = (workOrder.groups || []).flatMap(g => (g.items || []).map(normalizeLineItem));
   const flatItems = (workOrder.line_items || []).map(li => normalizeLineItem(li));
-  const allItems = groupItems.length > 0 ? groupItems : flatItems;
+  const _allItems = groupItems.length > 0 ? groupItems : flatItems;
   const fieldExtras = (workOrder.execution_checklist || []).filter(item => item.type === 'extra');
   const pendingFieldExtras = fieldExtras.filter(item => item.approval_status === 'pending_office_approval');
 
@@ -250,6 +260,22 @@ export default function WorkOrderDetail() {
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
                     {workOrder.scheduled_time}
                   </div>
+                </div>
+              )}
+
+              {projects.length > 0 && (
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Flip Project</p>
+                  <select
+                    className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-700"
+                    value={workOrder.project_id || ''}
+                    onChange={(e) => saveProject(e.target.value)}
+                  >
+                    <option value="">— Not linked —</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
               )}
             </div>

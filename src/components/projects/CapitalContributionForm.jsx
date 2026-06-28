@@ -19,7 +19,7 @@ const schema = z.object({
   amount:      z.coerce.number().positive('Must be positive'),
   method:      z.enum(CONTRIBUTION_METHODS),
   status:      z.enum(CONTRIBUTION_STATUSES),
-  received_at: z.string().optional(),
+  date:        z.string().optional(),
   notes:       z.string().optional(),
 });
 
@@ -79,7 +79,7 @@ export default function CapitalContributionForm({ investors = [], onSubmit, onCa
 
       <div className="space-y-1">
         <Label>Date Received</Label>
-        <Input type="date" {...register('received_at')} />
+        <Input type="date" {...register('date')} />
       </div>
 
       <div className="space-y-1">

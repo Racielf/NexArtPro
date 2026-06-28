@@ -100,8 +100,12 @@ export default function Investors() {
 }
 
 function InvestorCard({ investor }) {
+  const navigate = useNavigate();
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-default">
+    <Card
+      className="hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => navigate(`/investors/${investor.id}`)}
+    >
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
