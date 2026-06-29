@@ -1,86 +1,206 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { nexartClient } from '@/api/nexartClient';
-import PriceBookTable from '@/components/settings/pricebook/PriceBookTable';
-import PriceBookForm  from '@/components/settings/pricebook/PriceBookForm';
+import PriceBookForm   from '@/components/settings/pricebook/PriceBookForm';
 import PriceBookImport from '@/components/settings/pricebook/PriceBookImport';
-import { ITEM_TYPES, PRICE_BOOK_CATEGORIES } from '@/components/settings/pricebook/priceBookCategories';
 import {
   BookOpen, Plus, Download, Upload, Search, X, RefreshCw,
-  TrendingUp, AlertCircle, CheckCircle2, Package, SlidersHorizontal,
+  Check, Clock, Home, Building2, DollarSign,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-/* ── helpers ─────────────────────────────────────────────────────── */
+/* ── category palette ─────────────────────────────────────────────── */
+const CAT_CONFIG = {
+  'Electrical':        { bg: '#fff7ed', border: '#fed7aa', badge: '#ea580c', text: '#9a3412' },
+  'Plumbing':          { bg: '#eff6ff', border: '#bfdbfe', badge: '#2563eb', text: '#1e3a8a' },
+  'Roofing':           { bg: '#fefce8', border: '#fde68a', badge: '#a16207', text: '#713f12' },
+  'HVAC':              { bg: '#f0fdf4', border: '#bbf7d0', badge: '#15803d', text: '#14532d' },
+  'Flooring':          { bg: '#fffbeb', border: '#fde68a', badge: '#d97706', text: '#78350f' },
+  'Painting':          { bg: '#eef2ff', border: '#c7d2fe', badge: '#4338ca', text: '#312e81' },
+  'Paint':             { bg: '#eef2ff', border: '#c7d2fe', badge: '#4338ca', text: '#312e81' },
+  'Drywall':           { bg: '#f8fafc', border: '#e2e8f0', badge: '#475569', text: '#1e293b' },
+  'Drywall / Framing': { bg: '#f8fafc', border: '#e2e8f0', badge: '#475569', text: '#1e293b' },
+  'Framing':           { bg: '#fef3c7', border: '#fde68a', badge: '#b45309', text: '#78350f' },
+  'Windows & Doors':   { bg: '#fdf4ff', border: '#e9d5ff', badge: '#7c3aed', text: '#4c1d95' },
+  'Doors & Windows':   { bg: '#fdf4ff', border: '#e9d5ff', badge: '#7c3aed', text: '#4c1d95' },
+  'Doors':             { bg: '#fdf4ff', border: '#e9d5ff', badge: '#7c3aed', text: '#4c1d95' },
+  'Foundation':        { bg: '#f1f5f9', border: '#cbd5e1', badge: '#334155', text: '#0f172a' },
+  'Landscaping':       { bg: '#f0fdf4', border: '#86efac', badge: '#166534', text: '#14532d' },
+  'Cleaning':          { bg: '#f0f9ff', border: '#bae6fd', badge: '#0284c7', text: '#0c4a6e' },
+  'Limpieza':          { bg: '#f0f9ff', border: '#bae6fd', badge: '#0284c7', text: '#0c4a6e' },
+  'General Repairs':   { bg: '#fef9f0', border: '#fcd9a0', badge: '#c05621', text: '#7c2d12' },
+  'Repairs':           { bg: '#fef9f0', border: '#fcd9a0', badge: '#c05621', text: '#7c2d12' },
+  'Appliances':        { bg: '#fdf2f8', border: '#f9a8d4', badge: '#9d174d', text: '#831843' },
+  'Demolition':        { bg: '#fff1f2', border: '#fecdd3', badge: '#b91c1c', text: '#7f1d1d' },
+  'Demolicion':        { bg: '#fff1f2', border: '#fecdd3', badge: '#b91c1c', text: '#7f1d1d' },
+  'Bathroom':          { bg: '#f0fdfa', border: '#99f6e4', badge: '#0f766e', text: '#134e4a' },
+  'Kitchen':           { bg: '#f7fee7', border: '#bef264', badge: '#4d7c0f', text: '#365314' },
+  'Tile':              { bg: '#ecfeff', border: '#a5f3fc', badge: '#0e7490', text: '#164e63' },
+  'Concrete':          { bg: '#f1f5f9', border: '#94a3b8', badge: '#334155', text: '#0f172a' },
+  'Cabinetry':         { bg: '#fffbeb', border: '#fde68a', badge: '#92400e', text: '#78350f' },
+  'Countertop':        { bg: '#fdf4ff', border: '#d8b4fe', badge: '#7e22ce', text: '#4c1d95' },
+  'Labor':             { bg: '#fdf4ff', border: '#d8b4fe', badge: '#7e22ce', text: '#4c1d95' },
+  'Admin':             { bg: '#f8fafc', border: '#e2e8f0', badge: '#475569', text: '#1e293b' },
+};
+const DEFAULT_CAT = { bg: '#f8fafc', border: '#e2e8f0', badge: '#64748b', text: '#334155' };
+
+function getCatCfg(cat) {
+  if (!cat) return DEFAULT_CAT;
+  return CAT_CONFIG[cat] || DEFAULT_CAT;
+}
+
+/* ── pricing-type badge from DB fields ───────────────────────────── */
+function pricingLabel(e) {
+  if (e.book_price && parseFloat(e.book_price) > 0) return { label: 'Fixed',      cls: 'bg-red-50 text-red-600 border-red-200' };
+  if (e.unit_price  && parseFloat(e.unit_price)  > 0) return { label: 'Negotiable', cls: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
+  return { label: 'Ask', cls: 'bg-amber-50 text-amber-600 border-amber-200' };
+}
+
+/* ── unit label ──────────────────────────────────────────────────── */
+function fmtUnit(u) {
+  const map = { sqft: 'sq ft', lf: 'lin ft', ea: 'each', hr: 'hr', day: 'day', lot: 'lot', fix: 'fixture', gal: 'gal', ckt: 'circuit', sq: 'square', load: 'load', proj: 'project' };
+  return map[u?.toLowerCase()] || u || 'each';
+}
+
+/* ── format price ────────────────────────────────────────────────── */
+function fmtPrice(v, unit) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = parseFloat(v);
+  if (isNaN(n) || n === 0) return null;
+  const s = n % 1 === 0 ? `$${n.toLocaleString()}` : `$${n.toFixed(2)}`;
+  return `${s}/${fmtUnit(unit)}`;
+}
+
+/* ── CSV export ──────────────────────────────────────────────────── */
 function buildCSV(entries) {
-  const header = 'id,display_name,type,category,unit,unit_price,unit_cost,book_price,margin,notes,is_active';
+  const header = 'id,display_name,type,category,unit,unit_price,unit_cost,book_price,notes,is_active';
   const rows = entries.map(e => {
-    const up = parseFloat(e.unit_price) || 0;
-    const uc = parseFloat(e.unit_cost)  || 0;
-    const margin = up > 0 && uc > 0 ? (((up - uc) / up) * 100).toFixed(1) : '';
-    const note = (e.notes || '').replace(/"/g, '""');
     const name = (e.display_name || '').replace(/"/g, '""');
-    return `${e.id},"${name}",${e.type || ''},${e.category || ''},${e.unit || ''},${up || ''},${uc || ''},${e.book_price || ''},${margin},"${note}",${e.is_active ? 'true' : 'false'}`;
+    const note = (e.notes || '').replace(/"/g, '""');
+    return `${e.id},"${name}",${e.type || ''},${e.category || ''},${e.unit || ''},${e.unit_price || ''},${e.unit_cost || ''},${e.book_price || ''},"${note}",${e.is_active ? 'true' : 'false'}`;
   });
   return [header, ...rows].join('\n');
 }
-
 function downloadBlob(content, filename, type) {
   const blob = new Blob([content], { type });
   const url  = URL.createObjectURL(blob);
   const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
-  document.body.appendChild(a);
-  a.click();
+  document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 800);
 }
 
-function todayStr() {
-  return format(new Date(), 'yyyy-MM-dd');
-}
+/* ══════════════════════════════════════════════════════════════════
+   SERVICE CARD
+   ══════════════════════════════════════════════════════════════════ */
+function ServiceCard({ entry, onClick }) {
+  const cfg   = getCatCfg(entry.category);
+  const price = fmtPrice(entry.unit_price, entry.unit) || fmtPrice(entry.book_price, entry.unit);
+  const pl    = pricingLabel(entry);
+  const type  = entry.type || 'service';
+  const typeLabel = { service: 'Service', material: 'Material', labor: 'Labor' }[type] || type;
+  const isActive = entry.is_active !== false;
 
-/* ── stat chip ───────────────────────────────────────────────────── */
-function StatChip({ icon: Icon, value, label, color = 'slate', loading }) {
-  const colors = {
-    slate:  'bg-slate-50 border-slate-200 text-slate-700',
-    green:  'bg-emerald-50 border-emerald-200 text-emerald-700',
-    amber:  'bg-amber-50 border-amber-200 text-amber-700',
-    blue:   'bg-blue-50 border-blue-200 text-blue-700',
-    red:    'bg-red-50 border-red-200 text-red-600',
-  };
   return (
-    <div className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border ${colors[color]} select-none`}>
-      <Icon className="w-4 h-4 opacity-60 flex-shrink-0" />
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider opacity-60">{label}</p>
-        <p className={`text-xl font-bold tabular-nums leading-tight ${loading ? 'opacity-20' : ''}`}>{loading ? '—' : value}</p>
+    <div
+      onClick={() => onClick(entry)}
+      className="group relative flex flex-col rounded-xl border cursor-pointer transition-all duration-150 hover:-translate-y-[2px] overflow-hidden"
+      style={{
+        background: isActive ? cfg.bg : '#f8fafc',
+        borderColor: isActive ? cfg.border : '#e2e8f0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        opacity: isActive ? 1 : 0.6,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)'; e.currentTarget.style.borderColor = cfg.badge; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = isActive ? cfg.border : '#e2e8f0'; }}
+    >
+      {/* Top row: category badge + price */}
+      <div className="flex items-start justify-between px-4 pt-4 pb-2 gap-2">
+        <span
+          className="inline-block text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-[3px] leading-none flex-shrink-0"
+          style={{ background: cfg.badge + '1a', color: cfg.badge }}
+        >
+          {entry.category || typeLabel}
+        </span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {price && (
+            <span className="text-[15px] font-bold text-slate-800 tabular-nums leading-none whitespace-nowrap">
+              {price}
+            </span>
+          )}
+          {price && (
+            <span className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: cfg.badge + '22', color: cfg.badge }}>
+              <Check className="w-2.5 h-2.5" />
+            </span>
+          )}
+          {!price && (
+            <span className="text-[11px] font-medium text-slate-400 italic">No price</span>
+          )}
+        </div>
       </div>
+
+      {/* Name */}
+      <div className="px-4 pb-1">
+        <h3 className="text-[13px] font-semibold text-slate-800 leading-snug line-clamp-2 group-hover:text-slate-900">
+          {entry.display_name}
+        </h3>
+      </div>
+
+      {/* Description */}
+      <div className="px-4 pb-3 flex-1">
+        <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
+          {entry.notes || <span className="italic text-slate-300">No description</span>}
+        </p>
+      </div>
+
+      {/* Tags footer */}
+      <div className="px-3 pb-3 flex items-center gap-1.5 flex-wrap">
+        {/* Type */}
+        <span className={`text-[9px] font-semibold px-2 py-[3px] rounded-full border leading-none ${
+          type === 'material' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+          type === 'labor'    ? 'bg-purple-50 text-purple-600 border-purple-200' :
+                                'bg-blue-50 text-blue-600 border-blue-200'
+        }`}>
+          {typeLabel}
+        </span>
+        {/* Property type */}
+        <span className="flex items-center gap-0.5 text-[9px] font-medium text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-[3px] leading-none">
+          <Home className="w-2.5 h-2.5" /> Residential
+        </span>
+        {/* Pricing type */}
+        <span className={`text-[9px] font-semibold px-2 py-[3px] rounded-full border leading-none ${pl.cls}`}>
+          {pl.label}
+        </span>
+      </div>
+
+      {/* Inactive overlay chip */}
+      {!isActive && (
+        <div className="absolute top-2 right-2">
+          <span className="text-[9px] font-bold bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full">Inactive</span>
+        </div>
+      )}
     </div>
   );
 }
 
-/* ── main page ───────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   MAIN PAGE
+   ══════════════════════════════════════════════════════════════════ */
 export default function PriceBook() {
   const [entries,    setEntries]    = useState([]);
   const [loading,    setLoading]    = useState(true);
-  const [saving,     setSaving]     = useState(false);
-  const [editTarget, setEditTarget] = useState(null);   // null = closed, {} = new, {...} = edit
+  const [editTarget, setEditTarget] = useState(null);
   const [showImport, setShowImport] = useState(false);
   const [saved,      setSaved]      = useState(false);
+  const [search,     setSearch]     = useState('');
+  const [activeCat,  setActiveCat]  = useState('All');
 
-  // Filters
-  const [search,    setSearch]    = useState('');
-  const [typeFilter,   setTypeFilter]   = useState('all');
-  const [catFilter,    setCatFilter]    = useState('all');
-  const [activeFilter, setActiveFilter] = useState('all'); // all | active | inactive
-  const [reviewFilter, setReviewFilter] = useState(false);
-
-  /* ── load ─────────────────────────────────────────────────────── */
+  /* ── load ────────────────────────────────────────────────────── */
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await nexartClient.entities.PriceBookEntry.list('-created_date', 500);
       setEntries(data || []);
     } catch (err) {
-      console.error('[PriceBook] load error', err);
+      console.error('[PriceBook] load', err);
     } finally {
       setLoading(false);
     }
@@ -88,129 +208,70 @@ export default function PriceBook() {
 
   useEffect(() => { load(); }, [load]);
 
-  /* ── flash save badge ─────────────────────────────────────────── */
-  const flashSaved = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  const flashSaved = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
 
-  /* ── CRUD ─────────────────────────────────────────────────────── */
+  /* ── CRUD ────────────────────────────────────────────────────── */
   const handleSave = async (form) => {
-    setSaving(true);
     try {
       if (form.id) {
         await nexartClient.entities.PriceBookEntry.update(form.id, form);
         setEntries(prev => prev.map(e => e.id === form.id ? { ...e, ...form } : e));
       } else {
-        const created = await nexartClient.entities.PriceBookEntry.create({
-          ...form,
-          source: form.source || 'manual',
-        });
+        const created = await nexartClient.entities.PriceBookEntry.create({ ...form, source: 'manual' });
         setEntries(prev => [created, ...prev]);
       }
       setEditTarget(null);
       flashSaved();
     } catch (err) {
-      console.error('[PriceBook] save error', err);
-    } finally {
-      setSaving(false);
+      console.error('[PriceBook] save', err);
     }
   };
 
-  const handleToggleActive = async (id) => {
-    const entry = entries.find(e => e.id === id);
-    if (!entry) return;
-    const next = !entry.is_active;
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, is_active: next } : e));
-    try {
-      await nexartClient.entities.PriceBookEntry.update(id, { is_active: next });
-    } catch { load(); }
-  };
-
-  const handleToggleReview = async (id) => {
-    const entry = entries.find(e => e.id === id);
-    if (!entry) return;
-    const next = !entry.needs_review;
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, needs_review: next } : e));
-    try {
-      await nexartClient.entities.PriceBookEntry.update(id, { needs_review: next });
-    } catch { load(); }
-  };
-
-  const handleInlinePriceUpdate = async (id, field, value) => {
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e));
-    try {
-      await nexartClient.entities.PriceBookEntry.update(id, { [field]: value });
-    } catch { load(); }
-  };
-
-  /* ── import handler ───────────────────────────────────────────── */
+  /* ── import ───────────────────────────────────────────────────── */
   const handleImport = useCallback((rows) => {
     let added = 0, updated = 0, skipped = 0;
-    const updates = [];
-    const creates = [];
-
-    rows.forEach(row => {
-      if (!row.service_name && !row.display_name) { skipped++; return; }
-      const name = (row.display_name || row.service_name || '').trim();
-      if (!name) { skipped++; return; }
-
-      const existing = entries.find(e =>
-        (e.display_name || '').toLowerCase() === name.toLowerCase()
-      );
-
-      const bookPrice = row.book_price !== undefined ? parseFloat(row.book_price) || null : undefined;
-      const unitPrice = row.unit_price !== undefined ? parseFloat(row.unit_price) || null : undefined;
-
-      if (existing) {
-        const patch = {};
-        if (bookPrice !== undefined) patch.book_price = bookPrice;
-        if (unitPrice !== undefined) patch.unit_price = unitPrice;
-        if (row.category) patch.category = row.category;
-        if (row.notes)    patch.notes    = row.notes;
-        if (row.uom || row.unit) patch.unit = row.uom || row.unit;
-        updates.push({ id: existing.id, patch });
-        updated++;
-      } else {
-        creates.push({
-          display_name: name,
-          type: 'service',
-          category: row.category || '',
-          unit: row.uom || row.unit || 'sqft',
-          unit_price: unitPrice || null,
-          book_price: bookPrice || null,
-          notes: row.notes || '',
-          is_active: true,
-          needs_review: false,
-          source: 'import',
-        });
-        added++;
-      }
-    });
-
-    // Apply optimistically then sync
     (async () => {
-      try {
-        for (const { id, patch } of updates) {
-          await nexartClient.entities.PriceBookEntry.update(id, patch);
+      for (const row of rows) {
+        const name = (row.display_name || row.service_name || '').trim();
+        if (!name) { skipped++; continue; }
+        const existing = entries.find(e => (e.display_name || '').toLowerCase() === name.toLowerCase());
+        if (existing) {
+          const patch = {};
+          if (row.book_price) patch.book_price = parseFloat(row.book_price);
+          if (row.unit_price) patch.unit_price  = parseFloat(row.unit_price);
+          if (row.category)   patch.category    = row.category;
+          if (row.notes)      patch.notes       = row.notes;
+          await nexartClient.entities.PriceBookEntry.update(existing.id, patch);
+          updated++;
+        } else {
+          await nexartClient.entities.PriceBookEntry.create({
+            display_name: name, type: 'service',
+            category: row.category || '',
+            unit: row.uom || row.unit || 'ea',
+            unit_price: row.unit_price ? parseFloat(row.unit_price) : null,
+            book_price: row.book_price ? parseFloat(row.book_price) : null,
+            notes: row.notes || '', is_active: true, source: 'import',
+          });
+          added++;
         }
-        for (const payload of creates) {
-          await nexartClient.entities.PriceBookEntry.create(payload);
-        }
-        await load();
-        flashSaved();
-      } catch (err) {
-        console.error('[PriceBook] import error', err);
-        load();
       }
+      await load();
+      flashSaved();
     })();
-
     return { added, updated, skipped };
   }, [entries, load]);
 
-  /* ── filtered list ────────────────────────────────────────────── */
+  /* ── categories list ─────────────────────────────────────────── */
+  const categories = useMemo(() => {
+    const live = entries.filter(e => !e.deleted_at);
+    const set = new Set(live.map(e => e.category).filter(Boolean));
+    return ['All', ...Array.from(set).sort()];
+  }, [entries]);
+
+  /* ── filtered ─────────────────────────────────────────────────── */
   const filtered = useMemo(() => {
     let list = entries.filter(e => !e.deleted_at);
+    if (activeCat !== 'All') list = list.filter(e => e.category === activeCat);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(e =>
@@ -219,129 +280,29 @@ export default function PriceBook() {
         (e.notes        || '').toLowerCase().includes(q)
       );
     }
-    if (typeFilter !== 'all') list = list.filter(e => e.type === typeFilter);
-    if (catFilter  !== 'all') list = list.filter(e => e.category === catFilter);
-    if (activeFilter === 'active')   list = list.filter(e => e.is_active);
-    if (activeFilter === 'inactive') list = list.filter(e => !e.is_active);
-    if (reviewFilter) list = list.filter(e => e.needs_review);
     return list;
-  }, [entries, search, typeFilter, catFilter, activeFilter, reviewFilter]);
-
-  /* ── stats ────────────────────────────────────────────────────── */
-  const stats = useMemo(() => {
-    const live = entries.filter(e => !e.deleted_at);
-    const priced    = live.filter(e => e.unit_price != null && e.unit_price !== '');
-    const reviewing = live.filter(e => e.needs_review);
-    const margins = live.map(e => {
-      const up = parseFloat(e.unit_price) || 0;
-      const uc = parseFloat(e.unit_cost)  || 0;
-      return up > 0 && uc > 0 ? ((up - uc) / up) * 100 : null;
-    }).filter(m => m !== null);
-    const avgMargin = margins.length ? (margins.reduce((a,b)=>a+b,0)/margins.length).toFixed(1) : '—';
-    return { total: live.length, priced: priced.length, unpriced: live.length - priced.length, reviewing: reviewing.length, avgMargin };
-  }, [entries]);
-
-  /* ── used categories ──────────────────────────────────────────── */
-  const usedCategories = useMemo(() => {
-    const set = new Set(entries.map(e => e.category).filter(Boolean));
-    return [...set].sort();
-  }, [entries]);
-
-  const hasFilters = search || typeFilter !== 'all' || catFilter !== 'all' || activeFilter !== 'all' || reviewFilter;
+  }, [entries, activeCat, search]);
 
   /* ── render ───────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: 'var(--background)' }}>
 
-      {/* ── PAGE HEADER ─────────────────────────────────────────── */}
-      <div className="px-6 py-5 border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-screen-xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
-                <BookOpen className="w-4.5 h-4.5 text-amber-600" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground leading-tight">Price Book</h1>
-                <p className="text-[11px] text-muted-foreground">Tarifas y márgenes para servicios, materiales y mano de obra</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              {saved && (
-                <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 animate-in fade-in">
-                  <CheckCircle2 className="w-3 h-3" /> Guardado
-                </span>
-              )}
-              <button onClick={() => downloadBlob(buildCSV(filtered), `price-book-${todayStr()}.csv`, 'text/csv;charset=utf-8;')}
-                className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-2 rounded-lg border border-border hover:bg-muted/50 text-slate-600 transition">
-                <Download className="w-3.5 h-3.5" /> CSV
-              </button>
-              <button onClick={() => {
-                const payload = {
-                  exportedAt: new Date().toISOString(),
-                  count: filtered.length,
-                  entries: filtered.map(e => ({
-                    id: e.id, display_name: e.display_name, type: e.type,
-                    category: e.category, unit: e.unit, unit_price: e.unit_price,
-                    unit_cost: e.unit_cost, book_price: e.book_price, notes: e.notes,
-                    is_active: e.is_active,
-                  })),
-                };
-                downloadBlob(JSON.stringify(payload, null, 2), `price-book-${todayStr()}.json`, 'application/json');
-              }}
-                className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-2 rounded-lg border border-border hover:bg-muted/50 text-slate-600 transition">
-                <Download className="w-3.5 h-3.5" /> JSON
-              </button>
-              <button onClick={() => setShowImport(v => !v)}
-                className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-2 rounded-lg border transition ${showImport ? 'bg-amber-50 border-amber-300 text-amber-700' : 'border-border hover:bg-muted/50 text-slate-600'}`}>
-                <Upload className="w-3.5 h-3.5" /> Import
-              </button>
-              <button onClick={() => load()}
-                className="p-2 rounded-lg border border-border hover:bg-muted/50 text-slate-500 transition"
-                title="Refresh">
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-              <button onClick={() => setEditTarget({})}
-                className="flex items-center gap-1.5 text-[12px] font-semibold px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition shadow-sm">
-                <Plus className="w-3.5 h-3.5" /> Add Item
-              </button>
-            </div>
+      {/* ── TOP HEADER ────────────────────────────────────────── */}
+      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-6 py-3">
+        <div className="max-w-[1600px] mx-auto flex items-center gap-4">
+          {/* Brand */}
+          <div className="flex-shrink-0 mr-2">
+            <h1 className="text-[15px] font-bold text-slate-900 leading-none">Price Book</h1>
+            <p className="text-[10px] text-slate-400 mt-0.5">Service Library &amp; Standard Pricing</p>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-screen-xl mx-auto px-6 py-5 flex flex-col gap-5">
-
-        {/* ── STATS ROW ─────────────────────────────────────────── */}
-        <div className="flex flex-wrap gap-3">
-          <StatChip icon={Package}       value={stats.total}        label="Total Items"   color="slate"  loading={loading} />
-          <StatChip icon={CheckCircle2}  value={stats.priced}       label="Priced"        color="green"  loading={loading} />
-          <StatChip icon={BookOpen}      value={stats.unpriced}     label="Not Priced"    color={stats.unpriced > 0 ? 'amber' : 'slate'} loading={loading} />
-          <StatChip icon={TrendingUp}    value={stats.avgMargin === '—' ? '—' : `${stats.avgMargin}%`} label="Avg Margin" color="blue" loading={loading} />
-          {stats.reviewing > 0 && (
-            <StatChip icon={AlertCircle} value={stats.reviewing}    label="Needs Review"  color="red"    loading={loading} />
-          )}
-        </div>
-
-        {/* ── IMPORT PANEL ──────────────────────────────────────── */}
-        {showImport && (
-          <div className="rounded-xl border border-amber-200/60 bg-amber-50/40 p-4">
-            <PriceBookImport onImport={handleImport} />
-          </div>
-        )}
-
-        {/* ── FILTER BAR ────────────────────────────────────────── */}
-        <div className="flex flex-wrap gap-2 items-center">
           {/* Search */}
-          <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <div className="flex-1 relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
             <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar items…"
-              className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition"
+              type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search services, categories…"
+              className="w-full pl-9 pr-8 py-2 text-[12px] border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-50 transition"
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
@@ -350,104 +311,129 @@ export default function PriceBook() {
             )}
           </div>
 
-          {/* Type filter */}
-          <div className="flex gap-1">
-            {[{ value: 'all', label: 'All Types' }, ...ITEM_TYPES].map(t => (
-              <button key={t.value} onClick={() => setTypeFilter(t.value)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition ${
-                  typeFilter === t.value
-                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                    : 'bg-background border-border text-slate-500 hover:border-slate-300 hover:bg-slate-50'
-                }`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Category dropdown */}
-          <select
-            value={catFilter}
-            onChange={e => setCatFilter(e.target.value)}
-            className="text-[11px] font-medium border border-border rounded-lg px-3 py-2 bg-background text-slate-600 focus:outline-none focus:border-primary/60 transition">
-            <option value="all">All Categories</option>
-            {usedCategories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-
-          {/* Active filter */}
-          <select
-            value={activeFilter}
-            onChange={e => setActiveFilter(e.target.value)}
-            className="text-[11px] font-medium border border-border rounded-lg px-3 py-2 bg-background text-slate-600 focus:outline-none focus:border-primary/60 transition">
-            <option value="all">All Status</option>
-            <option value="active">Active only</option>
-            <option value="inactive">Inactive only</option>
-          </select>
-
-          {/* Review filter */}
-          <button onClick={() => setReviewFilter(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold border transition ${
-              reviewFilter ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-background border-border text-slate-500 hover:bg-slate-50'
-            }`}>
-            <AlertCircle className="w-3 h-3" />
-            Review
-          </button>
-
-          {/* Clear filters */}
-          {hasFilters && (
-            <button onClick={() => { setSearch(''); setTypeFilter('all'); setCatFilter('all'); setActiveFilter('all'); setReviewFilter(false); }}
-              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700 transition px-2">
-              <X className="w-3 h-3" /> Clear filters
+          <div className="flex items-center gap-2 ml-auto">
+            {saved && (
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5">
+                <Check className="w-3 h-3" /> Saved
+              </span>
+            )}
+            <button onClick={() => downloadBlob(buildCSV(filtered), `price-book-${format(new Date(),'yyyy-MM-dd')}.csv`, 'text/csv')}
+              className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition">
+              <Download className="w-3.5 h-3.5" /> Export
             </button>
-          )}
-
-          {/* Result count */}
-          <span className="ml-auto text-[11px] text-slate-400">
-            {loading ? '…' : `${filtered.length} item${filtered.length !== 1 ? 's' : ''}`}
-            {hasFilters && entries.length > filtered.length && ` (de ${entries.length})`}
-          </span>
-        </div>
-
-        {/* ── TABLE ─────────────────────────────────────────────── */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 gap-3">
-            <RefreshCw className="w-5 h-5 animate-spin" />
-            <span className="text-sm">Cargando Price Book…</span>
+            <button onClick={() => setShowImport(v => !v)}
+              className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-2 rounded-lg border transition ${showImport ? 'bg-amber-50 border-amber-300 text-amber-700' : 'border-slate-200 hover:bg-slate-50 text-slate-600'}`}>
+              <Upload className="w-3.5 h-3.5" /> Import
+            </button>
+            <button onClick={() => load()} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-400 transition" title="Refresh">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button onClick={() => setEditTarget({})}
+              className="flex items-center gap-1.5 text-[12px] font-bold px-4 py-2 rounded-lg text-white transition hover:opacity-90 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+              <Plus className="w-3.5 h-3.5" /> + Add Service
+            </button>
           </div>
-        ) : (
-          <PriceBookTable
-            entries={filtered}
-            onEdit={entry => setEditTarget(entry)}
-            onToggleActive={handleToggleActive}
-            onToggleReview={handleToggleReview}
-            onInlinePriceUpdate={handleInlinePriceUpdate}
-            showMarket={true}
-          />
+        </div>
+      </div>
+
+      {/* ── CONTENT ───────────────────────────────────────────── */}
+      <div className="max-w-[1600px] mx-auto px-6 py-5 flex flex-col gap-4">
+
+        {/* Import panel */}
+        {showImport && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+            <PriceBookImport onImport={handleImport} />
+          </div>
         )}
 
-        {/* ── EMPTY STATE ───────────────────────────────────────── */}
-        {!loading && entries.filter(e => !e.deleted_at).length === 0 && (
+        {/* Count + Add */}
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-semibold text-slate-600">
+            {loading ? '…' : `${filtered.length} service${filtered.length !== 1 ? 's' : ''}`}
+            {activeCat !== 'All' && <span className="text-slate-400 font-normal"> in {activeCat}</span>}
+            {search && <span className="text-slate-400 font-normal"> matching "{search}"</span>}
+          </span>
+          {!loading && entries.filter(e => !e.deleted_at).length === 0 && (
+            <button onClick={() => setShowImport(true)}
+              className="text-[11px] text-amber-600 hover:underline">
+              Import Oregon price template →
+            </button>
+          )}
+        </div>
+
+        {/* Category tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 flex-nowrap">
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCat(cat)}
+              className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold border transition whitespace-nowrap"
+              style={activeCat === cat
+                ? { background: getCatCfg(cat === 'All' ? null : cat).badge, color: '#fff', borderColor: getCatCfg(cat === 'All' ? null : cat).badge }
+                : { background: '#fff', color: '#4b5563', borderColor: '#e5e7eb' }
+              }
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Grid */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20 gap-3 text-slate-400">
+            <RefreshCw className="w-5 h-5 animate-spin" />
+            <span className="text-sm">Loading Price Book…</span>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-14 h-14 bg-amber-50 border border-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <BookOpen className="w-6 h-6 text-amber-500" />
             </div>
-            <p className="text-sm font-semibold text-slate-600 mb-1">Price Book vacío</p>
-            <p className="text-xs text-slate-400 mb-4">Agrega items manualmente o importa un CSV con precios de Oregon</p>
-            <div className="flex justify-center gap-2">
-              <button onClick={() => setShowImport(true)}
-                className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition">
-                <Upload className="w-3.5 h-3.5" /> Import CSV
-              </button>
-              <button onClick={() => setEditTarget({})}
-                className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition">
-                <Plus className="w-3.5 h-3.5" /> Add Item
-              </button>
-            </div>
+            <p className="text-sm font-semibold text-slate-600 mb-1">
+              {entries.length === 0 ? 'Price Book vacío' : 'No results'}
+            </p>
+            <p className="text-xs text-slate-400 mb-4">
+              {entries.length === 0
+                ? 'Importa el template de Oregon o agrega servicios manualmente'
+                : 'Try a different search or category'
+              }
+            </p>
+            {entries.length === 0 && (
+              <div className="flex justify-center gap-2">
+                <button onClick={() => setShowImport(true)}
+                  className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition">
+                  <Upload className="w-3.5 h-3.5" /> Import Oregon CSV
+                </button>
+                <button onClick={() => setEditTarget({})}
+                  className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg text-white transition hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>
+                  <Plus className="w-3.5 h-3.5" /> Add Service
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-3"
+            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+            {filtered.map(entry => (
+              <ServiceCard key={entry.id} entry={entry} onClick={e => setEditTarget(e)} />
+            ))}
+            {/* Add card */}
+            <button
+              onClick={() => setEditTarget({})}
+              className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 hover:border-amber-400 hover:bg-amber-50/40 transition-all min-h-[140px] text-slate-400 hover:text-amber-600 group"
+            >
+              <div className="w-8 h-8 rounded-full border-2 border-slate-200 group-hover:border-amber-400 flex items-center justify-center transition-colors">
+                <Plus className="w-4 h-4" />
+              </div>
+              <span className="text-[11px] font-semibold">Add Service</span>
+            </button>
           </div>
         )}
-
       </div>
 
-      {/* ── FORM MODAL ────────────────────────────────────────────── */}
+      {/* Form modal */}
       {editTarget !== null && (
         <PriceBookForm
           entry={Object.keys(editTarget).length === 0 ? null : editTarget}
