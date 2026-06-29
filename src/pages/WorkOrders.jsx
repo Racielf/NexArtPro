@@ -215,13 +215,11 @@ export default function WorkOrders() {
   const openEdit = (wo) => { setEditing(wo); setForm({ ...wo }); setShowForm(true); };
 
   const handleSave = async () => {
+    if (!form.title?.trim()) { toast.error('Title is required'); return; }
     if (editing?.id) {
       await nexartClient.entities.WorkOrder.update(editing.id, form);
       toast.success('Work order updated');
     } else {
-      // Strip fields that must not be sent on INSERT:
-      // id → let DB generate UUID
-      // work_order_number → INTEGER, 'New' string would break the insert
       const { id: _id, work_order_number: _num, ...createPayload } = form;
       await nexartClient.entities.WorkOrder.create({
         ...createPayload,
@@ -556,17 +554,38 @@ export default function WorkOrders() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label>Title</Label>
-              <Input value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="WO description" />
+              <Label>Title / Scope <span className="text-red-500">*</span></Label>
+              <Input
+                value={form.title || ''}
+                onChange={e => setForm({ ...form, title: e.target.value })}
+                placeholder="e.g. Kitchen remodel — tile + cabinets"
+                autoFocus
+              />
             </div>
             <div className="space-y-1.5">
-              <Label>Assigned To</Label>
-              <Input value={form.assigned_to || ''} onChange={e => setForm({ ...form, assigned_to: e.target.value })} placeholder="Technician name" />
+              <Label>Client Name</Label>
+              <Input
+                value={form.client_name || ''}
+                onChange={e => setForm({ ...form, client_name: e.target.value })}
+                placeholder="Property owner or company"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Job Address</Label>
+              <Input
+                value={form.job_address || form.address || ''}
+                onChange={e => setForm({ ...form, job_address: e.target.value, address: e.target.value })}
+                placeholder="123 Main St, Portland OR 97201"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Scheduled Date</Label>
-                <Input type="date" value={form.scheduled_date || ''} onChange={e => setForm({ ...form, scheduled_date: e.target.value })} />
+                <Input
+                  type="date"
+                  value={form.scheduled_date || ''}
+                  onChange={e => setForm({ ...form, scheduled_date: e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Status</Label>
@@ -580,9 +599,19 @@ export default function WorkOrders() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Notes</Label>
-              <Textarea value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} />
+              <Label>Notes / Scope details</Label>
+              <Textarea
+                value={form.notes || ''}
+                onChange={e => setForm({ ...form, notes: e.target.value })}
+                rows={3}
+                placeholder="Describe work scope, special requirements, access instructions…"
+              />
             </div>
+            {!editing?.id && (
+              <p className="text-[11px] text-slate-400 bg-slate-50 rounded-lg px-3 py-2">
+                Worker assignment is done from the Work Order detail page after creation.
+              </p>
+            )}
             <div className="flex justify-between gap-2 pt-1">
               {editing?.id && (
                 <button
