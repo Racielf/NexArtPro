@@ -133,7 +133,6 @@
 
 /* ═══════════════════════════════════════════════════════════════
    NEXARTWO GLOBAL CARD OVERRIDES
-   Applies gradient background + hover lift to ALL shadcn Cards
    ═══════════════════════════════════════════════════════════════ */
 
 .bg-card {
@@ -152,6 +151,48 @@ div.rounded-xl.border.bg-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
   border-color: var(--border-warm);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INPUT FOCUS — nexartwo amber glow pattern
+   ═══════════════════════════════════════════════════════════════ */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: var(--burnt-400) !important;
+  box-shadow: 0 0 0 3px rgba(217,119,6,0.12), var(--shadow-glow) !important;
+  outline: none !important;
+}
+
+/* Shadcn Select trigger focus */
+[role="combobox"]:focus,
+[role="combobox"]:focus-visible {
+  border-color: var(--burnt-400) !important;
+  box-shadow: 0 0 0 3px rgba(217,119,6,0.12) !important;
+  outline: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRIMARY BUTTON — nexartwo gradient + hover lift
+   ═══════════════════════════════════════════════════════════════ */
+button.bg-primary:not([disabled]),
+a.bg-primary:not([disabled]) {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #1a0a00 !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(217,119,6,0.20);
+  transition: var(--nexart-transition) !important;
+}
+button.bg-primary:not([disabled]):hover,
+a.bg-primary:not([disabled]):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 28px rgba(217,119,6,0.30) !important;
+  background: linear-gradient(135deg, #fbbf24 0%, #b45309 100%) !important;
+}
+button.bg-primary:not([disabled]):active,
+a.bg-primary:not([disabled]):active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(217,119,6,0.15) !important;
 }
 
 @layer components {
@@ -401,6 +442,20 @@ table tbody tr {
 
 table tbody tr:hover td {
   background: var(--accent-soft);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE CONTENT — nexartwo consistent padding utility
+   ═══════════════════════════════════════════════════════════════ */
+.nexart-page {
+  padding: 28px 32px;
+  animation: nexartPageIn 0.3s ease;
+}
+@media (max-width: 1023px) {
+  .nexart-page { padding: 20px 16px; }
+}
+@media (max-width: 767px) {
+  .nexart-page { padding: 14px 12px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -721,7 +776,6 @@ table tbody tr:hover td {
    DASHBOARD RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 
-/* nexartwo white glass topbar for dashboard */
 .dash-topbar {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
@@ -730,23 +784,12 @@ table tbody tr:hover td {
 }
 
 @media (max-width: 767px) {
-  .dash-clock {
-    padding: 6px 0 !important;
-  }
-  .dash-clock .text-3xl {
-    font-size: 1.5rem !important;
-  }
-  .dash-clock .text-\[10px\] {
-    font-size: 9px !important;
-  }
+  .dash-clock { padding: 6px 0 !important; }
+  .dash-clock .text-3xl { font-size: 1.5rem !important; }
+  .dash-clock .text-\[10px\] { font-size: 9px !important; }
 
-  .dash-topbar {
-    padding: 8px 12px !important;
-  }
-  .dash-topbar-inner {
-    flex-wrap: wrap;
-    gap: 8px !important;
-  }
+  .dash-topbar { padding: 8px 12px !important; }
+  .dash-topbar-inner { flex-wrap: wrap; gap: 8px !important; }
   .dash-topbar-brand {
     width: 100%;
     border-right: none !important;
@@ -771,32 +814,15 @@ table tbody tr:hover td {
     padding-top: 4px;
     border-top: 1px solid hsl(var(--border));
   }
-
-  .dash-content {
-    padding: 12px 10px !important;
-    gap: 12px !important;
-  }
-
-  .dash-content .grid {
-    min-height: auto !important;
-  }
-
-  .money-control-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
-  }
-  .money-control-grid .text-3xl {
-    font-size: 1.25rem !important;
-  }
-  .money-control-grid .text-2xl {
-    font-size: 1.1rem !important;
-  }
+  .dash-content { padding: 12px 10px !important; gap: 12px !important; }
+  .dash-content .grid { min-height: auto !important; }
+  .money-control-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .money-control-grid .text-3xl { font-size: 1.25rem !important; }
+  .money-control-grid .text-2xl { font-size: 1.1rem !important; }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
-  .dash-content {
-    padding: 16px 14px !important;
-  }
+  .dash-content { padding: 16px 14px !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -809,17 +835,9 @@ table tbody tr:hover td {
     gap: 12px !important;
     padding: 16px 12px !important;
   }
-  .page-header-title {
-    font-size: 20px !important;
-  }
-  .page-header-actions {
-    width: 100%;
-    display: flex;
-    justify-content: stretch;
-  }
-  .page-header-actions > * {
-    flex: 1;
-  }
+  .page-header-title { font-size: 20px !important; }
+  .page-header-actions { width: 100%; display: flex; justify-content: stretch; }
+  .page-header-actions > * { flex: 1; }
 
   .status-summary-row {
     display: flex !important;
@@ -830,56 +848,31 @@ table tbody tr:hover td {
     padding: 0 12px 8px !important;
   }
   .status-summary-row::-webkit-scrollbar { display: none; }
-  .status-summary-row > * {
-    min-width: 140px;
-    flex-shrink: 0;
-  }
+  .status-summary-row > * { min-width: 140px; flex-shrink: 0; }
 
-  .list-search {
-    margin: 0 12px !important;
-    max-width: none !important;
-  }
+  .list-search { margin: 0 12px !important; max-width: none !important; }
 
   .list-table thead { display: none; }
   .list-table tbody tr {
-    display: flex;
-    flex-direction: column;
-    padding: 12px;
-    margin: 0 12px 8px;
+    display: flex; flex-direction: column;
+    padding: 12px; margin: 0 12px 8px;
     border: 1px solid hsl(var(--border));
-    border-radius: 12px;
-    background: white;
+    border-radius: 12px; background: white;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
-  .list-table tbody td {
-    padding: 2px 0 !important;
-    border: none !important;
-  }
+  .list-table tbody td { padding: 2px 0 !important; border: none !important; }
 
-  .sla-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
-  }
-
-  .wo-calendar {
-    font-size: 12px !important;
-  }
-  .wo-calendar td, .wo-calendar th {
-    padding: 6px 4px !important;
-  }
+  .sla-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .wo-calendar { font-size: 12px !important; }
+  .wo-calendar td, .wo-calendar th { padding: 6px 4px !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
    GENERAL CONTENT RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 767px) {
-  .app-content {
-    padding: 0;
-  }
-  .app-content > div {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
+  .app-content { padding: 0; }
+  .app-content > div { padding-left: 12px; padding-right: 12px; }
 
   .modal-overlay .modal,
   [role="dialog"] > div {
@@ -890,9 +883,7 @@ table tbody tr:hover td {
     max-height: 90vh !important;
   }
 
-  button, [role="button"], a[href] {
-    min-height: 36px;
-  }
+  button, [role="button"], a[href] { min-height: 36px; }
 
   input[type="text"],
   input[type="email"],
@@ -910,11 +901,9 @@ table tbody tr:hover td {
    V3 + NEXARTWO DESIGN UTILITIES
    ═══════════════════════════════════════════════════════════════ */
 
-/* Display font — Fraunces for headings only */
 .font-display { font-family: var(--font-display); }
 
-/* ── Stat card — nexartwo pattern ──────────────────────────────
-   Gradient bg, hover translateY(-2px), colored top accent bar  */
+/* ── Stat card — nexartwo pattern ─────────────────────────────── */
 .nexart-stat-card {
   background: var(--gradient-card);
   border: 1px solid var(--border-warm);
@@ -936,7 +925,6 @@ table tbody tr:hover td {
 .nexart-stat-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
-  border-color: var(--border-warm);
 }
 .nexart-stat-card:hover::before { opacity: 1; }
 .nexart-stat-card.accent::before  { background: var(--burnt-400); }
@@ -945,8 +933,7 @@ table tbody tr:hover td {
 .nexart-stat-card.info::before    { background: #2563eb; }
 .nexart-stat-card.purple::before  { background: #7c3aed; }
 
-/* ── Item card — for project/WO/service/investor cards ─────────
-   Hover: translateY(-2px) + amber shadow glow                   */
+/* ── Item card — project/WO/service/investor cards ──────────────*/
 .nexart-item-card {
   background: var(--gradient-card);
   border: 1px solid hsl(var(--border));
@@ -964,7 +951,7 @@ table tbody tr:hover td {
   box-shadow: var(--shadow-glow);
 }
 
-/* ── Priority dot with glow — nexartwo pattern ─────────────────*/
+/* ── Priority dot with glow ─────────────────────────────────────*/
 .priority-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
@@ -976,7 +963,7 @@ table tbody tr:hover td {
 .priority-medium    { background: var(--burnt-400); }
 .priority-low       { background: #16a34a; }
 
-/* ── Filter pill tabs — nexartwo pattern ───────────────────────*/
+/* ── Filter pill tabs ───────────────────────────────────────────*/
 .nexart-filter-tab {
   padding: 6px 14px;
   border-radius: 999px;
@@ -987,10 +974,7 @@ table tbody tr:hover td {
   color: hsl(var(--muted-foreground));
   border: 1px solid hsl(var(--border));
 }
-.nexart-filter-tab:hover {
-  border-color: var(--burnt-400);
-  color: hsl(var(--foreground));
-}
+.nexart-filter-tab:hover { border-color: var(--burnt-400); color: hsl(var(--foreground)); }
 .nexart-filter-tab.active {
   background: var(--accent-glow);
   color: var(--burnt-500);
@@ -998,7 +982,7 @@ table tbody tr:hover td {
   font-weight: 600;
 }
 
-/* ── Glass topbar supplement ───────────────────────────────────*/
+/* ── Glass topbar supplement ────────────────────────────────────*/
 .nexart-glass-topbar {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
@@ -1006,7 +990,7 @@ table tbody tr:hover td {
   border-bottom: 1px solid var(--border-warm);
 }
 
-/* ── Investor Hub Control Room banner ──────────────────────────*/
+/* ── Investor Hub Control Room banner ───────────────────────────*/
 .investor-control-room {
   background: linear-gradient(135deg, #2d1f0e 0%, #3d2a12 50%, #2a1d0a 100%);
   border: 1px solid rgba(204,154,52,.25);
@@ -1019,18 +1003,15 @@ table tbody tr:hover td {
 }
 .investor-control-room::before {
   content: '';
-  position: absolute;
-  inset: 0;
+  position: absolute; inset: 0;
   background-image: radial-gradient(circle, rgba(204,154,52,.06) 1px, transparent 1px);
   background-size: 20px 20px;
   pointer-events: none;
 }
 .investor-control-room-title {
   font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-  margin: 0 0 6px;
+  font-size: 22px; font-weight: 700;
+  color: #fff; margin: 0 0 6px;
 }
 .investor-control-room-sub {
   font-size: 13px;
@@ -1038,20 +1019,14 @@ table tbody tr:hover td {
   margin: 0 0 18px;
 }
 .investor-control-room-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: #f5d989;
-  margin-bottom: 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: #f5d989; margin-bottom: 12px;
 }
 .investor-control-room-badge::before {
   content: '';
-  width: 8px;
-  height: 8px;
+  width: 8px; height: 8px;
   border-radius: 50%;
   background: #4ade80;
   box-shadow: 0 0 6px #4ade80;
