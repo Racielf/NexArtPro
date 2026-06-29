@@ -377,6 +377,25 @@ const authProxy = {
   },
 };
 
+// ─── Storage helpers ──────────────────────────────────────────────
+// Wraps Supabase Storage so components never import supabase directly.
+const storageProxy = {
+  async uploadWOPhoto(workOrderId, file) {
+    const ext  = (file.name || 'jpg').split('.').pop();
+    const path = `${workOrderId}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('wo-photos')
+      .upload(path, file, { upsert: false });
+    if (error) throw error;
+    const { data } = supabase.storage.from('wo-photos').getPublicUrl(path);
+    return { path, publicUrl: data.publicUrl };
+  },
+  getWOPhotoPublicUrl(path) {
+    const { data } = supabase.storage.from('wo-photos').getPublicUrl(path);
+    return data.publicUrl;
+  },
+};
+
 // ─── Main export ──────────────────────────────────────────────────
 // Maintains the same API shape as the previous data client
 export const nexartClient = {
@@ -384,6 +403,7 @@ export const nexartClient = {
   functions: functionsProxy,
   integrations: integrationsProxy,
   auth: authProxy,
+  storage: storageProxy,
   // asServiceRole — alias to regular entities (Supabase RLS + permissive policies handle access)
   asServiceRole: { entities: entitiesProxy },
 };

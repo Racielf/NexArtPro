@@ -215,8 +215,13 @@ export default function WorkOrders() {
   const openEdit = (wo) => { setEditing(wo); setForm({ ...wo }); setShowForm(true); };
 
   const handleSave = async () => {
-    await nexartClient.entities.WorkOrder.update(editing.id, form);
-    toast.success('Work order updated');
+    if (editing?.id) {
+      await nexartClient.entities.WorkOrder.update(editing.id, form);
+      toast.success('Work order updated');
+    } else {
+      await nexartClient.entities.WorkOrder.create({ ...form, status: form.status || 'draft' });
+      toast.success('Work order created');
+    }
     setShowForm(false);
     loadData();
   };

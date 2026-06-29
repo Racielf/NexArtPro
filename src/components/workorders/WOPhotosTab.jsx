@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Camera, Upload, Trash2, MapPin, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabaseClient';
 
 const TYPE_CONFIG = {
   before:   { label: 'Before',   bg: 'bg-slate-100 text-slate-700 border-slate-300' },
@@ -12,6 +11,17 @@ const TYPE_CONFIG = {
   after:    { label: 'After',    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   issue:    { label: 'Issue',    bg: 'bg-red-50 text-red-700 border-red-200' },
 };
+
+async function getGPS() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve({ gps_lat: null, gps_lng: null });
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ gps_lat: pos.coords.latitude, gps_lng: pos.coords.longitude }),
+      ()  => resolve({ gps_lat: null, gps_lng: null }),
+      { timeout: 3000 }
+    );
+  });
+}
 
 export default function WOPhotosTab({ workOrderId }) {
   const qc = useQueryClient();
@@ -22,7 +32,9 @@ export default function WOPhotosTab({ workOrderId }) {
 
   const { data: photos = [], isLoading } = useQuery({
     queryKey: ['wo-photos', workOrderId],
-    queryFn: () => nexartClient.entities.WorkOrderPhoto.filter({ work_order_id: workOrderId }),
+    queryFn: () => nexartClient.entities.WorkOrderPhoto.filter(
+      { work_order_id: workOrderId }, '-created_at'
+    ),
     enabled: !!workOrderId,
   });
 
@@ -37,44 +49,21 @@ export default function WOPhotosTab({ workOrderId }) {
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `${workOrderId}/${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('wo-photos')
-        .upload(path, file, { upsert: false });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('wo-photos').getPublicUrl(path);
-
-      let gps_lat = null;
-      let gps_lng = null;
-      if (navigator.geolocation) {
-        await new Promise((resolve) => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => { gps_lat = pos.coords.latitude; gps_lng = pos.coords.longitude; resolve(); },
-            () => resolve(),
-            { timeout: 3000 }
-          );
-        });
-      }
-
+      const { path, publicUrl } = await nexartClient.storage.uploadWOPhoto(workOrderId, file);
+      const { gps_lat, gps_lng } = await getGPS();
       await nexartClient.entities.WorkOrderPhoto.create({
         work_order_id: workOrderId,
         type:          form.type,
         label:         form.label || null,
-        area:          form.area || null,
-        photo_url:     urlData.publicUrl,
+        area:          form.area  || null,
+        photo_url:     publicUrl,
         storage_path:  path,
         gps_lat,
         gps_lng,
         taken_by:      null,
       });
-
       qc.invalidateQueries(['wo-photos', workOrderId]);
       setShowUploadForm(false);
       setForm({ type: 'progress', label: '', area: '' });
@@ -111,13 +100,15 @@ export default function WOPhotosTab({ workOrderId }) {
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
               <button
                 key={key}
                 onClick={() => setForm(f => ({ ...f, type: key }))}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
-                  form.type === key ? cfg.bg + ' ring-2 ring-offset-1 ring-primary' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                  form.type === key
+                    ? cfg.bg + ' ring-2 ring-offset-1 ring-primary'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}
               >
                 {cfg.label}
@@ -148,7 +139,7 @@ export default function WOPhotosTab({ workOrderId }) {
             <Upload className="w-4 h-4" />
             {uploading ? 'Uploading…' : 'Choose Photo'}
           </button>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
         </div>
       )}
 

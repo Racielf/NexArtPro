@@ -25,14 +25,15 @@ export default function WOLineItemsTab({ workOrderId }) {
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['wo-line-items', workOrderId],
-    queryFn: () => nexartClient.entities.WorkOrderLineItem.filter({ work_order_id: workOrderId }),
+    queryFn: () => nexartClient.entities.WorkOrderLineItem.filter(
+      { work_order_id: workOrderId }, 'sort_order'
+    ),
     enabled: !!workOrderId,
-    select: (data) => [...data].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
   });
 
   const { data: priceBook = [] } = useQuery({
     queryKey: ['price-book-active'],
-    queryFn: () => nexartClient.entities.PriceBookEntry.filter({ is_active: true }),
+    queryFn: () => nexartClient.entities.PriceBookEntry.filter({ is_active: true }, 'display_name'),
     staleTime: 5 * 60 * 1000,
   });
 

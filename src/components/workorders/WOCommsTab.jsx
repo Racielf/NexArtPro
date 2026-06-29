@@ -23,7 +23,7 @@ export default function WOCommsTab({ workOrderId }) {
 
   const { data: comms = [], isLoading } = useQuery({
     queryKey: ['wo-comms', workOrderId],
-    queryFn: () => nexartClient.entities.WorkOrderComm.filter({ work_order_id: workOrderId }),
+    queryFn: () => nexartClient.entities.WorkOrderComm.filter({ work_order_id: workOrderId }, '-created_at'),
     enabled: !!workOrderId,
   });
 

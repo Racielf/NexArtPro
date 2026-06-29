@@ -64,7 +64,7 @@ export default function WOChangeOrdersTab({ workOrderId, workOrderTotal }) {
 
   const { data: coList = [], isLoading } = useQuery({
     queryKey: ['wo-change-orders', workOrderId],
-    queryFn: () => nexartClient.entities.ChangeOrder.filter({ work_order_id: workOrderId }),
+    queryFn: () => nexartClient.entities.ChangeOrder.filter({ work_order_id: workOrderId }, '-created_at'),
     enabled: !!workOrderId,
   });
 
