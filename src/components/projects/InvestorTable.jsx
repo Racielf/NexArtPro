@@ -4,15 +4,32 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/projectsApi';
 import { calcInvestorReturn } from '@/lib/financialsApi';
 
-const STATUS_COLOR = {
-  pending:   'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-green-100 text-green-800',
-  void:      'bg-gray-100 text-gray-500',
+const STATUS_DOT = {
+  confirmed: 'bg-emerald-500',
+  pending:   'bg-amber-500',
+  cancelled: 'bg-slate-400',
+};
+
+const STATUS_CLS = {
+  confirmed: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+  pending:   'bg-amber-50 text-amber-800 border-amber-200',
+  cancelled: 'bg-gray-50 text-gray-500 border-gray-200',
+};
+
+const ROLE_LABELS = {
+  equity_partner:  'Equity Partner',
+  lead_contractor: 'Lead Contractor',
+  silent_partner:  'Silent Partner',
+  other:           'Other',
 };
 
 export default function InvestorTable({ projectInvestors = [], profitNeto = 0 }) {
   if (!projectInvestors.length) {
-    return <p className="text-sm text-muted-foreground py-4">No investors linked to this project yet.</p>;
+    return (
+      <p className="text-sm text-muted-foreground py-4">
+        No investors linked to this project yet.
+      </p>
+    );
   }
 
   return (
@@ -20,8 +37,9 @@ export default function InvestorTable({ projectInvestors = [], profitNeto = 0 })
       <TableHeader>
         <TableRow>
           <TableHead>Investor</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead className="text-right">Equity %</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead className="text-right">Ownership %</TableHead>
+          <TableHead className="text-right">Profit Split %</TableHead>
           <TableHead className="text-right">Est. Return</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Notes</TableHead>
@@ -29,22 +47,39 @@ export default function InvestorTable({ projectInvestors = [], profitNeto = 0 })
       </TableHeader>
       <TableBody>
         {projectInvestors.map((pi) => {
-          const name = pi.investor?.name ?? '—';
-          const type = pi.investor?.type ?? '—';
-          const estReturn = calcInvestorReturn({ profit_neto: profitNeto, equity_pct: pi.equity_pct ?? 0 });
+          const name       = pi.investor?.name ?? 'Unknown';
+          const ownership  = pi.ownership_percentage ?? 0;
+          const profitSplit = pi.profit_split_percentage ?? ownership;
+          const estReturn  = calcInvestorReturn({ profit_neto: profitNeto, equity_pct: profitSplit });
+          const status     = pi.status ?? 'pending';
 
           return (
             <TableRow key={pi.id}>
               <TableCell className="font-medium">{name}</TableCell>
-              <TableCell className="capitalize">{type}</TableCell>
-              <TableCell className="text-right">{pi.equity_pct != null ? `${pi.equity_pct}%` : '—'}</TableCell>
-              <TableCell className="text-right">{profitNeto ? formatCurrency(estReturn) : '—'}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {ROLE_LABELS[pi.role] ?? (pi.role ?? '').replace(/_/g, ' ')}
+              </TableCell>
+              <TableCell className="text-right text-sm">
+                {ownership != null ? `${ownership}%` : '—'}
+              </TableCell>
+              <TableCell className="text-right text-sm">
+                {pi.profit_split_percentage != null ? `${pi.profit_split_percentage}%` : '—'}
+              </TableCell>
+              <TableCell className="text-right text-sm font-medium">
+                {profitNeto ? formatCurrency(estReturn) : '—'}
+              </TableCell>
               <TableCell>
-                <Badge className={STATUS_COLOR[pi.status] ?? 'bg-gray-100 text-gray-700'}>
-                  {pi.status}
+                <Badge
+                  variant="outline"
+                  className={`text-[11px] font-medium gap-1.5 ${STATUS_CLS[status] ?? 'bg-gray-50 text-gray-500 border-gray-200'}`}
+                >
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[status] ?? 'bg-slate-400'}`} />
+                  {status}
                 </Badge>
               </TableCell>
-              <TableCell className="text-muted-foreground text-xs">{pi.notes ?? ''}</TableCell>
+              <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">
+                {pi.agreement_notes ?? ''}
+              </TableCell>
             </TableRow>
           );
         })}

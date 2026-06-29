@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,9 +12,23 @@ import { calcTotalCapital, formatCurrency } from '@/lib/projectsApi';
 import { nexartClient } from '@/api/nexartClient';
 
 const STATUS_COLOR = {
-  pending:  'bg-yellow-100 text-yellow-800',
-  received: 'bg-green-100 text-green-800',
-  returned: 'bg-gray-100 text-gray-500',
+  pending:   'bg-yellow-100 text-yellow-800 border-yellow-200',
+  confirmed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  cancelled: 'bg-gray-100 text-gray-500 border-gray-200',
+};
+
+const TYPE_LABELS = {
+  initial:       'Initial',
+  additional:    'Additional',
+  closing:       'Closing',
+  reimbursement: 'Reimbursement',
+};
+
+const METHOD_LABELS = {
+  wire:            'Wire',
+  check:           'Check',
+  cash:            'Cash',
+  company_payment: 'Co. Payment',
 };
 
 export default function ProjectCapital() {
@@ -43,7 +57,6 @@ export default function ProjectCapital() {
   const createContribution = useMutation({
     mutationFn: (formData) => nexartClient.entities.CapitalContribution.create({
       project_id: project.id,
-      company_id: 'rc-art',
       ...formData,
     }),
     onSuccess: () => {
@@ -55,20 +68,32 @@ export default function ProjectCapital() {
   });
 
   const total = calcTotalCapital(contributions);
+  const confirmed = calcTotalCapital(contributions.filter((c) => c.status === 'confirmed'));
 
   return (
     <div className="max-w-4xl space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Capital Contributions</h2>
-          <p className="text-sm text-muted-foreground">
-            Total raised: <span className="font-medium text-foreground">{formatCurrency(total)}</span>
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setShowForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Contribution
-        </Button>
+      {/* Control Room banner */}
+      <div className="investor-control-room">
+        <div className="investor-control-room-badge">Capital</div>
+        <h2 className="investor-control-room-title">{project.name}</h2>
+        <p className="investor-control-room-sub">
+          Capital contributions from equity partners.
+          {contributions.length > 0 && (
+            <span className="text-amber-300">
+              {' '}{formatCurrency(confirmed)} confirmed of {formatCurrency(total)} committed.
+            </span>
+          )}
+        </p>
+        {!showForm && (
+          <Button
+            size="sm"
+            onClick={() => setShowForm(true)}
+            className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Record Contribution
+          </Button>
+        )}
       </div>
 
       {showForm && (
@@ -86,7 +111,17 @@ export default function ProjectCapital() {
       )}
 
       <Card>
-        <CardHeader><CardTitle className="text-base">History</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">History</CardTitle>
+            {contributions.length > 0 && (
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <DollarSign className="w-4 h-4 text-primary" />
+                {formatCurrency(total)} total
+              </div>
+            )}
+          </div>
+        </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -100,23 +135,33 @@ export default function ProjectCapital() {
                 <TableRow>
                   <TableHead>Investor</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Notes</TableHead>
+                  <TableHead>Reference</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {contributions.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell>{c.investor?.name ?? '—'}</TableCell>
+                    <TableCell className="font-medium">{c.investor?.name ?? '—'}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(c.amount)}</TableCell>
-                    <TableCell className="capitalize">{c.method}</TableCell>
-                    <TableCell>
-                      <Badge className={STATUS_COLOR[c.status] ?? ''}>{c.status}</Badge>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {TYPE_LABELS[c.type] ?? c.type}
                     </TableCell>
-                    <TableCell>{c.date ?? '—'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{c.notes ?? ''}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {METHOD_LABELS[c.method] ?? c.method}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`text-[11px] ${STATUS_COLOR[c.status] ?? ''}`}>
+                        {c.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{c.date ?? '—'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {c.evidence_reference || c.notes || ''}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

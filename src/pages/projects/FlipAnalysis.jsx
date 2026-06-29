@@ -115,9 +115,9 @@ export default function FlipAnalysis() {
                 <div className="space-y-2">
                   {projectInvestors.map((pi) => (
                     <div key={pi.id} className="flex justify-between text-sm border-b pb-1 last:border-0">
-                      <span>{pi.investor?.name ?? '--'} ({pi.equity_pct ?? 0}%)</span>
+                      <span>{pi.investor?.name ?? '--'} ({pi.profit_split_percentage ?? pi.ownership_percentage ?? 0}%)</span>
                       <span className="font-medium">
-                        {formatCurrency(calcInvestorReturn({ profit_neto, equity_pct: pi.equity_pct ?? 0 }))}
+                        {formatCurrency(calcInvestorReturn({ profit_neto, equity_pct: pi.profit_split_percentage ?? pi.ownership_percentage ?? 0 }))}
                       </span>
                     </div>
                   ))}
