@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -32,13 +32,14 @@
     --chart-5: 27 87% 67%;
     --cta-orange: 25 90% 50%;
     --radius: 0.75rem;
-    --sidebar-background: 228 57% 7%;
-    --sidebar-foreground: 43 30% 68%;
+    /* Sidebar tokens — light nexartwo palette */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 228 20% 20%;
     --sidebar-primary: 40 62% 50%;
     --sidebar-primary-foreground: 228 57% 7%;
-    --sidebar-accent: 225 45% 13%;
-    --sidebar-accent-foreground: 43 55% 85%;
-    --sidebar-border: 225 45% 10%;
+    --sidebar-accent: 43 80% 96%;
+    --sidebar-accent-foreground: 40 72% 42%;
+    --sidebar-border: 38 35% 83%;
     --sidebar-ring: 40 62% 50%;
     --font-inter: 'Inter', sans-serif;
     /* — NexArt V3 brand tokens — */
@@ -63,8 +64,8 @@
     --shadow-lg:    0 8px 30px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.05);
     --shadow-glow:  0 0 24px rgba(176,127,29,0.12);
     /* — nexartwo accent utilities — */
-    --accent-glow:  rgba(176,127,29,0.12);
-    --accent-soft:  rgba(176,127,29,0.06);
+    --accent-glow:  rgba(217,119,6,0.10);
+    --accent-soft:  rgba(217,119,6,0.06);
     /* — nexartwo card gradient — */
     --gradient-card: linear-gradient(145deg, rgba(255,255,255,0.97), rgba(251,248,242,0.99));
     /* — nexartwo transition — */
@@ -114,6 +115,8 @@
 
   body {
     @apply bg-background text-foreground font-inter;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -126,19 +129,17 @@
   background: var(--border-warm);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--burnt-400); opacity: 0.5; }
+::-webkit-scrollbar-thumb:hover { background: var(--burnt-400); }
 
 /* ═══════════════════════════════════════════════════════════════
    NEXARTWO GLOBAL CARD OVERRIDES
    Applies gradient background + hover lift to ALL shadcn Cards
    ═══════════════════════════════════════════════════════════════ */
 
-/* Shadcn Card base → nexartwo gradient */
 .bg-card {
   background: var(--gradient-card) !important;
 }
 
-/* Shadcn Card container → hover lift + shadow */
 div.rounded-lg.border.bg-card,
 div.rounded-xl.border.bg-card {
   box-shadow: var(--shadow-card);
@@ -154,9 +155,7 @@ div.rounded-xl.border.bg-card:hover {
 }
 
 @layer components {
-  /* Estimate editor premium command bar visual bridge.
-     This keeps the existing EstimateEditor behavior intact while the modular
-     EstimateCommandBar component is available for the full JSX migration. */
+  /* Estimate editor premium command bar visual bridge. */
   .font-inter > .bg-white.border-b.border-slate-200.flex-shrink-0 {
     margin: 16px 18px 0;
     border: 1px solid rgb(226 232 240) !important;
@@ -373,10 +372,41 @@ div.rounded-xl.border.bg-card:hover {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   PAGE ENTRY ANIMATION — nexartwo fadeIn pattern
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes nexartPageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.app-content > div {
+  animation: nexartPageIn 0.3s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABLE OVERRIDES — nexartwo pattern
+   thead: uppercase + letterSpacing | rows: amber hover
+   ═══════════════════════════════════════════════════════════════ */
+table thead tr th {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.8px !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+table tbody tr {
+  transition: background 0.2s;
+}
+
+table tbody tr:hover td {
+  background: var(--accent-soft);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    RESPONSIVE APP LAYOUT
    ═══════════════════════════════════════════════════════════════ */
 
-/* App Layout */
 .app-layout {
   display: flex;
   height: 100vh;
@@ -394,16 +424,17 @@ div.rounded-xl.border.bg-card:hover {
   overflow: hidden;
 }
 
+/* nexartwo top-bar: white glass */
 .app-topbar {
   flex-shrink: 0;
-  height: 48px;
-  background: rgba(251, 245, 230, 0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  height: 52px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-warm);
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 24px;
 }
 
 .app-content {
@@ -413,109 +444,115 @@ div.rounded-xl.border.bg-card:hover {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SIDEBAR — Desktop (>= 1024px)
+   SIDEBAR — Desktop (>= 1024px)  — nexartwo LIGHT theme
    ═══════════════════════════════════════════════════════════════ */
 .sidebar-container {
-  width: 224px;
+  width: 260px;
   flex-shrink: 0;
   height: 100vh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: hsl(var(--sidebar-background));
-  border-right: 1px solid rgba(255,255,255,0.06);
+  background: #ffffff;
+  border-right: 1px solid var(--border-warm);
 }
 
 .sidebar-mobile-topbar { display: none; }
-.sidebar-bottom-nav { display: none; }
-.sidebar-close-btn { display: none; }
-.sidebar-overlay { display: none; }
+.sidebar-bottom-nav    { display: none; }
+.sidebar-close-btn     { display: none; }
+.sidebar-overlay       { display: none; }
 
 /* Brand */
 .sidebar-brand {
-  padding: 20px 16px 16px;
+  padding: 20px 16px;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--border-warm);
 }
 .sidebar-brand-inner { display: flex; align-items: center; gap: 12px; }
 .sidebar-brand-logo {
-  width: 32px; height: 32px; border-radius: 12px; overflow: hidden;
+  width: 40px; height: 40px; border-radius: 12px; overflow: hidden;
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.08);
+  background: #ffffff; border: 1px solid var(--border-warm);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 .sidebar-brand-logo-fallback {
-  width: 32px; height: 32px; border-radius: 12px;
+  width: 40px; height: 40px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; background: linear-gradient(135deg, var(--burnt-400), var(--orange-500));
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--burnt-400), var(--orange-500));
 }
 .sidebar-brand-name {
-  font-weight: 600; font-size: 13px; line-height: 1.2;
-  color: #f1f5f9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 600; font-size: 13px; line-height: 1.3;
+  color: #1a1d2e;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .sidebar-brand-sub {
-  font-size: 11px; line-height: 1.2; margin-top: 2px;
-  color: rgba(148,163,184,0.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 10px; font-weight: 400; line-height: 1.2; margin-top: 2px;
+  color: #9196a8;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: block;
 }
 
 /* Nav */
 .sidebar-nav {
-  flex: 1; padding: 12px 10px; overflow-y: auto;
+  flex: 1; padding: 16px 12px; overflow-y: auto;
   scrollbar-width: none;
 }
 .sidebar-nav::-webkit-scrollbar { display: none; }
 
 .sidebar-group-label {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.12em; padding: 0 12px; margin-bottom: 8px;
-  color: rgba(100,116,139,0.8);
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1.2px;
+  padding: 8px 12px 6px;
+  margin-top: 12px;
+  color: #9196a8;
 }
 
+/* nexartwo nav-item: dark text, amber active */
 .sidebar-link {
   display: flex; align-items: center; gap: 12px;
-  padding: 8px 12px; border-radius: 8px;
-  font-size: 13px; font-weight: 500;
-  color: rgba(148,163,184,0.85);
-  border-left: 2px solid transparent;
-  transition: all 150ms ease;
+  padding: 10px 14px; border-radius: 8px;
+  font-size: 13.5px; font-weight: 500;
+  color: #5b6078;
+  transition: var(--nexart-transition);
   text-decoration: none;
   width: 100%;
   cursor: pointer;
-  background: none; border: none;
+  background: none; border: none; outline: none;
+  position: relative; margin-bottom: 2px;
 }
 .sidebar-link:hover {
-  background: rgba(255,255,255,0.05);
-  color: hsl(var(--nexart-cream-50));
+  background: var(--accent-soft);
+  color: #1a1d2e;
 }
-.sidebar-link:hover .sidebar-link-icon {
-  color: hsl(var(--nexart-cream-50));
-}
+.sidebar-link:hover .sidebar-link-icon { color: #d97706; }
+
+/* Active: amber glow bg + left inset bar */
 .sidebar-link-active {
-  background: hsl(var(--nexart-burnt-400) / 0.16) !important;
-  color: hsl(var(--nexart-cream-50)) !important;
-  border-left-color: hsl(var(--nexart-burnt-400));
+  background: var(--accent-glow) !important;
+  color: #d97706 !important;
+  font-weight: 600 !important;
+  box-shadow: inset 3px 0 0 0 #d97706;
 }
-.sidebar-link-active .sidebar-link-icon { color: hsl(var(--nexart-cream-50)) !important; }
+.sidebar-link-active .sidebar-link-icon { color: #d97706 !important; }
 
 .sidebar-link-icon {
-  width: 15px; height: 15px; flex-shrink: 0;
-  color: rgba(100,116,139,0.9); stroke-width: 1.75;
+  width: 16px; height: 16px; flex-shrink: 0;
+  color: #9196a8; stroke-width: 1.75;
+  transition: color 0.2s;
 }
 
-.sidebar-link-logout {
-  color: rgba(148,163,184,0.7);
-}
+.sidebar-link-logout { color: #9196a8; }
 .sidebar-link-logout:hover {
-  background: rgba(239,68,68,0.1) !important;
-  color: #f87171 !important;
+  background: rgba(220,38,38,0.06) !important;
+  color: #dc2626 !important;
 }
-.sidebar-link-logout:hover .sidebar-link-icon {
-  color: #f87171 !important;
-}
+.sidebar-link-logout:hover .sidebar-link-icon { color: #dc2626 !important; }
 
 /* Footer */
 .sidebar-footer {
   flex-shrink: 0; padding: 12px 10px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--border-warm);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -527,8 +564,8 @@ div.rounded-xl.border.bg-card:hover {
   }
 
   .app-main-area {
-    padding-bottom: 64px; /* space for bottom nav */
-    margin-top: 56px; /* space for mobile top bar */
+    padding-bottom: 64px;
+    margin-top: 56px;
   }
 
   .app-topbar {
@@ -537,42 +574,40 @@ div.rounded-xl.border.bg-card:hover {
     padding: 8px 12px;
   }
 
-  /* Make search bar full width on mobile */
   .app-topbar .relative.w-full.max-w-sm,
   .app-topbar > div {
     max-width: 100% !important;
     width: 100%;
   }
 
-  /* Fix search dropdown on mobile */
   .app-topbar .absolute.top-full {
     min-width: 100% !important;
     left: 0;
     right: 0;
   }
 
-  /* Mobile Top Bar */
+  /* Mobile Top Bar — nexartwo light */
   .sidebar-mobile-topbar {
     display: flex;
     position: fixed;
     top: 0; left: 0; right: 0;
     z-index: 40;
     height: 56px;
-    background: hsl(var(--sidebar-background));
+    background: #ffffff;
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid var(--border-warm);
   }
   .sidebar-hamburger {
     width: 40px; height: 40px;
     display: flex; align-items: center; justify-content: center;
     border-radius: 10px; border: none;
-    background: rgba(255,255,255,0.08);
-    color: #94a3b8; cursor: pointer;
+    background: rgba(0,0,0,0.04);
+    color: #5b6078; cursor: pointer;
     transition: background 150ms;
   }
-  .sidebar-hamburger:active { background: rgba(255,255,255,0.15); }
+  .sidebar-hamburger:active { background: rgba(0,0,0,0.08); }
   .sidebar-mobile-brand { display: flex; align-items: center; gap: 8px; }
   .sidebar-mobile-logo {
     width: 28px; height: 28px; border-radius: 8px; object-fit: contain;
@@ -583,7 +618,7 @@ div.rounded-xl.border.bg-card:hover {
     background: linear-gradient(135deg, var(--burnt-400), var(--orange-500));
   }
   .sidebar-mobile-name {
-    font-size: 14px; font-weight: 700; color: #f1f5f9;
+    font-size: 14px; font-weight: 700; color: #1a1d2e;
     letter-spacing: -0.01em;
   }
 
@@ -591,14 +626,13 @@ div.rounded-xl.border.bg-card:hover {
   .sidebar-overlay {
     display: block;
     position: fixed; inset: 0; z-index: 49;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.5);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    animation: fadeIn 200ms ease;
+    animation: nexartPageIn 200ms ease;
   }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-  /* Sidebar — off-canvas */
+  /* Sidebar — off-canvas, white */
   .sidebar-container {
     position: fixed;
     top: 0; left: 0; bottom: 0;
@@ -606,34 +640,34 @@ div.rounded-xl.border.bg-card:hover {
     width: 280px;
     transform: translateX(-100%);
     transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.18);
   }
   .sidebar-container.sidebar-open {
     transform: translateX(0);
   }
 
-  /* Close button */
+  /* Close button — light colors */
   .sidebar-close-btn {
     display: flex;
     position: absolute; top: 12px; right: 12px;
     width: 36px; height: 36px;
     align-items: center; justify-content: center;
     border-radius: 10px; border: none;
-    background: rgba(255,255,255,0.08);
-    color: #94a3b8; cursor: pointer;
+    background: rgba(0,0,0,0.06);
+    color: #5b6078; cursor: pointer;
     z-index: 10;
   }
-  .sidebar-close-btn:active { background: rgba(255,255,255,0.15); }
+  .sidebar-close-btn:active { background: rgba(0,0,0,0.12); }
 
-  /* Bottom Nav */
+  /* Bottom Nav — nexartwo light */
   .sidebar-bottom-nav {
     display: flex;
     position: fixed;
     bottom: 0; left: 0; right: 0;
     z-index: 40;
     height: 64px;
-    background: hsl(var(--sidebar-background));
-    border-top: 1px solid rgba(255,255,255,0.08);
+    background: #ffffff;
+    border-top: 1px solid var(--border-warm);
     padding: 0 4px;
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
@@ -643,7 +677,7 @@ div.rounded-xl.border.bg-card:hover {
     align-items: center; justify-content: center;
     gap: 2px;
     font-size: 10px; font-weight: 600;
-    color: rgba(148,163,184,0.6);
+    color: #9196a8;
     text-decoration: none;
     background: none; border: none;
     cursor: pointer;
@@ -651,15 +685,12 @@ div.rounded-xl.border.bg-card:hover {
     padding: 4px 0;
     -webkit-tap-highlight-color: transparent;
   }
-  .sidebar-bottom-item:active { color: hsl(var(--nexart-cream-50)); }
-  .sidebar-bottom-item-active {
-    color: hsl(var(--nexart-burnt-400)) !important;
-  }
+  .sidebar-bottom-item:active { color: #1a1d2e; }
+  .sidebar-bottom-item-active { color: #d97706 !important; }
   .sidebar-bottom-item-active svg {
-    filter: drop-shadow(0 0 6px hsl(var(--nexart-burnt-400) / 0.45));
+    filter: drop-shadow(0 0 6px rgba(217,119,6,0.45));
   }
 
-  /* Sidebar link touch targets */
   .sidebar-link {
     min-height: 44px;
     font-size: 14px;
@@ -671,15 +702,9 @@ div.rounded-xl.border.bg-card:hover {
    TABLET (768px - 1023px)
    ═══════════════════════════════════════════════════════════════ */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .sidebar-container {
-    width: 320px;
-  }
-  .sidebar-bottom-nav {
-    height: 56px;
-  }
-  .sidebar-bottom-item {
-    font-size: 11px;
-  }
+  .sidebar-container { width: 320px; }
+  .sidebar-bottom-nav { height: 56px; }
+  .sidebar-bottom-item { font-size: 11px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -696,17 +721,15 @@ div.rounded-xl.border.bg-card:hover {
    DASHBOARD RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 
-/* Base — cream topbar matching app-topbar treatment */
+/* nexartwo white glass topbar for dashboard */
 .dash-topbar {
-  background: rgba(251, 245, 230, 0.8);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-warm);
 }
 
-/* Mobile: stack everything vertically, reduce padding */
 @media (max-width: 767px) {
-  /* Dashboard clock — smaller on mobile */
   .dash-clock {
     padding: 6px 0 !important;
   }
@@ -717,7 +740,6 @@ div.rounded-xl.border.bg-card:hover {
     font-size: 9px !important;
   }
 
-  /* Dashboard topbar — stack KPIs */
   .dash-topbar {
     padding: 8px 12px !important;
   }
@@ -750,18 +772,15 @@ div.rounded-xl.border.bg-card:hover {
     border-top: 1px solid hsl(var(--border));
   }
 
-  /* Dashboard content — tighter padding */
   .dash-content {
     padding: 12px 10px !important;
     gap: 12px !important;
   }
 
-  /* Dashboard cards — full height auto */
   .dash-content .grid {
     min-height: auto !important;
   }
 
-  /* Money Control — smaller metrics */
   .money-control-grid {
     grid-template-columns: 1fr 1fr !important;
     gap: 8px !important;
@@ -774,7 +793,6 @@ div.rounded-xl.border.bg-card:hover {
   }
 }
 
-/* Tablet: optimize 2-column layouts */
 @media (min-width: 768px) and (max-width: 1023px) {
   .dash-content {
     padding: 16px 14px !important;
@@ -785,7 +803,6 @@ div.rounded-xl.border.bg-card:hover {
    LIST PAGES RESPONSIVE (Estimates, WO, Invoices)
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 767px) {
-  /* Page headers — stack title and action button */
   .page-header {
     flex-direction: column !important;
     align-items: flex-start !important;
@@ -804,7 +821,6 @@ div.rounded-xl.border.bg-card:hover {
     flex: 1;
   }
 
-  /* Status summary cards — horizontal scroll */
   .status-summary-row {
     display: flex !important;
     overflow-x: auto;
@@ -819,13 +835,11 @@ div.rounded-xl.border.bg-card:hover {
     flex-shrink: 0;
   }
 
-  /* Search bars — full width */
   .list-search {
     margin: 0 12px !important;
     max-width: none !important;
   }
 
-  /* Table to card layout on mobile */
   .list-table thead { display: none; }
   .list-table tbody tr {
     display: flex;
@@ -842,13 +856,11 @@ div.rounded-xl.border.bg-card:hover {
     border: none !important;
   }
 
-  /* Invoice SLA cards — 2 columns */
   .sla-grid {
     grid-template-columns: 1fr 1fr !important;
     gap: 8px !important;
   }
 
-  /* Calendar on WO page — reduce size */
   .wo-calendar {
     font-size: 12px !important;
   }
@@ -861,7 +873,6 @@ div.rounded-xl.border.bg-card:hover {
    GENERAL CONTENT RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 767px) {
-  /* App content padding on mobile */
   .app-content {
     padding: 0;
   }
@@ -870,7 +881,6 @@ div.rounded-xl.border.bg-card:hover {
     padding-right: 12px;
   }
 
-  /* Modals — full width on mobile */
   .modal-overlay .modal,
   [role="dialog"] > div {
     max-width: 100% !important;
@@ -880,12 +890,10 @@ div.rounded-xl.border.bg-card:hover {
     max-height: 90vh !important;
   }
 
-  /* Buttons — larger touch targets */
   button, [role="button"], a[href] {
     min-height: 36px;
   }
 
-  /* Form inputs — larger on mobile */
   input[type="text"],
   input[type="email"],
   input[type="tel"],
@@ -894,7 +902,7 @@ div.rounded-xl.border.bg-card:hover {
   select,
   textarea {
     min-height: 44px;
-    font-size: 16px !important; /* prevents iOS zoom */
+    font-size: 16px !important;
   }
 }
 
@@ -902,7 +910,7 @@ div.rounded-xl.border.bg-card:hover {
    V3 + NEXARTWO DESIGN UTILITIES
    ═══════════════════════════════════════════════════════════════ */
 
-/* Display font */
+/* Display font — Fraunces for headings only */
 .font-display { font-family: var(--font-display); }
 
 /* ── Stat card — nexartwo pattern ──────────────────────────────
@@ -992,7 +1000,7 @@ div.rounded-xl.border.bg-card:hover {
 
 /* ── Glass topbar supplement ───────────────────────────────────*/
 .nexart-glass-topbar {
-  background: rgba(251,245,230,.8);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-warm);
