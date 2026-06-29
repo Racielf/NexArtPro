@@ -62,8 +62,13 @@ const TABLE_MAP = {
   WorkOrderDailyReport:  'work_order_daily_reports',
   WorkOrderExpense:      'work_order_expenses',
   WorkOrderHistory:      'work_order_histories',
+  WorkOrderLineItem:     'wo_line_items',
+  WorkOrderPhoto:        'wo_photos',
+  WorkOrderComm:         'wo_communications',
+  WorkOrderDocument:     'wo_documents',
   WorkOrderReceipt:      'work_order_receipts',
   WorkOrderTimeEntry:    'work_order_time_entries',
+  ChangeOrder:           'change_orders',
   Worker:                'workers',
   WorkerDocument:        'worker_documents',
   WorkerNote:            'worker_notes',
@@ -76,6 +81,7 @@ const USES_AT_TIMESTAMPS = new Set([
   'projects', 'project_expenses', 'project_refunds', 'project_disbursements',
   'investor_companies', 'investors', 'project_investors', 'capital_contributions', 'capital_calls',
   'flip_analyses',
+  'wo_line_items', 'wo_photos', 'wo_communications', 'wo_documents', 'change_orders',
 ]);
 
 // ─── Sort parser ──────────────────────────────────────────────────

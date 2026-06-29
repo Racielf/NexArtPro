@@ -6,9 +6,10 @@ import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { Button } from '@/components/ui/button';
 import {
-  ArrowLeft, Pencil, Eye, Printer, Send, CheckCircle2,
+  ArrowLeft, Eye, Printer, Send, CheckCircle2,
   User, Phone, Mail, MapPin, Calendar, Briefcase, Clock,
-  ClipboardList, Play, Square, Trash2
+  ClipboardList, Play, Square, Trash2,
+  Camera, MessageSquare, GitBranch, ListChecks, DollarSign,
 } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
 import WOTimeTracking from '@/components/workorders/WOTimeTracking';
@@ -18,6 +19,19 @@ import WOFieldExecution from '@/components/workorders/WOFieldExecution';
 import WOCompletionEvidence from '@/components/workorders/WOCompletionEvidence';
 import WorkOrderPreviewModal from '@/components/workorders/WorkOrderPreviewModal';
 import JobProfitSummary from '@/components/workorders/JobProfitSummary';
+import WOLineItemsTab from '@/components/workorders/WOLineItemsTab';
+import WOPhotosTab from '@/components/workorders/WOPhotosTab';
+import WOCommsTab from '@/components/workorders/WOCommsTab';
+import WOChangeOrdersTab from '@/components/workorders/WOChangeOrdersTab';
+
+const TABS = [
+  { id: 'scope',    label: 'Scope',          icon: ClipboardList },
+  { id: 'items',    label: 'Line Items',      icon: ListChecks },
+  { id: 'photos',   label: 'Photos',          icon: Camera },
+  { id: 'comms',    label: 'Communications',  icon: MessageSquare },
+  { id: 'changes',  label: 'Change Orders',   icon: GitBranch },
+  { id: 'finance',  label: 'Finance',         icon: DollarSign },
+];
 
 export default function WorkOrderDetail() {
   const navigate = useNavigate();
@@ -34,6 +48,7 @@ export default function WorkOrderDetail() {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingAssignment, setEditingAssignment] = useState('');
   const [projects, setProjects] = useState([]);
+  const [activeTab, setActiveTab] = useState('scope');
 
   useEffect(() => { loadWorkOrder(); }, [id]);
   useEffect(() => {
@@ -87,29 +102,15 @@ export default function WorkOrderDetail() {
     const updatedTasks = tasks.map(t => {
       if (t.id === taskId) {
         const updated = { ...t, ...updates };
-        if (updates.status === 'in_progress' && !t.started_at) {
-          updated.started_at = new Date().toISOString();
-        }
-        if (updates.status === 'completed' && !t.completed_at) {
-          updated.completed_at = new Date().toISOString();
-        }
-        if (updates.status === 'pending') {
-          updated.started_at = null;
-          updated.completed_at = null;
-        }
+        if (updates.status === 'in_progress' && !t.started_at) updated.started_at = new Date().toISOString();
+        if (updates.status === 'completed' && !t.completed_at) updated.completed_at = new Date().toISOString();
+        if (updates.status === 'pending') { updated.started_at = null; updated.completed_at = null; }
         return updated;
       }
       return t;
     });
     setTasks(updatedTasks);
     await nexartClient.entities.WorkOrder.update(id, { tasks: updatedTasks });
-  };
-
-  const _toggleTask = (taskId) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-    const nextStatus = task.status === 'completed' ? 'pending' : task.status === 'in_progress' ? 'completed' : 'in_progress';
-    updateTask(taskId, { status: nextStatus });
   };
 
   const updateFieldExtraApproval = async (itemId, approvalStatus) => {
@@ -140,14 +141,14 @@ export default function WorkOrderDetail() {
   );
 
   const groupItems = (workOrder.groups || []).flatMap(g => (g.items || []).map(normalizeLineItem));
-  const flatItems = (workOrder.line_items || []).map(li => normalizeLineItem(li));
-  const _allItems = groupItems.length > 0 ? groupItems : flatItems;
+  const flatItems  = (workOrder.line_items || []).map(li => normalizeLineItem(li));
   const fieldExtras = (workOrder.execution_checklist || []).filter(item => item.type === 'extra');
   const pendingFieldExtras = fieldExtras.filter(item => item.approval_status === 'pending_office_approval');
 
   return (
     <div className="min-h-screen bg-[#f0f2f5]">
 
+      {/* ─── Sticky Header ─── */}
       <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
           <button
@@ -157,9 +158,7 @@ export default function WorkOrderDetail() {
             <ArrowLeft className="w-4 h-4" />
             Work Orders
           </button>
-
           <div className="h-4 w-px bg-slate-200" />
-
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-base font-bold text-slate-900 whitespace-nowrap">
@@ -178,7 +177,6 @@ export default function WorkOrderDetail() {
               )}
             </div>
           </div>
-
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPreview(true)}>
               <Eye className="w-3.5 h-3.5" /> Preview
@@ -194,6 +192,8 @@ export default function WorkOrderDetail() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6 flex gap-6 items-start">
+
+        {/* ─── Sidebar ─── */}
         <div className="w-64 flex-shrink-0 space-y-4">
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-3">Customer</p>
@@ -232,7 +232,6 @@ export default function WorkOrderDetail() {
                 <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Status</p>
                 <StatusBadge status={workOrder.status} />
               </div>
-
               <div>
                 <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Assigned Worker</p>
                 <div className="flex items-center gap-1.5 text-sm text-slate-700">
@@ -242,7 +241,6 @@ export default function WorkOrderDetail() {
                     : <span className="text-slate-400 italic">Unassigned</span>}
                 </div>
               </div>
-
               <div>
                 <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Scheduled Date</p>
                 <div className="flex items-center gap-1.5 text-sm text-slate-700">
@@ -252,7 +250,6 @@ export default function WorkOrderDetail() {
                     : <span className="text-slate-400 italic">Not set</span>}
                 </div>
               </div>
-
               {workOrder.scheduled_time && (
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Time</p>
@@ -262,7 +259,6 @@ export default function WorkOrderDetail() {
                   </div>
                 </div>
               )}
-
               {projects.length > 0 && (
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Flip Project</p>
@@ -304,322 +300,334 @@ export default function WorkOrderDetail() {
           <JobProfitSummary workOrderId={id} />
         </div>
 
-        <div className="flex-1 min-w-0 space-y-5">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <ClipboardList className="w-4 h-4 text-primary" />
-              <h2 className="text-sm font-bold text-slate-900">Scope of Work</h2>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">{workOrder.title || '—'}</p>
-                {workOrder.description && (
-                  <p className="text-sm text-slate-500 mt-1">{workOrder.description}</p>
-                )}
-              </div>
+        {/* ─── Main Content with Tabs ─── */}
+        <div className="flex-1 min-w-0 space-y-0">
 
-              {tasks.length > 0 ? (
-                <div className="space-y-2">
-                  {(() => {
-                    const completedCount = tasks.filter(t => t.status === 'completed').length;
-                    const pct = Math.round((completedCount / tasks.length) * 100);
-                    return (
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="flex-1 bg-slate-100 rounded-full h-2">
-                          <div className="bg-green-500 h-2 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+          {/* Tab bar */}
+          <div className="bg-white rounded-t-xl border border-slate-200 border-b-0">
+            <div className="flex overflow-x-auto scrollbar-hide px-2 pt-2">
+              {TABS.map(tab => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all mr-0.5 ${
+                      active
+                        ? 'border-primary text-primary bg-primary/5 rounded-t-lg'
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tab panels */}
+          <div className="bg-white rounded-b-xl border border-slate-200 shadow-sm p-6">
+
+            {/* ── TAB: Scope (original task view + execution notes) ── */}
+            {activeTab === 'scope' && (
+              <div className="space-y-5">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800 mb-1">{workOrder.title || '—'}</p>
+                  {workOrder.description && (
+                    <p className="text-sm text-slate-500">{workOrder.description}</p>
+                  )}
+                </div>
+
+                {tasks.length > 0 ? (
+                  <div className="space-y-2">
+                    {(() => {
+                      const completedCount = tasks.filter(t => t.status === 'completed').length;
+                      const pct = Math.round((completedCount / tasks.length) * 100);
+                      return (
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="flex-1 bg-slate-100 rounded-full h-2">
+                            <div className="bg-green-500 h-2 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">{completedCount}/{tasks.length} done</span>
                         </div>
-                        <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">{completedCount}/{tasks.length} done</span>
-                      </div>
-                    );
-                  })()}
-                  {tasks.map(task => {
-                    const isCompleted = task.status === 'completed';
-                    const isInProgress = task.status === 'in_progress';
-                    return (
-                      <div
-                        key={task.id}
-                        className={`flex items-start gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
-                          isCompleted
-                            ? 'bg-green-50 border-green-200'
+                      );
+                    })()}
+                    {tasks.map(task => {
+                      const isCompleted  = task.status === 'completed';
+                      const isInProgress = task.status === 'in_progress';
+                      return (
+                        <div
+                          key={task.id}
+                          className={`flex items-start gap-3 px-4 py-3 rounded-lg border transition-all ${
+                            isCompleted   ? 'bg-green-50 border-green-200'
                             : isInProgress ? 'bg-blue-50 border-blue-200'
                             : 'bg-white border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                          isCompleted ? 'bg-green-500 border-green-500' : isInProgress ? 'bg-blue-500 border-blue-500' : 'border-slate-300'
-                        }`}>
-                          {isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
-                          {isInProgress && <div className="w-2 h-2 bg-white rounded-full" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium leading-tight ${isCompleted || isInProgress ? 'text-slate-700' : 'text-slate-800'}`}>
-                            {task.title}
-                          </p>
-                          {task.description && (
-                            <p className={`text-xs mt-0.5 ${isCompleted ? 'text-slate-300' : 'text-slate-500'}`}>{task.description}</p>
-                          )}
-                          <div className="mt-1.5 flex items-center gap-2">
-                            {editingTaskId === task.id ? (
-                              <>
-                                <input
-                                  autoFocus
-                                  type="text"
-                                  value={editingAssignment}
-                                  onChange={e => setEditingAssignment(e.target.value)}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') saveTaskAssignment(task.id, editingAssignment);
-                                    if (e.key === 'Escape') setEditingTaskId(null);
-                                  }}
-                                  placeholder="Worker name…"
-                                  className="h-6 text-xs px-2 border border-slate-200 rounded bg-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-primary flex-1"
-                                />
+                          }`}
+                        >
+                          <div className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                            isCompleted ? 'bg-green-500 border-green-500' : isInProgress ? 'bg-blue-500 border-blue-500' : 'border-slate-300'
+                          }`}>
+                            {isCompleted  && <CheckCircle2 className="w-3 h-3 text-white" />}
+                            {isInProgress && <div className="w-2 h-2 bg-white rounded-full" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium leading-tight ${isCompleted || isInProgress ? 'text-slate-700' : 'text-slate-800'}`}>
+                              {task.title}
+                            </p>
+                            {task.description && (
+                              <p className={`text-xs mt-0.5 ${isCompleted ? 'text-slate-300' : 'text-slate-500'}`}>{task.description}</p>
+                            )}
+                            <div className="mt-1.5 flex items-center gap-2">
+                              {editingTaskId === task.id ? (
+                                <>
+                                  <input
+                                    autoFocus
+                                    type="text"
+                                    value={editingAssignment}
+                                    onChange={e => setEditingAssignment(e.target.value)}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') saveTaskAssignment(task.id, editingAssignment);
+                                      if (e.key === 'Escape') setEditingTaskId(null);
+                                    }}
+                                    placeholder="Worker name…"
+                                    className="h-6 text-xs px-2 border border-slate-200 rounded bg-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-primary flex-1"
+                                  />
+                                  <button
+                                    onClick={() => saveTaskAssignment(task.id, editingAssignment)}
+                                    className="text-xs px-1.5 py-0.5 rounded bg-primary text-white hover:bg-primary/90 transition-colors"
+                                  >
+                                    Save
+                                  </button>
+                                </>
+                              ) : (
                                 <button
-                                  onClick={() => saveTaskAssignment(task.id, editingAssignment)}
-                                  className="text-xs px-1.5 py-0.5 rounded bg-primary text-white hover:bg-primary/90 transition-colors"
+                                  onClick={() => { setEditingTaskId(task.id); setEditingAssignment(task.assigned_to || ''); }}
+                                  className="text-[10px] text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-2 py-0.5 rounded transition-colors"
                                 >
-                                  Save
+                                  {task.assigned_to ? `👤 ${task.assigned_to}` : '👤 Unassigned'}
                                 </button>
-                              </>
-                            ) : (
+                              )}
+                            </div>
+                            {isInProgress && task.started_at && (
+                              <p className="text-[10px] text-blue-600 mt-1">Started {new Date(task.started_at).toLocaleString()}</p>
+                            )}
+                            {isCompleted && task.completed_at && (
+                              <p className="text-[10px] text-green-600 mt-1">✓ {new Date(task.completed_at).toLocaleString()}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {!isCompleted && (
                               <button
-                                onClick={() => {
-                                  setEditingTaskId(task.id);
-                                  setEditingAssignment(task.assigned_to || '');
-                                }}
-                                className="text-[10px] text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-2 py-0.5 rounded transition-colors"
+                                onClick={() => updateTask(task.id, { status: isInProgress ? 'pending' : 'in_progress' })}
+                                className={`p-1 rounded transition-colors ${isInProgress ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'text-slate-400 hover:bg-slate-100'}`}
                               >
-                                {task.assigned_to ? `👤 ${task.assigned_to}` : '👤 Unassigned'}
+                                {isInProgress ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
+                            {!isCompleted && (
+                              <button
+                                onClick={() => updateTask(task.id, { status: 'completed' })}
+                                className="p-1 rounded text-slate-400 hover:bg-green-100 hover:text-green-600 transition-colors"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {isCompleted && (
+                              <button
+                                onClick={() => updateTask(task.id, { status: 'pending' })}
+                                className="p-1 rounded text-slate-400 hover:bg-slate-100 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             )}
                           </div>
-                          {isInProgress && task.started_at && (
-                            <p className="text-[10px] text-blue-600 mt-1">
-                              Started {new Date(task.started_at).toLocaleString()}
-                            </p>
-                          )}
-                          {isCompleted && task.completed_at && (
-                            <p className="text-[10px] text-green-600 mt-1">
-                              ✓ Completed {new Date(task.completed_at).toLocaleString()}
-                            </p>
-                          )}
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {!isCompleted && (
-                            <button
-                              onClick={() => updateTask(task.id, { status: isInProgress ? 'pending' : 'in_progress' })}
-                              className={`p-1 rounded transition-colors ${isInProgress ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'text-slate-400 hover:bg-slate-100'}`}
-                              title={isInProgress ? 'Mark as Pending' : 'Mark as In Progress'}
-                            >
-                              {isInProgress ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                            </button>
-                          )}
-                          {!isCompleted && (
-                            <button
-                              onClick={() => updateTask(task.id, { status: 'completed' })}
-                              className="p-1 rounded text-slate-400 hover:bg-green-100 hover:text-green-600 transition-colors"
-                              title="Mark as Complete"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {isCompleted && (
-                            <button
-                              onClick={() => updateTask(task.id, { status: 'pending' })}
-                              className="p-1 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-                              title="Reset to Pending"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="border border-dashed border-slate-200 rounded-lg py-8 flex flex-col items-center text-slate-400">
-                  <ClipboardList className="w-6 h-6 mb-2" />
-                  <p className="text-sm">No tasks generated from estimate</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-primary" />
-                <h2 className="text-sm font-bold text-slate-900">Work Execution</h2>
-              </div>
-              <Button size="sm" onClick={saveExecution} disabled={savingExecution} className="gap-1.5">
-                {savingExecution ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">What was done</label>
-                <textarea
-                  className="w-full h-28 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                  placeholder="Describe the work performed…"
-                  value={execution.work_summary}
-                  onChange={e => setExecution(prev => ({ ...prev, work_summary: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Observations / Notes</label>
-                <textarea
-                  className="w-full h-20 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                  placeholder="Any observations or additional notes…"
-                  value={execution.notes}
-                  onChange={e => setExecution(prev => ({ ...prev, notes: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Issues Found</label>
-                <textarea
-                  className="w-full h-20 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                  placeholder="Problems encountered, items needing follow-up…"
-                  value={execution.issues_found}
-                  onChange={e => setExecution(prev => ({ ...prev, issues_found: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
-
-          <WOTimeTracking
-            workOrderId={id}
-            workOrder={workOrder}
-            initialArrival={workOrder.arrival_time}
-            initialDeparture={workOrder.departure_time}
-          />
-
-          <WOExpenses workOrderId={id} workOrderNumber={workOrder.work_order_number} />
-
-          {fieldExtras.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900">Field Extras Approval</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Review extra work added from the field</p>
-                </div>
-                {pendingFieldExtras.length > 0 && (
-                  <span className="text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5">
-                    {pendingFieldExtras.length} pending
-                  </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-slate-200 rounded-lg py-8 flex flex-col items-center text-slate-400">
+                    <ClipboardList className="w-6 h-6 mb-2" />
+                    <p className="text-sm">No tasks from estimate — use Line Items tab to add scope</p>
+                  </div>
                 )}
-              </div>
-              <div className="px-6 py-5 space-y-3">
-                {fieldExtras.map(extra => (
-                  <div key={extra.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-800">{extra.item}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Added by {extra.created_by || 'Field Staff'}
-                        {extra.created_at ? ` · ${new Date(extra.created_at).toLocaleString()}` : ''}
-                      </p>
-                      <span className={`inline-flex mt-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                        extra.approval_status === 'approved'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : extra.approval_status === 'rejected'
-                            ? 'bg-red-50 text-red-700 border-red-200'
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}>
-                        {extra.approval_status === 'approved' ? 'Approved' : extra.approval_status === 'rejected' ? 'Rejected' : 'Pending office approval'}
-                      </span>
+
+                {/* Work Execution Notes */}
+                <div className="pt-4 border-t border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Work Execution Notes</p>
+                    <Button size="sm" onClick={saveExecution} disabled={savingExecution}>
+                      {savingExecution ? 'Saving…' : 'Save Notes'}
+                    </Button>
+                  </div>
+                  {[['work_summary','What was done'], ['notes','Observations'], ['issues_found','Issues Found']].map(([field, label]) => (
+                    <div key={field}>
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1 block">{label}</label>
+                      <textarea
+                        className="w-full h-20 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                        placeholder={`${label}…`}
+                        value={execution[field]}
+                        onChange={e => setExecution(prev => ({ ...prev, [field]: e.target.value }))}
+                      />
                     </div>
-                    {extra.approval_status === 'pending_office_approval' && (
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateFieldExtraApproval(extra.id, 'approved')}>
-                          Approve
-                        </Button>
-                        <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => updateFieldExtraApproval(extra.id, 'rejected')}>
-                          Reject
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <WOFieldExecution
-            workOrder={workOrder}
-            workOrderId={id}
-            onUpdate={loadWorkOrder}
-          />
-
-          <WOReceipts
-            workOrderId={id}
-            workOrderNumber={workOrder.work_order_number}
-            clientName={workOrder.client_name}
-          />
-
-          {(() => {
-            const STATUS_NEXT = {
-              draft:       { next: 'assigned',    label: 'Mark Assigned' },
-              assigned:    { next: 'scheduled',   label: 'Mark Scheduled' },
-              scheduled:   { next: 'on_the_way',  label: 'On My Way' },
-              on_the_way:  { next: 'in_progress', label: 'Mark In Progress' },
-              in_progress: { next: 'completed',   label: 'Mark Completed' },
-            };
-            const step = STATUS_NEXT[workOrder.status];
-            const isCompleted = workOrder.status === 'completed';
-            const isInvoiced  = workOrder.status === 'invoiced';
-
-            if (isCompleted) return (
-              <div className="space-y-4">
-                <WOCompletionEvidence workOrder={workOrder} />
-                <div className="rounded-xl border border-green-200 bg-green-50 shadow-sm px-6 py-4 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-green-800">Work Order Completed</p>
-                    {workOrder.completed_at && (
-                      <p className="text-xs text-green-600 mt-0.5">{new Date(workOrder.completed_at).toLocaleString()}</p>
-                    )}
-                  </div>
+                  ))}
                 </div>
+
+                {/* Field Extras Approval */}
+                {fieldExtras.length > 0 && (
+                  <div className="pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Field Extras Approval</p>
+                      {pendingFieldExtras.length > 0 && (
+                        <span className="text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5">
+                          {pendingFieldExtras.length} pending
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {fieldExtras.map(extra => (
+                        <div key={extra.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-800">{extra.item}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Added by {extra.created_by || 'Field Staff'}
+                              {extra.created_at ? ` · ${new Date(extra.created_at).toLocaleString()}` : ''}
+                            </p>
+                            <span className={`inline-flex mt-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                              extra.approval_status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : extra.approval_status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}>
+                              {extra.approval_status === 'approved' ? 'Approved' : extra.approval_status === 'rejected' ? 'Rejected' : 'Pending approval'}
+                            </span>
+                          </div>
+                          {extra.approval_status === 'pending_office_approval' && (
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateFieldExtraApproval(extra.id, 'approved')}>Approve</Button>
+                              <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => updateFieldExtraApproval(extra.id, 'rejected')}>Reject</Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Status advancement */}
+                {(() => {
+                  const STATUS_NEXT = {
+                    draft:       { next: 'assigned',    label: 'Mark Assigned' },
+                    assigned:    { next: 'scheduled',   label: 'Mark Scheduled' },
+                    scheduled:   { next: 'on_the_way',  label: 'On My Way' },
+                    on_the_way:  { next: 'in_progress', label: 'Mark In Progress' },
+                    in_progress: { next: 'completed',   label: 'Mark Completed' },
+                  };
+                  const step        = STATUS_NEXT[workOrder.status];
+                  const isCompleted = workOrder.status === 'completed';
+                  const isInvoiced  = workOrder.status === 'invoiced';
+
+                  if (isCompleted) return (
+                    <div className="space-y-3">
+                      <WOCompletionEvidence workOrder={workOrder} />
+                      <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-3 flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-green-800">Work Order Completed</p>
+                          {workOrder.completed_at && (
+                            <p className="text-xs text-green-600 mt-0.5">{new Date(workOrder.completed_at).toLocaleString()}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+
+                  if (isInvoiced || !step) return null;
+
+                  const advance = async () => {
+                    if (step.next === 'completed') {
+                      const evaluation = evaluateWorkOrderEvidence(workOrder, { photoCount: workOrder.photos_count || 0 });
+                      if (!evaluation.isComplete) {
+                        toast.error(`Missing: ${evaluation.missingItems.join(', ')}`);
+                        return;
+                      }
+                    }
+                    const patch = { status: step.next };
+                    if (step.next === 'completed') patch.completed_at = new Date().toISOString();
+                    setCompleting(true);
+                    await nexartClient.entities.WorkOrder.update(id, patch);
+                    setWorkOrder(prev => ({ ...prev, ...patch }));
+                    setCompleting(false);
+                    toast.success(`Status updated to ${step.next.replace(/_/g, ' ')}`);
+                  };
+
+                  return (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 flex items-center justify-between">
+                      <p className="text-sm text-slate-500">
+                        Current: <span className="font-semibold text-slate-700">{workOrder.status.replace(/_/g, ' ')}</span>
+                      </p>
+                      <Button
+                        className={`gap-2 ${step.next === 'completed' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                        onClick={advance}
+                        disabled={completing}
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        {completing ? 'Saving…' : step.label}
+                      </Button>
+                    </div>
+                  );
+                })()}
               </div>
-            );
+            )}
 
-            if (isInvoiced || !step) return null;
+            {/* ── TAB: Line Items ── */}
+            {activeTab === 'items' && (
+              <WOLineItemsTab workOrderId={id} />
+            )}
 
-            const advance = async () => {
-              if (step.next === 'completed') {
-                const evaluation = evaluateWorkOrderEvidence(workOrder, { photoCount: workOrder.photos_count || 0 });
-                if (!evaluation.isComplete) {
-                  toast.error(`Missing: ${evaluation.missingItems.join(', ')}`);
-                  return;
-                }
-              }
+            {/* ── TAB: Photos ── */}
+            {activeTab === 'photos' && (
+              <WOPhotosTab workOrderId={id} />
+            )}
 
-              const patch = { status: step.next };
-              if (step.next === 'completed') patch.completed_at = new Date().toISOString();
-              setCompleting(true);
-              await nexartClient.entities.WorkOrder.update(id, patch);
-              setWorkOrder(prev => ({ ...prev, ...patch }));
-              setCompleting(false);
-              toast.success(`Status updated to ${step.next.replace('_', ' ')}`);
-            };
+            {/* ── TAB: Communications ── */}
+            {activeTab === 'comms' && (
+              <WOCommsTab workOrderId={id} />
+            )}
 
-            return (
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm px-6 py-4 flex items-center justify-between">
-                <p className="text-sm text-slate-500">
-                  Current: <span className="font-semibold text-slate-700">{workOrder.status.replace(/_/g, ' ')}</span>
-                </p>
-                <Button
-                  className={`gap-2 ${step.next === 'completed' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
-                  onClick={advance}
-                  disabled={completing}
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {completing ? 'Saving…' : step.label}
-                </Button>
+            {/* ── TAB: Change Orders ── */}
+            {activeTab === 'changes' && (
+              <WOChangeOrdersTab workOrderId={id} workOrderTotal={workOrder.total} />
+            )}
+
+            {/* ── TAB: Finance (Time, Expenses, Receipts, Profit) ── */}
+            {activeTab === 'finance' && (
+              <div className="space-y-5">
+                <WOTimeTracking
+                  workOrderId={id}
+                  workOrder={workOrder}
+                  initialArrival={workOrder.arrival_time}
+                  initialDeparture={workOrder.departure_time}
+                />
+                <WOExpenses workOrderId={id} workOrderNumber={workOrder.work_order_number} />
+                <WOReceipts
+                  workOrderId={id}
+                  workOrderNumber={workOrder.work_order_number}
+                  clientName={workOrder.client_name}
+                />
+                <WOFieldExecution
+                  workOrder={workOrder}
+                  workOrderId={id}
+                  onUpdate={loadWorkOrder}
+                />
               </div>
-            );
-          })()}
+            )}
+
+          </div>
         </div>
       </div>
+
       {showPreview && (
         <WorkOrderPreviewModal
           workOrder={workOrder}
