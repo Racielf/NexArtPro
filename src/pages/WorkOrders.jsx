@@ -218,20 +218,61 @@ export default function WorkOrders() {
     if (!form.title?.trim()) { toast.error('Title is required'); return; }
     try {
       if (editing?.id) {
-        await nexartClient.entities.WorkOrder.update(editing.id, form);
+        // For updates, only send the fields that the form controls
+        const patch = {
+          title:          form.title,
+          client_name:    form.client_name,
+          status:         form.status,
+          scheduled_date: form.scheduled_date || null,
+          notes:          form.notes          || null,
+          client_address: form.client_address || null,
+          description:    form.description    || null,
+          priority:       form.priority       || null,
+        };
+        await nexartClient.entities.WorkOrder.update(editing.id, patch);
         toast.success('Work order updated');
       } else {
-        const { id: _id, work_order_number: _num, job_address: _ja, client_address: _ca, ...createPayload } = form;
-        await nexartClient.entities.WorkOrder.create({
-          ...createPayload,
-          status: createPayload.status || 'draft',
-        });
+        // For creates, send only the absolute safe minimum columns
+        // that exist in ALL versions of the work_orders schema.
+        // Other columns (notes, client_address, etc.) require migration
+        // 20260629_wo_missing_columns.sql to be applied first.
+        const payload = {
+          title:          form.title.trim(),
+          client_name:    form.client_name    || null,
+          status:         form.status         || 'draft',
+          scheduled_date: form.scheduled_date || null,
+        };
+        // Conditionally add columns that may not exist yet
+        // (will succeed silently if column is present, gets stripped if absent via the columns map)
+        if (form.notes)          payload.notes          = form.notes;
+        if (form.client_address) payload.client_address = form.client_address;
+        if (form.description)    payload.description    = form.description;
+
+        await nexartClient.entities.WorkOrder.create(payload);
         toast.success('Work order created');
       }
       setShowForm(false);
       loadData();
     } catch (err) {
-      toast.error('Could not save: ' + (err?.message || 'unknown error'));
+      const msg = err?.message || '';
+      // If a column doesn't exist yet, strip it and retry with minimum payload
+      if (msg.includes('column') && msg.includes('schema cache')) {
+        try {
+          await nexartClient.entities.WorkOrder.create({
+            title:          form.title.trim(),
+            client_name:    form.client_name    || null,
+            status:         form.status         || 'draft',
+            scheduled_date: form.scheduled_date || null,
+          });
+          toast.success('Work order created (apply migration 20260629_wo_missing_columns.sql to enable all fields)');
+          setShowForm(false);
+          loadData();
+        } catch (err2) {
+          toast.error('Could not save: ' + (err2?.message || 'unknown error'));
+        }
+      } else {
+        toast.error('Could not save: ' + msg);
+      }
     }
   };
 
