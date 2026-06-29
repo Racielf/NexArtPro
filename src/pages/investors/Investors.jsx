@@ -5,7 +5,6 @@ import { Plus, Loader2, Handshake, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { nexartClient } from '@/api/nexartClient';
 
 const TYPE_LABELS = {
@@ -114,11 +113,11 @@ export default function Investors() {
 function InvestorCard({ investor }) {
   const navigate = useNavigate();
   return (
-    <Card
-      className="hover:shadow-md transition-shadow cursor-pointer"
+    <div
+      className="nexart-item-card"
       onClick={() => navigate(`/investors/${investor.id}`)}
     >
-      <CardContent className="p-4 space-y-3">
+      <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="font-semibold truncate">{investor.name}</p>
@@ -165,7 +164,7 @@ function InvestorCard({ investor }) {
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -56,8 +56,19 @@
     --burnt-500: #b07f1d;
     --orange-500: #df6b2a;
     --border-warm: #e0d2a4;
-    --shadow-card: 0 1px 2px rgba(10,18,38,.06), 0 1px 3px rgba(10,18,38,.04);
-    --shadow-lift: 0 6px 16px rgba(10,18,38,.08), 0 2px 4px rgba(10,18,38,.05);
+    /* — nexartwo shadow system — */
+    --shadow-card:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md:    0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lift:  0 6px 16px rgba(10,18,38,.08), 0 2px 4px rgba(10,18,38,.05);
+    --shadow-lg:    0 8px 30px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.05);
+    --shadow-glow:  0 0 24px rgba(176,127,29,0.12);
+    /* — nexartwo accent utilities — */
+    --accent-glow:  rgba(176,127,29,0.12);
+    --accent-soft:  rgba(176,127,29,0.06);
+    /* — nexartwo card gradient — */
+    --gradient-card: linear-gradient(145deg, rgba(255,255,255,0.97), rgba(251,248,242,0.99));
+    /* — nexartwo transition — */
+    --nexart-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
@@ -104,6 +115,42 @@
   body {
     @apply bg-background text-foreground font-inter;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NEXARTWO SCROLLBAR SYSTEM
+   ═══════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-warm);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--burnt-400); opacity: 0.5; }
+
+/* ═══════════════════════════════════════════════════════════════
+   NEXARTWO GLOBAL CARD OVERRIDES
+   Applies gradient background + hover lift to ALL shadcn Cards
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Shadcn Card base → nexartwo gradient */
+.bg-card {
+  background: var(--gradient-card) !important;
+}
+
+/* Shadcn Card container → hover lift + shadow */
+div.rounded-lg.border.bg-card,
+div.rounded-xl.border.bg-card {
+  box-shadow: var(--shadow-card);
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1),
+              box-shadow 0.25s cubic-bezier(0.4,0,0.2,1),
+              border-color 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+div.rounded-lg.border.bg-card:hover,
+div.rounded-xl.border.bg-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--border-warm);
 }
 
 @layer components {
@@ -858,13 +905,14 @@
 /* Display font */
 .font-display { font-family: var(--font-display); }
 
-/* nexartwo stat-card */
+/* ── Stat card — nexartwo pattern ──────────────────────────────
+   Gradient bg, hover translateY(-2px), colored top accent bar  */
 .nexart-stat-card {
-  background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(251,248,242,.98));
+  background: var(--gradient-card);
   border: 1px solid var(--border-warm);
   border-radius: 14px;
   padding: 20px;
-  transition: all .25s cubic-bezier(.4,0,.2,1);
+  transition: var(--nexart-transition);
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-card);
@@ -877,14 +925,72 @@
   opacity: 0;
   transition: opacity .25s;
 }
-.nexart-stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+.nexart-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--border-warm);
+}
 .nexart-stat-card:hover::before { opacity: 1; }
 .nexart-stat-card.accent::before  { background: var(--burnt-400); }
 .nexart-stat-card.success::before { background: #16a34a; }
 .nexart-stat-card.danger::before  { background: #dc2626; }
 .nexart-stat-card.info::before    { background: #2563eb; }
+.nexart-stat-card.purple::before  { background: #7c3aed; }
 
-/* Glass topbar supplement */
+/* ── Item card — for project/WO/service/investor cards ─────────
+   Hover: translateY(-2px) + amber shadow glow                   */
+.nexart-item-card {
+  background: var(--gradient-card);
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  padding: 18px;
+  transition: var(--nexart-transition);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+.nexart-item-card:hover {
+  border-color: var(--burnt-400);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+}
+
+/* ── Priority dot with glow — nexartwo pattern ─────────────────*/
+.priority-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.priority-emergency { background: #dc2626; box-shadow: 0 0 6px rgba(220,38,38,0.5); }
+.priority-high      { background: #f97316; }
+.priority-medium    { background: var(--burnt-400); }
+.priority-low       { background: #16a34a; }
+
+/* ── Filter pill tabs — nexartwo pattern ───────────────────────*/
+.nexart-filter-tab {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 500;
+  cursor: pointer;
+  transition: var(--nexart-transition);
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+}
+.nexart-filter-tab:hover {
+  border-color: var(--burnt-400);
+  color: hsl(var(--foreground));
+}
+.nexart-filter-tab.active {
+  background: var(--accent-glow);
+  color: var(--burnt-500);
+  border-color: rgba(176,127,29,0.3);
+  font-weight: 600;
+}
+
+/* ── Glass topbar supplement ───────────────────────────────────*/
 .nexart-glass-topbar {
   background: rgba(251,245,230,.8);
   backdrop-filter: blur(12px);
@@ -892,7 +998,7 @@
   border-bottom: 1px solid var(--border-warm);
 }
 
-/* Investor Hub Control Room banner */
+/* ── Investor Hub Control Room banner ──────────────────────────*/
 .investor-control-room {
   background: linear-gradient(135deg, #2d1f0e 0%, #3d2a12 50%, #2a1d0a 100%);
   border: 1px solid rgba(204,154,52,.25);

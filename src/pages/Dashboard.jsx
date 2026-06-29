@@ -18,10 +18,10 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaCh
    SHARED MICRO-COMPONENTS — clean SaaS style
    ══════════════════════════════════════════════ */
 
-/* Card shell — white, subtle border, no colored header */
+/* Card shell — nexartwo gradient + 2px lift hover */
 function Card({ title, icon: Icon, link, linkLabel = 'Ver todas', children, className = '', bodyClass = '' }) {
   return (
-    <div className={`flex flex-col bg-white border border-border rounded-xl shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 overflow-hidden ${className}`}>
+    <div className={`flex flex-col border border-border rounded-xl overflow-hidden ${className}`} style={{ background: 'var(--gradient-card)', boxShadow: 'var(--shadow-card)', transition: 'var(--nexart-transition)' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-lift)'; e.currentTarget.style.borderColor = 'var(--border-warm)'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'var(--shadow-card)'; e.currentTarget.style.borderColor = ''; }}>
       {/* Clean header */}
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/40 flex-shrink-0">
         <div className="flex items-center gap-2">
