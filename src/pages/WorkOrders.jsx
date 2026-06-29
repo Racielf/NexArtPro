@@ -219,7 +219,14 @@ export default function WorkOrders() {
       await nexartClient.entities.WorkOrder.update(editing.id, form);
       toast.success('Work order updated');
     } else {
-      await nexartClient.entities.WorkOrder.create({ ...form, status: form.status || 'draft' });
+      // Strip fields that must not be sent on INSERT:
+      // id → let DB generate UUID
+      // work_order_number → INTEGER, 'New' string would break the insert
+      const { id: _id, work_order_number: _num, ...createPayload } = form;
+      await nexartClient.entities.WorkOrder.create({
+        ...createPayload,
+        status: createPayload.status || 'draft',
+      });
       toast.success('Work order created');
     }
     setShowForm(false);
