@@ -21,6 +21,7 @@ import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Clients from './pages/Clients';
 import Appointments from './pages/Appointments';
+import Calendar from './pages/Calendar';
 import Estimates from './pages/Estimates';
 import WorkOrders from './pages/WorkOrders';
 import Invoices from './pages/Invoices';
@@ -165,6 +166,7 @@ const AppRoutes = () => (
       <Route path="/leads" element={<Leads />} />
       <Route path="/clients" element={<Clients />} />
       <Route path="/appointments" element={<Appointments />} />
+      <Route path="/calendar" element={<Calendar />} />
       <Route path="/estimates" element={<Estimates />} />
       <Route path="/work-orders" element={<WorkOrders />} />
       <Route path="/invoices" element={<Invoices />} />
