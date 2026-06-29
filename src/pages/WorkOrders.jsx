@@ -221,7 +221,7 @@ export default function WorkOrders() {
         await nexartClient.entities.WorkOrder.update(editing.id, form);
         toast.success('Work order updated');
       } else {
-        const { id: _id, work_order_number: _num, job_address: _ja, ...createPayload } = form;
+        const { id: _id, work_order_number: _num, job_address: _ja, client_address: _ca, ...createPayload } = form;
         await nexartClient.entities.WorkOrder.create({
           ...createPayload,
           status: createPayload.status || 'draft',
