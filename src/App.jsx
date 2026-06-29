@@ -44,6 +44,7 @@ import Payments from './pages/Payments';
 import IncomeExpenses from './pages/IncomeExpenses';
 import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
+import PriceBook from './pages/PriceBook';
 import Settings from './pages/Settings';
 import ProfitabilityDashboard from './pages/ProfitabilityDashboard';
 import Proposals from './pages/Proposals.jsx';
@@ -185,6 +186,7 @@ const AppRoutes = () => (
       <Route path="/income-expenses" element={<IncomeExpenses />} />
       <Route path="/payroll" element={<Payroll />} />
       <Route path="/reports" element={<Reports />} />
+      <Route path="/price-book" element={<PriceBook />} />
       <Route path="/profitability" element={<ProfitabilityDashboard />} />
       <Route path="/proposals" element={<Proposals />} />
       <Route path="/sales-pipeline" element={<SalesPipeline />} />

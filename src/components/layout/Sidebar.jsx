@@ -27,6 +27,7 @@ import {
   MoreHorizontal,
   Building2,
   Handshake,
+  BookOpen,
 } from 'lucide-react';
 
 const INVESTOR_HUB_ENABLED = import.meta.env.VITE_INVESTOR_HUB_ENABLED === 'true';
@@ -63,6 +64,7 @@ const navGroups = [
       { path: '/payments',        label: 'Payments',          icon: CreditCard },
       { path: '/income-expenses', label: 'Income & Expenses', icon: TrendingUp },
       { path: '/payroll',         label: 'Payroll',           icon: DollarSign },
+      { path: '/price-book',      label: 'Price Book',        icon: BookOpen },
       { path: '/reports',         label: 'Reports',           icon: BarChart2 },
     ],
   },
