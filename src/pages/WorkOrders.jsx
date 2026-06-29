@@ -216,19 +216,23 @@ export default function WorkOrders() {
 
   const handleSave = async () => {
     if (!form.title?.trim()) { toast.error('Title is required'); return; }
-    if (editing?.id) {
-      await nexartClient.entities.WorkOrder.update(editing.id, form);
-      toast.success('Work order updated');
-    } else {
-      const { id: _id, work_order_number: _num, ...createPayload } = form;
-      await nexartClient.entities.WorkOrder.create({
-        ...createPayload,
-        status: createPayload.status || 'draft',
-      });
-      toast.success('Work order created');
+    try {
+      if (editing?.id) {
+        await nexartClient.entities.WorkOrder.update(editing.id, form);
+        toast.success('Work order updated');
+      } else {
+        const { id: _id, work_order_number: _num, job_address: _ja, ...createPayload } = form;
+        await nexartClient.entities.WorkOrder.create({
+          ...createPayload,
+          status: createPayload.status || 'draft',
+        });
+        toast.success('Work order created');
+      }
+      setShowForm(false);
+      loadData();
+    } catch (err) {
+      toast.error('Could not save: ' + (err?.message || 'unknown error'));
     }
-    setShowForm(false);
-    loadData();
   };
 
   /* ── archive ──────────────────────────────────────────────────── */
@@ -573,8 +577,8 @@ export default function WorkOrders() {
             <div className="space-y-1.5">
               <Label>Job Address</Label>
               <Input
-                value={form.job_address || form.address || ''}
-                onChange={e => setForm({ ...form, job_address: e.target.value, address: e.target.value })}
+                value={form.client_address || ''}
+                onChange={e => setForm({ ...form, client_address: e.target.value })}
                 placeholder="123 Main St, Portland OR 97201"
               />
             </div>
