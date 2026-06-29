@@ -32,14 +32,14 @@
     --chart-5: 27 87% 67%;
     --cta-orange: 25 90% 50%;
     --radius: 0.75rem;
-    /* Sidebar tokens — light nexartwo palette */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 228 20% 20%;
-    --sidebar-primary: 40 62% 50%;
+    /* Sidebar tokens — V3 dark ink palette */
+    --sidebar-background: 228 57% 8%;
+    --sidebar-foreground: 42 30% 80%;
+    --sidebar-primary: 39 63% 50%;
     --sidebar-primary-foreground: 228 57% 7%;
-    --sidebar-accent: 43 80% 96%;
-    --sidebar-accent-foreground: 40 72% 42%;
-    --sidebar-border: 38 35% 83%;
+    --sidebar-accent: 222 55% 14%;
+    --sidebar-accent-foreground: 39 63% 50%;
+    --sidebar-border: 222 55% 12%;
     --sidebar-ring: 40 62% 50%;
     --font-inter: 'Inter', sans-serif;
     /* — NexArt V3 brand tokens — */
@@ -523,7 +523,7 @@ table tbody tr:hover td {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SIDEBAR — Desktop (>= 1024px)  — nexartwo LIGHT theme
+   SIDEBAR — Desktop (>= 1024px)  — V3 dark ink theme
    ═══════════════════════════════════════════════════════════════ */
 .sidebar-container {
   width: 260px;
@@ -532,8 +532,8 @@ table tbody tr:hover td {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  border-right: 1px solid var(--border-warm);
+  background: #0a1525;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .sidebar-mobile-topbar { display: none; }
@@ -545,14 +545,14 @@ table tbody tr:hover td {
 .sidebar-brand {
   padding: 20px 16px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border-warm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 .sidebar-brand-inner { display: flex; align-items: center; gap: 12px; }
 .sidebar-brand-logo {
   width: 40px; height: 40px; border-radius: 12px; overflow: hidden;
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  background: #ffffff; border: 1px solid var(--border-warm);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }
 .sidebar-brand-logo-fallback {
   width: 40px; height: 40px; border-radius: 12px;
@@ -562,12 +562,12 @@ table tbody tr:hover td {
 }
 .sidebar-brand-name {
   font-weight: 600; font-size: 13px; line-height: 1.3;
-  color: #1a1d2e;
+  color: #e8e3d8;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .sidebar-brand-sub {
   font-size: 10px; font-weight: 400; line-height: 1.2; margin-top: 2px;
-  color: #9196a8;
+  color: rgba(255, 255, 255, 0.38);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   display: block;
 }
@@ -584,15 +584,15 @@ table tbody tr:hover td {
   text-transform: uppercase; letter-spacing: 1.2px;
   padding: 8px 12px 6px;
   margin-top: 12px;
-  color: #9196a8;
+  color: rgba(255, 255, 255, 0.30);
 }
 
-/* nexartwo nav-item: dark text, amber active */
+/* V3 dark ink nav-item */
 .sidebar-link {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 14px; border-radius: 8px;
   font-size: 13.5px; font-weight: 500;
-  color: #5b6078;
+  color: rgba(255, 255, 255, 0.55);
   transition: var(--nexart-transition);
   text-decoration: none;
   width: 100%;
@@ -601,37 +601,37 @@ table tbody tr:hover td {
   position: relative; margin-bottom: 2px;
 }
 .sidebar-link:hover {
-  background: var(--accent-soft);
-  color: #1a1d2e;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.90);
 }
-.sidebar-link:hover .sidebar-link-icon { color: #d97706; }
+.sidebar-link:hover .sidebar-link-icon { color: #f59e0b; }
 
 /* Active: amber glow bg + left inset bar */
 .sidebar-link-active {
-  background: var(--accent-glow) !important;
-  color: #d97706 !important;
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #f59e0b !important;
   font-weight: 600 !important;
-  box-shadow: inset 3px 0 0 0 #d97706;
+  box-shadow: inset 3px 0 0 0 #f59e0b;
 }
-.sidebar-link-active .sidebar-link-icon { color: #d97706 !important; }
+.sidebar-link-active .sidebar-link-icon { color: #f59e0b !important; }
 
 .sidebar-link-icon {
   width: 16px; height: 16px; flex-shrink: 0;
-  color: #9196a8; stroke-width: 1.75;
+  color: rgba(255, 255, 255, 0.38); stroke-width: 1.75;
   transition: color 0.2s;
 }
 
-.sidebar-link-logout { color: #9196a8; }
+.sidebar-link-logout { color: rgba(255, 255, 255, 0.40); }
 .sidebar-link-logout:hover {
-  background: rgba(220,38,38,0.06) !important;
-  color: #dc2626 !important;
+  background: rgba(220, 38, 38, 0.12) !important;
+  color: #f87171 !important;
 }
-.sidebar-link-logout:hover .sidebar-link-icon { color: #dc2626 !important; }
+.sidebar-link-logout:hover .sidebar-link-icon { color: #f87171 !important; }
 
 /* Footer */
 .sidebar-footer {
   flex-shrink: 0; padding: 12px 10px;
-  border-top: 1px solid var(--border-warm);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -665,7 +665,7 @@ table tbody tr:hover td {
     right: 0;
   }
 
-  /* Mobile Top Bar — nexartwo light */
+  /* Mobile Top Bar — keep white for page contrast */
   .sidebar-mobile-topbar {
     display: flex;
     position: fixed;
@@ -705,13 +705,13 @@ table tbody tr:hover td {
   .sidebar-overlay {
     display: block;
     position: fixed; inset: 0; z-index: 49;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.55);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     animation: nexartPageIn 200ms ease;
   }
 
-  /* Sidebar — off-canvas, white */
+  /* Sidebar — off-canvas, inherits dark ink from container */
   .sidebar-container {
     position: fixed;
     top: 0; left: 0; bottom: 0;
@@ -719,26 +719,26 @@ table tbody tr:hover td {
     width: 280px;
     transform: translateX(-100%);
     transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.18);
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.40);
   }
   .sidebar-container.sidebar-open {
     transform: translateX(0);
   }
 
-  /* Close button — light colors */
+  /* Close button — adapted for dark sidebar */
   .sidebar-close-btn {
     display: flex;
     position: absolute; top: 12px; right: 12px;
     width: 36px; height: 36px;
     align-items: center; justify-content: center;
     border-radius: 10px; border: none;
-    background: rgba(0,0,0,0.06);
-    color: #5b6078; cursor: pointer;
+    background: rgba(255, 255, 255, 0.10);
+    color: rgba(255, 255, 255, 0.60); cursor: pointer;
     z-index: 10;
   }
-  .sidebar-close-btn:active { background: rgba(0,0,0,0.12); }
+  .sidebar-close-btn:active { background: rgba(255, 255, 255, 0.16); }
 
-  /* Bottom Nav — nexartwo light */
+  /* Bottom Nav — keep white for page contrast */
   .sidebar-bottom-nav {
     display: flex;
     position: fixed;
