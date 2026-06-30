@@ -1,128 +1,128 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { nexartClient } from '@/api/nexartClient';
 import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router-dom';
-import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { Button } from '@/components/ui/button';
 import {
-  ArrowLeft, Eye, Printer, Send, CheckCircle2,
-  User, Phone, Mail, MapPin, Calendar, Briefcase, Clock,
-  ClipboardList, Play, Square, Trash2,
-  Camera, MessageSquare, GitBranch, ListChecks, DollarSign,
+  ArrowLeft, Pencil, Check, X, MapPin, Calendar, AlertCircle,
+  FileText, Camera, MessageSquare, GitBranch, ListChecks, Activity,
+  Printer, Mail, Plus, CheckCircle2, Save,
 } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
-import WOTimeTracking from '@/components/workorders/WOTimeTracking';
-import WOExpenses from '@/components/workorders/WOExpenses';
-import WOReceipts from '@/components/workorders/WOReceipts';
-import WOFieldExecution from '@/components/workorders/WOFieldExecution';
-import WOCompletionEvidence from '@/components/workorders/WOCompletionEvidence';
-import WorkOrderPreviewModal from '@/components/workorders/WorkOrderPreviewModal';
-import JobProfitSummary from '@/components/workorders/JobProfitSummary';
-import WOLineItemsTab from '@/components/workorders/WOLineItemsTab';
-import WOPhotosTab from '@/components/workorders/WOPhotosTab';
-import WOCommsTab from '@/components/workorders/WOCommsTab';
+import WOLineItemsTab   from '@/components/workorders/WOLineItemsTab';
+import WOPhotosTab      from '@/components/workorders/WOPhotosTab';
+import WOCommsTab       from '@/components/workorders/WOCommsTab';
 import WOChangeOrdersTab from '@/components/workorders/WOChangeOrdersTab';
+import WODocumentTab    from '@/components/workorders/WODocumentTab';
+import WOActivityLogTab from '@/components/workorders/WOActivityLogTab';
 
-const TABS = [
-  { id: 'scope',    label: 'Scope',          icon: ClipboardList },
-  { id: 'items',    label: 'Line Items',      icon: ListChecks },
-  { id: 'photos',   label: 'Photos',          icon: Camera },
-  { id: 'comms',    label: 'Communications',  icon: MessageSquare },
-  { id: 'changes',  label: 'Change Orders',   icon: GitBranch },
-  { id: 'finance',  label: 'Finance',         icon: DollarSign },
-];
+const PRIORITY_STYLE = {
+  high:   'bg-red-100 text-red-700 border-red-200',
+  medium: 'bg-amber-100 text-amber-700 border-amber-200',
+  low:    'bg-slate-100 text-slate-600 border-slate-200',
+  normal: 'bg-slate-100 text-slate-600 border-slate-200',
+};
+
+function fmt(date) {
+  if (!date) return null;
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function woNumber(wo) {
+  const n = wo?.work_order_number || wo?.wo_number;
+  if (!n) return null;
+  const yr = wo.created_date ? new Date(wo.created_date).getFullYear() : new Date().getFullYear();
+  return `WO-${yr}-${String(n).padStart(4, '0')}`;
+}
 
 export default function WorkOrderDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const [workOrder, setWorkOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [tasks, setTasks] = useState([]);
-  const [taskStatuses, setTaskStatuses] = useState({});
-  const [execution, setExecution] = useState({ work_summary: '', notes: '', issues_found: '' });
-  const [savingExecution, setSavingExecution] = useState(false);
-  const [completing, setCompleting] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [editingAssignment, setEditingAssignment] = useState('');
-  const [projects, setProjects] = useState([]);
-  const [activeTab, setActiveTab] = useState('scope');
+  const [workOrder, setWorkOrder]   = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [activeTab, setActiveTab]   = useState('items');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft]    = useState('');
+  const [savedAt, setSavedAt]          = useState(null);
+  const [advancing, setAdvancing]      = useState(false);
 
-  useEffect(() => { loadWorkOrder(); }, [id]);
-  useEffect(() => {
-    nexartClient.entities.Project.list('-created_at', 100).then(setProjects).catch(() => {});
-  }, []);
+  // tab counts
+  const [itemCount, setItemCount]   = useState(0);
+  const [photoCount, setPhotoCount] = useState(0);
+  const [commCount,  setCommCount]  = useState(0);
+  const [coCount,    setCoCount]    = useState(0);
 
-  const loadWorkOrder = async () => {
+  const loadWorkOrder = useCallback(async () => {
     if (!id) { setLoading(false); return; }
-    const list = await nexartClient.entities.WorkOrder.filter({ id });
-    if (list.length) {
-      const wo = list[0];
-      const photos = await nexartClient.entities.ProjectPhoto.filter({ work_order_id: id });
-      const enriched = { ...wo, photos_count: photos?.length || 0 };
-      setWorkOrder(enriched);
-      setTasks(enriched.tasks || []);
-      setTaskStatuses(enriched.task_statuses || {});
-      setExecution({
-        work_summary: enriched.work_summary || '',
-        notes: enriched.notes || '',
-        issues_found: enriched.issues_found || '',
-      });
+    try {
+      const list = await nexartClient.entities.WorkOrder.filter({ id });
+      if (list.length) {
+        setWorkOrder(list[0]);
+        setTitleDraft(list[0].title || '');
+      }
+    } catch (e) {
+      toast.error('Could not load work order');
     }
     setLoading(false);
+  }, [id]);
+
+  const loadCounts = useCallback(async () => {
+    if (!id) return;
+    try {
+      const [items, photos, comms, cos] = await Promise.all([
+        nexartClient.entities.WorkOrderLineItem.filter({ work_order_id: id }),
+        nexartClient.entities.WorkOrderPhoto.filter({ work_order_id: id }),
+        nexartClient.entities.WorkOrderComm.filter({ work_order_id: id }),
+        nexartClient.entities.ChangeOrder.filter({ work_order_id: id }),
+      ]);
+      setItemCount(items?.length || 0);
+      setPhotoCount(photos?.length || 0);
+      setCommCount(comms?.length || 0);
+      setCoCount(cos?.length || 0);
+    } catch (_) {}
+  }, [id]);
+
+  useEffect(() => {
+    loadWorkOrder();
+    loadCounts();
+  }, [loadWorkOrder, loadCounts]);
+
+  const saveTitle = async () => {
+    if (!titleDraft.trim()) return;
+    await nexartClient.entities.WorkOrder.update(id, { title: titleDraft.trim() });
+    setWorkOrder(prev => ({ ...prev, title: titleDraft.trim() }));
+    setEditingTitle(false);
+    setSavedAt(new Date());
+    toast.success('Title saved');
   };
 
-  const saveExecution = async () => {
-    setSavingExecution(true);
-    await nexartClient.entities.WorkOrder.update(id, execution);
-    setSavingExecution(false);
-    setWorkOrder(prev => prev ? { ...prev, ...execution } : prev);
-    toast.success('Execution notes saved');
-  };
-
-  const saveProject = async (projectId) => {
-    await nexartClient.entities.WorkOrder.update(id, { project_id: projectId || null });
-    setWorkOrder(prev => prev ? { ...prev, project_id: projectId || null } : prev);
-    toast.success(projectId ? 'Project linked.' : 'Project unlinked.');
-  };
-
-  const saveTaskAssignment = async (taskId, newAssignment) => {
-    const updatedTasks = tasks.map(t =>
-      t.id === taskId ? { ...t, assigned_to: newAssignment } : t
-    );
-    setTasks(updatedTasks);
-    await nexartClient.entities.WorkOrder.update(id, { tasks: updatedTasks });
-    setEditingTaskId(null);
-    toast.success('Task assignment saved');
-  };
-
-  const updateTask = async (taskId, updates) => {
-    const updatedTasks = tasks.map(t => {
-      if (t.id === taskId) {
-        const updated = { ...t, ...updates };
-        if (updates.status === 'in_progress' && !t.started_at) updated.started_at = new Date().toISOString();
-        if (updates.status === 'completed' && !t.completed_at) updated.completed_at = new Date().toISOString();
-        if (updates.status === 'pending') { updated.started_at = null; updated.completed_at = null; }
-        return updated;
+  const advanceStatus = async () => {
+    const STATUS_NEXT = {
+      draft:       'assigned',
+      assigned:    'scheduled',
+      scheduled:   'on_the_way',
+      on_the_way:  'in_progress',
+      in_progress: 'completed',
+    };
+    const next = STATUS_NEXT[workOrder.status];
+    if (!next) return;
+    if (next === 'completed') {
+      const ev = evaluateWorkOrderEvidence(workOrder, { photoCount });
+      if (!ev.isComplete) {
+        toast.error(`Missing: ${ev.missingItems.join(', ')}`);
+        return;
       }
-      return t;
-    });
-    setTasks(updatedTasks);
-    await nexartClient.entities.WorkOrder.update(id, { tasks: updatedTasks });
-  };
-
-  const updateFieldExtraApproval = async (itemId, approvalStatus) => {
-    const currentChecklist = workOrder.execution_checklist || [];
-    const updatedChecklist = currentChecklist.map(item =>
-      item.id === itemId
-        ? { ...item, approval_status: approvalStatus, reviewed_by: 'Office', reviewed_at: new Date().toISOString() }
-        : item
-    );
-    await nexartClient.entities.WorkOrder.update(id, { execution_checklist: updatedChecklist });
-    setWorkOrder(prev => ({ ...prev, execution_checklist: updatedChecklist }));
-    toast.success(approvalStatus === 'approved' ? 'Extra approved' : 'Extra rejected');
+    }
+    setAdvancing(true);
+    const patch = { status: next };
+    if (next === 'completed') patch.completed_at = new Date().toISOString();
+    await nexartClient.entities.WorkOrder.update(id, patch);
+    setWorkOrder(prev => ({ ...prev, ...patch }));
+    setSavedAt(new Date());
+    setAdvancing(false);
+    toast.success(`Status → ${next.replace(/_/g, ' ')}`);
   };
 
   if (loading) return (
@@ -140,501 +140,265 @@ export default function WorkOrderDetail() {
     </div>
   );
 
-  const groupItems = (workOrder.groups || []).flatMap(g => (g.items || []).map(normalizeLineItem));
-  const flatItems  = (workOrder.line_items || []).map(li => normalizeLineItem(li));
-  const fieldExtras = (workOrder.execution_checklist || []).filter(item => item.type === 'extra');
-  const pendingFieldExtras = fieldExtras.filter(item => item.approval_status === 'pending_office_approval');
+  const wo = workOrder;
+  const woNum = woNumber(wo);
+  const completedItems = itemCount > 0 ? itemCount : 0;
+  const totalValue = wo.total || wo.subtotal || 0;
+  const pct = itemCount > 0 ? Math.round((completedItems / itemCount) * 100) : 0;
+  const priority = (wo.priority || 'normal').toLowerCase();
+
+  const STATUS_NEXT_LABEL = {
+    draft:       'Mark Assigned',
+    assigned:    'Mark Scheduled',
+    scheduled:   'On My Way',
+    on_the_way:  'Mark In Progress',
+    in_progress: 'Mark Completed',
+  };
+  const nextLabel = STATUS_NEXT_LABEL[wo.status];
+
+  const TABS = [
+    { id: 'items',   label: 'Line Items',     icon: ListChecks,    count: itemCount },
+    { id: 'doc',     label: 'Document',       icon: FileText,      count: null },
+    { id: 'photos',  label: 'Photos',         icon: Camera,        count: photoCount },
+    { id: 'comms',   label: 'Communications', icon: MessageSquare, count: commCount },
+    { id: 'changes', label: 'Change Orders',  icon: GitBranch,     count: coCount },
+    { id: 'log',     label: 'Activity Log',   icon: Activity,      count: null },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5]">
+    <div className="min-h-screen bg-[#f5f5f0]">
 
-      {/* ─── Sticky Header ─── */}
-      <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
-          <button
+      {/* ── Top nav bar ── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
+        <button
+          onClick={() => navigate('/work-orders')}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Work Orders
+        </button>
+        <div className="flex items-center gap-3">
+          {savedAt && (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+              Saved
+            </span>
+          )}
+          <Button
+            size="sm"
+            className="gap-1.5 bg-[#d97706] hover:bg-[#b45309] text-white"
             onClick={() => navigate('/work-orders')}
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Work Orders
-          </button>
-          <div className="h-4 w-px bg-slate-200" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-base font-bold text-slate-900 whitespace-nowrap">
-                Work Order #{workOrder.work_order_number}
-              </h1>
-              <StatusBadge status={workOrder.status} />
-            </div>
-            <div className="flex items-center gap-4 mt-0.5 text-xs text-slate-500 flex-wrap">
-              <span className="flex items-center gap-1">
-                <User className="w-3 h-3" />{workOrder.client_name}
-              </span>
-              {workOrder.client_address && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />{workOrder.client_address}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPreview(true)}>
-              <Eye className="w-3.5 h-3.5" /> Preview
-            </Button>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPreview(true)}>
-              <Printer className="w-3.5 h-3.5" /> Print
-            </Button>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPreview(true)}>
-              <Send className="w-3.5 h-3.5" /> Send
-            </Button>
-          </div>
+            <Plus className="w-3.5 h-3.5" /> New Work Order
+          </Button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 flex gap-6 items-start">
+      <div className="max-w-6xl mx-auto px-6 py-6 space-y-4">
 
-        {/* ─── Sidebar ─── */}
-        <div className="w-64 flex-shrink-0 space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-3">Customer</p>
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary font-bold text-sm">
-                  {workOrder.client_name?.charAt(0)?.toUpperCase() || '?'}
-                </div>
-                <p className="text-sm font-semibold text-slate-800 leading-tight">{workOrder.client_name}</p>
-              </div>
-              {workOrder.client_phone && (
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Phone className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                  {workOrder.client_phone}
-                </div>
-              )}
-              {workOrder.client_email && (
-                <div className="flex items-center gap-2 text-sm text-slate-600 break-all">
-                  <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                  {workOrder.client_email}
-                </div>
-              )}
-              {workOrder.client_address && (
-                <div className="flex items-start gap-2 text-sm text-slate-600">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
-                  {workOrder.client_address}
-                </div>
-              )}
-            </div>
+        {/* ── Page title + action buttons ── */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-slate-900">Work Order Detail</h1>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5 text-slate-600">
+              <Printer className="w-3.5 h-3.5" /> Generate PDF
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5 text-slate-600">
+              <Mail className="w-3.5 h-3.5" /> Send Email
+            </Button>
+            <Button
+              size="sm"
+              className="gap-1.5 bg-[#d97706] hover:bg-[#b45309] text-white"
+              onClick={() => setActiveTab('items')}
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Item
+            </Button>
           </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-3">Job Details</p>
-            <div className="space-y-3.5">
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Status</p>
-                <StatusBadge status={workOrder.status} />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Assigned Worker</p>
-                <div className="flex items-center gap-1.5 text-sm text-slate-700">
-                  <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                  {workOrder.assigned_worker_name
-                    ? <span>{workOrder.assigned_worker_name}</span>
-                    : <span className="text-slate-400 italic">Unassigned</span>}
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Scheduled Date</p>
-                <div className="flex items-center gap-1.5 text-sm text-slate-700">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  {workOrder.scheduled_date
-                    ? <span>{workOrder.scheduled_date}</span>
-                    : <span className="text-slate-400 italic">Not set</span>}
-                </div>
-              </div>
-              {workOrder.scheduled_time && (
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Time</p>
-                  <div className="flex items-center gap-1.5 text-sm text-slate-700">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    {workOrder.scheduled_time}
-                  </div>
-                </div>
-              )}
-              {projects.length > 0 && (
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Flip Project</p>
-                  <select
-                    className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-700"
-                    value={workOrder.project_id || ''}
-                    onChange={(e) => saveProject(e.target.value)}
-                  >
-                    <option value="">— Not linked —</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {(workOrder.subtotal != null || workOrder.total != null) && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-3">Summary</p>
-              <div className="space-y-1.5 text-sm">
-                {workOrder.subtotal != null && (
-                  <div className="flex justify-between text-slate-600">
-                    <span>Subtotal</span>
-                    <span>${workOrder.subtotal.toFixed(2)}</span>
-                  </div>
-                )}
-                {workOrder.total != null && (
-                  <div className="flex justify-between font-semibold text-slate-900 border-t border-slate-100 pt-1.5 mt-1">
-                    <span>Total</span>
-                    <span>${workOrder.total.toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <JobProfitSummary workOrderId={id} />
         </div>
 
-        {/* ─── Main Content with Tabs ─── */}
-        <div className="flex-1 min-w-0 space-y-0">
+        {/* ── WO Header card ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-start justify-between gap-6">
 
-          {/* Tab bar */}
-          <div className="bg-white rounded-t-xl border border-slate-200 border-b-0">
-            <div className="flex overflow-x-auto scrollbar-hide px-2 pt-2">
-              {TABS.map(tab => {
-                const Icon = tab.icon;
-                const active = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all mr-0.5 ${
-                      active
-                        ? 'border-primary text-primary bg-primary/5 rounded-t-lg'
-                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+              {/* Left: WO number + status + title + info chips */}
+              <div className="flex-1 min-w-0 space-y-3">
 
-          {/* Tab panels */}
-          <div className="bg-white rounded-b-xl border border-slate-200 shadow-sm p-6">
-
-            {/* ── TAB: Scope (original task view + execution notes) ── */}
-            {activeTab === 'scope' && (
-              <div className="space-y-5">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800 mb-1">{workOrder.title || '—'}</p>
-                  {workOrder.description && (
-                    <p className="text-sm text-slate-500">{workOrder.description}</p>
+                {/* WO number + status */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {woNum && (
+                    <span className="text-sm font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                      {woNum}
+                    </span>
+                  )}
+                  <StatusBadge status={wo.status} />
+                  {priority && priority !== 'normal' && priority !== 'low' && (
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border capitalize ${PRIORITY_STYLE[priority] || PRIORITY_STYLE.normal}`}>
+                      ● {priority}
+                    </span>
                   )}
                 </div>
 
-                {tasks.length > 0 ? (
-                  <div className="space-y-2">
-                    {(() => {
-                      const completedCount = tasks.filter(t => t.status === 'completed').length;
-                      const pct = Math.round((completedCount / tasks.length) * 100);
-                      return (
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="flex-1 bg-slate-100 rounded-full h-2">
-                            <div className="bg-green-500 h-2 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">{completedCount}/{tasks.length} done</span>
-                        </div>
-                      );
-                    })()}
-                    {tasks.map(task => {
-                      const isCompleted  = task.status === 'completed';
-                      const isInProgress = task.status === 'in_progress';
-                      return (
-                        <div
-                          key={task.id}
-                          className={`flex items-start gap-3 px-4 py-3 rounded-lg border transition-all ${
-                            isCompleted   ? 'bg-green-50 border-green-200'
-                            : isInProgress ? 'bg-blue-50 border-blue-200'
-                            : 'bg-white border-slate-200 hover:border-slate-300'
-                          }`}
-                        >
-                          <div className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                            isCompleted ? 'bg-green-500 border-green-500' : isInProgress ? 'bg-blue-500 border-blue-500' : 'border-slate-300'
-                          }`}>
-                            {isCompleted  && <CheckCircle2 className="w-3 h-3 text-white" />}
-                            {isInProgress && <div className="w-2 h-2 bg-white rounded-full" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium leading-tight ${isCompleted || isInProgress ? 'text-slate-700' : 'text-slate-800'}`}>
-                              {task.title}
-                            </p>
-                            {task.description && (
-                              <p className={`text-xs mt-0.5 ${isCompleted ? 'text-slate-300' : 'text-slate-500'}`}>{task.description}</p>
-                            )}
-                            <div className="mt-1.5 flex items-center gap-2">
-                              {editingTaskId === task.id ? (
-                                <>
-                                  <input
-                                    autoFocus
-                                    type="text"
-                                    value={editingAssignment}
-                                    onChange={e => setEditingAssignment(e.target.value)}
-                                    onKeyDown={e => {
-                                      if (e.key === 'Enter') saveTaskAssignment(task.id, editingAssignment);
-                                      if (e.key === 'Escape') setEditingTaskId(null);
-                                    }}
-                                    placeholder="Worker name…"
-                                    className="h-6 text-xs px-2 border border-slate-200 rounded bg-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-primary flex-1"
-                                  />
-                                  <button
-                                    onClick={() => saveTaskAssignment(task.id, editingAssignment)}
-                                    className="text-xs px-1.5 py-0.5 rounded bg-primary text-white hover:bg-primary/90 transition-colors"
-                                  >
-                                    Save
-                                  </button>
-                                </>
-                              ) : (
-                                <button
-                                  onClick={() => { setEditingTaskId(task.id); setEditingAssignment(task.assigned_to || ''); }}
-                                  className="text-[10px] text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-2 py-0.5 rounded transition-colors"
-                                >
-                                  {task.assigned_to ? `👤 ${task.assigned_to}` : '👤 Unassigned'}
-                                </button>
-                              )}
-                            </div>
-                            {isInProgress && task.started_at && (
-                              <p className="text-[10px] text-blue-600 mt-1">Started {new Date(task.started_at).toLocaleString()}</p>
-                            )}
-                            {isCompleted && task.completed_at && (
-                              <p className="text-[10px] text-green-600 mt-1">✓ {new Date(task.completed_at).toLocaleString()}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            {!isCompleted && (
-                              <button
-                                onClick={() => updateTask(task.id, { status: isInProgress ? 'pending' : 'in_progress' })}
-                                className={`p-1 rounded transition-colors ${isInProgress ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'text-slate-400 hover:bg-slate-100'}`}
-                              >
-                                {isInProgress ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                              </button>
-                            )}
-                            {!isCompleted && (
-                              <button
-                                onClick={() => updateTask(task.id, { status: 'completed' })}
-                                className="p-1 rounded text-slate-400 hover:bg-green-100 hover:text-green-600 transition-colors"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            {isCompleted && (
-                              <button
-                                onClick={() => updateTask(task.id, { status: 'pending' })}
-                                className="p-1 rounded text-slate-400 hover:bg-slate-100 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="border border-dashed border-slate-200 rounded-lg py-8 flex flex-col items-center text-slate-400">
-                    <ClipboardList className="w-6 h-6 mb-2" />
-                    <p className="text-sm">No tasks from estimate — use Line Items tab to add scope</p>
-                  </div>
-                )}
-
-                {/* Work Execution Notes */}
-                <div className="pt-4 border-t border-slate-100 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Work Execution Notes</p>
-                    <Button size="sm" onClick={saveExecution} disabled={savingExecution}>
-                      {savingExecution ? 'Saving…' : 'Save Notes'}
-                    </Button>
-                  </div>
-                  {[['work_summary','What was done'], ['notes','Observations'], ['issues_found','Issues Found']].map(([field, label]) => (
-                    <div key={field}>
-                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1 block">{label}</label>
-                      <textarea
-                        className="w-full h-20 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                        placeholder={`${label}…`}
-                        value={execution[field]}
-                        onChange={e => setExecution(prev => ({ ...prev, [field]: e.target.value }))}
+                {/* Editable title */}
+                <div className="flex items-center gap-2">
+                  {editingTitle ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={titleDraft}
+                        onChange={e => setTitleDraft(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
+                        className="flex-1 text-lg font-bold text-slate-900 border-b-2 border-primary outline-none bg-transparent"
                       />
+                      <button onClick={saveTitle} className="p-1 rounded text-emerald-600 hover:bg-emerald-50">
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setEditingTitle(false)} className="p-1 rounded text-slate-400 hover:bg-slate-100">
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                  ))}
+                  ) : (
+                    <>
+                      <h2 className="text-lg font-bold text-slate-900">
+                        {wo.title || wo.description || 'Untitled Work Order'}
+                      </h2>
+                      <button
+                        onClick={() => setEditingTitle(true)}
+                        className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
 
-                {/* Field Extras Approval */}
-                {fieldExtras.length > 0 && (
-                  <div className="pt-4 border-t border-slate-100">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Field Extras Approval</p>
-                      {pendingFieldExtras.length > 0 && (
-                        <span className="text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5">
-                          {pendingFieldExtras.length} pending
-                        </span>
-                      )}
+                {/* Info chips */}
+                <div className="flex items-center gap-3 flex-wrap text-sm text-slate-600">
+                  {wo.assigned_worker_name && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                        {wo.assigned_worker_name.charAt(0).toUpperCase()}
+                      </span>
+                      {wo.assigned_worker_name}
+                    </span>
+                  )}
+                  {wo.client_address && (
+                    <span className="flex items-center gap-1 text-slate-500">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      {wo.client_address}
+                    </span>
+                  )}
+                  {wo.service_type && (
+                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                      {wo.service_type}
+                    </span>
+                  )}
+                  {wo.created_date && (
+                    <span className="flex items-center gap-1 text-slate-400 text-xs">
+                      <Calendar className="w-3 h-3" />
+                      Created: {fmt(wo.created_date)}
+                    </span>
+                  )}
+                  {wo.scheduled_date && (
+                    <span className="flex items-center gap-1 text-slate-400 text-xs">
+                      <Calendar className="w-3 h-3" />
+                      Target: {fmt(wo.scheduled_date)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Total Estimate + progress */}
+              <div className="flex-shrink-0 text-right min-w-[140px]">
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Total Estimate</p>
+                <p className="text-3xl font-bold text-slate-900 mt-1">
+                  {totalValue > 0 ? `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '—'}
+                </p>
+                {itemCount > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <div className="w-full bg-slate-100 rounded-full h-2">
+                      <div
+                        className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
-                    <div className="space-y-2">
-                      {fieldExtras.map(extra => (
-                        <div key={extra.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-800">{extra.item}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              Added by {extra.created_by || 'Field Staff'}
-                              {extra.created_at ? ` · ${new Date(extra.created_at).toLocaleString()}` : ''}
-                            </p>
-                            <span className={`inline-flex mt-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                              extra.approval_status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : extra.approval_status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                            }`}>
-                              {extra.approval_status === 'approved' ? 'Approved' : extra.approval_status === 'rejected' ? 'Rejected' : 'Pending approval'}
-                            </span>
-                          </div>
-                          {extra.approval_status === 'pending_office_approval' && (
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateFieldExtraApproval(extra.id, 'approved')}>Approve</Button>
-                              <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => updateFieldExtraApproval(extra.id, 'rejected')}>Reject</Button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-xs text-slate-400">{itemCount}/{itemCount} items complete</p>
                   </div>
                 )}
+              </div>
+            </div>
 
-                {/* Status advancement */}
-                {(() => {
-                  const STATUS_NEXT = {
-                    draft:       { next: 'assigned',    label: 'Mark Assigned' },
-                    assigned:    { next: 'scheduled',   label: 'Mark Scheduled' },
-                    scheduled:   { next: 'on_the_way',  label: 'On My Way' },
-                    on_the_way:  { next: 'in_progress', label: 'Mark In Progress' },
-                    in_progress: { next: 'completed',   label: 'Mark Completed' },
-                  };
-                  const step        = STATUS_NEXT[workOrder.status];
-                  const isCompleted = workOrder.status === 'completed';
-                  const isInvoiced  = workOrder.status === 'invoiced';
-
-                  if (isCompleted) return (
-                    <div className="space-y-3">
-                      <WOCompletionEvidence workOrder={workOrder} />
-                      <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-3 flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                        <div>
-                          <p className="text-sm font-semibold text-green-800">Work Order Completed</p>
-                          {workOrder.completed_at && (
-                            <p className="text-xs text-green-600 mt-0.5">{new Date(workOrder.completed_at).toLocaleString()}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-
-                  if (isInvoiced || !step) return null;
-
-                  const advance = async () => {
-                    if (step.next === 'completed') {
-                      const evaluation = evaluateWorkOrderEvidence(workOrder, { photoCount: workOrder.photos_count || 0 });
-                      if (!evaluation.isComplete) {
-                        toast.error(`Missing: ${evaluation.missingItems.join(', ')}`);
-                        return;
-                      }
-                    }
-                    const patch = { status: step.next };
-                    if (step.next === 'completed') patch.completed_at = new Date().toISOString();
-                    setCompleting(true);
-                    await nexartClient.entities.WorkOrder.update(id, patch);
-                    setWorkOrder(prev => ({ ...prev, ...patch }));
-                    setCompleting(false);
-                    toast.success(`Status updated to ${step.next.replace(/_/g, ' ')}`);
-                  };
-
-                  return (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 flex items-center justify-between">
-                      <p className="text-sm text-slate-500">
-                        Current: <span className="font-semibold text-slate-700">{workOrder.status.replace(/_/g, ' ')}</span>
-                      </p>
-                      <Button
-                        className={`gap-2 ${step.next === 'completed' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
-                        onClick={advance}
-                        disabled={completing}
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        {completing ? 'Saving…' : step.label}
-                      </Button>
-                    </div>
-                  );
-                })()}
+            {/* Status advance bar */}
+            {nextLabel && wo.status !== 'completed' && wo.status !== 'invoiced' && (
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <p className="text-xs text-slate-500">
+                  Status: <span className="font-semibold text-slate-700 capitalize">{wo.status.replace(/_/g, ' ')}</span>
+                </p>
+                <Button
+                  size="sm"
+                  onClick={advanceStatus}
+                  disabled={advancing}
+                  className={wo.status === 'in_progress' ? 'bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5' : 'gap-1.5'}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {advancing ? 'Saving…' : nextLabel}
+                </Button>
               </div>
             )}
 
-            {/* ── TAB: Line Items ── */}
-            {activeTab === 'items' && (
-              <WOLineItemsTab workOrderId={id} />
-            )}
-
-            {/* ── TAB: Photos ── */}
-            {activeTab === 'photos' && (
-              <WOPhotosTab workOrderId={id} />
-            )}
-
-            {/* ── TAB: Communications ── */}
-            {activeTab === 'comms' && (
-              <WOCommsTab workOrderId={id} />
-            )}
-
-            {/* ── TAB: Change Orders ── */}
-            {activeTab === 'changes' && (
-              <WOChangeOrdersTab workOrderId={id} workOrderTotal={workOrder.total} />
-            )}
-
-            {/* ── TAB: Finance (Time, Expenses, Receipts, Profit) ── */}
-            {activeTab === 'finance' && (
-              <div className="space-y-5">
-                <WOTimeTracking
-                  workOrderId={id}
-                  workOrder={workOrder}
-                  initialArrival={workOrder.arrival_time}
-                  initialDeparture={workOrder.departure_time}
-                />
-                <WOExpenses workOrderId={id} workOrderNumber={workOrder.work_order_number} />
-                <WOReceipts
-                  workOrderId={id}
-                  workOrderNumber={workOrder.work_order_number}
-                  clientName={workOrder.client_name}
-                />
-                <WOFieldExecution
-                  workOrder={workOrder}
-                  workOrderId={id}
-                  onUpdate={loadWorkOrder}
-                />
+            {wo.status === 'completed' && (
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2 text-emerald-700">
+                <CheckCircle2 className="w-4 h-4" />
+                <p className="text-sm font-semibold">Completed</p>
+                {wo.completed_at && (
+                  <p className="text-xs text-emerald-500">{fmt(wo.completed_at)}</p>
+                )}
               </div>
             )}
+          </div>
 
+          {/* ── Tab bar ── */}
+          <div className="border-t border-slate-100 px-2 flex overflow-x-auto scrollbar-hide">
+            {TABS.map(tab => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+                    active
+                      ? 'border-[#d97706] text-[#d97706]'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                  {tab.count != null && tab.count > 0 && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                      active ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
-      </div>
 
-      {showPreview && (
-        <WorkOrderPreviewModal
-          workOrder={workOrder}
-          taskStatuses={taskStatuses}
-          onClose={() => setShowPreview(false)}
-        />
-      )}
+        {/* ── Tab content ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          {activeTab === 'items'   && <WOLineItemsTab workOrderId={id} />}
+          {activeTab === 'doc'     && <WODocumentTab workOrderId={id} workOrder={wo} />}
+          {activeTab === 'photos'  && <WOPhotosTab workOrderId={id} />}
+          {activeTab === 'comms'   && <WOCommsTab workOrderId={id} />}
+          {activeTab === 'changes' && <WOChangeOrdersTab workOrderId={id} workOrderTotal={wo.total} />}
+          {activeTab === 'log'     && <WOActivityLogTab workOrder={wo} />}
+        </div>
+
+      </div>
     </div>
   );
 }
