@@ -226,7 +226,8 @@ export default function WorkOrders() {
           scheduled_date: form.scheduled_date || null,
           notes:          form.notes          || null,
           description:    form.description    || null,
-          priority:       form.priority       || 'normal',
+          priority:       form.priority       || 'medium',
+          service_type:   form.service_type   || 'A',
         };
         await nexartClient.entities.WorkOrder.update(editing.id, patch);
         toast.success('Work order updated');
@@ -239,6 +240,8 @@ export default function WorkOrders() {
           scheduled_date: form.scheduled_date || null,
           notes:          form.notes          || null,
           description:    form.description    || null,
+          priority:       form.priority       || 'medium',
+          service_type:   form.service_type   || 'A',
         });
         toast.success('Work order created');
       }
@@ -595,6 +598,33 @@ export default function WorkOrders() {
                 onChange={e => setForm({ ...form, client_address: e.target.value })}
                 placeholder="123 Main St, Portland OR 97201"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Work Order Type</Label>
+                <select
+                  className="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={form.service_type || 'A'}
+                  onChange={e => setForm({ ...form, service_type: e.target.value })}
+                >
+                  <option value="A">Type A — Field Inspection</option>
+                  <option value="B">Type B — External Report</option>
+                  <option value="C">Type C — Direct Assignment</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Priority</Label>
+                <select
+                  className="w-full border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={form.priority || 'medium'}
+                  onChange={e => setForm({ ...form, priority: e.target.value })}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="emergency">Emergency</option>
+                </select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
