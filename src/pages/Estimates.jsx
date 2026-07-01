@@ -1,41 +1,69 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { nexartClient } from '@/api/nexartClient';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { toast } from 'sonner';
 import {
   FileText, Plus, Pencil, Search, X, Trash2,
   TrendingUp, CheckCircle2, Target, Send,
   KanbanSquare, List, Eye, AlertCircle, Clock,
-  BookOpen, LayoutTemplate, ArrowUpRight,
+  BookOpen, LayoutTemplate, ArrowUpRight, Filter,
 } from 'lucide-react';
 import { getNextDocumentNumber } from '@/lib/documentNumbering';
 import { archiveManyWithSnapshot, archiveWithSnapshot, filterActiveRecords } from '@/lib/softDelete';
 
-// ─── Pipeline stages (V3 order, MAIN status values) ────────────────────────
+// ─── V3 Color constants ─────────────────────────────────────────────────────
+const C = {
+  ink900:    '#0a1226',
+  ink800:    '#14223f',
+  ink700:    '#1c2c4c',
+  ink600:    '#2b3d61',
+  ink500:    '#4a5a7a',
+  ink400:    '#768aab',
+  cream50:   '#fbf5e6',
+  cream100:  '#f6ecce',
+  cream150:  '#efe1b1',
+  cream300:  '#d8bb69',
+  burnt400:  '#cc9a34',
+  burnt500:  '#b07f1d',
+  burnt600:  '#8a6213',
+  burnt700:  '#6a4a0d',
+  orange500: '#df6b2a',
+  orange600: '#c1531a',
+  borderSoft: '#ecdfbe',
+  borderWarm: '#e0d2a4',
+};
+
+const SHADOW_CARD = '0 1px 2px rgba(10,18,38,.06), 0 1px 3px rgba(10,18,38,.04)';
+const SHADOW_LIFT = '0 6px 16px rgba(10,18,38,.08), 0 2px 4px rgba(10,18,38,.05)';
+
+// ─── Pipeline stages ────────────────────────────────────────────────────────
 const PIPE_STAGES = [
-  { id: 'draft',     label: 'Draft',     dot: '#a89c70', desc: 'Working' },
-  { id: 'sent',      label: 'Sent',      dot: '#1f4862', desc: 'Awaiting open' },
-  { id: 'viewed',    label: 'Viewed',    dot: '#3d2f7a', desc: 'Open, unsigned' },
-  { id: 'signed',    label: 'Signed',    dot: '#2c5a26', desc: 'Won — ready to invoice' },
-  { id: 'converted', label: 'Invoiced',  dot: '#4b1f6b', desc: 'Active job' },
-  { id: 'completed', label: 'Completed', dot: '#117ACA', desc: 'Job done' },
-  { id: 'lost',      label: 'Lost',      dot: '#842420', desc: 'Closed / dead' },
+  { id: 'draft',     label: 'Draft',     dot: '#a89c70' },
+  { id: 'sent',      label: 'Sent',      dot: '#1f4862' },
+  { id: 'viewed',    label: 'Viewed',    dot: '#3d2f7a' },
+  { id: 'signed',    label: 'Signed',    dot: '#2c5a26' },
+  { id: 'converted', label: 'Invoiced',  dot: '#4b1f6b' },
+  { id: 'completed', label: 'Completed', dot: '#117ACA' },
+  { id: 'lost',      label: 'Lost',      dot: '#842420' },
 ];
 
-const STAGE_PROGRESS = { draft: 14, sent: 28, viewed: 42, signed: 57, converted: 71, completed: 86, lost: 100 };
+const STAGE_ORDER = ['draft','sent','viewed','signed','converted','completed'];
+
+function stageProgress(status) {
+  const i = STAGE_ORDER.indexOf(status);
+  return i < 0 ? 0 : (i + 1) / STAGE_ORDER.length * 100;
+}
 
 function daysInStage(est) {
-  const stageDate =
+  const d =
     est.status === 'signed'    ? est.signed_at :
     est.status === 'sent'      ? est.sent_at :
     est.status === 'viewed'    ? est.sent_at :
     est.status === 'completed' ? est.completed_at :
     est.updated_date || est.created_date;
-  if (!stageDate) return 0;
-  return Math.floor((Date.now() - new Date(stageDate).getTime()) / 86_400_000);
+  if (!d) return 0;
+  return Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000);
 }
 
 function fmtMoney(n) {
@@ -48,13 +76,13 @@ function clientInitials(name) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
-// ─── Pipe card (V3 design, MAIN data) ───────────────────────────────────────
+// ─── PipeCard — exact V3 visual ─────────────────────────────────────────────
 function PipeCard({ est, onView, onEdit, onDragStart, onDragEnd }) {
   const days = daysInStage(est);
-  const isStale = days >= 7 && !['converted', 'lost', 'signed', 'completed'].includes(est.status);
-  const pct = STAGE_PROGRESS[est.status] || 0;
-  const margin = est.gross_margin_pct ? parseFloat(est.gross_margin_pct).toFixed(1) : null;
-  const initials = clientInitials(est.client_name);
+  const isOld = days >= 7 && !['converted','lost','signed','completed'].includes(est.status);
+  const pct = stageProgress(est.status);
+  const margin = est.gross_margin_pct ? parseFloat(est.gross_margin_pct) : 0;
+  const profit = est.gross_margin ? parseFloat(est.gross_margin) : 0;
 
   return (
     <div
@@ -62,66 +90,78 @@ function PipeCard({ est, onView, onEdit, onDragStart, onDragEnd }) {
       onDragStart={(e) => onDragStart(e, est.id)}
       onDragEnd={onDragEnd}
       onClick={() => onView(est.id)}
-      className="bg-white border border-slate-200 rounded-xl p-3 cursor-pointer hover:border-slate-300 hover:shadow-sm transition-all select-none group"
-      style={{ opacity: 1 }}
+      style={{
+        background: '#fff',
+        border: `1px solid ${C.borderSoft}`,
+        borderRadius: 12,
+        padding: 12,
+        boxShadow: SHADOW_CARD,
+        cursor: 'pointer',
+        transition: 'transform 160ms ease, box-shadow 160ms ease',
+        position: 'relative',
+        userSelect: 'none',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = SHADOW_LIFT; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = SHADOW_CARD; }}
     >
       {/* Number + date */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] font-bold text-[#d97706]">#{est.estimate_number}</span>
-        <span className="text-[10px] text-slate-400">
-          {est.created_date ? new Date(est.created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'ui-monospace, SF Mono, Menlo, Consolas, monospace', fontSize: 11, color: C.ink500, fontWeight: 600 }}>
+        <span style={{ color: C.burnt400 }}>#{est.estimate_number}</span>
+        <span>{est.created_date ? new Date(est.created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
       </div>
 
-      {/* Client avatar + name */}
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-7 h-7 rounded-full bg-[#1f4862] flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
-          {initials}
+      {/* Avatar + client name — V3: rounded-square cream bg */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 8 }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 8,
+          background: C.cream100, color: C.burnt600,
+          display: 'grid', placeItems: 'center',
+          fontWeight: 700, fontSize: '11.5px',
+          border: `1px solid ${C.cream300}`, flexShrink: 0,
+        }}>
+          {clientInitials(est.client_name)}
         </div>
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-800 truncate leading-tight">
-            {est.client_name || <span className="italic text-slate-400 font-normal">No client</span>}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.15, color: C.ink900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {est.client_name || <span style={{ fontStyle: 'italic', color: C.ink400, fontWeight: 400 }}>No client</span>}
           </div>
-          {est.title && <div className="text-[11px] text-slate-400 truncate leading-tight">{est.title}</div>}
+          {est.title && (
+            <div style={{ fontSize: '11.5px', color: C.ink500, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {est.title}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Amount */}
-      <div className="text-base font-black text-slate-900 tabular-nums mb-1">
+      {/* Amount — Fraunces display font, V3 22px 800 */}
+      <div style={{ fontFamily: '"Fraunces", serif', fontWeight: 800, fontSize: 22, letterSpacing: '-0.01em', marginTop: 10, lineHeight: 1, color: C.ink900, fontVariantNumeric: 'tabular-nums' }}>
         {fmtMoney(est.total)}
       </div>
 
       {/* Margin */}
-      {margin && (
-        <div className="text-[10px] text-slate-400 mb-2">
-          {margin}% margin
-          {est.gross_margin ? ` · ${fmtMoney(est.gross_margin)} profit` : ''}
+      {margin > 0 && (
+        <div style={{ fontSize: 11, color: C.ink500, marginTop: 3 }}>
+          {margin.toFixed(1)}% margin{profit > 0 && <> · {fmtMoney(profit)} profit</>}
         </div>
       )}
 
-      {/* Progress bar */}
-      <div className="h-1 bg-slate-100 rounded-full mb-2 overflow-hidden">
-        <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+      {/* Progress bar — V3: gradient burnt→orange */}
+      <div style={{ height: 4, background: C.cream100, borderRadius: 999, marginTop: 10, overflow: 'hidden' }}>
+        <div style={{ height: '100%', borderRadius: 999, width: `${pct}%`, background: `linear-gradient(90deg, ${C.burnt400}, ${C.orange500})` }} />
       </div>
 
-      {/* Footer: days + actions */}
-      <div className="flex items-center justify-between">
-        <span className={`flex items-center gap-1 text-[10px] font-medium ${isStale ? 'text-red-500' : 'text-slate-400'}`}>
-          {isStale ? <AlertCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+      {/* Footer */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.borderSoft}`, fontSize: 11, color: C.ink500 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600, color: isOld ? C.orange600 : C.ink500 }}>
+          {isOld ? <AlertCircle style={{ width: 12, height: 12 }} /> : <Clock style={{ width: 12, height: 12 }} />}
           {days}d in stage
         </span>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            onClick={e => { e.stopPropagation(); onView(est.id); }}
-          >
-            <Eye className="w-3 h-3" />
+        <div style={{ display: 'flex', gap: 2 }}>
+          <button style={{ padding: '3px 5px', borderRadius: 6, border: 'none', background: 'transparent', color: C.ink500, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); onView(est.id); }}>
+            <Eye style={{ width: 13, height: 13 }} />
           </button>
-          <button
-            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            onClick={e => { e.stopPropagation(); onEdit(est.id); }}
-          >
-            <Pencil className="w-3 h-3" />
+          <button style={{ padding: '3px 5px', borderRadius: 6, border: 'none', background: 'transparent', color: C.ink500, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); onEdit(est.id); }}>
+            <Pencil style={{ width: 13, height: 13 }} />
           </button>
         </div>
       </div>
@@ -129,20 +169,31 @@ function PipeCard({ est, onView, onEdit, onDragStart, onDragEnd }) {
   );
 }
 
-// ─── KPI card ────────────────────────────────────────────────────────────────
-function KpiCard({ icon: Icon, label, value, sub, trend, accent }) {
+// ─── KPI card — exact V3 visual ─────────────────────────────────────────────
+function KpiCard({ icon: Icon, label, value, sub, trend, variant }) {
+  const isInk   = variant === 'ink';
+  const isBurnt = variant === 'burnt';
+
   return (
-    <div className={`rounded-2xl p-5 flex flex-col gap-1 ${accent ? 'bg-[#0a1226] text-white' : 'bg-white border border-slate-200'}`}>
-      <div className={`flex items-center gap-1.5 text-xs font-semibold mb-1 ${accent ? 'text-slate-400' : 'text-slate-500'}`}>
-        <Icon className="w-3.5 h-3.5" />
+    <div style={{
+      background: isInk ? C.ink900 : isBurnt ? `linear-gradient(135deg, ${C.cream100}, ${C.cream150})` : '#fff',
+      border: `1px solid ${isInk ? C.ink900 : isBurnt ? C.cream300 : C.borderSoft}`,
+      borderRadius: 14,
+      padding: '16px 18px',
+      boxShadow: SHADOW_CARD,
+    }}>
+      <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: isInk ? '#93a4c4' : C.ink500, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Icon style={{ width: 13, height: 13 }} />
         {label}
       </div>
-      <div className={`text-2xl font-black tabular-nums ${accent ? 'text-[#d97706]' : 'text-slate-900'}`}>{value}</div>
-      <div className="flex items-center justify-between mt-1">
-        <span className={`text-xs ${accent ? 'text-slate-500' : 'text-slate-400'}`}>{sub}</span>
+      <div style={{ fontFamily: '"Fraunces", serif', fontWeight: 700, fontSize: 30, letterSpacing: '-0.02em', marginTop: 6, lineHeight: 1, color: isInk ? '#fff' : C.ink900, fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, fontSize: 12, color: isInk ? '#93a4c4' : C.ink500 }}>
+        <span>{sub}</span>
         {trend && (
-          <span className="flex items-center gap-0.5 text-[10px] font-semibold text-emerald-500">
-            <ArrowUpRight className="w-3 h-3" />{trend}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 999, background: isInk ? 'rgba(255,255,255,0.06)' : 'rgba(44,90,38,.10)', color: isInk ? '#f5d989' : '#2c5a26', fontWeight: 700, fontSize: 11 }}>
+            <ArrowUpRight style={{ width: 11, height: 11 }} />{trend}
           </span>
         )}
       </div>
@@ -151,20 +202,19 @@ function KpiCard({ icon: Icon, label, value, sub, trend, accent }) {
 }
 
 // ─── Main page ───────────────────────────────────────────────────────────────
-const getCreatedId = (created) =>
-  created?.id || created?._id || created?.data?.id || created?.data?._id || null;
+const getCreatedId = (c) => c?.id || c?._id || c?.data?.id || c?.data?._id || null;
 
 export default function Estimates() {
   const navigate = useNavigate();
-  const [estimates, setEstimates]   = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState('');
-  const [view, setView]             = useState('pipeline');
-  const [creating, setCreating]     = useState(false);
+  const [estimates, setEstimates]     = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState('');
+  const [view, setView]               = useState('pipeline');
+  const [creating, setCreating]       = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ open: false, estimate: null, canDelete: false });
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [dragOver, setDragOver]     = useState(null);
+  const [dragOver, setDragOver]       = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -173,7 +223,7 @@ export default function Estimates() {
     try {
       const data = await nexartClient.entities.Estimate.list('-created_date');
       setEstimates(filterActiveRecords(data || []));
-    } catch (err) {
+    } catch {
       toast.error('Could not load estimates');
       setEstimates([]);
     } finally {
@@ -181,7 +231,6 @@ export default function Estimates() {
     }
   };
 
-  // ── Create ────────────────────────────────────────────────────────────────
   const handleNewEstimate = () => setShowConfirm(true);
 
   const handleConfirmCreate = async () => {
@@ -190,39 +239,23 @@ export default function Estimates() {
     try {
       const nextNum = await getNextDocumentNumber('estimate');
       const created = await nexartClient.entities.Estimate.create({
-        estimate_number: nextNum,
-        document_type:   'ESTIMATE',
-        status:          'draft',
-        client_name:     '',
-        groups:          [],
-        line_items:      [],
-        materials:       [],
-        other_costs:     [],
-        tax_rate:        0,
-        subtotal:        0,
-        tax_amount:      0,
-        total:           0,
+        estimate_number: nextNum, document_type: 'ESTIMATE', status: 'draft',
+        client_name: '', groups: [], line_items: [], materials: [], other_costs: [],
+        tax_rate: 0, subtotal: 0, tax_amount: 0, total: 0,
       });
       const newId = getCreatedId(created);
-      if (!newId) {
-        toast.error('Estimate created but ID was not returned. Returning to list.');
-        await loadData();
-        return;
-      }
+      if (!newId) { toast.error('Created but no ID returned.'); await loadData(); return; }
       navigate(`/estimate-editor?id=${newId}&new=1`);
     } catch (err) {
-      toast.error(`Could not create estimate: ${err?.message || 'Unknown error'}`);
+      toast.error(`Could not create: ${err?.message || 'Unknown error'}`);
     } finally {
       setCreating(false);
     }
   };
 
-  // ── Delete/archive ────────────────────────────────────────────────────────
   const canDeleteEstimate = (est) => est.status === 'draft' || !est.sent_at;
-
-  const handleDeleteClick = (est) => {
-    setDeleteModal({ open: true, estimate: est, canDelete: canDeleteEstimate(est) });
-  };
+  const handleDeleteClick = (est) => setDeleteModal({ open: true, estimate: est, canDelete: canDeleteEstimate(est) });
+  const closeDeleteModal  = () => setDeleteModal({ open: false, estimate: null, canDelete: false });
 
   const handleConfirmDelete = async () => {
     const est = deleteModal.estimate;
@@ -232,58 +265,38 @@ export default function Estimates() {
       setEstimates(prev => prev.filter(e => e.id !== est.id));
       setSelectedIds(prev => { const s = new Set(prev); s.delete(est.id); return s; });
       toast.success(`Estimate #${est.estimate_number} archived`);
-    } catch (err) {
-      toast.error(err?.message || 'Could not archive estimate');
-    } finally {
-      setDeleteModal({ open: false, estimate: null, canDelete: false });
-    }
+    } catch (err) { toast.error(err?.message || 'Could not archive'); }
+    finally { closeDeleteModal(); }
   };
 
   const handleDeleteSelected = async () => {
-    const idsArray = Array.from(selectedIds);
+    const ids = Array.from(selectedIds);
     try {
-      await archiveManyWithSnapshot(nexartClient.entities.Estimate, 'Estimate', idsArray, 'Admin', 'Bulk archived from Estimates list');
+      await archiveManyWithSnapshot(nexartClient.entities.Estimate, 'Estimate', ids, 'Admin', 'Bulk archived');
       setEstimates(prev => prev.filter(e => !selectedIds.has(e.id)));
       setSelectedIds(new Set());
-      toast.success(`${idsArray.length} estimate(s) archived`);
-    } catch (err) {
-      toast.error(err?.message || 'Could not archive selected estimates');
-    } finally {
-      setDeleteModal({ open: false, estimate: null, canDelete: false });
-    }
+      toast.success(`${ids.length} estimate(s) archived`);
+    } catch (err) { toast.error(err?.message || 'Could not archive'); }
+    finally { closeDeleteModal(); }
   };
 
-  // ── Drag & drop stage change ───────────────────────────────────────────────
   const handleMoveStage = useCallback(async (id, newStage) => {
     setEstimates(prev => prev.map(e => e.id === id ? { ...e, status: newStage } : e));
     try {
       await nexartClient.entities.Estimate.update(id, { status: newStage });
       toast.success(`Moved to ${newStage}`);
-    } catch (err) {
-      toast.error('Could not update status');
-      loadData();
-    }
+    } catch { toast.error('Could not update status'); loadData(); }
   }, []);
 
-  function onDragStart(e, id) {
-    e.dataTransfer.setData('text/plain', id);
-    e.dataTransfer.effectAllowed = 'move';
-  }
-  function onDragEnd(e) { /* no-op */ }
+  function onDragStart(e, id) { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; }
+  function onDragEnd() {}
   function onDragOver(e, stage) { e.preventDefault(); setDragOver(stage); }
   function onDragLeave() { setDragOver(null); }
-  function onDrop(e, stage) {
-    e.preventDefault();
-    const id = e.dataTransfer.getData('text/plain');
-    if (id) handleMoveStage(id, stage);
-    setDragOver(null);
-  }
+  function onDrop(e, stage) { e.preventDefault(); const id = e.dataTransfer.getData('text/plain'); if (id) handleMoveStage(id, stage); setDragOver(null); }
 
-  // ── Selection ─────────────────────────────────────────────────────────────
-  const toggleSelect  = (id) => setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const toggleSelect    = (id) => setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   const toggleSelectAll = () => setSelectedIds(prev => prev.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(e => e.id)));
 
-  // ── Derived data ──────────────────────────────────────────────────────────
   const filtered = useMemo(() =>
     estimates.filter(e =>
       e.client_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -296,8 +309,7 @@ export default function Estimates() {
     for (const s of PIPE_STAGES) groups[s.id] = [];
     for (const e of filtered) {
       const key = e.status === 'expired' ? 'lost' : (e.status || 'draft');
-      if (groups[key]) groups[key].push(e);
-      else groups['draft'].push(e);
+      (groups[key] = groups[key] || []).push(e);
     }
     return groups;
   }, [filtered]);
@@ -313,40 +325,51 @@ export default function Estimates() {
     return { pipelineValue, wonValue, winRate, sentCount, staleCount };
   }, [estimates]);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  return (
-    <div className="flex flex-col min-h-full bg-[#f5f5f0]">
+  // ── Modal helper ──────────────────────────────────────────────────────────
+  const ModalBtn = ({ children, onClick, danger, primary, disabled }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: '7px 16px', borderRadius: 8, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600,
+        border: danger ? 'none' : primary ? 'none' : `1px solid ${C.borderSoft}`,
+        background: danger ? '#dc2626' : primary ? C.burnt500 : '#fff',
+        color: danger ? '#fff' : primary ? C.cream50 : C.ink700,
+        opacity: disabled ? 0.7 : 1,
+      }}
+    >{children}</button>
+  );
 
-      {/* ── Modals ── */}
+  // ── Render ────────────────────────────────────────────────────────────────
+  return (
+    <div style={{ minHeight: '100%', background: C.cream50 }}>
+
+      {/* Modals */}
       {deleteModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-            <h2 className="text-base font-bold text-slate-900 mb-2">
-              Archive {deleteModal.estimate ? 'Estimate' : 'Estimates'}?
-            </h2>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,18,38,.45)' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 380, boxShadow: '0 20px 45px -10px rgba(10,18,38,.22)' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: C.ink900, marginBottom: 8 }}>Archive {deleteModal.estimate ? 'Estimate' : 'Estimates'}?</h2>
             {deleteModal.estimate ? (
               deleteModal.canDelete ? (
                 <>
-                  <p className="text-sm text-slate-500 mb-4">Archive Estimate #{deleteModal.estimate.estimate_number}? It will remain recoverable in Recovery Center.</p>
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>Cancel</Button>
-                    <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={handleConfirmDelete}>Archive</Button>
+                  <p style={{ fontSize: 13, color: C.ink500, marginBottom: 20 }}>Archive Estimate #{deleteModal.estimate.estimate_number}? Stays recoverable in Recovery Center.</p>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <ModalBtn onClick={closeDeleteModal}>Cancel</ModalBtn>
+                    <ModalBtn onClick={handleConfirmDelete} danger>Archive</ModalBtn>
                   </div>
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-slate-500 mb-4">This estimate cannot be archived — it has already been sent or is part of a live flow.</p>
-                  <div className="flex justify-end">
-                    <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>Close</Button>
-                  </div>
+                  <p style={{ fontSize: 13, color: C.ink500, marginBottom: 20 }}>This estimate cannot be archived — it has already been sent.</p>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}><ModalBtn onClick={closeDeleteModal}>Close</ModalBtn></div>
                 </>
               )
             ) : (
               <>
-                <p className="text-sm text-slate-500 mb-4">{selectedIds.size} estimate(s) will be archived and remain recoverable.</p>
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" size="sm" onClick={() => setDeleteModal({ open: false, estimate: null, canDelete: false })}>Cancel</Button>
-                  <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={handleDeleteSelected}>Archive</Button>
+                <p style={{ fontSize: 13, color: C.ink500, marginBottom: 20 }}>{selectedIds.size} estimate(s) will be archived and remain recoverable.</p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <ModalBtn onClick={closeDeleteModal}>Cancel</ModalBtn>
+                  <ModalBtn onClick={handleDeleteSelected} danger>Archive</ModalBtn>
                 </div>
               </>
             )}
@@ -355,155 +378,157 @@ export default function Estimates() {
       )}
 
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-            <div className="flex items-start justify-between mb-4">
-              <h2 className="text-base font-bold text-slate-900">New Estimate</h2>
-              <button onClick={() => setShowConfirm(false)} className="p-1 hover:bg-slate-100 rounded-md transition-colors">
-                <X className="w-4 h-4 text-slate-400" />
-              </button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,18,38,.45)' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 380, boxShadow: '0 20px 45px -10px rgba(10,18,38,.22)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: C.ink900 }}>New Estimate</h2>
+              <button style={{ padding: 4, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: C.ink400 }} onClick={() => setShowConfirm(false)}><X style={{ width: 16, height: 16 }} /></button>
             </div>
-            <p className="text-sm text-slate-500 mb-6">You're about to create a new estimate. You can cancel at any time without saving.</p>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowConfirm(false)}>Cancel</Button>
-              <Button size="sm" onClick={handleConfirmCreate} disabled={creating} className="bg-[#d97706] hover:bg-[#b45309] text-white">
-                {creating ? 'Creating…' : 'Create Estimate'}
-              </Button>
+            <p style={{ fontSize: 13, color: C.ink500, marginBottom: 20 }}>You're about to create a new estimate. You can cancel at any time without saving.</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <ModalBtn onClick={() => setShowConfirm(false)}>Cancel</ModalBtn>
+              <ModalBtn onClick={handleConfirmCreate} primary disabled={creating}>{creating ? 'Creating…' : 'Create Estimate'}</ModalBtn>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Page header ── */}
-      <div className="px-6 pt-6 pb-0">
-        <div className="flex items-start justify-between mb-6">
+      {/* Page header */}
+      <div style={{ padding: '0 32px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', paddingTop: 28, paddingBottom: 4 }}>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Workspace</p>
-            <h1 className="text-2xl font-black text-slate-900">Estimates</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Build pro estimates from your Price Book, send them, and watch them progress through the pipeline.
+            <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: C.ink500 }}>Workspace</div>
+            <h1 style={{ fontFamily: '"Fraunces", serif', fontWeight: 900, fontSize: 38, letterSpacing: '-0.02em', lineHeight: 1.05, color: C.ink900, margin: '4px 0 8px' }}>Estimates</h1>
+            <p style={{ fontSize: 13, color: C.ink500, lineHeight: 1.5, maxWidth: 520, margin: 0 }}>
+              Build pro estimates from your Price Book, send them out, and watch them progress through the pipeline. Signed estimates convert to invoices in one click.
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button variant="outline" size="sm" className="gap-1.5 text-slate-600" onClick={() => navigate('/price-book')}>
-              <BookOpen className="w-3.5 h-3.5" /> Price Book
-            </Button>
-            <Button
-              size="sm"
-              className="gap-1.5 bg-[#d97706] hover:bg-[#b45309] text-white"
-              onClick={handleNewEstimate}
-              disabled={creating}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginTop: 8 }}>
+            <button
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: `1px solid ${C.borderWarm}`, background: '#fff', fontWeight: 600, fontSize: 13, color: C.ink700, cursor: 'pointer' }}
+              onClick={() => navigate('/templates')}
             >
-              <Plus className="w-3.5 h-3.5" />
-              {creating ? 'Creating…' : 'New Estimate'}
-            </Button>
+              <LayoutTemplate style={{ width: 14, height: 14 }} /> Templates
+            </button>
+            <button
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: `1px solid ${C.borderWarm}`, background: '#fff', fontWeight: 600, fontSize: 13, color: C.ink700, cursor: 'pointer' }}
+              onClick={() => navigate('/price-book')}
+            >
+              <BookOpen style={{ width: 14, height: 14 }} /> Price Book
+            </button>
+            <button
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 9, border: 'none', background: C.burnt500, color: C.cream50, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(176,127,29,.35)', opacity: creating ? 0.7 : 1 }}
+              onClick={handleNewEstimate} disabled={creating}
+            >
+              <Plus style={{ width: 14, height: 14 }} /> {creating ? 'Creating…' : 'New Estimate'}
+            </button>
           </div>
         </div>
 
-        {/* ── KPI cards ── */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <KpiCard
-            icon={TrendingUp}
-            label="Pipeline value"
-            value={fmtMoney(stats.pipelineValue)}
-            sub="Active estimates"
-            trend="+18%"
-            accent
-          />
-          <KpiCard
-            icon={CheckCircle2}
-            label="Won this month"
-            value={fmtMoney(stats.wonValue)}
-            sub="Signed + invoiced"
-            trend="+22%"
-          />
-          <KpiCard
-            icon={Target}
-            label="Win rate"
-            value={`${stats.winRate}%`}
-            sub="Last 90 days"
-            trend="+6pts"
-          />
-          <KpiCard
-            icon={Send}
-            label="Awaiting client"
-            value={String(stats.sentCount)}
-            sub={stats.staleCount > 0 ? `${stats.staleCount} stale` : 'Sent or viewed'}
-          />
+        {/* KPI cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, margin: '22px 0' }}>
+          <KpiCard icon={TrendingUp}   label="Pipeline value"  value={fmtMoney(stats.pipelineValue)} sub="Active estimates"   trend="+18%"  variant="ink" />
+          <KpiCard icon={CheckCircle2} label="Won this month"  value={fmtMoney(stats.wonValue)}       sub="Signed + invoiced" trend="+22%"  variant="burnt" />
+          <KpiCard icon={Target}       label="Win rate"        value={`${stats.winRate}%`}             sub="Last 90 days"      trend="+6pts" />
+          <KpiCard icon={Send}         label="Awaiting client" value={String(stats.sentCount)}         sub={stats.staleCount > 0 ? `${stats.staleCount} stale` : 'Sent or viewed'} />
         </div>
 
-        {/* ── Toolbar ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 px-4 py-3 flex items-center gap-3 mb-0">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Search estimates…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9 h-9 text-sm"
-            />
-          </div>
-          <div className="flex-1" />
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-600">{selectedIds.size} selected</span>
-              <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => setDeleteModal({ open: true, estimate: null, canDelete: true })}>
-                <Trash2 className="w-3.5 h-3.5" /> Archive
-              </Button>
+        {/* Toolbar card */}
+        <div style={{ background: '#fff', border: `1px solid ${C.borderSoft}`, borderRadius: 14, boxShadow: SHADOW_CARD, marginBottom: 22 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${C.borderSoft}` }}>
+            <h3 style={{ fontFamily: '"Fraunces", serif', fontWeight: 700, fontSize: 18, letterSpacing: '-0.01em', color: C.ink900, margin: 0 }}>
+              {view === 'pipeline' ? 'Pipeline' : 'All Estimates'}
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {view === 'list' && (
+                <div style={{ position: 'relative' }}>
+                  <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: C.ink400, pointerEvents: 'none' }} />
+                  <input
+                    placeholder="Search estimates…"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    style={{ paddingLeft: 32, paddingRight: 10, height: 32, border: `1px solid ${C.borderWarm}`, borderRadius: 8, fontSize: 13, color: C.ink900, background: '#fff', width: 200, outline: 'none', fontFamily: 'inherit' }}
+                  />
+                </div>
+              )}
+              {selectedIds.size > 0 && (
+                <button
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}
+                  onClick={() => setDeleteModal({ open: true, estimate: null, canDelete: true })}
+                >
+                  <Trash2 style={{ width: 12, height: 12 }} /> Archive {selectedIds.size}
+                </button>
+              )}
+              {/* View toggle */}
+              <div style={{ display: 'inline-flex', background: '#fff', border: `1px solid ${C.borderWarm}`, borderRadius: 10, padding: 3, gap: 2 }}>
+                {[{ id: 'pipeline', icon: KanbanSquare, label: 'Pipeline' }, { id: 'list', icon: List, label: 'List' }].map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => setView(v.id)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      height: 30, padding: '0 12px', borderRadius: 7, border: 'none',
+                      background: view === v.id ? C.ink900 : 'transparent',
+                      color: view === v.id ? '#fff' : C.ink600,
+                      fontSize: '12.5px', fontWeight: 600, cursor: 'pointer',
+                      transition: 'background 120ms, color 120ms', fontFamily: 'inherit',
+                    }}
+                  >
+                    <v.icon style={{ width: 13, height: 13 }} /> {v.label}
+                  </button>
+                ))}
+              </div>
+              <button style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, border: `1px solid ${C.borderWarm}`, background: '#fff', color: C.ink600, fontWeight: 600, fontSize: '12.5px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <Filter style={{ width: 12, height: 12 }} /> Filter
+              </button>
             </div>
-          )}
-          {/* View toggle */}
-          <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
-            <button
-              onClick={() => setView('pipeline')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${view === 'pipeline' ? 'bg-[#0a1226] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-            >
-              <KanbanSquare className="w-3.5 h-3.5" /> Pipeline
-            </button>
-            <button
-              onClick={() => setView('list')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${view === 'list' ? 'bg-[#0a1226] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-            >
-              <List className="w-3.5 h-3.5" /> List
-            </button>
           </div>
         </div>
       </div>
 
-      {/* ── Content ── */}
+      {/* Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-[#d97706] rounded-full animate-spin" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
+          <div className="animate-spin" style={{ width: 32, height: 32, borderRadius: '50%', border: `3px solid ${C.cream150}`, borderTopColor: C.burnt400 }} />
         </div>
       ) : view === 'pipeline' ? (
 
-        /* ── KANBAN PIPELINE ── */
-        <div className="flex-1 overflow-x-auto px-6 py-4">
-          <div className="flex gap-3 min-w-max pb-4">
+        /* KANBAN */
+        <div style={{ padding: '0 32px 40px', overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${PIPE_STAGES.length}, minmax(240px, 1fr))`, gap: 14, alignItems: 'start' }}>
             {PIPE_STAGES.map(stage => {
               const cards = byStage[stage.id] || [];
-              const stageTotal = cards.reduce((a, b) => a + (b.total || 0), 0);
-              const isOver = dragOver === stage.id;
+              const total = cards.reduce((a,b) => a + (b.total || 0), 0);
+              const isDrop = dragOver === stage.id;
               return (
                 <div
                   key={stage.id}
-                  className={`w-64 flex flex-col rounded-2xl border transition-all ${isOver ? 'border-[#d97706] bg-amber-50' : 'border-slate-200 bg-[#f5f5f0]'}`}
-                  onDragOver={e => onDragOver(e, stage.id)}
+                  style={{
+                    background: isDrop ? '#fbf0d3' : C.cream50,
+                    border: `1px solid ${isDrop ? C.burnt400 : C.borderSoft}`,
+                    borderRadius: 14, minHeight: 460,
+                    display: 'flex', flexDirection: 'column',
+                    overflow: 'hidden', transition: 'background 150ms',
+                  }}
+                  onDragOver={(e) => onDragOver(e, stage.id)}
                   onDragLeave={onDragLeave}
-                  onDrop={e => onDrop(e, stage.id)}
+                  onDrop={(e) => onDrop(e, stage.id)}
                 >
-                  {/* Column header */}
-                  <div className="px-3 pt-3 pb-2 flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: stage.dot }} />
-                    <span className="text-xs font-bold text-slate-700 flex-1">{stage.label}</span>
-                    <span className="text-[10px] font-bold text-slate-400 bg-white border border-slate-200 rounded-full px-1.5 py-0.5">{cards.length}</span>
-                    {stageTotal > 0 && (
-                      <span className="text-[10px] font-bold text-slate-500">{fmtMoney(stageTotal)}</span>
+                  {/* Column header — white bg */}
+                  <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${C.borderSoft}`, background: '#fff' }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 999, background: stage.dot, flexShrink: 0 }} />
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: C.ink800, letterSpacing: '0.02em' }}>{stage.label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, background: C.cream100, color: C.burnt700, padding: '2px 8px', borderRadius: 999, border: `1px solid ${C.cream300}` }}>
+                      {cards.length}
+                    </span>
+                    {total > 0 && (
+                      <span style={{ marginLeft: 'auto', fontFamily: '"Fraunces", serif', fontWeight: 700, fontSize: 13, color: C.ink700, fontVariantNumeric: 'tabular-nums' }}>
+                        {fmtMoney(total)}
+                      </span>
                     )}
                   </div>
-
                   {/* Cards */}
-                  <div className="flex-1 px-2 pb-3 space-y-2 min-h-[80px]">
+                  <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
                     {cards.map(est => (
                       <PipeCard
                         key={est.id}
@@ -515,8 +540,8 @@ export default function Estimates() {
                       />
                     ))}
                     {cards.length === 0 && (
-                      <div className="text-center py-6 text-[11px] text-slate-400">
-                        Drop estimates here to mark {stage.label.toLowerCase()}
+                      <div style={{ padding: '24px 8px', textAlign: 'center', fontSize: 12, color: C.ink400, opacity: 0.8 }}>
+                        Drop estimates here to mark them {stage.label.toLowerCase()}.
                       </div>
                     )}
                   </div>
@@ -528,117 +553,112 @@ export default function Estimates() {
 
       ) : (
 
-        /* ── LIST VIEW ── */
-        <div className="px-6 py-4">
-          {/* Select all */}
+        /* LIST */
+        <div style={{ padding: '0 32px 40px' }}>
           {filtered.length > 0 && (
-            <div className="flex items-center gap-2 mb-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.size === filtered.length && filtered.length > 0}
-                  onChange={toggleSelectAll}
-                  className="w-4 h-4 cursor-pointer"
-                />
-                <span className="text-xs text-slate-500">Select all</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: C.ink500 }}>
+                <input type="checkbox" checked={selectedIds.size === filtered.length && filtered.length > 0} onChange={toggleSelectAll} style={{ width: 15, height: 15 }} />
+                Select all
               </label>
-              <span className="text-xs text-slate-400">({filtered.length} estimates)</span>
+              <span style={{ fontSize: 12, color: C.ink400 }}>({filtered.length} estimates)</span>
             </div>
           )}
 
           {filtered.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-6 h-6 text-slate-300" />
+            <div style={{ background: '#fff', border: `1px solid ${C.borderSoft}`, borderRadius: 14, padding: '80px 24px', textAlign: 'center', boxShadow: SHADOW_CARD }}>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: C.cream100, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <FileText style={{ width: 22, height: 22, color: C.cream300 }} />
               </div>
-              <p className="font-semibold text-slate-700 mb-1">No estimates</p>
-              <p className="text-sm text-slate-400 mb-4">
+              <p style={{ fontWeight: 700, color: C.ink800, fontSize: 15, marginBottom: 6 }}>No estimates</p>
+              <p style={{ fontSize: 13, color: C.ink500, marginBottom: 20 }}>
                 {search ? 'No results for your search.' : 'Create your first estimate to get started.'}
               </p>
               {!search && (
-                <Button size="sm" onClick={handleNewEstimate} disabled={creating} className="bg-[#d97706] hover:bg-[#b45309] text-white">
-                  <Plus className="w-4 h-4 mr-1.5" />{creating ? 'Creating…' : 'New Estimate'}
-                </Button>
+                <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 9, border: 'none', background: C.burnt500, color: C.cream50, fontWeight: 700, fontSize: 13, cursor: 'pointer' }} onClick={handleNewEstimate} disabled={creating}>
+                  <Plus style={{ width: 14, height: 14 }} /> {creating ? 'Creating…' : 'New Estimate'}
+                </button>
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-sm">
+            <div style={{ background: '#fff', border: `1px solid ${C.borderSoft}`, borderRadius: 14, boxShadow: SHADOW_CARD, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="w-10 px-4 py-3"><input type="checkbox" checked={selectedIds.size === filtered.length && filtered.length > 0} onChange={toggleSelectAll} className="w-4 h-4 cursor-pointer" /></th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Estimate</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Client / Project</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Total</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Status</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide">Days</th>
-                    <th className="w-24 px-4 py-3" />
+                  <tr>
+                    <th style={{ width: 40, padding: '10px 14px', borderBottom: `1px solid ${C.borderSoft}`, background: C.cream50 }}>
+                      <input type="checkbox" checked={selectedIds.size === filtered.length} onChange={toggleSelectAll} style={{ width: 15, height: 15 }} />
+                    </th>
+                    {['Estimate','Client / Project','Total','Margin','Status','Days',''].map(col => (
+                      <th key={col} style={{ textAlign: col === 'Total' ? 'right' : 'left', padding: '10px 14px', borderBottom: `1px solid ${C.borderSoft}`, background: C.cream50, fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.ink500, fontWeight: 700 }}>{col}</th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filtered.map(est => (
-                    <tr
-                      key={est.id}
-                      className="hover:bg-slate-50 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/estimate-editor?id=${est.id}`)}
-                    >
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <input type="checkbox" checked={selectedIds.has(est.id)} onChange={() => toggleSelect(est.id)} className="w-4 h-4 cursor-pointer" />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-[#d97706] text-xs">#{est.estimate_number}</div>
-                        {est.created_date && (
-                          <div className="text-[11px] text-slate-400 mt-0.5">
-                            {new Date(est.created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                <tbody>
+                  {filtered.map((est, i) => {
+                    const isLast = i === filtered.length - 1;
+                    const margin = est.gross_margin_pct ? parseFloat(est.gross_margin_pct) : 0;
+                    const profit = est.gross_margin ? parseFloat(est.gross_margin) : 0;
+                    return (
+                      <tr
+                        key={est.id}
+                        style={{ borderBottom: isLast ? 'none' : `1px solid ${C.borderSoft}`, cursor: 'pointer', transition: 'background 120ms' }}
+                        onClick={() => navigate(`/estimate-editor?id=${est.id}`)}
+                        onMouseEnter={e => e.currentTarget.style.background = '#fdfaf0'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                      >
+                        <td style={{ padding: '14px 14px', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
+                          <input type="checkbox" checked={selectedIds.has(est.id)} onChange={() => toggleSelect(est.id)} style={{ width: 15, height: 15 }} />
+                        </td>
+                        <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
+                          <div style={{ fontFamily: 'ui-monospace, SF Mono, Menlo, Consolas, monospace', fontSize: 11, fontWeight: 600, color: C.burnt400 }}>#{est.estimate_number}</div>
+                          {est.created_date && <div style={{ fontSize: '11.5px', color: C.ink500, marginTop: 3 }}>{new Date(est.created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+                        </td>
+                        <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.cream100, color: C.burnt600, display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '11.5px', border: `1px solid ${C.cream300}`, flexShrink: 0 }}>
+                              {clientInitials(est.client_name)}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: C.ink900 }}>{est.client_name || <span style={{ fontStyle: 'italic', color: C.ink400, fontWeight: 400 }}>No client</span>}</div>
+                              {est.title && <div style={{ fontSize: '11.5px', color: C.ink500 }}>{est.title}</div>}
+                            </div>
                           </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-[#1f4862] flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
-                            {clientInitials(est.client_name)}
+                        </td>
+                        <td style={{ padding: '14px 14px', textAlign: 'right', verticalAlign: 'middle' }}>
+                          <div style={{ fontFamily: '"Fraunces", serif', fontWeight: 800, fontSize: 18, color: C.ink900, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em' }}>{fmtMoney(est.total)}</div>
+                        </td>
+                        <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
+                          {margin > 0
+                            ? <><div style={{ fontWeight: 600, fontSize: 13 }}>{margin.toFixed(1)}%</div><div style={{ fontSize: 11, color: C.ink500 }}>{fmtMoney(profit)} profit</div></>
+                            : <span style={{ fontSize: 12, color: C.ink400 }}>—</span>}
+                        </td>
+                        <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
+                          <StatusBadge status={est.status} />
+                        </td>
+                        <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
+                          <span style={{ fontSize: 13, color: daysInStage(est) >= 7 && ['sent','viewed'].includes(est.status) ? C.orange600 : C.ink500 }}>
+                            {daysInStage(est)}d
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 14px', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                            <button
+                              style={{ padding: '5px 7px', borderRadius: 7, border: 'none', background: 'transparent', color: C.ink400, cursor: 'pointer' }}
+                              onClick={() => navigate(`/estimate-editor?id=${est.id}`)}
+                              onMouseEnter={e => e.currentTarget.style.background = C.cream100}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            ><Pencil style={{ width: 13, height: 13 }} /></button>
+                            <button
+                              style={{ padding: '5px 7px', borderRadius: 7, border: 'none', background: 'transparent', color: C.ink400, cursor: 'pointer' }}
+                              onClick={() => handleDeleteClick(est)}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.ink400; }}
+                            ><Trash2 style={{ width: 13, height: 13 }} /></button>
                           </div>
-                          <div>
-                            <div className="font-semibold text-slate-800 text-sm">{est.client_name || <span className="italic text-slate-400 font-normal">No client</span>}</div>
-                            {est.title && <div className="text-xs text-slate-400">{est.title}</div>}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="font-black text-slate-900 tabular-nums">{fmtMoney(est.total)}</div>
-                        {est.gross_margin_pct > 0 && (
-                          <div className="text-[10px] text-slate-400">{parseFloat(est.gross_margin_pct).toFixed(1)}% margin</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={est.status} />
-                        {est.signed_at && (
-                          <span className="ml-1 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5">SIGNED</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs font-medium ${daysInStage(est) >= 7 && ['sent','viewed'].includes(est.status) ? 'text-red-500' : 'text-slate-400'}`}>
-                          {daysInStage(est)}d
-                        </span>
-                      </td>
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-1 justify-end">
-                          <button
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                            onClick={() => navigate(`/estimate-editor?id=${est.id}`)}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                            onClick={() => handleDeleteClick(est)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
