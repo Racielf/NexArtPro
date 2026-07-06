@@ -3,8 +3,8 @@ import { nexartClient } from '@/api/nexartClient';
 import { normalizeUserRole } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { X, Eye, Trash2, Send, ChevronRight, ChevronDown, ClipboardList, FileText, ShieldCheck, BrainCircuit } from 'lucide-react';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { X, Eye, Trash2, Send, ChevronDown, ClipboardList, FileText, ShieldCheck, BrainCircuit } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import SaveStateIndicator from '@/components/shared/SaveStateIndicator';
 import EstimateTemplateSelector from '@/components/estimates/EstimateTemplateSelector';
@@ -19,7 +19,6 @@ import ConvertToWorkOrderButton from '@/components/workorders/ConvertToWorkOrder
 import ConvertToInvoiceButton from '@/components/estimates/ConvertToInvoiceButton';
 import { getAutoLanguageForClient } from '@/lib/resolveDocumentLanguage';
 import PricingAuditHistory from '@/components/estimates/internal/PricingAuditHistory';
-import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import TransmissionPanel from '@/components/estimates/TransmissionPanel';
 import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence } from '@/lib/lineItemNormalizer';
 import { archiveWithSnapshot } from '@/lib/softDelete';
@@ -67,6 +66,9 @@ export default function EstimateEditor() {
   const [dismissedCustomerModal, setDismissedCustomerModal] = useState(false);
   const [showDocumentOptions, setShowDocumentOptions] = useState(false);
 
+  const LOCKED_STATUSES = ['sent', 'viewed', 'approved', 'signed', 'converted', 'declined', 'voided'];
+  const isLocked = estimate && LOCKED_STATUSES.includes(estimate.status);
+
   useEffect(() => { loadEstimate(); }, []);
 
   useEffect(() => {
@@ -111,7 +113,20 @@ export default function EstimateEditor() {
       setPlanReference(est.plan_reference || '');
       if (est.client_id) {
         const cls = await nexartClient.entities.Client.filter({ id: est.client_id });
-        if (cls.length) setClient(cls[0]);
+        if (cls.length) {
+          setClient(cls[0]);
+        } else {
+          // Check Customer table fallback since estimates might be linked to Customer IDs
+          const custs = await nexartClient.entities.Customer.filter({ id: est.client_id });
+          if (custs.length) {
+            const cust = custs[0];
+            setClient({
+              ...cust,
+              full_name: cust.display_name || `${cust.first_name || ''} ${cust.last_name || ''}`.trim(),
+              address: cust.service_address || '',
+            });
+          }
+        }
       }
     }
     setLoading(false);
@@ -155,6 +170,10 @@ export default function EstimateEditor() {
   ];
 
   const handleSave = async (updatedEstimate) => {
+    if (isLocked) {
+      toast.error('This estimate is locked and cannot be edited.');
+      return;
+    }
     setSaving(true);
     setSaveError(false);
     setDirty(false);
@@ -197,19 +216,68 @@ export default function EstimateEditor() {
   };
 
   const handleCustomerChange = async (customerData, clientRecord) => {
+    if (isLocked) {
+      toast.error('This estimate is locked and cannot be edited.');
+      return;
+    }
     setSaving(true);
+    let resolvedClientId = customerData.client_id;
+    let resolvedClientRecord = clientRecord;
+
     try {
-      let finalData = { ...customerData };
-      if (clientRecord) {
-        const autoLang = getAutoLanguageForClient(estimate, clientRecord);
+      if (resolvedClientId) {
+        // Validate if this ID is in the clients table
+        const cls = await nexartClient.entities.Client.filter({ id: resolvedClientId });
+        if (cls.length === 0) {
+          // Check if a Client with the same email already exists in the clients table
+          const emailToFind = customerData.client_email || clientRecord?.email;
+          if (emailToFind) {
+            const existingCls = await nexartClient.entities.Client.filter({ email: emailToFind });
+            if (existingCls.length > 0) {
+              resolvedClientId = existingCls[0].id;
+              resolvedClientRecord = existingCls[0];
+            }
+          }
+
+          // If still not resolved to a Client table ID, create a Client record to satisfy estimates fkey constraint
+          if (resolvedClientId === customerData.client_id) {
+            const nameToUse = customerData.client_name || clientRecord?.display_name || [clientRecord?.first_name, clientRecord?.last_name].filter(Boolean).join(' ') || 'Unnamed Client';
+            const emailToUse = customerData.client_email || clientRecord?.email || '';
+            const phoneToUse = customerData.client_phone || clientRecord?.phone || '';
+            const addressToUse = clientRecord?.service_address || clientRecord?.address || customerData.client_address || '';
+
+            const createdClient = await nexartClient.entities.Client.create({
+              name: nameToUse,
+              email: emailToUse,
+              phone: phoneToUse,
+              address: addressToUse,
+              city: clientRecord?.city || '',
+              state: clientRecord?.state || '',
+              zip: clientRecord?.zip || '',
+            });
+
+            resolvedClientId = createdClient.id;
+            resolvedClientRecord = createdClient;
+          }
+        }
+      }
+
+      const finalData = { 
+        ...customerData,
+        client_id: resolvedClientId
+      };
+
+      if (resolvedClientRecord) {
+        const autoLang = getAutoLanguageForClient(estimate, resolvedClientRecord);
         if (autoLang) {
           finalData.document_language = autoLang;
         }
       }
+
       await nexartClient.entities.Estimate.update(estimate.id, { ...finalData, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
       const updated = { ...estimate, ...finalData };
       setEstimate(updated);
-      if (clientRecord) setClient(clientRecord);
+      if (resolvedClientRecord) setClient(resolvedClientRecord);
       if (customerData.client_name) toast.success('Customer saved');
     } catch (err) {
       console.error('[EstimateEditor.handleCustomerChange] Save failed:', err);
@@ -220,18 +288,21 @@ export default function EstimateEditor() {
   };
 
   const handleTemplateChange = async (templateKey) => {
+    if (isLocked) return;
     const updatedConfig = { ...(estimate.document_config || {}), template: templateKey };
     await nexartClient.entities.Estimate.update(estimate.id, { document_config: updatedConfig, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
     setEstimate(e => ({ ...e, document_config: updatedConfig }));
   };
 
   const handleDocumentOptionsSave = async (newOptions) => {
+    if (isLocked) return;
     const updatedConfig = { ...(estimate.document_config || {}), options: newOptions };
     await nexartClient.entities.Estimate.update(estimate.id, { document_config: updatedConfig, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
     setEstimate(e => ({ ...e, document_config: updatedConfig }));
   };
 
   const handleLanguageChange = async (lang) => {
+    if (isLocked) return;
     await nexartClient.entities.Estimate.update(estimate.id, { document_language: lang, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' });
     setEstimate(e => ({ ...e, document_language: lang }));
   };
@@ -363,11 +434,13 @@ export default function EstimateEditor() {
 
           {/* CENTER ZONE: template selector — grows to fill space */}
           <div className="flex-1 flex justify-center min-w-0 hidden md:flex">
-            <EstimateTemplateSelector
-              currentTemplate={estimate.document_config?.template || 'clean'}
-              onTemplateChange={handleTemplateChange}
-              onShowOptions={() => setShowDocumentOptions(true)}
-            />
+            {!isLocked && (
+              <EstimateTemplateSelector
+                currentTemplate={estimate.document_config?.template || 'clean'}
+                onTemplateChange={handleTemplateChange}
+                onShowOptions={() => setShowDocumentOptions(true)}
+              />
+            )}
           </div>
 
           {/* RIGHT ZONE: secondary tools → primary action → close */}
@@ -493,6 +566,15 @@ export default function EstimateEditor() {
 
         {/* Canvas: main estimate editor — gets remaining space */}
         <div className="flex-1 min-w-0 overflow-auto bg-white rounded-xl border border-slate-100 px-6 py-5 xl:px-8 xl:py-6" style={{ boxShadow: '0 4px 16px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)' }}>
+          {isLocked && (
+            <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3.5 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[10px]">Locked</span>
+                <span className="text-sm text-slate-700">This estimate is in <strong>{estimate.status}</strong> status and cannot be modified. (Full versioning flow is pending).</span>
+              </div>
+            </div>
+          )}
+
           {!hasClient && (
             <div className="mb-5 bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
               <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><ClipboardList className="w-4 h-4 text-blue-500" /></div>
@@ -513,16 +595,23 @@ export default function EstimateEditor() {
           <div className="flex items-center gap-3 mb-5 flex-wrap">
             {estimate.document_type === 'BID' && (
               <div className="flex items-center gap-2">
-                <input type="text" value={jobNumber} onChange={e => setJobNumber(e.target.value)} onBlur={() => { nexartClient.entities.Estimate.update(estimate.id, { job_number: jobNumber, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' }).then(() => setEstimate(e => ({ ...e, job_number: jobNumber }))).catch(err => console.error('[jobNumber onBlur] failed:', err)); }} placeholder="Job #" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
-                <input type="text" value={planReference} onChange={e => setPlanReference(e.target.value)} onBlur={() => { nexartClient.entities.Estimate.update(estimate.id, { plan_reference: planReference, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' }).then(() => setEstimate(e => ({ ...e, plan_reference: planReference }))).catch(err => console.error('[planReference onBlur] failed:', err)); }} placeholder="Plan Ref" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
+                <input type="text" disabled={isLocked} value={jobNumber} onChange={e => setJobNumber(e.target.value)} onBlur={() => { if (!isLocked) nexartClient.entities.Estimate.update(estimate.id, { job_number: jobNumber, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' }).then(() => setEstimate(e => ({ ...e, job_number: jobNumber }))).catch(err => console.error('[jobNumber onBlur] failed:', err)); }} placeholder="Job #" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
+                <input type="text" disabled={isLocked} value={planReference} onChange={e => setPlanReference(e.target.value)} onBlur={() => { if (!isLocked) nexartClient.entities.Estimate.update(estimate.id, { plan_reference: planReference, updated_by: currentUser?.email || currentUser?.full_name || 'Admin' }).then(() => setEstimate(e => ({ ...e, plan_reference: planReference }))).catch(err => console.error('[planReference onBlur] failed:', err)); }} placeholder="Plan Ref" className="h-7 w-28 text-xs border border-slate-200 rounded-lg px-2.5 bg-white placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
               </div>
             )}
-            <button onClick={() => setIsPreview(!isPreview)} className={`inline-flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-full border transition-colors ${isPreview ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPreview ? 'bg-amber-500' : 'bg-emerald-500'}`} />{isPreview ? 'Preview Mode' : 'Editing'}
-            </button>
+            {isLocked ? (
+              <span className="inline-flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-full border border-amber-200 bg-amber-50 text-amber-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                Read-only Mode
+              </span>
+            ) : (
+              <button onClick={() => setIsPreview(!isPreview)} className={`inline-flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-full border transition-colors ${isPreview ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isPreview ? 'bg-amber-500' : 'bg-emerald-500'}`} />{isPreview ? 'Preview Mode' : 'Editing'}
+              </button>
+            )}
           </div>
 
-          <EstimateGroups ref={estimateGroupsRef} estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
+          <EstimateGroups ref={estimateGroupsRef} estimate={estimate} onSave={handleSave} saving={saving} isPreview={isPreview || isLocked} currentUser={currentUser} onDirty={() => setDirty(true)} pricingWarningsMap={pricingWarningsMap} />
 
           {!isPreview && estimate?.id && <div className="mt-3"><PricingAuditHistory documentId={estimate.id} /></div>}
         </div>

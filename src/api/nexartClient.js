@@ -137,6 +137,96 @@ function applyFilters(query, filters) {
   return query;
 }
 
+const MISSING_ESTIMATE_COLUMNS = [
+  'materials_subtotal',
+  'other_costs_total',
+  'net_profit',
+  'net_profit_pct',
+  'discount_type',
+  'discount_value',
+  'internal_notes',
+  'exclusions',
+  'warranty_terms',
+  'payment_terms',
+  'legal_terms',
+  'scope_summary',
+  'assumptions',
+  'change_request_policy',
+  'included_scope_bullets',
+  'contingency_type',
+  'contingency_value',
+  'contingency_amount',
+  'show_contingency_to_client',
+  'uncertainty_note',
+  'document_config',
+  'discount_amount',
+  'deposit_amount',
+  'total_cost',
+  'service_cost',
+  'materials_cost',
+  'gross_margin'
+];
+
+// Helper to map record from DB
+function mapRecordFromDB(table, record) {
+  if (!record) return record;
+  if (table === 'estimates') {
+    if (record.metadata && typeof record.metadata === 'object') {
+      MISSING_ESTIMATE_COLUMNS.forEach(col => {
+        if (col in record.metadata) {
+          record[col] = record.metadata[col];
+        }
+      });
+    }
+  }
+  return record;
+}
+
+// Helper to prepare updates/creation payload for DB
+async function preparePayloadForDB(table, record, id = null) {
+  const payload = { ...record };
+
+  // Clean up empty strings for date/timestamp fields to prevent type errors in PostgreSQL
+  Object.keys(payload).forEach(key => {
+    if ((key.endsWith('_date') || key.endsWith('_at') || key === 'valid_until' || key === 'issued') && payload[key] === '') {
+      payload[key] = null;
+    }
+  });
+
+  if (table === 'estimates') {
+    let currentMetadata = {};
+    if (id) {
+      try {
+        const { data: existing } = await supabase.from('estimates').select('metadata').eq('id', id).maybeSingle();
+        if (existing && existing.metadata && typeof existing.metadata === 'object') {
+          currentMetadata = existing.metadata;
+        }
+      } catch (e) {
+        console.warn('[SupabaseData] failed to fetch existing metadata:', e);
+      }
+    }
+
+    let hasMissingField = false;
+    const nextMetadata = { ...currentMetadata };
+
+    MISSING_ESTIMATE_COLUMNS.forEach(col => {
+      if (col in payload) {
+        nextMetadata[col] = payload[col];
+        delete payload[col];
+        hasMissingField = true;
+      }
+    });
+
+    if (hasMissingField || 'metadata' in payload) {
+      payload.metadata = {
+        ...nextMetadata,
+        ...(payload.metadata || {})
+      };
+    }
+  }
+  return payload;
+}
+
 // ─── Entity class ─────────────────────────────────────────────────
 class SupabaseEntity {
   constructor(entityName) {
@@ -161,7 +251,13 @@ class SupabaseEntity {
       console.error(`[SupabaseData] ${this.entityName}.list error:`, error);
       throw error;
     }
-    return data || [];
+    const list = data || [];
+    if (this.table === 'clients') {
+      list.forEach(c => {
+        if (c && c.name && !c.full_name) c.full_name = c.name;
+      });
+    }
+    return list.map(r => mapRecordFromDB(this.table, r));
   }
 
   /**
@@ -173,15 +269,26 @@ class SupabaseEntity {
    */
   async filter(conditions = {}, sort = '-created_date', limit = 1000, columns = '*') {
     const { column, ascending } = parseSort(sort);
+    const mappedConditions = { ...conditions };
+    if (this.table === 'clients' && 'full_name' in mappedConditions) {
+      mappedConditions.name = mappedConditions.full_name;
+      delete mappedConditions.full_name;
+    }
     let query = supabase.from(this.table).select(columns);
-    query = applyFilters(query, conditions);
+    query = applyFilters(query, mappedConditions);
     query = query.order(column, { ascending }).limit(limit);
     const { data, error } = await query;
     if (error) {
       console.error(`[SupabaseData] ${this.entityName}.filter error:`, error);
       throw error;
     }
-    return data || [];
+    const list = data || [];
+    if (this.table === 'clients') {
+      list.forEach(c => {
+        if (c && c.name && !c.full_name) c.full_name = c.name;
+      });
+    }
+    return list.map(r => mapRecordFromDB(this.table, r));
   }
 
   /**
@@ -190,7 +297,11 @@ class SupabaseEntity {
    * @returns {object} the created record with id
    */
   async create(record) {
-    const payload = { ...record };
+    const payload = await preparePayloadForDB(this.table, record);
+    if (this.table === 'clients' && 'full_name' in payload) {
+      payload.name = payload.full_name;
+      delete payload.full_name;
+    }
     if (USES_AT_TIMESTAMPS.has(this.table)) {
       // Investor Hub tables: DB handles created_at via DEFAULT now(); only set updated_at
       if (!payload.updated_at) payload.updated_at = new Date().toISOString();
@@ -204,7 +315,11 @@ class SupabaseEntity {
       console.error(`[SupabaseData] ${this.entityName}.create error:`, error);
       throw error;
     }
-    return data;
+    const result = mapRecordFromDB(this.table, data);
+    if (this.table === 'clients' && result && result.name && !result.full_name) {
+      result.full_name = result.name;
+    }
+    return result;
   }
 
   /**
@@ -214,13 +329,22 @@ class SupabaseEntity {
    */
   async update(id, updates) {
     const tsField = USES_AT_TIMESTAMPS.has(this.table) ? 'updated_at' : 'updated_date';
-    const payload = { ...updates, [tsField]: new Date().toISOString() };
+    const payload = await preparePayloadForDB(this.table, updates, id);
+    if (this.table === 'clients' && 'full_name' in payload) {
+      payload.name = payload.full_name;
+      delete payload.full_name;
+    }
+    payload[tsField] = new Date().toISOString();
     const { data, error } = await supabase.from(this.table).update(payload).eq('id', id).select().single();
     if (error) {
       console.error(`[SupabaseData] ${this.entityName}.update error:`, error);
       throw error;
     }
-    return data;
+    const result = mapRecordFromDB(this.table, data);
+    if (this.table === 'clients' && result && result.name && !result.full_name) {
+      result.full_name = result.name;
+    }
+    return result;
   }
 
   /**
