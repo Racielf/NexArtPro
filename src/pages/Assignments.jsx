@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { nexartClient } from '@/api/nexartClient';
+import { syncAssignmentToTimeTracking } from '@/lib/timeSyncClient';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -91,6 +92,21 @@ export default function Assignments() {
       previous_worker_name: isReassign ? wo.assigned_worker_name : null,
     });
 
+    // Synchronize worker and assignment to NexArtTime
+    const updatedWo = {
+      ...wo,
+      assigned_worker_id: worker.id,
+      assigned_worker_name: worker.full_name,
+      assigned_worker_phone: worker.phone || '',
+      assigned_by: user?.full_name || user?.email || 'Admin',
+      assigned_at: isReassign ? wo.assigned_at : now,
+      previous_worker_id: isReassign ? wo.assigned_worker_id : null,
+      previous_worker_name: isReassign ? wo.assigned_worker_name : null,
+      reassigned_at: isReassign ? now : null,
+      reassigned_by: isReassign ? (user?.full_name || user?.email || 'Admin') : null,
+    };
+    await syncAssignmentToTimeTracking(updatedWo, worker);
+
     toast.success(`${isReassign ? 'Reassigned' : 'Assigned'} to ${worker.full_name}`);
     loadData();
   };
@@ -101,6 +117,12 @@ export default function Assignments() {
     if (newStatus === 'in_progress') extra.started_at = now;
     if (newStatus === 'completed') extra.completed_at = now;
     await nexartClient.entities.WorkOrder.update(wo.id, { status: newStatus, ...extra });
+    
+    // Sync status change to NexArtTime
+    const updatedWo = { ...wo, status: newStatus, ...extra };
+    const worker = wo.assigned_worker_id ? workers.find(w => w.id === wo.assigned_worker_id) : null;
+    await syncAssignmentToTimeTracking(updatedWo, worker);
+
     toast.success(`Status → ${STATUS_LABELS[newStatus]}`);
     loadData();
   };
