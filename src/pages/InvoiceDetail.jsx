@@ -6,9 +6,9 @@ import { normalizeLineItem } from '@/lib/lineItemNormalizer';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, Send, CheckCircle, Printer, DollarSign, MapPin, Receipt,
-  Clock, FileCheck, AlertTriangle, CheckCircle2, AlertCircle,
-  Phone, ExternalLink, ChevronRight
+  ArrowLeft, Send, Printer, DollarSign, MapPin, Receipt,
+  Clock, FileCheck, AlertTriangle, CheckCircle2,
+  ExternalLink, Eye
 } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { format } from 'date-fns';
@@ -16,6 +16,7 @@ import PaymentReceiptPreviewModal from '@/components/payments/PaymentReceiptPrev
 import { buildReceipt } from '@/components/payments/paymentReceiptUtils';
 import PaymentInputModal from '@/components/invoices/PaymentInputModal';
 import PaymentHistory from '@/components/invoices/PaymentHistory';
+import InvoiceViewModal from '@/components/client-portal/InvoiceViewModal';
 import { computeInvoiceDerivedFields, isInvoiceOverdue } from '@/lib/invoiceHelpers';
 import { evaluateWorkOrderEvidence } from '@/lib/workOrderEvidence';
 import { getInvoiceNextAction, getInvoiceFollowUpTiming } from '@/lib/nextActionLogic';
@@ -45,6 +46,7 @@ export default function InvoiceDetail() {
   const [dueDate, setDueDate] = useState('');
   const [receiptModal, setReceiptModal] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [clientViewOpen, setClientViewOpen] = useState(false);
   const [workOrder, setWorkOrder] = useState(null);
   const [evidenceEval, setEvidenceEval] = useState(null);
   const [recentOwners, setRecentOwners] = useState([]);
@@ -88,24 +90,33 @@ export default function InvoiceDetail() {
   };
 
   const handleSend = async () => {
-    if (!invoice.client_email) { toast.error('Client email required'); return; }
+    if (!invoice.client_email) { toast.error('Client email required to send'); return; }
     if (workOrder && evidenceEval && !evidenceEval.isComplete) {
       if (!confirm(`⚠ This invoice is based on a work order with incomplete execution documentation. Send anyway?`)) return;
     }
     setSaving(true);
-    const now = new Date().toISOString();
-    await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now, last_contacted_at: now });
-    await base44.integrations.Core.SendEmail({
-      to: invoice.client_email,
-      subject: `Invoice #${invoice.invoice_number} - Payment Due`,
-      body: `Hi ${invoice.client_name},\n\nPlease find your invoice #${invoice.invoice_number}.\n\nTotal Due: $${(invoice.total || 0).toFixed(2)}${dueDate ? `\nDue Date: ${dueDate}` : ''}\n\nThank you for your business!`,
-    });
-    setInvoice(i => ({ ...i, status: 'sent', sent_at: now, last_contacted_at: now }));
-    setSaving(false);
-    toast.success('Invoice sent to client!');
+    try {
+      // Email first — mark sent only on success
+      await base44.integrations.Core.SendEmail({
+        to: invoice.client_email,
+        subject: `Invoice #${invoice.invoice_number} - Payment Due`,
+        body: `Hi ${invoice.client_name},\n\nPlease find your invoice #${invoice.invoice_number}.\n\nTotal Due: $${(invoice.total || 0).toFixed(2)}${dueDate ? `\nDue Date: ${dueDate}` : ''}\n\nThank you for your business!`,
+      });
+      const now = new Date().toISOString();
+      await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now, last_contacted_at: now });
+      setInvoice(i => ({ ...i, status: 'sent', sent_at: now, last_contacted_at: now }));
+      toast.success('Invoice sent to client!');
+    } catch (err) {
+      console.error('[InvoiceDetail] send failed:', err);
+      toast.error(err?.message || 'Failed to send invoice — status not updated');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleMarkPaid = async () => {
+    // Best-effort quick pay — use PaymentInputModal for full recording
+    // Kept for internal audit trail purposes
     setSaving(true);
     const now = new Date().toISOString();
     const fullPayment = {
@@ -251,6 +262,9 @@ export default function InvoiceDetail() {
         invoice={invoice}
         onPaymentAdded={(updates) => setInvoice(i => ({ ...i, ...updates }))}
       />
+      {clientViewOpen && (
+        <InvoiceViewModal invoice={invoice} onClose={() => setClientViewOpen(false)} />
+      )}
 
       <div className="fixed inset-0 bg-[#f0f2f5] flex flex-col z-50 overflow-hidden">
 
@@ -268,26 +282,55 @@ export default function InvoiceDetail() {
               <p className="text-xs text-slate-400">{invoice.client_name}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <StatusBadge status={isPaid ? 'paid' : isPartial ? 'partial' : invoice.status} />
-            <Button size="sm" variant="outline" onClick={handlePrint}>
-              <Printer className="w-3.5 h-3.5 mr-1" />Print
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Status badges */}
+            <StatusBadge status={invoice.status} />
+            {derived.payment_status && derived.payment_status !== 'unpaid' && (
+              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                isPaid
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : isPartial
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-slate-50 text-slate-500 border-slate-200'
+              }`}>
+                {isPaid ? '✓ Paid' : isPartial ? 'Partial' : derived.payment_status}
+              </span>
+            )}
+
+            {/* Client View */}
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setClientViewOpen(true)}>
+              <Eye className="w-3.5 h-3.5" />Client View
             </Button>
+
+            {/* Add Payment — visible while not fully paid */}
+            {!isPaid && (
+              <Button
+                size="sm"
+                className="bg-primary hover:bg-primary/90 text-white gap-1.5"
+                onClick={() => setPaymentModalOpen(true)}
+              >
+                <DollarSign className="w-3.5 h-3.5" />Add Payment
+              </Button>
+            )}
+
+            {/* Receipt — visible when payments exist */}
             {derived.payment_status !== 'unpaid' && (
               <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 gap-1.5" onClick={() => setReceiptModal(true)}>
                 <FileCheck className="w-3.5 h-3.5" />Receipt
               </Button>
             )}
+
+            {/* Send — draft only */}
             {invoice.status === 'draft' && (
-              <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50" onClick={handleSend} disabled={saving}>
-                <Send className="w-3.5 h-3.5 mr-1" />Send
+              <Button size="sm" variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50 gap-1.5" onClick={handleSend} disabled={saving}>
+                <Send className="w-3.5 h-3.5" />{saving ? 'Sending…' : 'Send'}
               </Button>
             )}
-            {invoice.status === 'sent' && !isPaid && (
-              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleMarkPaid} disabled={saving}>
-                <CheckCircle className="w-3.5 h-3.5 mr-1" />Mark Paid
-              </Button>
-            )}
+
+            {/* Print */}
+            <Button size="sm" variant="outline" onClick={handlePrint}>
+              <Printer className="w-3.5 h-3.5 mr-1" />Print
+            </Button>
           </div>
         </div>
 
