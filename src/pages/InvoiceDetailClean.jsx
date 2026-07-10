@@ -161,20 +161,26 @@ export default function InvoiceDetailClean() {
     setSaving(true);
     try {
       const now = new Date().toISOString();
-      await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now, last_contacted_at: now });
+
+      // ── Email FIRST — only mark sent if delivery succeeds ──
       await base44.integrations.Core.SendEmail({
         to: invoice.client_email,
         subject: `Invoice #${invoice.invoice_number} - Payment Due`,
         body: `Hi ${invoice.client_name},\n\nPlease find your invoice #${invoice.invoice_number}.\n\nTotal Due: $${(invoice.total || 0).toFixed(2)}${dueDate ? `\nDue Date: ${dueDate}` : ''}\n\nThank you for your business!\n\n${co.name}`,
       });
+
+      // ── Email confirmed → update status ──
+      await base44.entities.Invoice.update(invoiceId, { status: 'sent', sent_at: now, last_contacted_at: now });
       setInvoice(prev => ({ ...prev, status: 'sent', sent_at: now, last_contacted_at: now }));
       toast.success('Invoice sent to client');
     } catch (err) {
       toast.error(err?.message || 'Failed to send invoice');
+      // Status NOT updated — invoice stays in pre-send state
     } finally {
       setSaving(false);
     }
   };
+
 
   const handleMarkPaid = async () => {
     setSaving(true);
@@ -510,7 +516,24 @@ export default function InvoiceDetailClean() {
             </div>
             {/* ══ END INVOICE DOCUMENT ══ */}
 
-            {/* ── Admin / Collections Tools (collapsed by default) ── */}
+            {/* ── Payment History (always visible) ── */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Payment History</span>
+                {!isPaid && (
+                  <Button size="sm" onClick={() => setPaymentModalOpen(true)} className="gap-1.5 h-7 text-xs bg-primary hover:bg-primary/90 text-white">
+                    <DollarSign className="w-3 h-3" />Add Payment
+                  </Button>
+                )}
+              </div>
+              <div className="px-5 py-4">
+                <PaymentHistory
+                  invoice={invoice}
+                  onPaymentRemoved={(updates) => setInvoice(prev => ({ ...prev, ...updates }))}
+                />
+              </div>
+            </div>
+
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               <button
                 onClick={() => setShowAdmin(p => !p)}
@@ -601,9 +624,9 @@ export default function InvoiceDetailClean() {
                     </div>
                   )}
 
-                  {/* Payment history */}
+                  {/* Payment history — inside admin for full history / removal */}
                   <div className="px-5 py-4">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Payment History</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Full Payment History (Admin)</p>
                     <PaymentHistory invoice={invoice} onPaymentRemoved={(updates) => setInvoice(prev => ({ ...prev, ...updates }))} />
                   </div>
 
