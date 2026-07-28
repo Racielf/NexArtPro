@@ -2,10 +2,13 @@
 
 ## Excepcion activa (2026-07-27)
 
-`OPEN_GAPS.md` item 6 (RLS `anon_full_access` en ~111 policies de produccion, fuera del Investor
-Hub) supera en prioridad a todo lo de abajo, incluido NexArtSign. No es parte del ranking
-permanente — es una excepcion mientras ese gap siga abierto. Requiere decision explicita del
-dueno del proyecto antes de actuar (ver `CLAUDE.md` seccion 11 TAREA G).
+`OPEN_GAPS.md` item 7 (esta app no tiene autenticacion real de Supabase Auth — `auth.uid()`
+siempre `NULL`) es el bloqueador raiz y supera en prioridad a todo lo de abajo, incluido
+NexArtSign. Bloquea a su vez el item 6 (RLS `anon_full_access` en ~111 policies de produccion):
+no tiene sentido cerrar RLS tabla por tabla mientras la DB no pueda distinguir un usuario real de
+cualquiera con la anon key — ya se probo con el Investor Hub y hubo que revertirlo. Ninguno de los
+dos es parte del ranking permanente — son una excepcion mientras sigan abiertos. Requiere decision
+explicita del dueno del proyecto antes de actuar (ver `CLAUDE.md` seccion 11, TAREA H y TAREA G).
 
 ## Prioridad obligatoria
 

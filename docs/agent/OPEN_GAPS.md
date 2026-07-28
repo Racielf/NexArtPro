@@ -169,14 +169,67 @@ por tabla.
 
 ### Estado
 
-Descubierto 2026-07-27 al verificar la correccion de RLS del Investor Hub (ver `CLAUDE.md`
-seccion 10 fase 7 y seccion 11 TAREA G). Investor Hub (10 tablas) ya remediado y verificado. El
-resto de la DB (~111 policies mas) sigue sin tocar.
+Descubierto 2026-07-27 al intentar la correccion de RLS del Investor Hub. Se corrigio (10 tablas),
+se verifico roto para uso real (ver gap 7 — `auth.uid()` siempre `NULL` en esta app), y se
+revirtio a proposito a `anon_full_access` para no dejar el Investor Hub inaccesible. Bloqueado
+por gap 7 — no tiene sentido cerrar esto en ninguna tabla mas hasta resolver la autenticacion
+real, porque el mismo patron de "arreglo que rompe todo" se repetiria en cada tabla.
 
 ### Evidencia
 
 - Query directa a `pg_policies` en `hdiejuqbhqhebrpneymo` (2026-07-27)
 - Supabase security advisor: 164 warnings, 121 de tipo `rls_policy_always_true`
+- `supabase/migrations/20260727_investor_hub_rls_remediation.sql` (intento)
+- `supabase/migrations/20260727b_investor_hub_rls_emergency_revert.sql` (reversion)
+
+---
+
+## 7. Autenticacion — CRITICO Y BLOQUEANTE
+
+### Gap
+
+Esta app no tiene ningun mecanismo de sesion real de Supabase Auth. `grep` en `src/` no encuentra
+`signInWithPassword`/`signInWithOtp`/`signInWithOAuth`/`signUp` en ningun lado — solo `signOut()`.
+`app_users` no tiene columna `auth_user_id` pese a que `AuthContext.jsx` intenta consultarla. El
+unico login que funciona de verdad es `TeamAccess.jsx`: codigo de equipo hardcodeado en el bundle
+del frontend + verificacion de usuario/password en texto plano contra `app_users`
+(`userStore.js authenticate()`, sin hash), usando la anon key, que solo guarda banderas en
+`sessionStorage` — nunca crea un JWT.
+
+### Impacto
+
+Critico y estructural. Como `auth.uid()` es siempre `NULL`, Row Level Security por usuario/rol es
+imposible de aplicar en cualquier tabla de esta app hasta resolver esto — verificado en carne
+propia con el intento de RLS hardening del Investor Hub (gap 6), que dejo la tabla inaccesible
+para todos, admin incluido, y tuvo que revertirse. Ademas `userStore.createUser()` no valida
+nada — con `app_users` en `anon_full_access` (estado real hoy), cualquiera con la anon key puede
+insertarse una cuenta `role: 'admin'` sin pasar por ningun login.
+
+### Prioridad
+
+Critica — bloquea gap 6 (RLS del resto de la DB) y cualquier intento futuro de hardening real.
+
+### Estado
+
+Descubierto 2026-07-27. Un sintoma relacionado ya se arreglo: `src/App.jsx` tenia un
+`ProtectedRoute` con `return children` incondicional (bypass total de auth en el frontend) desde
+el primer commit de este repo (`5304dae`, 2026-06-09) — se restauro el guard real el mismo dia.
+Eso ayuda (bloquea navegacion casual) pero no resuelve el problema de fondo: la base de datos
+sigue sin poder distinguir un usuario real de cualquiera con la anon key.
+
+La solucion real (conectar Supabase Auth de verdad: migrar usuarios, cambiar el flujo de login,
+hashear passwords) es un cambio de arquitectura — no implementar sin aprobacion explicita y
+planificacion dedicada.
+
+### Evidencia
+
+- `grep -rn "signInWithPassword\|signInWithOtp\|signInWithOAuth\|auth\.signUp" src/` → 0 resultados
+- `src/lib/AuthContext.jsx` (`loadUserProfile`, consulta `auth_user_id`)
+- `SELECT auth_user_id FROM app_users` → error 42703, columna no existe (verificado en produccion)
+- `src/pages/TeamAccess.jsx`, `src/lib/userStore.js` (`authenticate`, `createUser`)
+- `SET ROLE anon; SELECT count(*) FROM projects;` → 0 con policies `TO authenticated`, confirmando
+  que ninguna sesion real llega nunca a Postgres
+- `src/App.jsx` commit `5304dae` (2026-06-09) — bypass original; corregido 2026-07-27
 - `supabase/migrations/20260727_investor_hub_rls_remediation.sql` (la parte ya corregida)
 
 ---

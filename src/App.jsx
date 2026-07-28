@@ -127,14 +127,7 @@ const LoadingScreen = () => (
   </div>
 );
 
-// --- AUTH BYPASS (temporary) ---
-// Original ProtectedRoute preserved below for re-enabling.
-const ProtectedRoute = ({ children /*, access = 'any' */ }) => {
-  // Always allow access — auth disabled temporarily
-  return children;
-};
-/* ORIGINAL ProtectedRoute:
-const ProtectedRoute_Original = ({ children, access = 'any' }) => {
+const ProtectedRoute = ({ children, access = 'any' }) => {
   const { isLoadingAuth, isAuthenticated } = useAuth();
   if (isLoadingAuth) return <LoadingScreen />;
   const localSession = getLocalSession();
@@ -145,7 +138,6 @@ const ProtectedRoute_Original = ({ children, access = 'any' }) => {
   if (isAuthenticated) sessionStorage.setItem('nexartpro_authenticated', 'true');
   return children;
 };
-*/
 
 const AppRoutes = () => (
   <Routes>
@@ -155,9 +147,8 @@ const AppRoutes = () => (
     <Route path="/about" element={<About />} />
     <Route path="/contact" element={<Contact />} />
     <Route path="/partners" element={<Partners />} />
-    {/* AUTH BYPASS: redirect team-access and login to dashboard */}
-    <Route path="/team-access" element={<Navigate to="/dashboard" replace />} />
-    <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+    <Route path="/team-access" element={<TeamAccess />} />
+    <Route path="/login" element={<Login />} />
     <Route path="/sign-document" element={<SignDocumentView />} />
 
     <Route path="/field" element={<ProtectedRoute access="field"><FieldWorkOrders /></ProtectedRoute>} />

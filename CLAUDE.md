@@ -219,32 +219,69 @@ siguen abiertas de verdad.
 | 5.7 | FlipAnalysis create/edit form | Completo — `FlipAnalysisForm.jsx` |
 | 5.8 | Work Order -> Project selector | Completo — 2026-07-27, tarjeta "Job Details" en `WorkOrderDetail.jsx` |
 | 6 | Bridge Projects <-> Work Orders | Completo — `flip_analyses` + `work_orders.project_id` aplicados en produccion (2026-06-13) |
-| 7 | QA final y cleanup | Completo. RLS hardening del Investor Hub aplicado y verificado en produccion 2026-07-27 (ver `supabase/migrations/20260727_investor_hub_rls_remediation.sql`) |
+| 7 | QA final y cleanup | Parcial. Route guard (`ProtectedRoute`) reactivado 2026-07-27. RLS del Investor Hub sigue en `anon_full_access` (revertido a proposito, ver TAREA H) — bloqueado en la fase 0 real: no existe autenticacion real de Supabase Auth en esta app (ver TAREA H) |
 
 ---
 
 ## 11. Proximas tareas (en orden)
 
-Tareas A-F de la version anterior de este archivo ya estan implementadas (migration de campos
+Tareas A-E de la version anterior de este archivo ya estan implementadas (migration de campos
 fiscales, wizard de ProjectNew, InvestorNew mejorado, FlipAnalysisForm, selector Work Order ->
-Project, RLS hardening del Investor Hub) — se retiran de esta lista.
+Project) — se retiran de esta lista. TAREA F (RLS hardening Investor Hub) se intento, se revirtio
+a proposito, y se reemplaza por TAREA H abajo, que es el bloqueador real.
+
+### TAREA H — CRITICO Y BLOQUEANTE: esta app no tiene autenticacion real de Supabase Auth
+
+Descubierto 2026-07-27 al intentar TAREA F. Hechos verificados:
+
+- `grep` en todo `src/` no encuentra ninguna llamada a `signInWithPassword`, `signInWithOtp`,
+  `signInWithOAuth` ni `signUp` — solo `supabase.auth.signOut()`. Nunca se crea una sesion real.
+- `app_users` no tiene columna `auth_user_id` (confirmado con SQL directo), aunque
+  `AuthContext.jsx` intenta consultarla — ese codigo nunca llega a ejecutarse con exito.
+- El login real y unico que funciona es `TeamAccess.jsx`: un codigo de equipo hardcodeado
+  (`TEAM_ACCESS_CODE` en el bundle del frontend) + verificacion de usuario/password en texto
+  plano contra `app_users` (`userStore.js` `authenticate()`, columna `password` sin hash) usando
+  la anon key. Al pasar, solo se guardan banderas en `sessionStorage` — nunca un JWT.
+- Consecuencia: **todas** las peticiones a Postgres de esta app, para cualquier usuario, llegan
+  como rol `anon`. `auth.uid()` es siempre `NULL`. Esto hace que RLS por usuario/rol sea
+  **imposible de aplicar de verdad** en esta app hasta que se conecte autenticacion real —
+  verificado en carne propia: la correccion de TAREA F (`TO authenticated`) dejo el Investor Hub
+  inaccesible para todos, admin incluido (`SET ROLE anon; SELECT count(*) FROM projects;` daba 0),
+  y tuvo que revertirse (`supabase/migrations/20260727b_investor_hub_rls_emergency_revert.sql`).
+- Ademas, `userStore.createUser()` no tiene ninguna validacion — con `app_users` en `anon_full_access`
+  (que es el estado real hoy, ver TAREA G), cualquiera con la anon key puede insertarse una cuenta
+  `role: 'admin'` directamente contra la base de datos, sin pasar por ningun login.
+
+**Que se arreglo hoy (2026-07-27):** el bypass en `src/App.jsx` (`ProtectedRoute` que hacia
+`return children` siempre, mas `/team-access` y `/login` redirigiendo a `/dashboard`) — estaba
+ahi desde el primer commit de este repo (`5304dae`, 2026-06-09). Se restauro el guard real. Esto
+es una mejora real (bloquea navegacion casual sin el codigo de equipo + password), pero **no
+resuelve el problema de fondo**: la base de datos sigue sin poder distinguir un usuario real de
+cualquiera con la anon key, porque nunca hay una sesion Postgres autenticada de por medio.
+
+**No implementar la solucion real sin aprobacion explicita** — implica decidir entre conectar
+Supabase Auth de verdad (requiere migrar usuarios existentes, cambiar el flujo de login, hashear
+passwords) u otra estrategia. Es un cambio de arquitectura, no una tarea de una sesion.
 
 ### TAREA G — CRITICO: auditar `rls_policy_always_true` en el resto de la DB de produccion
 
-Al verificar TAREA F (2026-07-27) se encontro que las tablas del Investor Hub tenian una policy
+Al intentar TAREA F (2026-07-27) se encontro que las tablas del Investor Hub tenian una policy
 `anon_full_access` (`roles: {anon}`, `cmd: ALL`, `USING (true)`) dando acceso publico total sin
-login — contradecia todo lo documentado. Ya se corrigio (ver seccion 10, fase 7).
+login — contradecia todo lo documentado. Se reabrio a proposito tras el hallazgo de TAREA H (ver
+arriba) porque cerrarlo sin autenticacion real rompe la app — no se puede dar por resuelto hasta
+que TAREA H este resuelta.
 
-Al verificar que la correccion quedo limpia, `pg_policies` y el advisor de seguridad de Supabase
-mostraron que el mismo patron (`rls_policy_always_true`) existe en **121 policies** a lo largo de
-practicamente toda la base de datos de produccion, incluyendo tablas sensibles: `app_users`,
-`bank_accounts`, `bank_transactions`, `invoices`, `clients`, `subscriptions`, `recovery_vault`,
+Ademas, `pg_policies` y el advisor de seguridad de Supabase muestran que el mismo patron
+(`rls_policy_always_true`) existe en **121 policies** a lo largo de practicamente toda la base de
+datos de produccion, incluyendo tablas sensibles: `app_users`, `bank_accounts`,
+`bank_transactions`, `invoices`, `clients`, `subscriptions`, `recovery_vault`,
 `security_audit_logs`, `payroll_entries`, `payroll_runs`, `work_orders`, `estimates`, `leads`,
 entre otras.
 
-**No tocar esto sin instruccion explicita nueva.** Es una auditoria/remediacion propia, separada
-de cualquier fase de fusion — algunas de esas tablas (`signing_packages`, `signing_participants`,
-`signing_events`, `company_config`) legitimamente necesitan algo de acceso `anon` para el flujo
+**No tocar esto sin instruccion explicita nueva, y no antes de resolver TAREA H.** Es una
+auditoria/remediacion propia, separada de cualquier fase de fusion — algunas de esas tablas
+(`signing_packages`, `signing_participants`, `signing_events`, `company_config`) legitimamente
+necesitan algo de acceso `anon` para el flujo
 publico de NexArtSign/estimates, asi que esto requiere revision tabla por tabla, no un barrido
 ciego. Requiere decision explicita del dueno del proyecto sobre prioridad y alcance antes de
 iniciar.
@@ -269,7 +306,7 @@ iniciar.
 ## 13. Como iniciar cada sesion en Claude Code
 
 ```
-Lee CLAUDE.md completo. Estamos trabajando en [TAREA G].
+Lee CLAUDE.md completo. Estamos trabajando en [TAREA H/G].
 Confirma la tarea, los archivos que vas a tocar, y espera aprobacion antes de editar.
 ```
 
