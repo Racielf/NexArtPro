@@ -2,7 +2,12 @@
 
 > Este archivo es leído automáticamente por Claude Code en cada sesión.
 > Leerlo completo antes de tocar cualquier archivo.
-> Versión actualizada: Junio 2026 — refleja estado real del proyecto.
+> Versión actualizada: 2026-07-27 — reconciliado contra el código real y contra `docs/fusion/FUSION_PHASES_STATUS.md`.
+>
+> Este archivo es la única fuente de verdad sobre **estado de fases**. Si `docs/fusion/FUSION_PHASES_STATUS.md`
+> o cualquier otro doc dice algo distinto sobre qué fase está completa, ese otro doc está desactualizado —
+> corregirlo para que coincida con esto, no al revés. Para reglas operativas del día a día (prioridades,
+> gaps abiertos, mapa técnico) ver `docs/agent/` — ese árbol se mantiene aparte y se actualiza más seguido.
 
 ---
 
@@ -103,7 +108,7 @@ Archivos afectados conocidos:
 
 **investors** — Capital partners
 - name, type (person/company), email, phone, status (active/inactive), notes
-- PENDIENTE migration: tax_id, address, city, state, zip, tax_notes
+- tax_id, address, city, state, zip, tax_notes — aplicado en `20260628_investors_tax_address.sql`
 
 **project_investors** — Link investor a proyecto
 - CAMPOS REALES: `ownership_percentage`, `profit_split_percentage` (NO usar `equity_pct` — ese nombre NO existe en DB)
@@ -143,23 +148,27 @@ reparto = profit_neto * (profit_split_percentage / 100)
 ```
 src/pages/projects/
   Projects.jsx          — lista con grid de cards
-  ProjectNew.jsx        — form de creacion (wizard 3 pasos PENDIENTE)
+  ProjectNew.jsx        — form de creacion (1 sola pagina: name, address, status, responsible,
+                          purchase_date, purchase_price — wizard 3 pasos con campos de
+                          acquisition/sale completos sigue PENDIENTE, ver seccion 11)
   ProjectDetail.jsx     — shell con 5 tabs + Outlet
   ProjectOverview.jsx   — tab overview
   ProjectFinancials.jsx — tab financials
   ProjectInvestors.jsx  — tab investors (Add Investor habilitado)
   ProjectCapital.jsx    — tab capital contributions
-  FlipAnalysis.jsx      — tab flip analysis
+  FlipAnalysis.jsx      — tab flip analysis, wired a datos reales (useQuery + useMutation)
 
 src/pages/investors/
   Investors.jsx         — lista con busqueda
-  InvestorNew.jsx       — form de registro (2 secciones PENDIENTE mejorar)
+  InvestorNew.jsx       — form completo: name/type/phone/email/address/city/state/zip +
+                          tax_id/tax_notes/notes (mejora ya aplicada)
 
 src/components/projects/
   ProjectCard.jsx
   ProjectFinancialSummary.jsx
   InvestorTable.jsx     — usa ownership_percentage (NO equity_pct)
   CapitalContributionForm.jsx
+  FlipAnalysisForm.jsx  — form react-hook-form + zod para crear/editar flip_analyses
   FlipAnalysisPanel.jsx
   AddInvestorSheet.jsx  — Sheet para linkear investor a proyecto
 
@@ -190,61 +199,54 @@ src/lib/
 
 ## 10. Estado de fases
 
+Reconciliado 2026-07-27 contra el codigo real (`src/index.css`, `supabase/migrations/`, `.env.local`)
+y contra `docs/fusion/FUSION_PHASES_STATUS.md`. Las filas marcadas "PENDIENTE" son las unicas que
+siguen abiertas de verdad.
+
 | Fase | Descripcion | Estado |
 |---|---|---|
 | 0 | Baseline + build limpio | Completo |
 | 0.5 | Rename base44 -> nexartClient | Completo |
-| 1 | Estetica V3 tokens CSS | PENDIENTE |
-| 2 | Layout polish V3 | PENDIENTE |
+| 1 | Estetica V3 tokens CSS | Completo — tokens `--nexart-ink-*`/`--nexart-burnt-*` en `src/index.css` |
+| 2 | Layout polish V3 | Completo |
 | 3 | Shell Projects / Investor Hub | Completo |
 | 4 | Schema SQL Investor Hub | Completo (en produccion) |
 | 5 | UI React wired a datos reales | Completo |
-| 5.5 | Wizard ProjectNew (3 pasos) | PENDIENTE |
-| 5.6 | InvestorNew mejorado (tax_id, address) | PENDIENTE |
-| 5.7 | FlipAnalysis create/edit form | PENDIENTE |
-| 5.8 | Work Order -> Project selector | PENDIENTE |
-| 6 | Bridge Projects <-> Work Orders | PENDIENTE (requiere aprobacion) |
-| 7 | QA final y cleanup | PENDIENTE |
+| 5.5 | Wizard ProjectNew (3 pasos) | PENDIENTE — sigue siendo 1 sola pagina con campos basicos |
+| 5.6 | InvestorNew mejorado (tax_id, address) | Completo |
+| 5.7 | FlipAnalysis create/edit form | Completo — `FlipAnalysisForm.jsx` |
+| 5.8 | Work Order -> Project selector | PENDIENTE — no existe selector de project_id en UI de Work Orders |
+| 6 | Bridge Projects <-> Work Orders | Completo — `flip_analyses` + `work_orders.project_id` aplicados en produccion (2026-06-13) |
+| 7 | QA final y cleanup | Completo, con una excepcion: RLS hardening (`supabase/drafts/20260613_investor_hub_rls_hardening_draft.sql`) sigue sin aplicar — tablas Investor Hub usan `TO authenticated USING (true)` |
 
 ---
 
 ## 11. Proximas tareas (en orden)
 
-### TAREA A — Migration: investors campos fiscales/direccion
-```sql
-ALTER TABLE investors
-  ADD COLUMN IF NOT EXISTS tax_id    TEXT NOT NULL DEFAULT '',
-  ADD COLUMN IF NOT EXISTS address   TEXT NOT NULL DEFAULT '',
-  ADD COLUMN IF NOT EXISTS city      TEXT NOT NULL DEFAULT '',
-  ADD COLUMN IF NOT EXISTS state     TEXT NOT NULL DEFAULT '',
-  ADD COLUMN IF NOT EXISTS zip       TEXT NOT NULL DEFAULT '',
-  ADD COLUMN IF NOT EXISTS tax_notes TEXT NOT NULL DEFAULT '';
-```
-Archivo: `supabase/migrations/20260628_investors_tax_address.sql`
+Tareas A, C y D de la version anterior de este archivo ya estan implementadas (migration de
+campos fiscales, InvestorNew mejorado, FlipAnalysisForm) — se retiran de esta lista. Quedan
+genuinamente pendientes:
 
 ### TAREA B — ProjectNew wizard 3 pasos
 Archivo: `src/pages/projects/ProjectNew.jsx`
+Estado real hoy: form de 1 sola pagina con name, address, status, responsible, purchase_date,
+purchase_price. Falta convertirlo en wizard:
 - Step 1: name, address, property_type, beds, baths, sqft, year_built, status, responsible
 - Step 2: purchase_price, purchase_date, down_payment, loan_amount, lender_name, earnest_money, arv
 - Step 3: title_company, title_company_fee, realtor_fee, closing_costs, inspection_fee, insurance
 - Al submit: nexartClient.entities.Project.create() con todos los campos
 - Redirigir a /projects/:id despues de crear
 
-### TAREA C — InvestorNew mejorado (despues de migration)
-Archivo: `src/pages/investors/InvestorNew.jsx`
-- Seccion 1: name, type, phone, email, address, city, state, zip
-- Seccion 2: tax_id (SSN/EIN), tax_notes, notes
-- El capital aportado NO va aqui — va en Capital Contributions
+### TAREA E — Work Order -> Project selector (fase 5.8)
+No existe todavia ningun selector de `project_id` en la UI de Work Orders. Definir donde vive
+(WorkOrderDetail, WOLineItemsTab u otro) antes de implementar — requiere decision de UX, no solo
+codigo, porque toca el modulo `work_orders` que esta en produccion (ver regla en seccion 4).
 
-### TAREA D — FlipAnalysis create form
-Archivo: `src/pages/projects/FlipAnalysis.jsx` o nuevo `FlipAnalysisNew.jsx`
-Campos del nexartwo investor-manager.js:
-- purchase_price, earnest_deposit, closing_costs
-- loan_amount, loan_rate_annual, loan_months
-- property_taxes_6m, insurance_6m
-- estimated_repairs, contingency_percent
-- arv, realtor_commission_percent, title_escrow_exit
-- Al guardar: calcula profit_gross, profit_neto automaticamente
+### TAREA F — Aplicar RLS hardening del Investor Hub (fase 7, pendiente)
+Archivo: `supabase/drafts/20260613_investor_hub_rls_hardening_draft.sql`
+Implementa `admin` (acceso total), `office_agent` (solo SELECT en projects), `field_agent`
+(bloqueado). Usa `investor_user_role()` leyendo `app_users.role`. Antes de aplicar: confirmar que
+los roles reales en `app_users` son `admin`/`office_agent`, no `administrador`/`capataz`.
 
 ---
 
@@ -266,7 +268,7 @@ Campos del nexartwo investor-manager.js:
 ## 13. Como iniciar cada sesion en Claude Code
 
 ```
-Lee CLAUDE.md completo. Estamos trabajando en [TAREA A/B/C/D].
+Lee CLAUDE.md completo. Estamos trabajando en [TAREA B/E/F].
 Confirma la tarea, los archivos que vas a tocar, y espera aprobacion antes de editar.
 ```
 
@@ -288,5 +290,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.0 — Junio 2026*
+*Version: 2.1 — 2026-07-27*
 *R.C Art Construction LLC — NexArtPro*

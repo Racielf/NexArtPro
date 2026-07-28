@@ -2,7 +2,11 @@
 
 ## Proposito
 
-Mapa operativo minimo del sistema, basado solo en rutas y archivos verificados en el repo real `Racielf/proestimate-fsm`.
+Mapa operativo minimo del sistema, basado solo en rutas y archivos verificados en el repo real `Racielf/NexArtPro`.
+
+Nota (2026-07-27): este archivo decia antes `Racielf/proestimate-fsm`. Ese es el nombre historico/interno
+del proyecto (sigue en `base44/config.jsonc`), pero el remoto de GitHub real hoy es
+`github.com/Racielf/NexArtPro.git` — corregido para usar el nombre actual.
 
 ## Estado de certeza
 

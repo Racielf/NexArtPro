@@ -6,7 +6,7 @@ Definir como debe actuar un agente sobre NexArtPro para no saltarse evidencia, p
 
 ## Source of truth
 
-- El repo real es `Racielf/proestimate-fsm`
+- El repo real es `Racielf/NexArtPro` (nombre historico/interno: `proestimate-fsm`, ver `base44/config.jsonc`)
 - El workspace local es temporal
 - Un cambio no cuenta como cerrado solo por existir localmente
 
