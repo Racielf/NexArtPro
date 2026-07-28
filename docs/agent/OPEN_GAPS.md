@@ -143,6 +143,44 @@ Pendiente de documentar mejor
 
 ---
 
+## 6. Toda la base de datos de produccion
+
+### Gap
+
+`rls_policy_always_true` en 121 policies a lo largo de casi toda la DB de produccion
+(`hdiejuqbhqhebrpneymo`), incluyendo `app_users`, `bank_accounts`, `bank_transactions`,
+`invoices`, `clients`, `subscriptions`, `recovery_vault`, `security_audit_logs`,
+`payroll_entries`, `payroll_runs`, `work_orders`, `estimates`, `leads`. Muchas tienen una policy
+literal `anon_full_access` (`roles: {anon}`, `cmd: ALL`, `USING (true)`) — acceso publico de
+lectura/escritura sin login, usando la anon key publica que ya esta en el bundle del frontend.
+
+### Impacto
+
+Critico. Exposicion activa de datos financieros, de nomina, bancarios y de cuentas de usuario a
+cualquiera con la anon key publica, ahora mismo, sin necesidad de autenticarse.
+
+### Prioridad
+
+Critica — mayor que NexArtSign. Requiere decision explicita del dueno del proyecto sobre
+prioridad/alcance antes de tocar nada, porque algunas tablas (`signing_packages`,
+`signing_participants`, `signing_events`, `company_config`) legitimamente necesitan algo de acceso
+anonimo para el flujo publico de NexArtSign/estimates — no es un barrido ciego, es revision tabla
+por tabla.
+
+### Estado
+
+Descubierto 2026-07-27 al verificar la correccion de RLS del Investor Hub (ver `CLAUDE.md`
+seccion 10 fase 7 y seccion 11 TAREA G). Investor Hub (10 tablas) ya remediado y verificado. El
+resto de la DB (~111 policies mas) sigue sin tocar.
+
+### Evidencia
+
+- Query directa a `pg_policies` en `hdiejuqbhqhebrpneymo` (2026-07-27)
+- Supabase security advisor: 164 warnings, 121 de tipo `rls_policy_always_true`
+- `supabase/migrations/20260727_investor_hub_rls_remediation.sql` (la parte ya corregida)
+
+---
+
 ## Regla de mantenimiento
 
 Cuando un gap se cierre:

@@ -1,5 +1,12 @@
 # OPERATING_PRIORITIES
 
+## Excepcion activa (2026-07-27)
+
+`OPEN_GAPS.md` item 6 (RLS `anon_full_access` en ~111 policies de produccion, fuera del Investor
+Hub) supera en prioridad a todo lo de abajo, incluido NexArtSign. No es parte del ranking
+permanente — es una excepcion mientras ese gap siga abierto. Requiere decision explicita del
+dueno del proyecto antes de actuar (ver `CLAUDE.md` seccion 11 TAREA G).
+
 ## Prioridad obligatoria
 
 Cuando existan varias lineas de trabajo abiertas, priorizar en este orden:

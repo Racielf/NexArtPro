@@ -219,21 +219,35 @@ siguen abiertas de verdad.
 | 5.7 | FlipAnalysis create/edit form | Completo — `FlipAnalysisForm.jsx` |
 | 5.8 | Work Order -> Project selector | Completo — 2026-07-27, tarjeta "Job Details" en `WorkOrderDetail.jsx` |
 | 6 | Bridge Projects <-> Work Orders | Completo — `flip_analyses` + `work_orders.project_id` aplicados en produccion (2026-06-13) |
-| 7 | QA final y cleanup | Completo, con una excepcion: RLS hardening (`supabase/drafts/20260613_investor_hub_rls_hardening_draft.sql`) sigue sin aplicar — tablas Investor Hub usan `TO authenticated USING (true)` |
+| 7 | QA final y cleanup | Completo. RLS hardening del Investor Hub aplicado y verificado en produccion 2026-07-27 (ver `supabase/migrations/20260727_investor_hub_rls_remediation.sql`) |
 
 ---
 
 ## 11. Proximas tareas (en orden)
 
-Tareas A, B, C, D y E de la version anterior de este archivo ya estan implementadas (migration de
-campos fiscales, wizard de ProjectNew, InvestorNew mejorado, FlipAnalysisForm, selector Work
-Order -> Project) — se retiran de esta lista. Queda genuinamente pendiente:
+Tareas A-F de la version anterior de este archivo ya estan implementadas (migration de campos
+fiscales, wizard de ProjectNew, InvestorNew mejorado, FlipAnalysisForm, selector Work Order ->
+Project, RLS hardening del Investor Hub) — se retiran de esta lista.
 
-### TAREA F — Aplicar RLS hardening del Investor Hub (fase 7, pendiente)
-Archivo: `supabase/drafts/20260613_investor_hub_rls_hardening_draft.sql`
-Implementa `admin` (acceso total), `office_agent` (solo SELECT en projects), `field_agent`
-(bloqueado). Usa `investor_user_role()` leyendo `app_users.role`. Antes de aplicar: confirmar que
-los roles reales en `app_users` son `admin`/`office_agent`, no `administrador`/`capataz`.
+### TAREA G — CRITICO: auditar `rls_policy_always_true` en el resto de la DB de produccion
+
+Al verificar TAREA F (2026-07-27) se encontro que las tablas del Investor Hub tenian una policy
+`anon_full_access` (`roles: {anon}`, `cmd: ALL`, `USING (true)`) dando acceso publico total sin
+login — contradecia todo lo documentado. Ya se corrigio (ver seccion 10, fase 7).
+
+Al verificar que la correccion quedo limpia, `pg_policies` y el advisor de seguridad de Supabase
+mostraron que el mismo patron (`rls_policy_always_true`) existe en **121 policies** a lo largo de
+practicamente toda la base de datos de produccion, incluyendo tablas sensibles: `app_users`,
+`bank_accounts`, `bank_transactions`, `invoices`, `clients`, `subscriptions`, `recovery_vault`,
+`security_audit_logs`, `payroll_entries`, `payroll_runs`, `work_orders`, `estimates`, `leads`,
+entre otras.
+
+**No tocar esto sin instruccion explicita nueva.** Es una auditoria/remediacion propia, separada
+de cualquier fase de fusion — algunas de esas tablas (`signing_packages`, `signing_participants`,
+`signing_events`, `company_config`) legitimamente necesitan algo de acceso `anon` para el flujo
+publico de NexArtSign/estimates, asi que esto requiere revision tabla por tabla, no un barrido
+ciego. Requiere decision explicita del dueno del proyecto sobre prioridad y alcance antes de
+iniciar.
 
 ---
 
@@ -255,7 +269,7 @@ los roles reales en `app_users` son `admin`/`office_agent`, no `administrador`/`
 ## 13. Como iniciar cada sesion en Claude Code
 
 ```
-Lee CLAUDE.md completo. Estamos trabajando en [TAREA F].
+Lee CLAUDE.md completo. Estamos trabajando en [TAREA G].
 Confirma la tarea, los archivos que vas a tocar, y espera aprobacion antes de editar.
 ```
 
