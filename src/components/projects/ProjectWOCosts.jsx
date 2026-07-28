@@ -94,7 +94,7 @@ export default function ProjectWOCosts({ projectId, onSync, syncLoading }) {
               No work orders linked yet.
             </p>
             <p className="text-xs text-muted-foreground">
-              Open a Work Order and select this project in the <strong>Job Details</strong> sidebar.
+              Open a Work Order and select this project in the <strong>Job Details</strong> card.
             </p>
           </div>
         </CardContent>

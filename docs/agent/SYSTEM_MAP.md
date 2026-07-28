@@ -140,6 +140,7 @@ Capacidades verificadas:
   `CapitalCall`, `FlipAnalysis` en `TABLE_MAP`)
 - `src/lib/projectsApi.js`, `src/lib/investorsApi.js`, `src/lib/financialsApi.js`
 - `src/pages/projects/*`, `src/pages/investors/*`, `src/components/projects/*`
+- `src/components/workorders/JobDetailsCard.jsx` — Work Order side of the bridge (links a WO to a project)
 
 Capacidades verificadas:
 
@@ -150,8 +151,9 @@ Capacidades verificadas:
   `equity_pct` NO existe como columna real, solo como nombre de parametro local en
   `calcInvestorReturn()`
 - `FlipAnalysisForm.jsx` permite crear/editar `flip_analyses` con react-hook-form + zod
-- `work_orders.project_id` existe como bridge hacia `projects`, pero no hay todavia ningun
-  selector de proyecto en la UI de Work Orders (ver `CLAUDE.md` seccion 11, TAREA E)
+- `work_orders.project_id` existe como bridge hacia `projects`. Selector de proyecto en la UI de
+  Work Orders: `src/components/workorders/JobDetailsCard.jsx`, montado en `WorkOrderDetail.jsx`
+  entre el header y los tabs. Gateado por `VITE_INVESTOR_HUB_ENABLED` (2026-07-27)
 - RLS de las tablas del Investor Hub es scaffold (`USING (true)`), no hardening real por rol
   todavia (ver arriba y `CLAUDE.md` seccion 11, TAREA F)
 

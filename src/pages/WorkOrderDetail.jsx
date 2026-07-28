@@ -16,6 +16,7 @@ import WOCommsTab       from '@/components/workorders/WOCommsTab';
 import WOChangeOrdersTab from '@/components/workorders/WOChangeOrdersTab';
 import WODocumentTab    from '@/components/workorders/WODocumentTab';
 import WOActivityLogTab from '@/components/workorders/WOActivityLogTab';
+import JobDetailsCard   from '@/components/workorders/JobDetailsCard';
 
 const PRIORITY_DOT = {
   emergency: 'bg-[#ef4444] shadow-[0_0_6px_#ef4444]',
@@ -395,6 +396,15 @@ export default function WorkOrderDetail() {
             })}
           </div>
         </div>
+
+        <JobDetailsCard
+          workOrderId={id}
+          projectId={wo.project_id}
+          onLinked={(projectId) => {
+            setWorkOrder(prev => ({ ...prev, project_id: projectId }));
+            setSavedAt(new Date());
+          }}
+        />
 
         {/* ── Tab content ── */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">

@@ -217,7 +217,7 @@ siguen abiertas de verdad.
 | 5.5 | Wizard ProjectNew (3 pasos) | Completo — 2026-07-27, sin earnest_money/arv (no son columnas de `projects`) |
 | 5.6 | InvestorNew mejorado (tax_id, address) | Completo |
 | 5.7 | FlipAnalysis create/edit form | Completo — `FlipAnalysisForm.jsx` |
-| 5.8 | Work Order -> Project selector | PENDIENTE — no existe selector de project_id en UI de Work Orders |
+| 5.8 | Work Order -> Project selector | Completo — 2026-07-27, tarjeta "Job Details" en `WorkOrderDetail.jsx` |
 | 6 | Bridge Projects <-> Work Orders | Completo — `flip_analyses` + `work_orders.project_id` aplicados en produccion (2026-06-13) |
 | 7 | QA final y cleanup | Completo, con una excepcion: RLS hardening (`supabase/drafts/20260613_investor_hub_rls_hardening_draft.sql`) sigue sin aplicar — tablas Investor Hub usan `TO authenticated USING (true)` |
 
@@ -225,14 +225,9 @@ siguen abiertas de verdad.
 
 ## 11. Proximas tareas (en orden)
 
-Tareas A, B, C y D de la version anterior de este archivo ya estan implementadas (migration de
-campos fiscales, wizard de ProjectNew, InvestorNew mejorado, FlipAnalysisForm) — se retiran de
-esta lista. Quedan genuinamente pendientes:
-
-### TAREA E — Work Order -> Project selector (fase 5.8)
-No existe todavia ningun selector de `project_id` en la UI de Work Orders. Definir donde vive
-(WorkOrderDetail, WOLineItemsTab u otro) antes de implementar — requiere decision de UX, no solo
-codigo, porque toca el modulo `work_orders` que esta en produccion (ver regla en seccion 4).
+Tareas A, B, C, D y E de la version anterior de este archivo ya estan implementadas (migration de
+campos fiscales, wizard de ProjectNew, InvestorNew mejorado, FlipAnalysisForm, selector Work
+Order -> Project) — se retiran de esta lista. Queda genuinamente pendiente:
 
 ### TAREA F — Aplicar RLS hardening del Investor Hub (fase 7, pendiente)
 Archivo: `supabase/drafts/20260613_investor_hub_rls_hardening_draft.sql`
@@ -260,7 +255,7 @@ los roles reales en `app_users` son `admin`/`office_agent`, no `administrador`/`
 ## 13. Como iniciar cada sesion en Claude Code
 
 ```
-Lee CLAUDE.md completo. Estamos trabajando en [TAREA E/F].
+Lee CLAUDE.md completo. Estamos trabajando en [TAREA F].
 Confirma la tarea, los archivos que vas a tocar, y espera aprobacion antes de editar.
 ```
 
