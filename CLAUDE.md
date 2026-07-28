@@ -148,9 +148,11 @@ reparto = profit_neto * (profit_split_percentage / 100)
 ```
 src/pages/projects/
   Projects.jsx          — lista con grid de cards
-  ProjectNew.jsx        — form de creacion (1 sola pagina: name, address, status, responsible,
-                          purchase_date, purchase_price — wizard 3 pasos con campos de
-                          acquisition/sale completos sigue PENDIENTE, ver seccion 11)
+  ProjectNew.jsx        — wizard de 3 pasos (Basic Info / Acquisition / Closing Costs), un solo
+                          useForm + zod, valida por paso con trigger() antes de avanzar. NOTA:
+                          earnest_money y arv NO se piden aqui — no existen como columnas en
+                          `projects` (arv vive en `flip_analyses`, capturado en el tab Flip
+                          Analysis despues de crear el proyecto)
   ProjectDetail.jsx     — shell con 5 tabs + Outlet
   ProjectOverview.jsx   — tab overview
   ProjectFinancials.jsx — tab financials
@@ -212,7 +214,7 @@ siguen abiertas de verdad.
 | 3 | Shell Projects / Investor Hub | Completo |
 | 4 | Schema SQL Investor Hub | Completo (en produccion) |
 | 5 | UI React wired a datos reales | Completo |
-| 5.5 | Wizard ProjectNew (3 pasos) | PENDIENTE — sigue siendo 1 sola pagina con campos basicos |
+| 5.5 | Wizard ProjectNew (3 pasos) | Completo — 2026-07-27, sin earnest_money/arv (no son columnas de `projects`) |
 | 5.6 | InvestorNew mejorado (tax_id, address) | Completo |
 | 5.7 | FlipAnalysis create/edit form | Completo — `FlipAnalysisForm.jsx` |
 | 5.8 | Work Order -> Project selector | PENDIENTE — no existe selector de project_id en UI de Work Orders |
@@ -223,19 +225,9 @@ siguen abiertas de verdad.
 
 ## 11. Proximas tareas (en orden)
 
-Tareas A, C y D de la version anterior de este archivo ya estan implementadas (migration de
-campos fiscales, InvestorNew mejorado, FlipAnalysisForm) — se retiran de esta lista. Quedan
-genuinamente pendientes:
-
-### TAREA B — ProjectNew wizard 3 pasos
-Archivo: `src/pages/projects/ProjectNew.jsx`
-Estado real hoy: form de 1 sola pagina con name, address, status, responsible, purchase_date,
-purchase_price. Falta convertirlo en wizard:
-- Step 1: name, address, property_type, beds, baths, sqft, year_built, status, responsible
-- Step 2: purchase_price, purchase_date, down_payment, loan_amount, lender_name, earnest_money, arv
-- Step 3: title_company, title_company_fee, realtor_fee, closing_costs, inspection_fee, insurance
-- Al submit: nexartClient.entities.Project.create() con todos los campos
-- Redirigir a /projects/:id despues de crear
+Tareas A, B, C y D de la version anterior de este archivo ya estan implementadas (migration de
+campos fiscales, wizard de ProjectNew, InvestorNew mejorado, FlipAnalysisForm) — se retiran de
+esta lista. Quedan genuinamente pendientes:
 
 ### TAREA E — Work Order -> Project selector (fase 5.8)
 No existe todavia ningun selector de `project_id` en la UI de Work Orders. Definir donde vive
@@ -268,7 +260,7 @@ los roles reales en `app_users` son `admin`/`office_agent`, no `administrador`/`
 ## 13. Como iniciar cada sesion en Claude Code
 
 ```
-Lee CLAUDE.md completo. Estamos trabajando en [TAREA B/E/F].
+Lee CLAUDE.md completo. Estamos trabajando en [TAREA E/F].
 Confirma la tarea, los archivos que vas a tocar, y espera aprobacion antes de editar.
 ```
 
