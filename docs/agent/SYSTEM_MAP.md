@@ -14,8 +14,12 @@ del proyecto (sigue en `base44/config.jsonc`), pero el remoto de GitHub real hoy
 - Confirmado: existe un modulo NexArtSign con panel admin y vista publica de firma.
 - Confirmado: existe un Brain bajo `src/brain/` y un modulo `securityBrain`.
 - Confirmado: existe backend Base44 con funciones en `base44/functions/`.
+- Confirmado: existe un modulo Investor Hub (Projects + Investors + Capital + Flip Analysis) con
+  datos reales en Supabase, activo detras de `VITE_INVESTOR_HUB_ENABLED` (`=true` en produccion).
 - Inferido con alta confianza: el sistema opera como ERP/FSM ligero con ventas, ejecucion, firma y cobro conectados.
 - Desconocido todavia: mapa completo de todas las entidades y todas las relaciones backend.
+- Desconocido todavia: si el Investor Hub tiene RLS real por rol — hoy las tablas usan
+  `TO authenticated USING (true)` (scaffold), hardening pendiente (ver `CLAUDE.md` seccion 11, TAREA F).
 
 ## Entrada principal
 
@@ -70,6 +74,12 @@ del proyecto (sigue en `base44/config.jsonc`), pero el remoto de GitHub real hoy
 - `/nexartsign`
 - `/nexartsign-field-editor`
 - `/agent`
+- `/projects` (Investor Hub, detras de `VITE_INVESTOR_HUB_ENABLED`)
+- `/projects/new`
+- `/projects/:id` (index=Overview, `/financials`, `/investors`, `/capital`, `/flip-analysis`)
+- `/investors` (Investor Hub, detras de `VITE_INVESTOR_HUB_ENABLED`)
+- `/investors/new`
+- `/investors/:id`
 
 ### Field
 
@@ -121,6 +131,29 @@ Capacidades verificadas:
 - hay Brain modular
 - `securityBrain` analiza logs de seguridad y audit logs
 - el Brain ya produce checks, severidades y sugerencias
+
+### Investor Hub (Projects, Investors, Capital, Flip Analysis)
+
+- `src/App.jsx` (rutas gateadas por `VITE_INVESTOR_HUB_ENABLED === 'true'`)
+- `src/api/nexartClient.js` (entidades `Project`, `ProjectInvestor`, `ProjectExpense`,
+  `ProjectRefund`, `ProjectDisbursement`, `Investor`, `InvestorCompany`, `CapitalContribution`,
+  `CapitalCall`, `FlipAnalysis` en `TABLE_MAP`)
+- `src/lib/projectsApi.js`, `src/lib/investorsApi.js`, `src/lib/financialsApi.js`
+- `src/pages/projects/*`, `src/pages/investors/*`, `src/components/projects/*`
+
+Capacidades verificadas:
+
+- CRUD real contra Supabase (no mock) para projects, investors, capital contributions y flip analyses
+- formulas financieras R8-R11 (balance due, profit gross, profit neto, reparto por socio) viven en
+  `src/lib/projectsApi.js`, no inline en componentes
+- `InvestorTable.jsx` usa `ownership_percentage` / `profit_split_percentage` — el nombre
+  `equity_pct` NO existe como columna real, solo como nombre de parametro local en
+  `calcInvestorReturn()`
+- `FlipAnalysisForm.jsx` permite crear/editar `flip_analyses` con react-hook-form + zod
+- `work_orders.project_id` existe como bridge hacia `projects`, pero no hay todavia ningun
+  selector de proyecto en la UI de Work Orders (ver `CLAUDE.md` seccion 11, TAREA E)
+- RLS de las tablas del Investor Hub es scaffold (`USING (true)`), no hardening real por rol
+  todavia (ver arriba y `CLAUDE.md` seccion 11, TAREA F)
 
 ### Work Orders -> Invoices
 
