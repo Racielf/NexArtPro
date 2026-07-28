@@ -105,7 +105,10 @@ export default function Assignments() {
       reassigned_at: isReassign ? now : null,
       reassigned_by: isReassign ? (user?.full_name || user?.email || 'Admin') : null,
     };
-    await syncAssignmentToTimeTracking(updatedWo, worker);
+    // Fire-and-forget: NexArtTime sync must never delay or block the CRM's
+    // own success flow (the assignment above is already saved). Failures/
+    // timeouts are handled and logged inside syncAssignmentToTimeTracking.
+    syncAssignmentToTimeTracking(updatedWo, worker);
 
     toast.success(`${isReassign ? 'Reassigned' : 'Assigned'} to ${worker.full_name}`);
     loadData();
@@ -118,10 +121,10 @@ export default function Assignments() {
     if (newStatus === 'completed') extra.completed_at = now;
     await nexartClient.entities.WorkOrder.update(wo.id, { status: newStatus, ...extra });
     
-    // Sync status change to NexArtTime
+    // Sync status change to NexArtTime — fire-and-forget, see handleAssign.
     const updatedWo = { ...wo, status: newStatus, ...extra };
     const worker = wo.assigned_worker_id ? workers.find(w => w.id === wo.assigned_worker_id) : null;
-    await syncAssignmentToTimeTracking(updatedWo, worker);
+    syncAssignmentToTimeTracking(updatedWo, worker);
 
     toast.success(`Status → ${STATUS_LABELS[newStatus]}`);
     loadData();
