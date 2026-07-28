@@ -6,7 +6,7 @@ This file tracks the security hardening work for NexArtSign so the project can b
 
 ### Phase 1 - Token hardening + audit foundation
 
-**Status:** Partially implemented / foundation added.
+**Status:** Implemented, verified directly against code on 2026-07-27. This entry previously said "Partially implemented" — that was stale; the pending items below were already done in a prior, undocumented session (see the `(del _fixed)` comment left in `completeSigningPackage/entry.ts` line ~181).
 
 Added:
 
@@ -22,17 +22,21 @@ Added:
   - `nexartsign.replay_blocked`
   - `nexartsign.rate_limited`
 
-Still pending in Phase 1:
+Verified done (2026-07-27):
 
-- Replace plain token lookup with token hash lookup.
-- Stop storing new tokens in plain text.
-- Add fallback migration path for legacy tokens.
-- Kill or revoke token after final signature or decline.
+- **Replace plain token lookup with token hash lookup.** Confirmed: zero `.filter({ token: ... })` lookups remain in `base44/functions/`; both canonical files look up exclusively by `token_hash` (`resolveSigningPackageToken/entry.ts` lines 34, 44; `completeSigningPackage/entry.ts` lines 188, 200).
+- **Stop storing new tokens in plain text.** Confirmed: `base44/functions/_shared/nexartsignSecurity.ts` `buildIssuedTokenFields()` (line 35-42) returns `token: ''` and persists only `token_hash: await sha256Hex(rawToken)` plus `token_last_four` for support display.
+- **Kill or revoke token after final signature or decline.** Confirmed: `completeSigningPackage/entry.ts` clears `token`, `token_hash`, `token_last_four` and sets `token_revoked_at` at multiple completion/decline paths (lines ~235-249, ~662-672, ~869-882).
+
+Not verified either way (2026-07-27):
+
+- **Fallback migration path for legacy tokens.** Did not find or rule out specific handling for pre-hardening records that might still carry a plain-text `token` value from before this hardening shipped. Needs a dedicated check (e.g. query for any `SigningPackage`/`SigningParticipant` rows with non-empty `token` and empty/mismatched `token_hash`) before this line item can be marked resolved. Treat as open until checked.
 
 Important files:
 
 - `base44/functions/resolveSigningPackageToken/entry.ts`
 - `base44/functions/completeSigningPackage/entry.ts`
+- `base44/functions/_shared/nexartsignSecurity.ts`
 
 ---
 
@@ -155,11 +159,9 @@ Residual note:
 
 ## Post-Phase-4 audit findings
 
-### Remaining critical item outside the active phase line
+### Resolved since this audit (verified 2026-07-27, see Phase 1 above)
 
-1. Plain token lookup still exists in canonical functions.
-   - Current pattern: `SigningPackage.filter({ token })`
-   - Target pattern: hash token, then lookup by `token_hash`.
+1. ~~Plain token lookup still exists in canonical functions.~~ RESOLVED. All lookups use `token_hash`; no plaintext `token` field is stored on issuance or ever used as a lookup key.
 
 ### Remaining important items outside the active phase line
 
@@ -168,6 +170,7 @@ Residual note:
 
 3. Public verification endpoint still needs minimization.
    - Public verification should reveal minimum data only.
+   - This is Phase 6 below — next recommended phase as of 2026-07-27.
 
 ---
 
