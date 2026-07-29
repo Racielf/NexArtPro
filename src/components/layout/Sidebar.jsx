@@ -102,6 +102,7 @@ export default function Sidebar() {
   };
   const { user } = useAuth();
   const canAccessAdmin  = user?.role === 'admin' || isAdmin();
+  const isOwner         = user?.role === 'admin' || isAdmin();
   const baseGroups      = INVESTOR_HUB_ENABLED ? [...navGroups, projectsNavGroup] : navGroups;
   const visibleNavGroups = canAccessAdmin ? [...baseGroups, adminNavGroup] : baseGroups;
   const sidebarLogoUrl  = cc.logo_url || appConfig.company.logo_url || '';
@@ -211,13 +212,15 @@ export default function Sidebar() {
 
         {/* Footer */}
         <div className="sidebar-footer">
-          <Link
-            to="/settings"
-            className={`sidebar-link ${location.pathname === '/settings' ? 'sidebar-link-active' : ''}`}
-          >
-            <Settings className="sidebar-link-icon" />
-            <span>Settings</span>
-          </Link>
+          {isOwner && (
+            <Link
+              to="/settings"
+              className={`sidebar-link ${location.pathname === '/settings' ? 'sidebar-link-active' : ''}`}
+            >
+              <Settings className="sidebar-link-icon" />
+              <span>Settings</span>
+            </Link>
+          )}
           <button
             onClick={() => {
               sessionStorage.clear();

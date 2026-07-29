@@ -19,8 +19,10 @@ export const ROLE_PERMISSIONS = {
 export function normalizeLocalRole(role) {
   const value = String(role || '').trim().toLowerCase();
   if (['admin', 'owner', 'manager'].includes(value)) return ROLES.ADMIN;
-  if (['office_agent', 'office-agent', 'office', 'dispatcher', 'coordinator', 'staff'].includes(value)) return ROLES.OFFICE_AGENT;
-  if (['field_agent', 'field-agent', 'field', 'technician', 'tech', 'worker', 'agent'].includes(value)) return ROLES.FIELD_AGENT;
+  // 'agent' is the only non-admin role app_users.role allows (DB CHECK constraint) --
+  // it means full operational access minus Settings, i.e. OFFICE_AGENT, not field-only.
+  if (['office_agent', 'office-agent', 'office', 'dispatcher', 'coordinator', 'staff', 'agent'].includes(value)) return ROLES.OFFICE_AGENT;
+  if (['field_agent', 'field-agent', 'field', 'technician', 'tech', 'worker'].includes(value)) return ROLES.FIELD_AGENT;
   return value || null;
 }
 

@@ -335,13 +335,39 @@ iniciar.
 | Modulo | Rutas | Estado |
 |---|---|---|
 | Estimates | /estimates, /estimate-editor, /send-estimate | Produccion |
-| Work Orders | /work-orders, /work-orders/:id, /field | Produccion |
+| Work Orders | /work-orders, /work-orders/:id, /field | Produccion — ver seccion 12.5, sistema externo de WO en desarrollo aparte se conectara aqui |
 | Invoices | /invoices, /invoice-create | Produccion |
 | Proposals | /proposals, /proposal-editor | Produccion |
 | NexArtSign | /nexartsign, /sign/:token | Produccion |
 | Workers | /workers | Produccion |
 | Payroll | /payroll | Produccion |
 | Payments | /payments | Produccion |
+
+---
+
+## 12.5. Modelo de roles actual y plan futuro de acceso por modulo
+
+**Estado 2026-07-28:** `app_users.role` solo permite `admin`/`agent` (CHECK constraint,
+`supabase/001_users_roles.sql`). `agent` se normaliza client-side a `office_agent`
+(`src/lib/roleUtils.js`) — acceso operativo completo (Dashboard, Work Orders, Clientes,
+Invoices, etc.) **excepto Settings**, que esta bloqueado a nivel de ruta (`access="owner"` en
+`src/App.jsx`, solo `role === 'admin'`) y oculto en el sidebar (`Sidebar.jsx`, `isOwner`).
+
+**Plan futuro confirmado por el dueno (2026-07-28), NO implementar todavia:** existe un sistema
+de Work Orders separado, grande, en desarrollo aparte, que se conectara a NexArtPro mas adelante
+(via API o el mecanismo que se defina). El dueno quiere poder habilitar **solo el modulo de Work
+Orders** para ciertos agentes especificos (uno o varios), sin darles el resto del acceso
+operativo — es decir, acceso por modulo, no solo por rol binario admin/agent.
+
+**Que dejar preparado, sin construir todavia:**
+- El modelo de roles de hoy (un solo campo `role` con 2 valores) no soporta esto. Cuando se
+  aborde, probablemente necesite una tabla de permisos por modulo (ej. `app_user_module_access`)
+  en vez de forzar mas valores dentro de `role`.
+- No disenar nada nuevo en `app_users`/RLS/rutas que asuma que `role` es la unica fuente de
+  autorizacion posible — dejar espacio para una capa de permisos por modulo encima.
+- Cuando llegue esa integracion: definir el contrato de datos (que entra/sale por API hacia el
+  sistema de Work Orders externo) antes de tocar `work_orders` en produccion (regla existente,
+  seccion 4).
 
 ---
 

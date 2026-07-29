@@ -11,7 +11,7 @@ import { nexartClient } from '@/api/nexartClient';
 
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Owner / Admin', description: 'Full access. Can manage company settings, users, security and all modules.' },
-  { value: 'agent', label: 'Team Agent', description: 'Office/field access. Can be given a Quick PIN for fast sign-in on shared devices.' },
+  { value: 'agent', label: 'Team Agent', description: 'Full operational access (Dashboard, Work Orders, Invoices, etc.) except Settings. Can be given a Quick PIN for fast sign-in.' },
 ];
 
 function getRoleLabel(role) {

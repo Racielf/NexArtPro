@@ -112,12 +112,14 @@ function canAccessRoute({ access, isAuthenticated, localSession }) {
   if (isAuthenticated) {
     if (access === 'field') return localSession.role ? FIELD_ROLES.has(localSession.role) : true;
     if (access === 'admin') return !localSession.role || ADMIN_ROLES.has(localSession.role);
+    if (access === 'owner') return !localSession.role || localSession.role === 'admin';
     return true;
   }
 
   if (!localSession.isValid) return false;
   if (access === 'field') return FIELD_ROLES.has(localSession.role);
   if (access === 'admin') return ADMIN_ROLES.has(localSession.role);
+  if (access === 'owner') return localSession.role === 'admin';
   return true;
 }
 
@@ -183,7 +185,7 @@ const AppRoutes = () => (
       <Route path="/proposals" element={<Proposals />} />
       <Route path="/sales-pipeline" element={<SalesPipeline />} />
       <Route path="/proposal-editor" element={<ProposalEditor />} />
-      <Route path="/settings" element={<Settings />} />
+      <Route path="/settings" element={<ProtectedRoute access="owner"><Settings /></ProtectedRoute>} />
       <Route path="/recovery-center" element={<RecoveryCenter />} />
       <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
       <Route path="/nexartsign" element={<NexArtSign />} />
