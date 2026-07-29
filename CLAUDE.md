@@ -489,8 +489,10 @@ hardening de seguridad sobre el diseño existente. Esto va mas alla de la regla 
 "extender lo que ya existe" (`docs/agent/EXECUTION_RULES.md`) especificamente para este modulo.
 Que es NexArtSign (por si no estaba claro, segun el dueno): un modulo de firma electronica tipo
 DocuSign — se cargan "paquetes de firma" (`SigningPackage`) para que una o mas personas firmen un
-documento (tipico: un `Estimate`). Descripcion completa en
-`docs/nexartsign-security-roadmap.md` ("What NexArtSign is").
+documento (tipico: un `Estimate`). Descripcion completa en `docs/nexartsign-security-roadmap.md` ("What NexArtSign is") y vision de
+producto/UX (flujo de firma, principios, backlog) en `docs/nexartsign-product-context.md`,
+destilada 2026-07-29 del intento de proyecto standalone
+(`D:\My Bussines\Strategy\NexArtSign\nexartsign-pro-app`).
 
 ---
 

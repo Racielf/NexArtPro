@@ -19,6 +19,10 @@ security-hardening within the current design. The current implementation has kno
 "Still pending" below and `docs/agent/OPEN_GAPS.md` items 1-3) that may call for changing how it
 works, not just patching it.
 
+**Product/UX vision (2026-07-29):** this file only tracks security hardening. The intended client
+flow, product principles, and feature backlog carried over from that standalone attempt are in
+`docs/nexartsign-product-context.md` — read that too before redesigning anything here.
+
 ## Current status
 
 ### Phase 1 - Token hardening + audit foundation
