@@ -9,7 +9,7 @@ import { ShieldCheck } from 'lucide-react';
 import { getDefaultRouteForRole, normalizeLocalRole } from '@/lib/roleUtils';
 
 export default function TeamAccess() {
-  const { isLoadingAuth, isAuthenticated, user } = useAuth();
+  const { isLoadingAuth, isAuthenticated, user, isRecovery, clearRecovery } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState('password'); // 'password' | 'pin'
 
@@ -22,27 +22,16 @@ export default function TeamAccess() {
   const [info, setInfo] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const [recovery, setRecovery] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [myPin, setMyPin] = useState('');
   const [showPinRecovery, setShowPinRecovery] = useState(false);
   const [pinRecoveryEmail, setPinRecoveryEmail] = useState('');
 
   useEffect(() => {
-    if (isAuthenticated && !recovery) {
+    if (isAuthenticated && !isRecovery) {
       navigate(getDefaultRouteForRole(normalizeLocalRole(user?.role)), { replace: true });
     }
-  }, [isAuthenticated, user, recovery, navigate]);
-
-  // Fires when the user lands here from a "forgot password" or invite email link --
-  // Supabase establishes a session from the URL, but they still need to pick a
-  // password before using the app normally.
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setRecovery(true);
-    });
-    return () => listener?.subscription?.unsubscribe();
-  }, []);
+  }, [isAuthenticated, user, isRecovery, navigate]);
 
   const handleSetNewPassword = async (e) => {
     e.preventDefault();
@@ -58,7 +47,7 @@ export default function TeamAccess() {
       setError(updateErr.message);
       return;
     }
-    setRecovery(false);
+    clearRecovery();
   };
 
   const sendRecoveryEmail = async (targetEmail) => {
@@ -151,7 +140,7 @@ export default function TeamAccess() {
     }
   };
 
-  if (recovery) {
+  if (isRecovery) {
     return (
       <div className="min-h-screen flex flex-col bg-slate-950">
         <PublicHeader />
@@ -171,7 +160,7 @@ export default function TeamAccess() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => { setRecovery(false); setMyPin(''); }}
+                  onClick={() => { clearRecovery(); setMyPin(''); }}
                   className="w-full px-8 py-3 text-sm font-bold text-white bg-cta-orange hover:bg-orange-600 rounded-lg transition uppercase tracking-wider"
                 >
                   Done

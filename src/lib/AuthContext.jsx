@@ -51,6 +51,12 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false);
   const [authError, setAuthError] = useState(null);
   const [appPublicSettings, setAppPublicSettings] = useState(null);
+  // Set by the PASSWORD_RECOVERY auth event (forgot-password / forgot-PIN email
+  // links). Tracked here, at the top of the app, because this listener is attached
+  // before any route/page mounts -- a listener registered later (e.g. inside
+  // TeamAccess.jsx) can miss the event entirely, since Supabase processes the
+  // recovery token from the URL immediately on load and never replays it.
+  const [isRecovery, setIsRecovery] = useState(false);
 
   const applySession = useCallback(async (nextSession) => {
     setIsLoadingAuth(true);
@@ -137,7 +143,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     checkAppState();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true);
       applySession(nextSession);
     });
 
@@ -151,8 +158,11 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setSession(null);
     setIsAuthenticated(false);
+    setIsRecovery(false);
     await supabase.auth.signOut();
   }, []);
+
+  const clearRecovery = useCallback(() => setIsRecovery(false), []);
 
   const navigateToLogin = useCallback(() => {
     window.location.assign('/team-access');
@@ -167,6 +177,8 @@ export const AuthProvider = ({ children }) => {
       isLoadingPublicSettings,
       authError,
       appPublicSettings,
+      isRecovery,
+      clearRecovery,
       logout,
       navigateToLogin,
       checkAppState,
