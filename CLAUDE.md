@@ -431,6 +431,22 @@ operativo — es decir, acceso por modulo, no solo por rol binario admin/agent.
   sistema de Work Orders externo) antes de tocar `work_orders` en produccion (regla existente,
   seccion 4).
 
+**NexArtSign — decision de arquitectura confirmada por el dueno (2026-07-29):** se intento
+desarrollar NexArtSign como proyecto separado, fuera de NexArtPro, y no funciono. Decision: seguir
+desarrollando NexArtSign **dentro de NexArtPro** (donde ya vive hoy — `signing_packages`,
+`signing_participants`, `signing_events`, `signing_certificates`, Edge Functions
+`completeSigningPackage`/`resolveSigningPackageToken`/`requestSigningOtp`/etc.), pero mantenerlo
+lo bastante modular como para poder:
+1. Extraerlo a un proyecto aparte mas adelante si hace falta, o
+2. Una vez maduro, conectarlo con los otros proyectos relacionados (el sistema de Work Orders
+   externo de arriba, y potencialmente otros).
+
+**Que dejar preparado, sin construir todavia:** no acoplar mas de lo necesario la logica de
+NexArtSign a componentes internos de NexArtPro que no sean genericos (nexartClient, RLS por rol).
+Cuando se retome el trabajo pendiente de NexArtSign (`docs/nexartsign-security-roadmap.md`,
+`OPEN_GAPS.md` items 1-3), tener en mente esta doble posibilidad de salida (extraer o conectar) al
+tomar decisiones de diseño, sin que eso bloquee avanzar dentro de NexArtPro por ahora.
+
 ---
 
 ## 13. Como iniciar cada sesion en Claude Code
