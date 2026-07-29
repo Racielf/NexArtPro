@@ -186,8 +186,8 @@ const AppRoutes = () => (
       <Route path="/sales-pipeline" element={<SalesPipeline />} />
       <Route path="/proposal-editor" element={<ProposalEditor />} />
       <Route path="/settings" element={<ProtectedRoute access="owner"><Settings /></ProtectedRoute>} />
-      <Route path="/recovery-center" element={<RecoveryCenter />} />
-      <Route path="/security-dashboard" element={<SecurityDashboardWithBrain />} />
+      <Route path="/recovery-center" element={<ProtectedRoute access="owner"><RecoveryCenter /></ProtectedRoute>} />
+      <Route path="/security-dashboard" element={<ProtectedRoute access="owner"><SecurityDashboardWithBrain /></ProtectedRoute>} />
       <Route path="/nexartsign" element={<NexArtSign />} />
       <Route path="/nexartsign-field-editor" element={<NexArtSignFieldEditor />} />
       <Route path="/agent" element={<NexArtAgent />} />

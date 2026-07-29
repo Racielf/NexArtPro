@@ -2,6 +2,23 @@
 
 This file tracks the security hardening work for NexArtSign so the project can be resumed later without losing context.
 
+## What NexArtSign is
+
+An e-signature module built into NexArtPro (like DocuSign) — not a separate product. A document
+(typically a signed `Estimate`) gets turned into a `SigningPackage`, which has one or more
+`SigningParticipant`s who sign it in sequence via a public link (`/sign/:token`, no login required
+for the signer). Once everyone signs, the backend (`completeSigningPackage` Edge Function) freezes
+a final signed PDF, generates a `SigningCertificate`, and — if the source document was an
+`Estimate` — can convert it into a `WorkOrder`. Admin-side management lives at `/nexartsign`.
+
+**Architecture note (2026-07-29):** the owner tried developing NexArtSign as a project separate
+from NexArtPro; it didn't work well. Decision: keep it inside NexArtPro (see `CLAUDE.md` section
+12.5), and — unlike the general rule of only extending what exists — **architecture changes to
+NexArtSign itself are explicitly allowed** when this roadmap is next picked up, not just
+security-hardening within the current design. The current implementation has known gaps (see
+"Still pending" below and `docs/agent/OPEN_GAPS.md` items 1-3) that may call for changing how it
+works, not just patching it.
+
 ## Current status
 
 ### Phase 1 - Token hardening + audit foundation

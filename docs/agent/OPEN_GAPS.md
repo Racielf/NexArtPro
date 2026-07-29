@@ -143,7 +143,7 @@ Pendiente de documentar mejor
 
 ---
 
-## 6. Toda la base de datos de produccion — Batch 1 resuelto 2026-07-29, resto pendiente
+## 6. Toda la base de datos de produccion — Batches 1, 4, 5 resueltos 2026-07-29, resto pendiente
 
 ### Gap
 
@@ -176,10 +176,27 @@ Tambien se confirmo que no todo `TO public` es inseguro: `change_orders`, `wo_co
 `wo_documents`, `wo_line_items`, `wo_photos` ya tenian `qual: auth.role() = 'authenticated'`, que
 es `false` para anon real — no necesitaron cambio.
 
-**Pendiente (fuera de este batch):** logs/auditoria, tablas operativas de detalle (fotos, notas,
-historiales), y las tablas publicas de NexArtSign (que se solapan con los gaps 1-3 de este mismo
-archivo — coordinar con ese roadmap, no redisenar). Lista completa en `CLAUDE.md` seccion 11
-TAREA G.
+**Batches 4 y 5 cerrados y verificados 2026-07-29 (28 tablas mas)** — 20 operativas de detalle
+(equipo compartido, admin-only delete) + 8 de logs/auditoria (`admin`/`agent` pueden INSERT su
+propia accion, solo `admin` puede SELECT, sin UPDATE/DELETE). `/security-dashboard` y
+`/recovery-center` ahora protegidas a nivel de ruta (`access="owner"`) — antes no lo estaban pese
+a estar ocultas en el sidebar para no-admin.
+
+**Hallazgo critico adicional (mismo dia):** al verificar el batch 5, se encontro que 34 tablas
+tenian ademas una policy `"Allow all for authenticated"` (`roles: {authenticated}`, `qual: true`)
+— un TERCER patron que ni la auditoria original ni el batch 1 habian buscado (solo se auditaba
+`anon` y `public`). Esto anulaba las restricciones de los batches 2-5 por completo: cualquier
+usuario autenticado, sin importar rol, tenia acceso total via esta policy paralela — confirmado
+que un agente podia leer `audit_logs` pese a la policy admin-only. Corregido en las 34 tablas
+(`20260729h_rls_fix_allow_all_authenticated_bypass.sql`); esto causo una regresion de paso (las 5
+tablas de NexArtSign se quedaron sin ningun acceso `authenticated`, restaurado en
+`20260729i_rls_restore_nexartsign_internal_access.sql` sin tocar su lado `anon`, que sigue
+deferred). Ver `CLAUDE.md` seccion 11 TAREA G para el detalle completo y la metodologia de
+auditoria actualizada (ahora son 3 patrones a buscar, no 2).
+
+**Pendiente (fuera de este batch):** solo las tablas publicas de NexArtSign (que se solapan con
+los gaps 1-3 de este mismo archivo — coordinar con ese roadmap, no redisenar). Lista completa en
+`CLAUDE.md` seccion 11 TAREA G.
 
 ### Evidencia
 

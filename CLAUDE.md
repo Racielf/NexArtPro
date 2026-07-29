@@ -332,7 +332,7 @@ verificar entrega end-to-end de un correo nuevo todavia.
 `auth.uid()` funciona de verdad — ya no deberia repetirse el problema de "arreglo que rompe la
 app" que paso con el primer intento de TAREA F.
 
-### TAREA G — Auditoria RLS del resto de la DB — BATCH 1 RESUELTO 2026-07-29, resto pendiente
+### TAREA G — Auditoria RLS del resto de la DB — BATCHES 1, 4, 5 RESUELTOS 2026-07-29, resto pendiente
 
 Al intentar TAREA F (2026-07-27) se encontro que las tablas del Investor Hub tenian una policy
 `anon_full_access` (`roles: {anon}`, `cmd: ALL`, `USING (true)`) dando acceso publico total sin
@@ -369,16 +369,47 @@ Verificado con sesiones simuladas via `SET request.jwt.claims` (sin necesitar na
 agent ven los mismos conteos reales de filas; agent correctamente bloqueado en tablas admin-only;
 `anon` en 0 en las 24 tablas. Migraciones: `supabase/migrations/20260729b-e_*.sql`.
 
+**Batches 4 y 5 cerrados y verificados 2026-07-29** (28 tablas mas):
+
+- **Operativas de detalle (20 tablas)** — `appointments`, `customers`, `comm_events`,
+  `job_assignments`, `materials`, `price_book_entries`, `services`, `time_entries`,
+  `time_tracking_logs`, `work_order_daily_reports`, `work_order_expenses`, `work_order_histories`,
+  `work_order_receipts`, `work_order_time_entries`, `worker_documents`, `worker_notes`, `workers`,
+  `project_photos`, `estimate_snapshots`, `estimate_transmissions`, `estimate_version_histories`.
+  Mismo patron que CRM central: `admin`/`agent` SELECT/INSERT/UPDATE, solo `admin` DELETE.
+- **Logs/auditoria (8 tablas)** — `audit_logs`, `security_audit_logs`, `auth_security_logs`,
+  `pricing_audit_events`, `document_logs`, `nexartsign_security_blocks`,
+  `nexartsign_token_attempts`, `recovery_vault`. `src/lib/auditLog.js` escribe directo desde el
+  frontend (no via service_role), asi que cualquier `admin`/`agent` activo puede INSERT (para que
+  se registren sus propias acciones), pero **solo `admin` puede SELECT** (ver el historial) —
+  coincide con que `/security-dashboard` y `/recovery-center` ahora son admin-only tambien
+  (`access="owner"` agregado en `src/App.jsx`, antes sin proteger a nivel de ruta). Sin
+  UPDATE/DELETE: los logs son append-only, ningun codigo del frontend los edita o borra.
+
+**Hallazgo critico adicional durante batch 5, corregido el mismo dia:** al verificar que un agente
+NO podia leer `audit_logs`, se encontro que SI podia — **34 tablas** tenian ademas una policy
+`"Allow all for authenticated"` (`roles: {authenticated}`, `qual: true`) que la auditoria original
+nunca busco (solo se habia buscado `anon` y `public`, nunca `authenticated` con `USING(true)`).
+Esto anulaba por completo las restricciones ya aplicadas hoy en batches 2, 3, 4 y 5 —
+`bank_accounts`/`bank_transactions` (deberian ser admin-only), `work_orders`/`payments`
+(admin-only-delete), los logs (admin-only-read) — cualquier usuario autenticado, sin importar
+rol, tenia acceso total via esta policy paralela. Se elimino de las 34 tablas
+(`20260729h_rls_fix_allow_all_authenticated_bypass.sql`). Verificado: cero policies quedan en toda
+la base con `roles={authenticated} AND qual=true`, y tambien cero con `qual=true` de cualquier
+rol fuera de las 5 tablas de NexArtSign (deferred, ver abajo).
+
+**Regresion causada y corregida en el mismo paso:** el fix anterior tambien quito la unica policy
+`authenticated` que tenian las 5 tablas de NexArtSign (`signing_packages` etc.), dejando a los
+usuarios internos sin poder ver sus propios paquetes de firma (admin paso de ver 10 filas reales a
+0). Se restauro acceso de equipo compartido (`admin`/`agent`) en esas 5 tablas sin tocar las
+policies `anon` (que siguen exactamente igual de abiertas, pospuestas a proposito) —
+`20260729i_rls_restore_nexartsign_internal_access.sql`.
+
 **Explicitamente fuera de este batch, mismo patron aplica despues:**
 
-- Logs/auditoria: `audit_logs`, `security_audit_logs`, `auth_security_logs`,
-  `nexartsign_security_blocks`, `nexartsign_token_attempts`, `pricing_audit_events`, `document_logs`.
-- Operativas de detalle: `appointments`, `customers`, `comm_events`, `job_assignments`, `materials`,
-  `price_book_entries`, `services`, `time_entries`, `time_tracking_logs`, `work_order_*`,
-  `worker_documents`, `worker_notes`, `workers`, `project_photos`, `estimate_snapshots`,
-  `estimate_transmissions`, `estimate_version_histories`, `recovery_vault`.
 - NexArtSign publico: `signing_packages`, `signing_participants`, `signing_events`,
-  `signing_certificates`, `public_document_access` — se solapan con `OPEN_GAPS.md` items 1-3
+  `signing_certificates`, `public_document_access` — el lado `anon` (acceso publico real para el
+  flujo de firma) sigue exactamente como estaba, sin tocar. Se solapan con `OPEN_GAPS.md` items 1-3
   (roadmap de seguridad de NexArtSign ya existente), coordinar con ese roadmap en vez de disenar
   de nuevo. Nota adicional: `signing_packages.anon_select_signing_packages` solo chequea
   `token IS NOT NULL` (no que el token coincida con nada) — revisar si de verdad protege algo mas
@@ -387,6 +418,11 @@ agent ven los mismos conteos reales de filas; agent correctamente bloqueado en t
   `wo_documents`, `wo_line_items`, `wo_photos` (usan `roles: {public}` pero `qual: auth.role() =
   'authenticated'`, que es `false` para peticiones anonimas reales — no todo `TO public` es
   inseguro, se reviso el `qual` de cada tabla antes de asumir nada).
+
+**Metodologia actualizada para la proxima tanda (importante):** al auditar RLS en esta base,
+buscar SIEMPRE 3 patrones, no 2: `'anon' = ANY(roles)`, `roles = '{public}'`, Y
+`roles = '{authenticated}' AND qual = 'true'` (o equivalente sin condicion real). El tercero se
+descubrio recien hoy y ya afecto 34 tablas sin ser detectado por las 2 auditorias anteriores.
 
 Requiere decision explicita del dueno sobre prioridad/alcance antes de la siguiente tanda.
 
@@ -446,6 +482,15 @@ NexArtSign a componentes internos de NexArtPro que no sean genericos (nexartClie
 Cuando se retome el trabajo pendiente de NexArtSign (`docs/nexartsign-security-roadmap.md`,
 `OPEN_GAPS.md` items 1-3), tener en mente esta doble posibilidad de salida (extraer o conectar) al
 tomar decisiones de diseño, sin que eso bloquee avanzar dentro de NexArtPro por ahora.
+
+**Aclaracion del dueno (2026-07-29):** la implementacion actual de NexArtSign "no funcionaba
+bien" tal como estaba disenada — **se autoriza modificar su arquitectura**, no solo aplicar
+hardening de seguridad sobre el diseño existente. Esto va mas alla de la regla general de
+"extender lo que ya existe" (`docs/agent/EXECUTION_RULES.md`) especificamente para este modulo.
+Que es NexArtSign (por si no estaba claro, segun el dueno): un modulo de firma electronica tipo
+DocuSign — se cargan "paquetes de firma" (`SigningPackage`) para que una o mas personas firmen un
+documento (tipico: un `Estimate`). Descripcion completa en
+`docs/nexartsign-security-roadmap.md` ("What NexArtSign is").
 
 ---
 
