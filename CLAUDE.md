@@ -2,7 +2,7 @@
 
 > Este archivo es leído automáticamente por Claude Code en cada sesión.
 > Leerlo completo antes de tocar cualquier archivo.
-> Versión actualizada: 2026-07-27 — reconciliado contra el código real y contra `docs/fusion/FUSION_PHASES_STATUS.md`.
+> Versión actualizada: 2026-07-29 — autenticacion real (TAREA H) y primera tanda de RLS (TAREA G) resueltas y verificadas.
 >
 > Este archivo es la única fuente de verdad sobre **estado de fases**. Si `docs/fusion/FUSION_PHASES_STATUS.md`
 > o cualquier otro doc dice algo distinto sobre qué fase está completa, ese otro doc está desactualizado —
@@ -219,7 +219,7 @@ siguen abiertas de verdad.
 | 5.7 | FlipAnalysis create/edit form | Completo — `FlipAnalysisForm.jsx` |
 | 5.8 | Work Order -> Project selector | Completo — 2026-07-27, tarjeta "Job Details" en `WorkOrderDetail.jsx` |
 | 6 | Bridge Projects <-> Work Orders | Completo — `flip_analyses` + `work_orders.project_id` aplicados en produccion (2026-06-13) |
-| 7 | QA final y cleanup | Parcial. Route guard reactivado 2026-07-27. Autenticacion real resuelta 2026-07-29 (TAREA H). RLS del Investor Hub sigue en `anon_full_access` — ya no bloqueado por falta de auth real, queda pendiente re-intentarlo (TAREA G) |
+| 7 | QA final y cleanup | Parcial. Route guard reactivado 2026-07-27. Autenticacion real resuelta 2026-07-29 (TAREA H). RLS del Investor Hub re-cerrado y verificado 2026-07-29 (TAREA G batch 1) — quedan ~35+ tablas fuera del Investor Hub pendientes (TAREA G, proxima tanda) |
 
 ---
 
@@ -452,7 +452,7 @@ tomar decisiones de diseño, sin que eso bloquee avanzar dentro de NexArtPro por
 ## 13. Como iniciar cada sesion en Claude Code
 
 ```
-Lee CLAUDE.md completo. Estamos trabajando en [TAREA G].
+Lee CLAUDE.md completo. Estamos trabajando en [TAREA G — proxima tanda de RLS, batch 2].
 Confirma la tarea, los archivos que vas a tocar, y espera aprobacion antes de editar.
 ```
 
@@ -474,5 +474,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.1 — 2026-07-27*
+*Version: 2.2 — 2026-07-29*
 *R.C Art Construction LLC — NexArtPro*
