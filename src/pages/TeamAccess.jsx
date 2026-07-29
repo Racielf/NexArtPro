@@ -24,6 +24,9 @@ export default function TeamAccess() {
 
   const [recovery, setRecovery] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [myPin, setMyPin] = useState('');
+  const [showPinRecovery, setShowPinRecovery] = useState(false);
+  const [pinRecoveryEmail, setPinRecoveryEmail] = useState('');
 
   useEffect(() => {
     if (isAuthenticated && !recovery) {
@@ -58,15 +61,15 @@ export default function TeamAccess() {
     setRecovery(false);
   };
 
-  const handleForgotPassword = async () => {
+  const sendRecoveryEmail = async (targetEmail) => {
     setError('');
     setInfo('');
-    if (!email.trim()) {
-      setError('Enter your email above first');
+    if (!targetEmail.trim()) {
+      setError('Enter your email first');
       return;
     }
     setSubmitting(true);
-    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(targetEmail.trim(), {
       redirectTo: `${window.location.origin}/team-access`,
     });
     setSubmitting(false);
@@ -74,7 +77,23 @@ export default function TeamAccess() {
       setError(resetErr.message);
       return;
     }
-    setInfo('Check your email for a password reset link.');
+    setInfo('Check your email for a reset link. Opening it brings you back here to get a new PIN.');
+  };
+
+  const handleForgotPassword = () => sendRecoveryEmail(email);
+  const handleForgotPin = () => sendRecoveryEmail(pinRecoveryEmail);
+
+  const handleGenerateMyPin = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      const { data } = await nexartClient.functions.invoke('set-my-pin', {});
+      setMyPin(data.pin);
+    } catch (err) {
+      setError(err?.data?.error || 'Could not generate a new PIN');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (isLoadingAuth) {
@@ -140,27 +159,58 @@ export default function TeamAccess() {
           <div className="w-full max-w-xs">
             <div className="text-center mb-6">
               <ShieldCheck className="w-10 h-10 text-cta-orange mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-white mb-2">Set New Password</h1>
-              <p className="text-slate-400 text-sm">Choose a new password for your account.</p>
+              <h1 className="text-2xl font-bold text-white mb-2">Account Recovery</h1>
+              <p className="text-slate-400 text-sm">You're verified. Get a new PIN, or set a password if you use that instead.</p>
             </div>
-            <form onSubmit={handleSetNewPassword} className="space-y-3">
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => { setNewPassword(e.target.value); setError(''); }}
-                placeholder="New password (min. 8 characters)"
-                autoFocus
-                className="w-full h-11 px-3 text-sm bg-slate-900 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
-              />
-              {error && <p className="text-xs text-red-400 font-medium">{error}</p>}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full px-8 py-3 text-sm font-bold text-white bg-cta-orange hover:bg-orange-600 disabled:opacity-50 rounded-lg transition uppercase tracking-wider"
-              >
-                {submitting ? 'Saving…' : 'Save Password'}
-              </button>
-            </form>
+
+            {myPin ? (
+              <div className="text-center space-y-3">
+                <p className="text-xs text-slate-400">Your new PIN — write it down now, it won't be shown again:</p>
+                <p className="font-mono text-2xl font-bold tracking-widest bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-lg py-3">
+                  {myPin}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setRecovery(false); setMyPin(''); }}
+                  className="w-full px-8 py-3 text-sm font-bold text-white bg-cta-orange hover:bg-orange-600 rounded-lg transition uppercase tracking-wider"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {error && <p className="text-xs text-red-400 font-medium">{error}</p>}
+                <button
+                  type="button"
+                  onClick={handleGenerateMyPin}
+                  disabled={submitting}
+                  className="w-full px-8 py-3 text-sm font-bold text-white bg-cta-orange hover:bg-orange-600 disabled:opacity-50 rounded-lg transition uppercase tracking-wider"
+                >
+                  {submitting ? 'Generating…' : 'Generate New PIN'}
+                </button>
+
+                <div className="flex items-center gap-2 text-slate-600 text-[10px] uppercase tracking-widest">
+                  <div className="h-px flex-1 bg-slate-800" /> or <div className="h-px flex-1 bg-slate-800" />
+                </div>
+
+                <form onSubmit={handleSetNewPassword} className="space-y-3">
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => { setNewPassword(e.target.value); setError(''); }}
+                    placeholder="New password (min. 8 characters)"
+                    className="w-full h-11 px-3 text-sm bg-slate-900 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
+                  />
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full px-8 py-3 text-sm font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg transition uppercase tracking-wider"
+                  >
+                    {submitting ? 'Saving…' : 'Set Password Instead'}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </main>
         <PublicFooter />
@@ -251,6 +301,7 @@ export default function TeamAccess() {
                 className="w-full h-11 text-center text-lg tracking-widest font-bold bg-slate-900 border border-slate-700 rounded-lg text-white placeholder:text-slate-600 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
               />
               {error && <p className="text-xs text-red-400 font-medium">{error}</p>}
+              {info && <p className="text-xs text-emerald-400 font-medium">{info}</p>}
               <button
                 type="submit"
                 disabled={submitting}
@@ -258,6 +309,34 @@ export default function TeamAccess() {
               >
                 {submitting ? 'Verifying…' : 'Continue'}
               </button>
+
+              {showPinRecovery ? (
+                <div className="space-y-2 pt-1">
+                  <input
+                    type="email"
+                    value={pinRecoveryEmail}
+                    onChange={(e) => { setPinRecoveryEmail(e.target.value); setError(''); }}
+                    placeholder="Your email"
+                    className="w-full h-10 px-3 text-sm bg-slate-900 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleForgotPin}
+                    disabled={submitting}
+                    className="w-full text-center text-xs text-cta-orange hover:text-orange-400 transition"
+                  >
+                    Send reset link
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setShowPinRecovery(true); setError(''); }}
+                  className="w-full text-center text-xs text-slate-400 hover:text-white transition"
+                >
+                  Forgot PIN? No admin available?
+                </button>
+              )}
             </form>
           )}
 
