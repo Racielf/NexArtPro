@@ -51,7 +51,6 @@ Deno.serve(async (req) => {
         role: cleanRole,
         active: true,
         auth_user_id: created.user.id,
-        password: '', // no longer used for login; column stays until dropped in a later migration
       })
       .select('id, username, display_name, role, active, auth_user_id')
       .single();

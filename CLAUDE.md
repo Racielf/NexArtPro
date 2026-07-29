@@ -219,7 +219,7 @@ siguen abiertas de verdad.
 | 5.7 | FlipAnalysis create/edit form | Completo — `FlipAnalysisForm.jsx` |
 | 5.8 | Work Order -> Project selector | Completo — 2026-07-27, tarjeta "Job Details" en `WorkOrderDetail.jsx` |
 | 6 | Bridge Projects <-> Work Orders | Completo — `flip_analyses` + `work_orders.project_id` aplicados en produccion (2026-06-13) |
-| 7 | QA final y cleanup | Parcial. Route guard (`ProtectedRoute`) reactivado 2026-07-27. RLS del Investor Hub sigue en `anon_full_access` (revertido a proposito, ver TAREA H) — bloqueado en la fase 0 real: no existe autenticacion real de Supabase Auth en esta app (ver TAREA H) |
+| 7 | QA final y cleanup | Parcial. Route guard reactivado 2026-07-27. Autenticacion real resuelta 2026-07-29 (TAREA H). RLS del Investor Hub sigue en `anon_full_access` — ya no bloqueado por falta de auth real, queda pendiente re-intentarlo (TAREA G) |
 
 ---
 
@@ -230,7 +230,7 @@ fiscales, wizard de ProjectNew, InvestorNew mejorado, FlipAnalysisForm, selector
 Project) — se retiran de esta lista. TAREA F (RLS hardening Investor Hub) se intento, se revirtio
 a proposito, y se reemplaza por TAREA H abajo, que es el bloqueador real.
 
-### TAREA H — Autenticacion real de Supabase Auth — IMPLEMENTADA 2026-07-28, pendiente de verificacion en vivo
+### TAREA H — Autenticacion real de Supabase Auth — RESUELTA Y VERIFICADA 2026-07-29
 
 Descubierto 2026-07-27 al intentar TAREA F. Hechos verificados en su momento:
 
@@ -285,18 +285,52 @@ cualquiera con la anon key, porque nunca hay una sesion Postgres autenticada de 
 - `src/components/settings/TeamAccessPanel.jsx` actualizado al nuevo flujo de invitacion +
   boton "Set PIN" por usuario con rol `agent`.
 
-**Pendiente — requiere accion del dueno, no se puede verificar sin sesion de navegador real:**
+**Ajustado durante la verificacion en vivo (2026-07-29), por feedback directo del dueno:**
 
-1. Entrar a `/team-access` con `racinllerf@gmail.com`. Si no recuerda el password (la cuenta no
-   se usaba desde 2026-06-08), usar "Forgot password?" en el mismo formulario.
-2. Una vez adentro, desde Settings → Team & Access, invitar `racinllerf+agent1@gmail.com` con
-   rol `agent` (reemplaza al `agent1` viejo sin cuenta real) y asignarle un PIN de 4-6 digitos
-   con el boton "Set PIN".
-3. Probar el login por PIN con esa cuenta, confirmar que cae en `/field`.
-4. Confirmar `auth.uid()` no es NULL en sesion real (ver Verificacion abajo) antes de dar esto
-   por cerrado y retomar TAREA F/G.
-5. Una vez todo lo anterior verificado: borrar la columna `app_users.password` (texto plano, ya
-   no se usa para nada) — no se elimino todavia por si hace falta rollback antes de confirmar.
+- El dueno no queria un flujo de invitacion por correo — quiere entrar el mismo con nombre +
+  correo real del agente, que la cuenta quede activa al instante, y autorizar el acceso diario
+  solo por PIN. Se cambio `create-team-account` de `auth.admin.inviteUserByEmail` a
+  `auth.admin.createUser` (password aleatoria descartable, `email_confirm: true`) — ya no se
+  manda ningun correo al crear una cuenta.
+- El PIN ya no se escribe a mano: se pidio que se genere solo y que siempre incluya una letra.
+  `set-pin`/`set-my-pin` generan un codigo de 6 caracteres (alfabeto sin ambiguos: sin `0/O/1/I/L`)
+  garantizando al menos una letra, lo devuelven una sola vez en la respuesta para mostrarlo en
+  pantalla (`TeamAccessPanel.jsx`, `TeamAccess.jsx`).
+- Se agrego autoservicio: `set-my-pin` (nueva Edge Function) deja que un agente sin admin
+  disponible resetee su propio PIN via el mismo link de "olvide mi password"
+  (`resetPasswordForEmail`) — la sesion que ese link establece prueba que es dueno del correo,
+  y desde ahi genera su propio PIN sin necesitar rol admin.
+
+**2 bugs reales encontrados y corregidos durante la verificacion:**
+
+1. `investor_user_role()` comparaba `app_users.id = auth.uid()`, pero la columna que de verdad
+   coincide con una sesion real es `auth_user_id`, no `id` (la propia PK de `app_users`). Esto
+   hacia que CUALQUIER chequeo de rol admin devolviera `NULL` siempre — quedo enmascarado hasta
+   hoy porque nunca habia existido una sesion real para exponerlo. Sintoma: el admin solo veia su
+   propia fila en Team & Access en vez de las 3. Corregido en
+   `20260728d_fix_investor_user_role_column.sql`.
+2. El evento `PASSWORD_RECOVERY` se escuchaba con un listener separado dentro de `TeamAccess.jsx`,
+   registrado demasiado tarde — Supabase procesa el token de recovery de la URL apenas carga la
+   pagina, antes de que el componente monte, y `onAuthStateChange` no reproduce eventos pasados a
+   listeners nuevos. Se movio la deteccion a `AuthContext.jsx` (`isRecovery`/`clearRecovery`,
+   expuesto via `useAuth()`), que es lo primero que monta en toda la app.
+
+**Hallazgo adicional (no bug de codigo, config de infraestructura):** el mailer por defecto de
+Supabase Auth (`noreply@mail.app.supabase.io`) **solo entrega a direcciones que son miembros del
+equipo de la organizacion de Supabase** — cualquier otra direccion se descarta en silencio aunque
+la API responda 200. Se conecto SMTP personalizado via Resend (`smtp.resend.com`, dominio
+`rcartconstruction.com` ya verificado) desde el dashboard de Supabase — confirmado en logs de Auth
+que el limite de envio subio de `2/hora` (mailer compartido) a `30/hora` (SMTP custom), sin
+verificar entrega end-to-end de un correo nuevo todavia.
+
+**Verificado 2026-07-29:** `auth.users.last_sign_in_at` poblado para `racinllerf@gmail.com` y
+`yaymirc@gmail.com` (cuenta de prueba real creada durante la verificacion) — prueba directa de que
+`auth.uid()` funciona para sesiones reales. `app_users.password` (texto plano) eliminada
+(`20260729_drop_plaintext_password_column.sql`) — ya no la leia ni escribia ningun codigo.
+
+**Siguiente paso natural:** retomar TAREA G (auditoria RLS del resto de la DB) ahora que
+`auth.uid()` funciona de verdad — ya no deberia repetirse el problema de "arreglo que rompe la
+app" que paso con el primer intento de TAREA F.
 
 ### TAREA G — CRITICO: auditar `rls_policy_always_true` en el resto de la DB de produccion
 
@@ -374,7 +408,7 @@ operativo — es decir, acceso por modulo, no solo por rol binario admin/agent.
 ## 13. Como iniciar cada sesion en Claude Code
 
 ```
-Lee CLAUDE.md completo. Estamos trabajando en [TAREA H/G].
+Lee CLAUDE.md completo. Estamos trabajando en [TAREA G].
 Confirma la tarea, los archivos que vas a tocar, y espera aprobacion antes de editar.
 ```
 

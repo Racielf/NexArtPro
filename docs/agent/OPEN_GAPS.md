@@ -184,7 +184,7 @@ real, porque el mismo patron de "arreglo que rompe todo" se repetiria en cada ta
 
 ---
 
-## 7. Autenticacion — CRITICO Y BLOQUEANTE
+## 7. Autenticacion — RESUELTO 2026-07-29
 
 ### Gap
 
@@ -218,13 +218,18 @@ auditoria original no habia contado, ver gap 6); Edge Functions `create-team-acc
 `pin-login`/`set-pin` reemplazan el flujo de registro sin validacion; `TeamAccess.jsx` reescrito
 sin codigo de equipo hardcodeado.
 
-Pendiente: verificacion en vivo por el dueno (login real, crear cuenta de `agent1`, confirmar
-`auth.uid()` no nulo) — no se puede probar sin una sesion de navegador real. Hasta que eso pase,
-tratar como "implementado, no confirmado", no como cerrado.
+Verificado en vivo 2026-07-29 por el dueno: login real funcionando para `racinllerf@gmail.com` y
+para una cuenta de agente de prueba (`yaymirc@gmail.com`, creada durante la verificacion),
+`auth.users.last_sign_in_at` poblado para ambas (prueba directa de que `auth.uid()` funciona).
+`app_users.password` (texto plano) eliminada. Dos bugs reales se encontraron y corrigieron en el
+camino — ver `CLAUDE.md` seccion 11 TAREA H para el detalle completo (bug de
+`investor_user_role()` comparando la columna equivocada, y race condition del evento
+`PASSWORD_RECOVERY`). El flujo final quedo distinto del plan original por feedback del dueno: sin
+invitacion por correo (creacion de cuenta instantanea), PIN generado automaticamente (nunca a
+mano), y autoservicio de reset de PIN via email para cuando no hay admin disponible.
 
-La solucion real (conectar Supabase Auth de verdad: migrar usuarios, cambiar el flujo de login,
-hashear passwords) es un cambio de arquitectura — no implementar sin aprobacion explicita y
-planificacion dedicada.
+Cierra este gap. El siguiente paso natural es retomar gap 6 (RLS del resto de la DB) ahora que
+`auth.uid()` funciona de verdad.
 
 ### Evidencia
 

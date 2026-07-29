@@ -1,14 +1,15 @@
 # OPERATING_PRIORITIES
 
-## Excepcion activa (2026-07-27)
+## Excepcion activa (actualizado 2026-07-29)
 
-`OPEN_GAPS.md` item 7 (esta app no tiene autenticacion real de Supabase Auth — `auth.uid()`
-siempre `NULL`) es el bloqueador raiz y supera en prioridad a todo lo de abajo, incluido
-NexArtSign. Bloquea a su vez el item 6 (RLS `anon_full_access` en ~111 policies de produccion):
-no tiene sentido cerrar RLS tabla por tabla mientras la DB no pueda distinguir un usuario real de
-cualquiera con la anon key — ya se probo con el Investor Hub y hubo que revertirlo. Ninguno de los
-dos es parte del ranking permanente — son una excepcion mientras sigan abiertos. Requiere decision
-explicita del dueno del proyecto antes de actuar (ver `CLAUDE.md` seccion 11, TAREA H y TAREA G).
+`OPEN_GAPS.md` item 7 (autenticacion real de Supabase Auth) se resolvio y verifico 2026-07-29 —
+ya no es bloqueador. Queda activa la mitad de la excepcion original: `OPEN_GAPS.md` item 6 (RLS
+`anon_full_access`/`TO public` en ~111+ policies de produccion, fuera del Investor Hub y de
+`app_users`) sigue superando en prioridad a todo lo de abajo, incluido NexArtSign — ahora que
+`auth.uid()` funciona de verdad, ya se puede retomar, pero sigue siendo un barrido grande que
+requiere revision tabla por tabla (algunas, como `signing_packages`, necesitan acceso `anon`
+legitimo) y decision explicita del dueno sobre alcance antes de empezar (ver `CLAUDE.md`
+seccion 11, TAREA G).
 
 ## Prioridad obligatoria
 
