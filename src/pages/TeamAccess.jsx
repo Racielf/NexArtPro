@@ -118,7 +118,7 @@ export default function TeamAccess() {
     try {
       const { data: result } = await nexartClient.functions.invoke('pin-login', {
         username: pinUsername.trim(),
-        pin: pin.trim(),
+        pin: pin.trim().toUpperCase(),
       });
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: result.email,
@@ -244,10 +244,9 @@ export default function TeamAccess() {
               />
               <input
                 type="password"
-                inputMode="numeric"
                 maxLength={6}
                 value={pin}
-                onChange={(e) => { setPin(e.target.value.replace(/\D/g, '')); setError(''); }}
+                onChange={(e) => { setPin(e.target.value.toUpperCase().slice(0, 6)); setError(''); }}
                 placeholder="PIN"
                 className="w-full h-11 text-center text-lg tracking-widest font-bold bg-slate-900 border border-slate-700 rounded-lg text-white placeholder:text-slate-600 focus:outline-none focus:border-cta-orange focus:ring-2 focus:ring-cta-orange/20 transition"
               />

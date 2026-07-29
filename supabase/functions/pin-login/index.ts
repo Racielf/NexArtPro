@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     const { username, pin } = await req.json();
 
     const cleanUsername = String(username || '').trim().toLowerCase();
-    const cleanPin = String(pin || '').trim();
+    const cleanPin = String(pin || '').trim().toUpperCase();
     if (!cleanUsername || !cleanPin) {
       return jsonResponse({ ok: false, error: 'Username and PIN are required' }, 400);
     }

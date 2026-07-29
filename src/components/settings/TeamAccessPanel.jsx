@@ -32,8 +32,8 @@ export default function TeamAccessPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ display_name: '', email: '', role: 'agent' });
-  const [pinDrafts, setPinDrafts] = useState({});
   const [settingPinFor, setSettingPinFor] = useState(null);
+  const [revealedPins, setRevealedPins] = useState({});
 
   const canManageUsers = isAdmin();
 
@@ -92,19 +92,14 @@ export default function TeamAccessPanel() {
     await loadUsers();
   };
 
-  const handleSetPin = async (user) => {
-    const draft = (pinDrafts[user.id] || '').trim();
-    if (!/^\d{4,6}$/.test(draft)) {
-      toast.error('Enter a 4-6 digit PIN');
-      return;
-    }
+  const handleGeneratePin = async (user) => {
     setSettingPinFor(user.id);
     try {
-      await nexartClient.functions.invoke('set-pin', { username: user.username, pin: draft });
-      toast.success(`PIN set for ${user.display_name || user.username}`);
-      setPinDrafts(prev => ({ ...prev, [user.id]: '' }));
+      const { data } = await nexartClient.functions.invoke('set-pin', { username: user.username });
+      setRevealedPins(prev => ({ ...prev, [user.id]: data.pin }));
+      toast.success(`New PIN generated for ${user.display_name || user.username}`);
     } catch (err) {
-      toast.error(functionErrorMessage(err, 'Could not set PIN'));
+      toast.error(functionErrorMessage(err, 'Could not generate PIN'));
     } finally {
       setSettingPinFor(null);
     }
@@ -191,6 +186,9 @@ export default function TeamAccessPanel() {
             Refresh
           </Button>
         </div>
+        <p className="text-xs text-slate-400 mb-3">
+          A generated PIN is shown once, right here — write it down or share it before leaving this page.
+        </p>
 
         {users.length === 0 && !loading ? (
           <div className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-sm text-slate-400">
@@ -218,26 +216,21 @@ export default function TeamAccessPanel() {
                 <div className="flex items-center gap-2 flex-wrap">
                   {user.role === 'agent' && (
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        placeholder="New PIN"
-                        value={pinDrafts[user.id] || ''}
-                        onChange={e => setPinDrafts(prev => ({ ...prev, [user.id]: e.target.value.replace(/\D/g, '') }))}
-                        className="h-9 w-24 border border-input rounded-md px-2 text-sm bg-background"
-                        disabled={!canManageUsers}
-                      />
+                      {revealedPins[user.id] && (
+                        <span className="font-mono text-sm font-bold tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md px-2 py-1.5">
+                          {revealedPins[user.id]}
+                        </span>
+                      )}
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
                         disabled={!canManageUsers || settingPinFor === user.id}
-                        onClick={() => handleSetPin(user)}
+                        onClick={() => handleGeneratePin(user)}
                         className="gap-1.5"
                       >
                         <KeyRound className="w-3.5 h-3.5" />
-                        {settingPinFor === user.id ? 'Saving…' : 'Set PIN'}
+                        {settingPinFor === user.id ? 'Generating…' : revealedPins[user.id] ? 'Regenerate PIN' : 'Generate PIN'}
                       </Button>
                     </div>
                   )}
