@@ -68,11 +68,11 @@ export default function TeamAccessPanel() {
     setSaving(true);
     try {
       await nexartClient.functions.invoke('create-team-account', { email, display_name, role });
-      toast.success(`Invite sent to ${email}`);
+      toast.success(`${display_name} added. Set their PIN below to authorize them.`);
       setForm({ display_name: '', email: '', role: 'agent' });
       await loadUsers();
     } catch (err) {
-      toast.error(functionErrorMessage(err, 'Could not send invite'));
+      toast.error(functionErrorMessage(err, 'Could not create account'));
     } finally {
       setSaving(false);
     }
@@ -129,10 +129,10 @@ export default function TeamAccessPanel() {
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Invite Team Member">
+      <SettingsCard title="Add Team Member">
         {!canManageUsers && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            Only the Owner / Admin account can invite or manage team access.
+            Only the Owner / Admin account can add or manage team access.
           </div>
         )}
 
@@ -147,7 +147,7 @@ export default function TeamAccessPanel() {
             />
           </SettingsRow>
 
-          <SettingsRow label="Email" description="A real invite is sent here to set their password">
+          <SettingsRow label="Email" description="Their real email, used only to create the account -- no email is sent to them">
             <input
               type="email"
               className="h-9 border border-input rounded-md px-3 text-sm w-full max-w-sm bg-background disabled:bg-slate-50 disabled:text-slate-400"
@@ -174,7 +174,7 @@ export default function TeamAccessPanel() {
           <div className="flex justify-end pt-2">
             <Button type="submit" disabled={!canManageUsers || saving} className="gap-2">
               <UserPlus className="w-4 h-4" />
-              {saving ? 'Sending…' : 'Send Invite'}
+              {saving ? 'Adding…' : 'Add & Authorize'}
             </Button>
           </div>
         </form>
