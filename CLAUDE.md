@@ -332,35 +332,63 @@ verificar entrega end-to-end de un correo nuevo todavia.
 `auth.uid()` funciona de verdad — ya no deberia repetirse el problema de "arreglo que rompe la
 app" que paso con el primer intento de TAREA F.
 
-### TAREA G — CRITICO: auditar `rls_policy_always_true` en el resto de la DB de produccion
+### TAREA G — Auditoria RLS del resto de la DB — BATCH 1 RESUELTO 2026-07-29, resto pendiente
 
 Al intentar TAREA F (2026-07-27) se encontro que las tablas del Investor Hub tenian una policy
 `anon_full_access` (`roles: {anon}`, `cmd: ALL`, `USING (true)`) dando acceso publico total sin
-login — contradecia todo lo documentado. Se reabrio a proposito tras el hallazgo de TAREA H (ver
-arriba) porque cerrarlo sin autenticacion real rompe la app — no se puede dar por resuelto hasta
-que TAREA H este resuelta.
+login — contradecia todo lo documentado. `pg_policies` mostro el mismo patron en **~60 tablas**
+(121 policies `rls_policy_always_true` + al menos 30 policies `TO public` adicionales que la
+auditoria original no conto por buscar solo el rol literal `anon`).
 
-Ademas, `pg_policies` y el advisor de seguridad de Supabase muestran que el mismo patron
-(`rls_policy_always_true`) existe en **121 policies** a lo largo de practicamente toda la base de
-datos de produccion, incluyendo tablas sensibles: `app_users` (ya cerrada, ver TAREA H),
-`bank_accounts`, `bank_transactions`, `invoices`, `clients`, `subscriptions`, `recovery_vault`,
-`security_audit_logs`, `payroll_entries`, `payroll_runs`, `work_orders`, `estimates`, `leads`,
-entre otras.
+**Batch 1 cerrado y verificado 2026-07-29** (24 tablas), ahora que TAREA H (auth real) esta resuelta:
 
-**Actualizacion 2026-07-28:** al cerrar `app_users` se encontraron ademas policies con
-`roles: {public}` (no `{anon}`) que la auditoria original no conto porque solo buscaba el rol
-literal `anon` — `public` incluye a `anon` igual. Hay **al menos 30 policies `TO public`** en la
-base ademas de las 121 `rls_policy_always_true` ya contadas (puede haber solapamiento, no
-cuantificado). La proxima sesion que retome esto debe buscar ambos: `'anon' = ANY(roles)` **y**
-`roles = '{public}'`.
+- **Investor Hub (10 tablas)** — `projects`, `investors`, `investor_companies`,
+  `project_investors`, `capital_contributions`, `capital_calls`, `flip_analyses`,
+  `project_expenses`, `project_refunds`, `project_disbursements`. Solo se elimino
+  `anon_full_access` — las policies `admin`/`agent` de TAREA F ya estaban bien, solo estaban
+  neutralizadas por el bug de `investor_user_role()` (ya arreglado) y por `auth.uid()` no
+  funcionando (ya arreglado).
+- **CRM central (9 tablas)** — `clients`, `estimates`, `invoices`, `leads`, `proposals`,
+  `work_orders`, `payroll_runs`, `payroll_entries`, `payments`. **Hallazgo critico evitado:**
+  estas tablas tenian policies `users_own_X`/`*_owner_all` (`auth.uid() = user_id`) por debajo de
+  `anon_full_access` que parecian una alternativa segura — pero asumen un modelo de "cada fila
+  pertenece a un usuario individual", el equivocado para una sola empresa con equipo compartido.
+  Verificado con datos reales: `estimates` tenia 27 filas, **0** con `user_id` puesto;
+  `work_orders` 2 filas, 0 con `user_id`. Haber confiado en esas policies habria dejado casi todo
+  el negocio invisible para todos — el mismo desastre del Investor Hub, pero en las tablas mas
+  criticas. Se reemplazaron por policies de equipo compartido: `admin`/`agent` pueden
+  SELECT/INSERT/UPDATE; **solo `admin` puede DELETE** (coincide con el soft-delete que ya usa la
+  app — DELETE real desde el frontend nunca se usaba).
+- **Financieras/infraestructura admin-only (4 tablas)** — `bank_accounts`, `bank_transactions`,
+  `company_config`, `subscriptions`. Acceso total restringido a `investor_user_role() = 'admin'`
+  (agentes sin acceso, coincide con que Settings ya es admin-only).
+- **Personal (1 tabla)** — `profiles`: la policy existente (`auth.uid() = id`) SI es correcta aqui
+  (es la fila de cuenta propia, no dato de negocio compartido) — solo se elimino `anon_full_access`.
 
-**No tocar esto sin instruccion explicita nueva, y no antes de resolver TAREA H.** Es una
-auditoria/remediacion propia, separada de cualquier fase de fusion — algunas de esas tablas
-(`signing_packages`, `signing_participants`, `signing_events`, `company_config`) legitimamente
-necesitan algo de acceso `anon` para el flujo
-publico de NexArtSign/estimates, asi que esto requiere revision tabla por tabla, no un barrido
-ciego. Requiere decision explicita del dueno del proyecto sobre prioridad y alcance antes de
-iniciar.
+Verificado con sesiones simuladas via `SET request.jwt.claims` (sin necesitar navegador): admin y
+agent ven los mismos conteos reales de filas; agent correctamente bloqueado en tablas admin-only;
+`anon` en 0 en las 24 tablas. Migraciones: `supabase/migrations/20260729b-e_*.sql`.
+
+**Explicitamente fuera de este batch, mismo patron aplica despues:**
+
+- Logs/auditoria: `audit_logs`, `security_audit_logs`, `auth_security_logs`,
+  `nexartsign_security_blocks`, `nexartsign_token_attempts`, `pricing_audit_events`, `document_logs`.
+- Operativas de detalle: `appointments`, `customers`, `comm_events`, `job_assignments`, `materials`,
+  `price_book_entries`, `services`, `time_entries`, `time_tracking_logs`, `work_order_*`,
+  `worker_documents`, `worker_notes`, `workers`, `project_photos`, `estimate_snapshots`,
+  `estimate_transmissions`, `estimate_version_histories`, `recovery_vault`.
+- NexArtSign publico: `signing_packages`, `signing_participants`, `signing_events`,
+  `signing_certificates`, `public_document_access` — se solapan con `OPEN_GAPS.md` items 1-3
+  (roadmap de seguridad de NexArtSign ya existente), coordinar con ese roadmap en vez de disenar
+  de nuevo. Nota adicional: `signing_packages.anon_select_signing_packages` solo chequea
+  `token IS NOT NULL` (no que el token coincida con nada) — revisar si de verdad protege algo mas
+  alla de las Edge Functions que ya validan el token server-side.
+- Ya verificadas como seguras y NO necesitan cambio: `change_orders`, `wo_communications`,
+  `wo_documents`, `wo_line_items`, `wo_photos` (usan `roles: {public}` pero `qual: auth.role() =
+  'authenticated'`, que es `false` para peticiones anonimas reales — no todo `TO public` es
+  inseguro, se reviso el `qual` de cada tabla antes de asumir nada).
+
+Requiere decision explicita del dueno sobre prioridad/alcance antes de la siguiente tanda.
 
 ---
 

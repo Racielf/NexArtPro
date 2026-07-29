@@ -143,44 +143,54 @@ Pendiente de documentar mejor
 
 ---
 
-## 6. Toda la base de datos de produccion
+## 6. Toda la base de datos de produccion — Batch 1 resuelto 2026-07-29, resto pendiente
 
 ### Gap
 
-`rls_policy_always_true` en 121 policies a lo largo de casi toda la DB de produccion
-(`hdiejuqbhqhebrpneymo`), incluyendo `app_users`, `bank_accounts`, `bank_transactions`,
-`invoices`, `clients`, `subscriptions`, `recovery_vault`, `security_audit_logs`,
-`payroll_entries`, `payroll_runs`, `work_orders`, `estimates`, `leads`. Muchas tienen una policy
-literal `anon_full_access` (`roles: {anon}`, `cmd: ALL`, `USING (true)`) — acceso publico de
+`rls_policy_always_true` en 121+ policies a lo largo de casi toda la DB de produccion
+(`hdiejuqbhqhebrpneymo`), mas ~30 policies `TO public` adicionales. Acceso publico de
 lectura/escritura sin login, usando la anon key publica que ya esta en el bundle del frontend.
 
 ### Impacto
 
-Critico. Exposicion activa de datos financieros, de nomina, bancarios y de cuentas de usuario a
-cualquiera con la anon key publica, ahora mismo, sin necesidad de autenticarse.
+Critico. Exposicion activa de datos de negocio a cualquiera con la anon key publica, sin
+necesidad de autenticarse.
 
 ### Prioridad
 
-Critica — mayor que NexArtSign. Requiere decision explicita del dueno del proyecto sobre
-prioridad/alcance antes de tocar nada, porque algunas tablas (`signing_packages`,
-`signing_participants`, `signing_events`, `company_config`) legitimamente necesitan algo de acceso
-anonimo para el flujo publico de NexArtSign/estimates — no es un barrido ciego, es revision tabla
-por tabla.
+Alta — ya no es "critica bloqueante" (eso era gap 7, resuelto). El resto de tablas sigue
+pendiente y requiere decision explicita del dueno sobre prioridad/alcance antes de la siguiente
+tanda — no es un barrido ciego, es revision tabla por tabla (confirmado necesario: ver Estado).
 
 ### Estado
 
-Descubierto 2026-07-27 al intentar la correccion de RLS del Investor Hub. Se corrigio (10 tablas),
-se verifico roto para uso real (ver gap 7 — `auth.uid()` siempre `NULL` en esta app), y se
-revirtio a proposito a `anon_full_access` para no dejar el Investor Hub inaccesible. Bloqueado
-por gap 7 — no tiene sentido cerrar esto en ninguna tabla mas hasta resolver la autenticacion
-real, porque el mismo patron de "arreglo que rompe todo" se repetiria en cada tabla.
+Descubierto 2026-07-27. Bloqueado por gap 7 (autenticacion real) hasta que se resolvio 2026-07-29.
+
+**Batch 1 cerrado y verificado 2026-07-29 (24 tablas)** — Investor Hub (10), CRM central (9),
+financieras/infraestructura admin-only (4), profiles (1). Detalle completo en `CLAUDE.md`
+seccion 11 TAREA G. Hallazgo critico durante este batch: las policies `users_own_X` en las tablas
+de CRM central asumian que cada fila pertenece a un usuario individual (`auth.uid() = user_id`),
+pero `estimates` tenia 27 filas reales con **0** `user_id` puesto — confiar en esas policies sin
+revisar habria repetido el desastre del Investor Hub en las tablas mas criticas del negocio.
+Tambien se confirmo que no todo `TO public` es inseguro: `change_orders`, `wo_communications`,
+`wo_documents`, `wo_line_items`, `wo_photos` ya tenian `qual: auth.role() = 'authenticated'`, que
+es `false` para anon real — no necesitaron cambio.
+
+**Pendiente (fuera de este batch):** logs/auditoria, tablas operativas de detalle (fotos, notas,
+historiales), y las tablas publicas de NexArtSign (que se solapan con los gaps 1-3 de este mismo
+archivo — coordinar con ese roadmap, no redisenar). Lista completa en `CLAUDE.md` seccion 11
+TAREA G.
 
 ### Evidencia
 
-- Query directa a `pg_policies` en `hdiejuqbhqhebrpneymo` (2026-07-27)
+- Query directa a `pg_policies` en `hdiejuqbhqhebrpneymo` (2026-07-27 y 2026-07-29)
 - Supabase security advisor: 164 warnings, 121 de tipo `rls_policy_always_true`
-- `supabase/migrations/20260727_investor_hub_rls_remediation.sql` (intento)
-- `supabase/migrations/20260727b_investor_hub_rls_emergency_revert.sql` (reversion)
+- `supabase/migrations/20260727_investor_hub_rls_remediation.sql` (intento original)
+- `supabase/migrations/20260727b_investor_hub_rls_emergency_revert.sql` (reversion, bloqueado por gap 7)
+- `supabase/migrations/20260729b_rls_batch1_investor_hub_reclose.sql` (Investor Hub, cerrado)
+- `supabase/migrations/20260729c_rls_batch2_core_crm.sql` (CRM central, redisenado)
+- `supabase/migrations/20260729d_rls_batch3_admin_only_infrastructure.sql` (admin-only)
+- `supabase/migrations/20260729e_rls_batch3b_profiles_close_anon.sql` (profiles)
 
 ---
 

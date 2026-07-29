@@ -2,14 +2,12 @@
 
 ## Excepcion activa (actualizado 2026-07-29)
 
-`OPEN_GAPS.md` item 7 (autenticacion real de Supabase Auth) se resolvio y verifico 2026-07-29 —
-ya no es bloqueador. Queda activa la mitad de la excepcion original: `OPEN_GAPS.md` item 6 (RLS
-`anon_full_access`/`TO public` en ~111+ policies de produccion, fuera del Investor Hub y de
-`app_users`) sigue superando en prioridad a todo lo de abajo, incluido NexArtSign — ahora que
-`auth.uid()` funciona de verdad, ya se puede retomar, pero sigue siendo un barrido grande que
-requiere revision tabla por tabla (algunas, como `signing_packages`, necesitan acceso `anon`
-legitimo) y decision explicita del dueno sobre alcance antes de empezar (ver `CLAUDE.md`
-seccion 11, TAREA G).
+`OPEN_GAPS.md` item 7 (autenticacion real) resuelto 2026-07-29. `OPEN_GAPS.md` item 6 (RLS del
+resto de la DB) tiene su batch 1 resuelto el mismo dia (Investor Hub + CRM central + financieras
+admin-only + profiles, 24 tablas) — ver `CLAUDE.md` seccion 11 TAREA G para el detalle. Sigue
+pendiente el resto (~35+ tablas: logs, operativas de detalle, NexArtSign publico) con prioridad
+alta pero ya no bloqueante de todo lo demas como antes. Requiere decision explicita del dueno
+sobre alcance antes de la siguiente tanda.
 
 ## Prioridad obligatoria
 
