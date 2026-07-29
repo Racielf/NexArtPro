@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { clearTeamAccessGrant } from '@/pages/TeamAccess';
 import { clearLocalSession, normalizeLocalRole } from '@/lib/roleUtils';
 
 const AuthContext = createContext();
@@ -148,7 +147,6 @@ export const AuthProvider = ({ children }) => {
   }, [applySession, checkAppState]);
 
   const logout = useCallback(async () => {
-    clearTeamAccessGrant();
     clearLocalSession();
     setUser(null);
     setSession(null);

@@ -230,9 +230,9 @@ fiscales, wizard de ProjectNew, InvestorNew mejorado, FlipAnalysisForm, selector
 Project) — se retiran de esta lista. TAREA F (RLS hardening Investor Hub) se intento, se revirtio
 a proposito, y se reemplaza por TAREA H abajo, que es el bloqueador real.
 
-### TAREA H — CRITICO Y BLOQUEANTE: esta app no tiene autenticacion real de Supabase Auth
+### TAREA H — Autenticacion real de Supabase Auth — IMPLEMENTADA 2026-07-28, pendiente de verificacion en vivo
 
-Descubierto 2026-07-27 al intentar TAREA F. Hechos verificados:
+Descubierto 2026-07-27 al intentar TAREA F. Hechos verificados en su momento:
 
 - `grep` en todo `src/` no encuentra ninguna llamada a `signInWithPassword`, `signInWithOtp`,
   `signInWithOAuth` ni `signUp` — solo `supabase.auth.signOut()`. Nunca se crea una sesion real.
@@ -259,9 +259,44 @@ es una mejora real (bloquea navegacion casual sin el codigo de equipo + password
 resuelve el problema de fondo**: la base de datos sigue sin poder distinguir un usuario real de
 cualquiera con la anon key, porque nunca hay una sesion Postgres autenticada de por medio.
 
-**No implementar la solucion real sin aprobacion explicita** — implica decidir entre conectar
-Supabase Auth de verdad (requiere migrar usuarios existentes, cambiar el flujo de login, hashear
-passwords) u otra estrategia. Es un cambio de arquitectura, no una tarea de una sesion.
+**Implementado 2026-07-28** (plan completo en `docs/agent/` no aplica — el plan vivio en
+`C:\Users\racin\.claude\plans\cosmic-dreaming-bengio.md` de la sesion que lo hizo; resumen aqui):
+
+- `app_users.auth_user_id` (UUID, referencia a `auth.users`) y `app_users.pin_hash` +
+  `pin_failed_attempts` + `pin_locked_until` agregados
+  (`supabase/migrations/20260728*.sql`).
+- Las 2 cuentas reales de Supabase Auth que ya existian desde mayo (`racinllerf@gmail.com`,
+  `rcartconstruction@gmail.com`) se vincularon a `admin` y `admin_test@example.com`.
+- RLS de `app_users` cerrada de verdad: se encontraron ademas policies `TO public` que la
+  auditoria original no habia detectado (ver TAREA G) — todas eliminadas, reemplazadas por
+  policies `authenticated`-only (propia fila o `investor_user_role() = 'admin'`).
+- 3 Edge Functions nuevas: `create-team-account` (admin invita por email real via
+  `auth.admin.inviteUserByEmail`, reemplaza el insert directo sin validacion de
+  `userStore.createUser`), `pin-login` (verifica PIN server-side, rota la password real y la
+  entrega para que el cliente llame `signInWithPassword` — nunca inventa sesiones custom),
+  `set-pin` (admin asigna/resetea PIN). La vieja `create-team-invite` (no autenticada, escribia
+  en columnas que no existen) se dejo como stub 410 en produccion.
+- `src/pages/TeamAccess.jsx` reescrito: sin codigo de equipo hardcodeado, login real por
+  email+password o PIN, mas flujo de "olvide mi password" (`resetPasswordForEmail` +
+  deteccion de evento `PASSWORD_RECOVERY`).
+- `src/lib/userStore.js` reducido a `getUsers()`/`toggleUserActive()` — se eliminaron
+  `authenticate()`, `createUser()`, `createRegistrationInvite()`, `completeRegistration()` (la
+  raiz del hueco: cualquiera con la anon key podia insertarse una fila `role: 'admin'`).
+- `src/components/settings/TeamAccessPanel.jsx` actualizado al nuevo flujo de invitacion +
+  boton "Set PIN" por usuario con rol `agent`.
+
+**Pendiente — requiere accion del dueno, no se puede verificar sin sesion de navegador real:**
+
+1. Entrar a `/team-access` con `racinllerf@gmail.com`. Si no recuerda el password (la cuenta no
+   se usaba desde 2026-06-08), usar "Forgot password?" en el mismo formulario.
+2. Una vez adentro, desde Settings → Team & Access, invitar `racinllerf+agent1@gmail.com` con
+   rol `agent` (reemplaza al `agent1` viejo sin cuenta real) y asignarle un PIN de 4-6 digitos
+   con el boton "Set PIN".
+3. Probar el login por PIN con esa cuenta, confirmar que cae en `/field`.
+4. Confirmar `auth.uid()` no es NULL en sesion real (ver Verificacion abajo) antes de dar esto
+   por cerrado y retomar TAREA F/G.
+5. Una vez todo lo anterior verificado: borrar la columna `app_users.password` (texto plano, ya
+   no se usa para nada) — no se elimino todavia por si hace falta rollback antes de confirmar.
 
 ### TAREA G — CRITICO: auditar `rls_policy_always_true` en el resto de la DB de produccion
 
@@ -273,10 +308,17 @@ que TAREA H este resuelta.
 
 Ademas, `pg_policies` y el advisor de seguridad de Supabase muestran que el mismo patron
 (`rls_policy_always_true`) existe en **121 policies** a lo largo de practicamente toda la base de
-datos de produccion, incluyendo tablas sensibles: `app_users`, `bank_accounts`,
-`bank_transactions`, `invoices`, `clients`, `subscriptions`, `recovery_vault`,
+datos de produccion, incluyendo tablas sensibles: `app_users` (ya cerrada, ver TAREA H),
+`bank_accounts`, `bank_transactions`, `invoices`, `clients`, `subscriptions`, `recovery_vault`,
 `security_audit_logs`, `payroll_entries`, `payroll_runs`, `work_orders`, `estimates`, `leads`,
 entre otras.
+
+**Actualizacion 2026-07-28:** al cerrar `app_users` se encontraron ademas policies con
+`roles: {public}` (no `{anon}`) que la auditoria original no conto porque solo buscaba el rol
+literal `anon` — `public` incluye a `anon` igual. Hay **al menos 30 policies `TO public`** en la
+base ademas de las 121 `rls_policy_always_true` ya contadas (puede haber solapamiento, no
+cuantificado). La proxima sesion que retome esto debe buscar ambos: `'anon' = ANY(roles)` **y**
+`roles = '{public}'`.
 
 **No tocar esto sin instruccion explicita nueva, y no antes de resolver TAREA H.** Es una
 auditoria/remediacion propia, separada de cualquier fase de fusion — algunas de esas tablas

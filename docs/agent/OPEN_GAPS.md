@@ -211,11 +211,16 @@ Critica — bloquea gap 6 (RLS del resto de la DB) y cualquier intento futuro de
 
 ### Estado
 
-Descubierto 2026-07-27. Un sintoma relacionado ya se arreglo: `src/App.jsx` tenia un
-`ProtectedRoute` con `return children` incondicional (bypass total de auth en el frontend) desde
-el primer commit de este repo (`5304dae`, 2026-06-09) — se restauro el guard real el mismo dia.
-Eso ayuda (bloquea navegacion casual) pero no resuelve el problema de fondo: la base de datos
-sigue sin poder distinguir un usuario real de cualquiera con la anon key.
+Descubierto 2026-07-27, implementado 2026-07-28 (ver `CLAUDE.md` seccion 11 TAREA H para el
+detalle completo). `app_users.auth_user_id` agregado y vinculado a las 2 cuentas reales de
+Supabase Auth que ya existian; `app_users` RLS cerrada (incluyendo policies `TO public` que la
+auditoria original no habia contado, ver gap 6); Edge Functions `create-team-account`/
+`pin-login`/`set-pin` reemplazan el flujo de registro sin validacion; `TeamAccess.jsx` reescrito
+sin codigo de equipo hardcodeado.
+
+Pendiente: verificacion en vivo por el dueno (login real, crear cuenta de `agent1`, confirmar
+`auth.uid()` no nulo) — no se puede probar sin una sesion de navegador real. Hasta que eso pase,
+tratar como "implementado, no confirmado", no como cerrado.
 
 La solucion real (conectar Supabase Auth de verdad: migrar usuarios, cambiar el flujo de login,
 hashear passwords) es un cambio de arquitectura — no implementar sin aprobacion explicita y
