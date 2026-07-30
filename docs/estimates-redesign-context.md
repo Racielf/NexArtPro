@@ -51,6 +51,18 @@ contra la base en el pasado sin quedar versionados en el repo (ver migracion
 correspondiente). Esto es evidencia dura de la frustracion que describe el dueno: cambios hechos
 sin disciplina de versionado, por multiples agentes, sin una vision unificada.
 
+## Referencia de diseño mencionada por el dueno (2026-07-30)
+
+El dueno tiene un prototipo hecho con Claude (herramienta de diseño) para NexArtProV3 cuya
+interfaz le gusta mucho, y quiere usarlo como referencia para el rediseño de Estimates. Vive en el
+workspace de esta sesion (no en este repo): `D:\My Bussines\Strategy\Google Anti Gravity\NexArtProV3`.
+Tiene su propio flujo de Estimates completo y separado —
+`src/EstimateEditor.jsx`, `src/EstimatesPage.jsx`, `src/EstimateViewPage.jsx`,
+`src/estimateMath.jsx` / `src/services/estimateMath.jsx`, `src/hooks/useEstimates.js` — util como
+punto de partida visual, no necesariamente como codigo a copiar 1:1 (es un proyecto Supabase
+aparte, con su propio schema — no asumir que coincide con el de NexArtPro sin revisar). Revisarlo
+a fondo cuando arranque la sesion de rediseño, no antes.
+
 ## Que preguntar / decidir cuando se retome (no decidir ahora)
 
 1. Adjuntos del estimate: donde y como se van a guardar de verdad (JSONB en la tabla vs tabla
