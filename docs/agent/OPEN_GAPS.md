@@ -565,34 +565,46 @@ Alta, ligada a NexArtSign (prioridad #1 del proyecto).
 ### Estado
 
 Investigado y documentado 2026-07-30 en `docs/SignLaw.md` (escrito para ser portable — el dueno lo
-va a reusar en otra app que esta desarrollando). Contiene: texto oficial citado de 15 U.S.C. §7001
-y §7003 (ESIGN Act, incluye exclusiones que NO se pueden resolver solo con firma electronica), ORS
-84.013/84.019/84.025/84.034/84.037 (UETA de Oregon), un checklist de 12 requisitos sintetizado de
-la practica real de DocuSign/Adobe Sign, y un gap analysis especifico de NexArtSign contra ese
-checklist.
+va a reusar en otras apps que esta desarrollando).
 
-**Resultado del gap analysis:** NexArtSign cumple 10 de 12 puntos de forma solida (identidad, OTP,
-IP, fingerprint, timestamps, orden de firma, registro de rechazos, retencion). Los 2 puntos
-parciales comparten una misma raiz: la integridad del PDF final depende de un hash SHA-256 guardado
-en la base de datos propia (`completeSigningPackage`), no de una firma digital criptografica
-embebida en el PDF (PAdES/PKI, que es lo que usan DocuSign/Adobe) verificable por un tercero sin
-depender de la base de datos de NexArtPro. Tambien falta una pantalla formal de "consentimiento a
-transaccionar electronicamente" separada del consentimiento especifico de cada documento (existe
-el segundo, no el primero) — esta es la mas barata de agregar si se decide hacerlo.
+**v2 (mismo dia):** el dueno señalo que ya tenia una politica mas rigurosa construida para otra app
+propia (`SingLw-V1` / `legal-evidence-policy.md`, ArtFocusSing) y pidio adaptarla, no solo
+copiarla. Se fusiono: limite explicito de terminologia legal (que palabras no usar sin aprobacion
+de abogado), 10 pilares de exigibilidad (mas rigurosos que el checklist de 12 puntos de v1), un
+modelo de evidencia con **cadena de hashes encadenados entre eventos** (no un hash suelto del PDF
+final), matriz de disputas, y un modelo de gobernanza (roles + gates de aprobacion). Se agregaron
+fuentes nuevas: UETA de California, Federal Rules of Evidence 803/901/902/1001-1003, reporte de la
+FTC, NIST SP 800-63, advisory de la CPPA, y Dropbox Sign como tercer proveedor de referencia.
 
-**No ejecutado hoy a proposito** — el pedido fue investigar y documentar, no implementar. Las 3
-recomendaciones (pantalla de disclosure, evaluar firma digital embebida tipo PAdES, politica
-formal de retencion escrita) quedan en `docs/SignLaw.md` seccion 4, priorizadas por costo/impacto,
-pendientes de decision del dueno sobre cuales ejecutar y cuando.
+**Resultado del gap analysis (actualizado contra los 10 pilares nuevos):** NexArtSign cumple solido
+6 de 10, parcial en 3, no implementado en 1 (no existe clasificador de elegibilidad de documento).
+**Hallazgo nuevo en v2 que v1 no habia detectado:** el gap de integridad no es (solo) "falta firma
+digital embebida tipo PAdES" — es mas preciso y mas barato de resolver: **falta encadenar
+`signing_events` entre si con hash** (`previous_evidence_hash`), no solo hashear el PDF final. Esa
+es ahora la recomendacion #1 en `docs/SignLaw.md` seccion 10 (mas barata que adoptar PAdES/PKI
+completo).
+
+**Divergencia marcada explicitamente, no oculta:** ArtFocusSing (la otra app del dueno) parte de
+no-recolectar IP/user-agent por defecto hasta aprobacion formal de privacidad; NexArtSign ya
+recolecta `ip_address`/`user_agent`/`device_fingerprint` en produccion sin ese proceso formal —
+señalado como decision de politica ya tomada de facto, no como bug.
+
+**No ejecutado hoy a proposito** — el pedido fue investigar y documentar, no implementar. Las 5
+recomendaciones (encadenar eventos con hash, pantalla de disclosure, evaluar PAdES, politica de
+retencion, clasificador de elegibilidad) quedan en `docs/SignLaw.md` seccion 10, priorizadas por
+costo/impacto, pendientes de decision del dueno.
 
 ### Evidencia
 
 - `docs/SignLaw.md`
 - `src/pages/SignDocumentView.jsx` (paso de consentimiento, lineas ~641, ~839-848)
-- `supabase/functions/completeSigningPackage/index.ts` (`sha256HexFromBytes`, sin firma digital
-  embebida)
+- `supabase/functions/completeSigningPackage/index.ts` (`sha256HexFromBytes`, sin cadena de hashes
+  entre eventos)
+- `D:\My Bussines\SQL BSE\ArtFouS app\dj-artfocus-prod\skills\singlw-v1\references\legal-evidence-policy.md`
+  (politica del dueno para ArtFocusSing, fusionada en v2)
 - Fuentes oficiales citadas en `docs/SignLaw.md` (govinfo.gov, Cornell LII, oregonlegislature.gov,
-  oregon.public.law, docusign.com, adobe.com)
+  oregon.public.law, leginfo.legislature.ca.gov, uscourts.gov, ftc.gov, nist.gov, cppa.ca.gov,
+  docusign.com, adobe.com, dropbox.com)
 
 ---
 

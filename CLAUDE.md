@@ -544,17 +544,20 @@ ser codigo muerto (`src/lib/nexArtSignCompletion.js` sin ningun importador real)
 archivo completo, no hacia falta portar nada. Detalle en `docs/agent/BASE44_REMOVAL_PLAN.md`.
 Quedan sin tocar: `submitContactForm`, `agentTestRunner`.
 
-### NexArtSign — marco legal de firma electronica investigado y documentado (`docs/SignLaw.md`), 2026-07-30
+### NexArtSign — marco legal de firma electronica investigado y documentado (`docs/SignLaw.md`), 2026-07-30, v2 el mismo dia
 
-Investigacion contra fuentes oficiales (ESIGN Act federal, UETA de Oregon/ORS 84) + estandar de
-industria (DocuSign, Adobe Sign) sobre que hace defendible una firma electronica en una demanda,
-mas gap analysis de NexArtSign contra ese estandar. Resultado: cumple 10/12 puntos solido; los 2
-gaps reales son que la integridad del PDF final depende de un hash en la base de datos propia (no
-una firma digital embebida tipo PAdES/PKI verificable por un tercero), y que falta una pantalla de
-consentimiento formal a transaccionar electronicamente separada del consentimiento por documento.
-Nada de esto se implemento hoy — era pedido de investigacion/documentacion, recomendaciones
-priorizadas en `docs/SignLaw.md` seccion 4 y `docs/agent/OPEN_GAPS.md` gap 13, pendientes de
-decision del dueno. El documento esta escrito para ser portable — se va a reusar en otra app.
+Investigacion contra fuentes oficiales (ESIGN Act federal, UETA de Oregon/California, Federal
+Rules of Evidence, FTC, NIST, CPPA) + estandar de industria (DocuSign, Adobe Sign, Dropbox Sign)
+sobre que hace defendible una firma electronica en una demanda, mas gap analysis de NexArtSign.
+**v2 fusiona una politica mas rigurosa que el dueno ya tenia para otra app propia** (ArtFocusSing,
+`SingLw-V1`) — no se copio ciego, se adapto: ArtFocusSing esta en fase "propuesta, nada construido"
+mientras NexArtSign ya esta en produccion, asi que las divergencias (ej. NexArtSign ya recolecta
+IP/user-agent, ArtFocusSing todavia no decide si hacerlo) se marcan explicitamente. Resultado del
+gap analysis actualizado: 6/10 pilares solidos, 3 parciales, 1 sin implementar. Hallazgo nuevo de
+v2: el gap de integridad se resuelve mas barato de lo que decia v1 — encadenar `signing_events`
+entre si con hash (no solo hashear el PDF final), en vez de adoptar PAdES/PKI completo. Nada de
+esto se implemento — recomendaciones en `docs/SignLaw.md` seccion 10 y `docs/agent/OPEN_GAPS.md`
+gap 13, pendientes de decision del dueno. El documento sigue escrito para ser portable entre apps.
 
 ### NexArtSign Fase 7 — confirmada completa 2026-07-30
 
@@ -644,5 +647,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.10 — 2026-07-30*
+*Version: 2.11 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

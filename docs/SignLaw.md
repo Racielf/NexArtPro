@@ -1,13 +1,33 @@
 # SignLaw — Marco legal de firmas electronicas y estandar de auditoria defendible en corte
 
-> Investigacion + politica, 2026-07-30. Escrito para ser portable — las secciones 1-4 (base legal,
-> exclusiones, estandar de industria, checklist de requisitos) no dependen de NexArtPro y se pueden
-> reusar en cualquier otra app que implemente firma electronica. La seccion 5 (gap analysis) es
-> especifica de NexArtSign (el modulo de firma de NexArtPro) — no aplica fuera de este repo.
+> v2, 2026-07-30. Escrito para ser portable — las secciones 1-8 (base legal, terminologia, pilares
+> de exigibilidad, modelo de evidencia, matriz de disputas, patrones de industria, roles/gates,
+> fuentes) no dependen de NexArtPro y se pueden reusar en cualquier app que implemente firma
+> electronica. La seccion 9 (gap analysis) es especifica de NexArtSign — no aplica fuera de este
+> repo.
+>
+> **v2 adapta y fusiona la politica mas rigurosa que el dueno ya habia construido para otra app
+> propia** (`SingLw-V1` / `legal-evidence-policy.md`, ArtFocusSing,
+> `D:\My Bussines\SQL BSE\ArtFouS app\dj-artfocus-prod\skills\singlw-v1`, 2026-07-29). Esa version
+> es mas rigurosa en 3 cosas que v1 de este doc no tenia: (1) un limite explicito de terminologia
+> legal (que palabras NO se pueden usar sin aprobacion de abogado), (2) un modelo de evidencia con
+> **cadena de hashes** encadenados (no un hash suelto), y (3) un modelo de gobernanza con roles y
+> gates de aprobacion antes de tocar produccion. Se adapta aca, no se copia ciego: ArtFocusSing esta
+> en fase "propuesta, nada construido todavia"; NexArtSign ya esta en produccion y ya tomo
+> decisiones (ej. si recolectar IP/user-agent) que ArtFocusSing todavia tiene como pendientes — las
+> divergencias se marcan explicitamente en la seccion 9, no se ocultan.
 
 ---
 
-## 1. Base legal (fuentes oficiales)
+## 1. Limite y proposito
+
+Este documento no es asesoria legal. No establece que una firma via NexArtSign (o cualquier app que
+reuse este documento) sea automaticamente valida, admisible, exigible, no repudiable, o apta para
+cualquier tipo de documento. Validez y admisibilidad son decisiones especificas de los hechos, el
+documento, la jurisdiccion y el procedimiento — las decide un abogado licenciado y, en ultima
+instancia, un juez.
+
+## 2. Base legal (fuentes oficiales)
 
 ### Federal — ESIGN Act (Electronic Signatures in Global and National Commerce Act)
 
@@ -19,201 +39,314 @@ Ley federal de EEUU, codificada en **15 U.S.C. §7001 et seq.** Texto oficial:
 transaccion no puede negarse su efecto legal, validez o exigibilidad **solo porque esta en forma
 electronica**.
 
-**Definicion de "electronic signature" (§7006):** "un sonido, simbolo o proceso electronico,
-adjunto o asociado logicamente a un contrato u otro registro, y ejecutado o adoptado por una
-persona con la intencion de firmar el registro." — no exige ninguna tecnologia especifica
-(no requiere PKI, no requiere certificado digital, no requiere biometria).
+**Definicion de "electronic signature" (§7006):** un sonido, simbolo o proceso electronico, adjunto
+o asociado logicamente a un contrato u otro registro, y ejecutado o adoptado por una persona con la
+intencion de firmar el registro. No exige ninguna tecnologia especifica (no requiere PKI, no
+requiere certificado digital, no requiere biometria).
 
 **Consentimiento del consumidor (§7001(c)):** cuando se reemplaza una divulgacion que la ley exige
-que sea *por escrito*, el consumidor debe dar consentimiento afirmativo, despues de haber recibido
+que sea *por escrito*, el consumidor debe dar consentimiento afirmativo, despues de recibir
 divulgacion clara de: (1) su derecho a pedir la version en papel, (2) su derecho a retirar el
 consentimiento sin penalidad, (3) el alcance del consentimiento (una transaccion vs. categoria
 continua), (4) el procedimiento para retirar el consentimiento y actualizar datos de contacto, (5)
 como pedir copia en papel y si tiene costo, y (6) los requisitos de hardware/software necesarios
-para acceder al registro electronico. Esto aplica quando se reemplaza una **divulgacion legalmente
-obligatoria**, no necesariamente a cualquier firma de contrato comun — pero es la practica estandar
-de la industria (DocuSign, Adobe Sign) mostrar esta divulgacion siempre, como capa extra de
-proteccion.
+para acceder al registro electronico.
 
-**Exclusiones — §7003 (donde ESIGN NO aplica, sin importar el disenio del sistema):**
-[Cornell LII §7003](https://www.law.cornell.edu/uscode/text/15/7003)
-- Testamentos, codicilos, fideicomisos testamentarios.
-- Derecho de familia (adopcion, divorcio y afines), segun la ley estatal.
-- La mayoria del Uniform Commercial Code, excepto UCC §1-107, §1-206 y Articulos 2 y 2A.
-- Ordenes judiciales, notificaciones, escritos y documentos oficiales de una corte.
-- Avisos de cancelacion de servicios publicos (agua, calefaccion, electricidad).
-- Avisos de default, aceleracion, embargo, ejecucion hipotecaria (foreclosure), desalojo
-  (eviction), o derecho a subsanar sobre un prestamo o alquiler de **residencia principal**.
-- Avisos de cancelacion o terminacion de beneficios de salud o de vida.
-- Retiros de productos (recalls) o fallas de materiales que arriesguen salud/seguridad.
-- Documentacion que acompaña transporte o manejo de materiales peligrosos, pesticidas o sustancias
-  toxicas.
+**Exclusiones — §7003** ([Cornell LII §7003](https://www.law.cornell.edu/uscode/text/15/7003)):
+testamentos/codicilos/fideicomisos testamentarios; derecho de familia (adopcion, divorcio); la
+mayoria del UCC salvo §1-107, §1-206 y Articulos 2/2A; ordenes y documentos judiciales; avisos de
+cancelacion de servicios publicos; avisos de default/aceleracion/embargo/ejecucion
+hipotecaria/desalojo sobre **residencia principal**; cancelacion de beneficios de salud/vida;
+retiros de productos que arriesguen salud/seguridad; documentacion de materiales peligrosos.
 
-**Conclusion practica:** firmar electronicamente un estimate/contrato de construccion, una
-propuesta comercial, o un documento similar **no esta en esta lista de exclusiones** — cae dentro
-de lo que ESIGN cubre normalmente. Si en el futuro se firma algo relacionado con ejecucion
-hipotecaria o desalojo sobre la residencia principal de un cliente, esa pieza especifica *no* se
-puede resolver solo con firma electronica bajo ESIGN.
+**Regla de aplicacion:** cualquier app debe **negar, no solo advertir**, cuando la clase de
+documento cae en una exclusion o es desconocida — nunca asumir que un flujo normal de firma cubre
+una excepcion legal.
 
-### Estatal — Oregon adopto la UETA (Uniform Electronic Transactions Act), ORS Capitulo 84
+### Estatal — enfoque UETA (Uniform Electronic Transactions Act)
 
-Texto oficial: [Oregon Legislature — ORS Chapter 84](https://www.oregonlegislature.gov/bills_laws/ors/ors084.html) ·
-espejo legible: [oregon.public.law/statutes/ors_chapter_84](https://oregon.public.law/statutes/ors_chapter_84)
+La mayoria de los estados de EEUU adoptaron una version de la UETA del Uniform Law Commission
+([texto modelo — ULC](https://www.uniformlaws.org/viewdocument/final-act-21?CommunityKey=2c04b76c-2b7d-4399-977e-d5876ba7e034)),
+pero **el texto modelo no es ley** hasta que un estado lo promulga con su propio texto y variantes —
+tratar el modelo como ley generica en cualquier estado sin verificar el texto promulgado real es un
+error comun. Mantener una matriz de aprobacion estado-por-estado (seccion 8) en vez de asumir
+uniformidad.
 
-Secciones clave (cita oficial: 2001 c.535, la ley que adopto UETA en Oregon):
+**Oregon (donde opera R.C Art Construction LLC) — ORS Capitulo 84**, texto oficial:
+[Oregon Legislature](https://www.oregonlegislature.gov/bills_laws/ors/ors084.html) · espejo legible:
+[oregon.public.law/statutes/ors_chapter_84](https://oregon.public.law/statutes/ors_chapter_84)
 
-- **ORS 84.013 — Uso voluntario y por acuerdo mutuo.** La ley no obliga a nadie a usar medios
-  electronicos. Solo aplica entre partes que **ambas** hayan acordado transaccionar
-  electronicamente — el acuerdo se puede inferir del contexto y la conducta (ej. el cliente abre
-  el link y firma), no hace falta un contrato aparte que lo diga explicitamente. Una parte puede
-  negarse a usar medios electronicos para transacciones futuras aunque haya aceptado una vez, y
-  esa proteccion **no se puede renunciar por contrato**.
-- **ORS 84.019 — Reconocimiento legal.** Un registro o firma no pierde efecto legal solo por ser
-  electronico. Un contrato no pierde efecto legal solo porque se uso un agente electronico o una
-  firma electronica en su formacion.
-- **ORS 84.025 — Atribucion.** *"Un registro o firma electronica es atribuible a una persona si
-  fue el acto de esa persona. El acto de la persona se puede demostrar de cualquier manera,
-  incluyendo mostrando la eficacia de cualquier procedimiento de seguridad aplicado para
-  determinar a quien es atribuible el registro o firma."* — esta es la seccion mas importante para
-  el diseño tecnico: la ley no exige una tecnologia especifica, exige poder **demostrar** (con lo
-  que sea: OTP, IP, dispositivo, email verificado, secuencia de eventos) que fue esa persona.
-- **ORS 84.034 — Retencion de registros electronicos.** Cuando la ley exige conservar un registro,
-  basta con un registro electronico que (a) refleje fielmente la informacion desde que se genero
-  en su forma final, y (b) siga siendo accesible para referencia posterior. Satisface tambien
-  requisitos de "original" y de evidencia/auditoria, salvo que una ley posterior a 2001-06-22 lo
-  prohiba especificamente para ese proposito.
-- **ORS 84.037 — Admisibilidad en evidencia.** *"En un procedimiento, no se puede excluir evidencia
-  de un registro o firma solo porque esta en forma electronica."* — la cita directa para responder
-  "¿esto se sostiene en una demanda?": la ley de Oregon dice explicitamente que no se puede
-  descartar solo por ser electronico. Lo que si determina el *peso* que le da un juez es la calidad
-  del audit trail (ver seccion 3).
+- **ORS 84.013 — Uso voluntario y por acuerdo mutuo.** Solo aplica entre partes que ambas hayan
+  acordado transaccionar electronicamente — se puede inferir de la conducta. Una parte puede
+  negarse a medios electronicos para transacciones futuras aunque haya aceptado una vez; esa
+  proteccion no se puede renunciar por contrato.
+- **ORS 84.019 — Reconocimiento legal.** Un registro/firma/contrato no pierde efecto legal solo por
+  ser electronico o por usar un agente electronico en su formacion.
+- **ORS 84.025 — Atribucion.** *"Un registro o firma electronica es atribuible a una persona si fue
+  el acto de esa persona. El acto se puede demostrar de cualquier manera, incluyendo mostrando la
+  eficacia de cualquier procedimiento de seguridad aplicado."* — la ley no exige tecnologia
+  especifica, exige poder **demostrar** que fue esa persona.
+- **ORS 84.034 — Retencion.** Basta un registro electronico que refleje fielmente la informacion
+  desde su forma final y siga accesible para referencia posterior.
+- **ORS 84.037 — Admisibilidad.** *"No se puede excluir evidencia de un registro o firma solo
+  porque esta en forma electronica."*
 
-**Conclusion practica combinada (ESIGN + UETA):** en Oregon, una firma electronica capturada con un
-procedimiento de seguridad razonable (identidad + intento de firmar + registro no alterado) es
-legalmente valida y no puede ser rechazada como evidencia solo por ser electronica. Lo que gana o
-pierde una demanda no es "¿fue electronica?" sino "¿se puede demostrar con evidencia solida que fue
-esa persona, que acepto ese documento exacto, y que el documento no se altero despues?"
+**California — Civil Code Title 2.5** ([texto oficial](https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?division=3.&lawCode=CIV&part=2.&title=2.5.)):
+aborda acuerdo a transaccionar electronicamente, atribucion, procedimientos de seguridad,
+retenibilidad y accesibilidad posterior — util como segundo estado de referencia si la app opera
+alli, solo despues de que un abogado de California apruebe la ceremonia y plantillas completas.
 
----
+### Reglas federales de evidencia (para litigio en corte federal de EEUU)
 
-## 2. Que hace que un audit trail sea *persuasivo* en una demanda (no solo "legal")
+[Federal Rules of Evidence](https://www.uscourts.gov/sites/default/files/document/federal-rules-of-evidence.pdf)
+— Reglas **803(6)** (registros de negocio regulares), **901** (autenticacion), **902(11)/902(13)/902(14)**
+(certificaciones de procesos/datos electronicos), y **1001-1003** (originales/duplicados) son las
+que se invocan para admitir un registro electronico. Mantener registros contemporaneos de proceso
+regular, un sistema explicable y preciso, exports exactos, y un custodio calificado — estos
+controles **apoyan** una base de admisibilidad, no la garantizan.
 
-La ley (seccion 1) establece que la firma electronica es valida. Lo que realmente se litiga en la
-practica es la **credibilidad de la evidencia** — y ahi es donde entran los estandares de la
-industria. Investigacion sobre practica real de las 2 plataformas dominantes:
+### Guias regulatorias (no son ley, pesan distinto)
 
-### DocuSign — Certificate of Completion / Audit Trail
-Fuente: [DocuSign — Are electronic signatures admissible in court?](https://www.docusign.com/blog/are-electronic-signatures-admissible-in-court)
+- [FTC — reporte al Congreso sobre consentimiento del consumidor bajo ESIGN](https://www.ftc.gov/reports/report-congress-electronic-signatures-global-national-commerce-act-consumer-consent-provision) —
+  el consentimiento no puede reducirse a terminos ocultos o una visita pasiva al navegador.
+- [NIST SP 800-63 — gestion de riesgo de identidad digital](https://pages.nist.gov/800-63-4/sp800-63/dirm/) —
+  elegir la fuerza de autenticacion segun el riesgo de la transaccion.
+- [NIST SP 800-63B — guia de sesiones](https://pages.nist.gov/800-63-4/sp800-63b/session/) —
+  IP/dispositivo son señales de sesion, no prueba de identidad por si solas.
+- [California Privacy Protection Agency — minimizacion de datos](https://cppa.ca.gov/pdf/enfadvisory202401.pdf) —
+  cada campo de evidencia personal necesita proposito, regla de acceso, y retencion explicitos.
 
-Cada "envelope" (paquete de firma) genera un Certificate of Completion que incluye: nombres de
-todas las partes firmantes, IP publica de cada una, ubicacion geografica (si el firmante acepta
-compartirla), la secuencia completa de custodia (enviado -> visto -> firmado/rechazado), timestamp
-de cada evento, y un **sello a prueba de manipulacion (tamper-evident seal)** que valida que el
-documento no fue alterado fuera de cada evento de firma. El certificado es accesible por cualquier
-parte de la transaccion y esta pensado especificamente para ser un registro admisible en corte.
-
-### Adobe Acrobat Sign — Audit Report
-Fuentes: [Adobe — What is an e-signature audit trail?](https://www.adobe.com/acrobat/business/hub/esignature-audit-trail.html) ·
-[Adobe Acrobat Sign compliance whitepaper (21 CFR Part 11)](https://www.adobe.com/cc-shared/assets/pdf/trust-center/ungated/whitepapers/doc-cloud/acrobat-sign-compliance-21cfrpt11-wp.pdf)
-
-Cada acuerdo tiene un **transaction ID unico**, verificable incluso por alguien que no tiene cuenta
-Adobe (pagina publica de verificacion). El audit report captura identidad (nombre + email) de quien
-firma, quien rechaza, quien cancela, la razon dada, y la IP desde la que se tomo cada accion. Adobe
-recomienda ademas poder correlacionar el audit trail con logs de aplicacion propios para efectos de
-cumplimiento/legal.
-
-### Checklist sintetizado — que debe existir para que un audit trail aguante un interrogatorio
-
-1. **Identidad del firmante** — nombre + email verificado (no solo un nombre tipeado a mano).
-2. **Intento de firmar explicito** — un paso separado donde la persona confirma activamente que
-   quiere firmar (checkbox/boton), no inferido de otra accion.
-3. **Consentimiento a transaccionar electronicamente** — idealmente una divulgacion separada del
-   "acepto firmar este documento" especifico (ver ESIGN §7001(c) arriba).
-4. **Metodo de verificacion de identidad** — OTP por email/SMS, o autenticacion previa, algo mas
-   fuerte que solo "quien tenga el link".
-5. **IP address + user agent** de cada evento relevante (visto, firmado, rechazado).
-6. **Fingerprint de dispositivo** (opcional pero recomendado, refuerza atribucion).
-7. **Timestamp de cada evento** en la secuencia completa (enviado, visto, firmado/rechazado).
-8. **Orden de firma** si hay multiples firmantes (quien firmo primero, quien despues).
-9. **Documento final congelado e inalterable** — un hash criptografico (o mejor, una firma
-   digital embebida en el PDF mismo, no solo un hash en base de datos) del documento **final**
-   exacto que se firmo, no del borrador.
-10. **Certificado verificable independientemente** — un numero/ID que un tercero (juez, perito,
-    abogado contrario) pueda usar para verificar la integridad sin depender de que la empresa
-    "diga que si".
-11. **Registro de rechazos y cancelaciones**, no solo de firmas exitosas.
-12. **Retencion accesible a largo plazo** del documento final y su evidencia (ORS 84.034).
+**Conclusion practica combinada:** una firma electronica con un procedimiento de seguridad
+razonable (identidad + intento de firmar + registro no alterado) no puede ser rechazada como
+evidencia solo por ser electronica. Lo que gana o pierde una demanda no es "¿fue electronica?" sino
+"¿se puede demostrar con evidencia solida que fue esa persona, que acepto ese documento exacto, y
+que el documento no se altero despues?"
 
 ---
 
-## 3. Gap analysis — NexArtSign (modulo de firma de NexArtPro), 2026-07-30
+## 3. Terminologia aprobada — limite obligatorio de afirmaciones
+
+**No decir** "legalmente vinculante", "admisible en corte", "no repudiable", "a prueba de
+manipulacion" (usar **"a prueba de manipulacion evidente"** solo cuando la verificacion realmente
+detecta un byte cambiado o un enlace de evidencia roto), "firma digital" (a menos que exista PKI/
+certificado real), "notarizado", o "cumple en todos los estados" — a menos que un abogado
+licenciado haya aprobado el release exacto implementado y los hechos que lo sostienen sean
+verdaderos.
+
+- Usar **"firma electronica"**, no "firma digital", salvo que exista una firma criptografica
+  PKI real embebida.
+- Usar **"paquete de evidencia"** o **"reporte de finalizacion"**, no "certificado de corte".
+- No afirmar verificacion biometrica, sellado de tiempo independiente, o garantia de autoridad
+  certificadora a menos que una implementacion aprobada realmente lo provea.
+
+## 4. Pilares de exigibilidad propuestos
+
+Cada firma completada deberia tener evidencia para cada pilar aplicable. La falla de un pilar
+deberia **bloquear la finalizacion o marcar el acuerdo como no soportado** — nunca ocultarse
+mostrando igual el grafico de la firma.
+
+1. **Elegibilidad** — el tipo de documento y la jurisdiccion estan aprobados, ninguna exclusion
+   aplica (ver seccion 2, §7003).
+2. **Acuerdo a transaccionar electronicamente** — la conducta de ambas partes apoya el uso del
+   proceso electronico (UETA/ORS 84.013).
+3. **Divulgacion y consentimiento del consumidor** — version exacta de la divulgacion y
+   consentimiento afirmativo, grabados **independientemente** de la intencion final de firmar.
+4. **Acceso y retencion** — el firmante puede acceder, retener, y reproducir fielmente la forma
+   usada para el registro.
+5. **Asociacion exacta al registro** — la ceremonia esta ligada a una version inmutable del
+   documento y su hash SHA-256.
+6. **Intencion** — una accion final clara indica que el firmante intenta firmar el registro exacto.
+7. **Atribucion** — identidad de portal verificada o una concesion exacta y de un solo uso, junto
+   con evidencia circundante, liga la accion al participante esperado.
+8. **Integridad y cronologia** — eventos de servidor confiables, ordenados, de solo-agregar, y
+   encadenados por hash (ver seccion 5).
+9. **Operaciones confiables** — el sistema esta probado, monitoreado, versionado, y se usa como
+   proceso de negocio regular (no reconstruido despues de una disputa).
+10. **Prueba reproducible** — un custodio autorizado puede exportar, verificar, y explicar el
+    registro original y el proceso sin alterarlos.
+
+## 5. Modelo de evidencia demostrable en codigo
+
+La evidencia autoritativa viene de limites de servidor confiables, no de analitica de navegador.
+Cada evento deberia preservar o referenciar: version del schema de evidencia y revision de release
+de la app; identificadores de tenant/paquete/participante/version-de-documento; SHA-256 exacto del
+contenido del documento; **secuencia monotonicamente creciente del paquete y el hash de evidencia
+previo**; tipo de evento y timestamp UTC de servidor confiable; metodo de identidad y referencia
+opaca de identidad; version/hash de divulgacion-consentimiento cuando aplique; hash de la
+representacion de firma cuando aplique; identificadores de correlacion/idempotencia; metadata
+acotada y en lista blanca (sin secretos, cookies, ni tokens de concesion crudos).
+
+**La diferencia clave frente a "guardar un hash del PDF final" (lo que hace la mayoria de las apps
+simples, incluida NexArtSign hoy — ver seccion 9):** encadenar cada evento con el hash del evento
+anterior, no solo el documento final. Verificacion conceptual:
+
+```text
+assert sha256(document_bytes) == completion.document_content_hash
+
+previous = null
+for event in events ordered by sequence:
+  assert event.sequence is the expected next integer
+  assert event.previous_evidence_hash == previous
+  canonical = canonicalize_with(event.hash_algorithm_version, event.fields)
+  assert sha256(canonical) == event.evidence_hash
+  previous = event.evidence_hash
+
+assert sha256(final_pdf_bytes) == artifact.pdf_sha256
+```
+
+Un hash solo prueba que los bytes comparados son iguales bajo el algoritmo declarado. Una cadena de
+hashes auto-controlada detecta inconsistencias posteriores pero **no prueba por si sola** quien
+actuo, cuando existio un evento, que los bytes iniciales eran veraces, o que no se creo una
+historia paralela. Registros de identidad, control de acceso, tiempo confiable, backups, y
+testimonio operativo siguen siendo controles separados.
+
+**Nota tecnica de canonicalizacion:** si se usa tanto JSON canonico (claves ordenadas, portable
+entre lenguajes) como hashing de texto nativo de una base de datos (ej. `jsonb::text` en
+PostgreSQL), esos dos metodos **no son intercambiables automaticamente** — declarar siempre el
+algoritmo y version exactos usados para cada hash, y nunca recalcular un hash de base de datos con
+el algoritmo portable y llamar corrupcion a un mismatch que en realidad es solo una diferencia de
+canonicalizacion.
+
+## 6. Matriz de disputas — que evidencia ayuda, y su limite real
+
+| Alegato | Evidencia/control necesario | Limitacion importante |
+|---|---|---|
+| "Yo no firme esto" | Participante exacto, metodo de identidad, eventos de autenticacion/concesion, intencion, cronologia, entrega. | Posesion de un link o acceso a un email no es prueba concluyente de identidad; IP tampoco. |
+| "El documento fue alterado" | Bytes originales, version inmutable, hash de contenido, cadena de eventos, hash del PDF final, verificacion offline. | Un hash no prueba que el contenido original fuera justo o presentado correctamente. |
+| "No tuve intencion de aceptar" | Redaccion/accion de intencion final separada, nombre tipeado, referencia al registro presentado, finalizacion confiable. | La redaccion de UI y las circunstancias siguen importando. |
+| "No pude acceder o guardarlo" | Divulgacion aprobada de hardware/software, demostracion de acceso, disponibilidad de copia retenida. | Un `200` de servidor solo no prueba comprension humana ni retencion real. |
+| "La version en español era distinta" | Texto/hash exacto por locale, traducciones revisadas legalmente. | Paridad de ingenieria no es aprobacion de traduccion legal. |
+| "La empresa edito sus logs" | Permisos de solo-agregar, cadena de hashes, backups, huellas de release, custodia de exports. | Una cadena controlada por el proveedor no es notarizacion independiente. |
+| "El timestamp esta mal" | Fuente de tiempo de servidor, evento UTC, monitoreo de sincronizacion. | El reloj del navegador y un reloj de servidor sin monitorear son evidencia debil. |
+| "Mi cuenta/link fue comprometido" | Autenticacion apropiada al riesgo, ciclo de vida de la concesion, registros de incidentes. | Un login exitoso no elimina la posibilidad de compromiso. |
+| "Retire mi consentimiento electronico" | Solicitud de retiro, momento efectivo, alcance. | El retiro es prospectivo salvo que la ley o el abogado indiquen otra cosa — nunca edita evidencia previa en silencio. |
+| "Este documento no se puede firmar electronicamente" | Registro de clasificacion de documento y aprobacion de jurisdiccion. | Ninguna ceremonia generica cura una exclusion legal (§7003). |
+
+## 7. Patrones de la industria — comparacion de diseño, no autoridad legal
+
+Aprender el patron, nunca copiar la afirmacion de marketing del proveedor como si fuera ley.
+
+| Fuente oficial | Patron util | Respuesta propia recomendada |
+|---|---|---|
+| [DocuSign — platform safety](https://www.docusign.com/safety/platform-safety) / [Are e-signatures admissible in court?](https://www.docusign.com/blog/are-electronic-signatures-admissible-in-court) | Certificate of Completion: nombres, IP publica, ubicacion opcional, cadena completa de custodia, sello a prueba de manipulacion evidente. | Reporte de finalizacion neutral + hashes verificables independientemente; evitar "indiscutible" o admisibilidad automatica. |
+| [Adobe — audit report controls](https://helpx.adobe.com/sign/config/global/audit-report.html) / [esignature audit trail](https://www.adobe.com/acrobat/business/hub/esignature-audit-trail.html) | Rastrea creacion, envio, vista, autenticacion, firma, y estado terminal; transaction ID verificable incluso sin cuenta. | Taxonomia de eventos tipada; declarar explicitamente que NO registra el audit. |
+| [Adobe — authentication methods](https://helpx.adobe.com/sign/config/send-settings/auth-methods/overview.html) | La fuerza de autenticacion varia segun el riesgo de la transaccion y se muestra en el audit. | Persistir el metodo real usado, no una bandera vaga de "verificado". |
+| [Dropbox Sign — audit trail overview](https://help.dropbox.com/security/dropbox-sign-audit-trail-overview) | Log de transacciones con timestamp, hash del PDF, manipulacion de log detectable. | Preservar hashes exactos y cadena de eventos, con las limitaciones de la seccion 5. |
+| [Dropbox Sign — signing ceremony](https://help.dropbox.com/share/signing-a-dropbox-sign-document) | Pasos de revision separados y una accion final explicita de "acepto"; copia completada disponible. | Preservar intencion final explicita y acceso a copia retenida en movil/tablet/desktop. |
+
+## 8. Roles requeridos y gates de aceptacion (gobernanza, antes de tocar produccion)
+
+- **Dueño del negocio** — elige mercados/estados servidos y financia los controles requeridos.
+- **Abogado licenciado** — aprueba matriz de jurisdiccion, plantillas de documento, divulgaciones,
+  exclusiones, retencion, legal hold, y procedimiento de disputas.
+- **Dueño de privacidad** — aprueba proposito/minimizacion/aviso/acceso/retencion por cada campo de
+  dato personal (IP, user-agent, fingerprint, biometria de firma dibujada).
+- **Dueño de seguridad** — aprueba fuerza de autenticacion, manejo de claves, tiempo confiable,
+  monitoreo, backup, respuesta a incidentes.
+- **Custodio de evidencia** — entiende las operaciones reales y controla exports/certificaciones
+  autorizadas.
+- **Ingenieria** — implementa el contrato aceptado, preserva pruebas reproducibles, no hace
+  conclusiones legales.
+
+**Gates sugeridos antes de cualquier cambio real de produccion:** (1) revision de politica —
+documentar sin cambiar comportamiento protegido; (2) decisiones de abogado/dueño por escrito
+(estados servidos, clases de documento incluidas/excluidas, divulgaciones exactas, retencion); (3)
+preparacion de artefacto protegido (migracion/RLS/RPC/campo de evidencia) solo con aprobacion
+exacta del dueño; (4) ejecucion en ambiente desechable/local; (5) QA de runtime y adversarial
+(reintentos, manipulacion, fallas, multi-tenant); (6) release final solo con aprobacion del
+abogado contra el release exacto implementado.
+
+---
+
+## 9. Gap analysis — NexArtSign (modulo de firma de NexArtPro), 2026-07-30
 
 Especifico de este repo. Verificado contra el codigo real, no contra el roadmap (que en sesiones
 anteriores tuvo desactualizaciones — ver `docs/nexartsign-security-roadmap.md` y
 `docs/agent/OPEN_GAPS.md`).
 
-| Requisito del checklist (seccion 2) | Estado en NexArtSign hoy |
+| Pilar (seccion 4) | Estado en NexArtSign hoy |
 |---|---|
-| 1. Identidad del firmante | Cumple — `signer_name`/`signer_email` capturados, mas verificacion OTP contra el email del participante (`requestSigningOtp`/`verifySigningOtp`). |
-| 2. Intento de firmar explicito | Cumple — paso `consent` dedicado en `src/pages/SignDocumentView.jsx` (linea ~839-848): checkbox con texto "I confirm that I am the intended signer, I have reviewed this document, and I agree to sign it electronically." |
-| 3. Consentimiento a transaccionar electronicamente (separado del "acepto firmar esto") | **Gap real.** Solo existe el consentimiento especifico al documento (punto 2). No hay una divulgacion separada tipo "ESIGN Disclosure and Consent" (derecho a copia en papel, derecho a retirar consentimiento, requisitos de hardware/software) antes de empezar el flujo. No es ilegal sin esto (UETA 84.013(2) permite inferir consentimiento de la conducta), pero es mas debil que el estandar DocuSign/Adobe. |
-| 4. Metodo de verificacion de identidad | Cumple — OTP obligatorio antes de aprobar (Fase 3 del roadmap), con expiracion, contador de intentos, y bloqueo temporal tras fallos repetidos. |
-| 5. IP + user agent | Cumple — capturado en `signing_participants` (`ip_address`, `user_agent`) y en cada evento de `security_audit_logs` via `writeSecurityAuditLog`. |
-| 6. Fingerprint de dispositivo | Cumple — `device_fingerprint` (jsonb) en `signing_participants`, generado por `src/lib/deviceFingerprint.js`. |
-| 7. Timestamp de cada evento | Cumple — `sent_at`, `viewed_at`, `signed_at`, `declined_at`, mas eventos en `signing_events` y `security_audit_logs`. |
-| 8. Orden de firma (multi-firmante) | Cumple — `signing_order`, solo el participante activo puede avanzar (Fase 2 del roadmap). |
-| 9. Documento final congelado + hash | Parcial. Se congela el PDF final y se calcula `sha256` (`completeSigningPackage`, `sha256HexFromBytes`) — el hash se guarda en `final_pdf_hash`. **No hay una firma digital/certificado embebido dentro del PDF mismo** (lo que DocuSign/Adobe si hacen, via PAdES/PKI) — la integridad depende de confiar en el hash guardado en la base de datos de NexArtPro, no en algo verificable de forma independiente por un tercero sin acceso a esa base de datos. |
-| 10. Certificado verificable independientemente | Parcial, resuelto en su mayor parte hoy mismo (2026-07-30, Fase 6): existe `/verify-document`, que permite a cualquiera con el numero de certificado (`resolveSigningCertificate`) subir una copia del PDF y comparar el hash SHA-256. Es publico y no requiere login — cumple el espiritu de "verificable por un tercero". La limitacion sigue siendo el punto 9: la verificacion depende de que la base de datos de NexArtPro no haya sido alterada, no de una firma criptografica independiente. |
-| 11. Registro de rechazos/cancelaciones | Cumple — `declined_at`, `declined_reason`/`voided_reason`, eventos `nexartsign.declined` en el audit log. |
-| 12. Retencion accesible | Cumple a nivel de diseño (`final_pdf_url` persiste, no hay borrado real de `signing_certificates`/`signing_packages` desde el frontend) — no se verifico hoy una politica formal de cuanto tiempo se retiene ni un proceso de backup/archivo a largo plazo fuera de Supabase. |
+| 1. Elegibilidad de documento/jurisdiccion | **No implementado.** NexArtSign no tiene un clasificador que niegue tipos de documento excluidos (testamentos, ordenes judiciales, etc.) — hoy solo se usa para estimates/contratos de construccion, que no caen en las exclusiones de §7003, pero no hay una barrera de codigo que lo garantice si se usara para otra cosa. |
+| 2. Acuerdo a transaccionar electronicamente | Implicito en la conducta (abrir el link, avanzar el flujo) — cubierto por ORS 84.013(2), pero sin una pantalla de divulgacion formal separada (ver punto 3). |
+| 3. Divulgacion y consentimiento del consumidor (separado de "acepto firmar esto") | **Gap real.** Solo existe el consentimiento especifico al documento — paso `consent` en `src/pages/SignDocumentView.jsx` (linea ~839-848): checkbox "I confirm that I am the intended signer, I have reviewed this document, and I agree to sign it electronically." No hay una divulgacion ESIGN §7001(c) separada (derecho a copia en papel, retiro de consentimiento, requisitos de hardware/software). |
+| 4. Acceso y retencion | Cumple a nivel de diseño (`final_pdf_url` persiste, sin borrado real desde el frontend) — no se verifico una politica formal de cuanto tiempo, backup, o legal hold. |
+| 5. Asociacion exacta al registro | Cumple — `completeSigningPackage` congela el PDF final y calcula `sha256HexFromBytes`, bloqueando la generacion del certificado si falla (`final_pdf_url`/`final_pdf_hash` requeridos). |
+| 6. Intencion | Cumple — mismo paso de consentimiento del punto 3, con boton explicito, no inferido de otra accion. |
+| 7. Atribucion | Cumple — OTP obligatorio (`requestSigningOtp`/`verifySigningOtp`) contra el email del participante, mas `ip_address`/`user_agent`/`device_fingerprint` en `signing_participants`. |
+| 8. Integridad y cronologia | **Parcial — la diferencia real frente al modelo de la seccion 5.** Hay timestamps por evento (`sent_at`/`viewed_at`/`signed_at`/`declined_at`) y eventos en `signing_events`/`security_audit_logs`, pero **no hay una cadena de hashes encadenados** (`previous_evidence_hash`) entre eventos — solo un hash final del documento. Esto es mas debil que el modelo de evidencia recomendado en seccion 5: un tercero puede verificar que el PDF final coincide con un hash, pero no puede verificar independientemente que la secuencia completa de eventos no fue alterada o reordenada. |
+| 9. Operaciones confiables | Cumple razonablemente — el flujo esta en produccion, versionado en migraciones (mayormente), y probado con casos reales hoy (formulario de contacto, etc. son casos aparte de Base44, no de NexArtSign). |
+| 10. Prueba reproducible | Parcial — existe `/verify-document` (`resolveSigningCertificate`, minimizado 2026-07-30) para que un tercero compare el hash del PDF. No existe todavia un export de litigio completo (manifiesto + cadena de eventos + versiones de renderer/schema) como describe el modelo de la seccion 5. |
 
-### Resumen del gap analysis
+### Divergencia deliberada frente a ArtFocusSing — IP/user-agent
 
-NexArtSign cumple **10 de 12** puntos del checklist de forma solida, y 2 de forma parcial. Los 2
-puntos parciales (9 y 10) comparten la misma raiz: **la integridad del documento final depende de
-un hash guardado en la base de datos propia, no de una firma digital criptografica embebida en el
-PDF que un tercero pueda verificar sin confiar en NexArtPro.** Esto no hace que la firma sea
-invalida (ORS 84.037 sigue aplicando — no se puede excluir solo por ser electronica), pero es la
-diferencia real entre "tan bueno como DocuSign" y "razonablemente defendible". Cerrar esto del todo
-implicaria adoptar un estandar como PAdES (PDF Advanced Electronic Signatures) o similar, que es un
-cambio de arquitectura, no un parche — queda fuera del alcance de hoy (documentar, no implementar).
+ArtFocusSing (`SingLw-V1`) parte de una posicion **conservadora por defecto**: no recolectar
+IP/user-agent hasta que abogado + dueño de privacidad aprueben proposito, minimizacion, y
+retencion especificos. **NexArtSign ya toma la decision contraria y ya esta en produccion:**
+recolecta `ip_address`/`user_agent`/`device_fingerprint` en `signing_participants` sin que conste
+una revision de privacidad formal por escrito. Esto no es necesariamente incorrecto (es exactamente
+el patron que usan DocuSign/Adobe), pero es una divergencia real que vale la pena que el dueño
+revise conscientemente — no es un gap tecnico, es una decision de politica ya tomada de facto por
+el codigo, sin el proceso de aprobacion formal que este documento recomienda en la seccion 8.
 
-El punto 3 (consentimiento formal separado del acepto-esto-documento) es el mas barato de cerrar
-si se decide hacerlo mas adelante: es agregar una pantalla de divulgacion antes del flujo de firma,
-no un cambio de arquitectura.
+### Resumen
+
+NexArtSign cumple solido 6 de 10 pilares, parcial en 3 (retencion formal, integridad/cronologia,
+prueba reproducible), y no implementado en 1 (clasificador de elegibilidad de documento). El
+hallazgo mas importante de esta version 2 (que v1 no habia detectado): **el gap de integridad no es
+solo "falta una firma digital embebida en el PDF"** (lo que decia v1) — es mas preciso decir que
+falta **encadenar los eventos entre si con hash**, que es una mejora bastante mas barata de
+implementar que adoptar PAdES/PKI completo, y cierra una parte real del gap sin cambiar de
+arquitectura de firma.
 
 ---
 
-## 4. Recomendaciones (orden sugerido, ninguna ejecutada hoy — solo planificado)
+## 10. Recomendaciones (orden sugerido, ninguna ejecutada — solo planificado)
 
-1. **Barato, alto valor legal:** agregar una pantalla de "Electronic Record and Signature
-   Disclosure" separada del consentimiento por documento — calca el patron de ESIGN §7001(c) /
-   DocuSign, incluso si no es estrictamente obligatoria para este tipo de transaccion.
-2. **Mediano, refuerza el punto mas debil:** evaluar firmar digitalmente el PDF final (certificado
-   embebido, no solo hash en DB) — investigar librerias/servicios que soporten PAdES o
-   equivalente para Deno/Supabase Edge Functions antes de comprometerse a una solucion.
-3. **Bajo costo, cierre de proceso:** documentar formalmente la politica de retencion (cuanto
-   tiempo se guardan certificados/PDFs firmados, backup, quien puede purgar y bajo que
-   condiciones) — el mecanismo tecnico de soft-delete/archivo ya existe en varias tablas, falta la
-   politica escrita.
+1. **Barato, cierra el hallazgo mas importante de v2:** encadenar `signing_events` con un hash del
+   evento anterior (`previous_evidence_hash`), siguiendo el modelo de la seccion 5 — no requiere
+   cambiar el modelo de firma, solo agregar una columna y calcular el hash al insertar cada evento.
+2. **Barato, alto valor legal:** agregar una pantalla de "Electronic Record and Signature
+   Disclosure" separada del consentimiento por documento (pilar 3).
+3. **Mediano:** evaluar firmar digitalmente el PDF final (PAdES/PKI) — mas caro que la opcion 1,
+   solo si se decide perseguir paridad total con DocuSign/Adobe.
+4. **Bajo costo, proceso:** documentar formalmente la politica de retencion/legal-hold, y someter
+   la decision ya tomada de recolectar IP/UA/fingerprint a una revision formal de privacidad (ver
+   divergencia arriba), no como bloqueo pero si como proceso pendiente.
+5. **Cuando se use NexArtSign para otro tipo de documento que no sea un estimate/contrato de
+   construccion:** construir el clasificador de elegibilidad (pilar 1) antes, no despues.
 
 ---
 
 ## Fuentes
 
-- [15 U.S.C. §7001 — govinfo.gov](https://www.govinfo.gov/link/uscode/15/7001)
-- [15 U.S.C. §7001 — Cornell LII](https://www.law.cornell.edu/uscode/text/15/7001)
+- [15 U.S.C. §7001 — govinfo.gov](https://www.govinfo.gov/link/uscode/15/7001) ·
+  [Cornell LII](https://www.law.cornell.edu/uscode/text/15/7001)
 - [15 U.S.C. §7003 (exclusiones) — Cornell LII](https://www.law.cornell.edu/uscode/text/15/7003)
-- [Oregon Revised Statutes Chapter 84 — Oregon Legislature (oficial)](https://www.oregonlegislature.gov/bills_laws/ors/ors084.html)
-- [ORS 84.013 — oregon.public.law](https://oregon.public.law/statutes/ors_84.013)
-- [ORS 84.025 — oregon.public.law](https://oregon.public.law/statutes/ors_84.025)
-- [ORS 84.034 — oregon.public.law](https://oregon.public.law/statutes/ors_84.034)
-- [ORS 84.037 — oregon.public.law](https://oregon.public.law/statutes/ors_84.037)
-- [DocuSign — Are electronic signatures admissible in court?](https://www.docusign.com/blog/are-electronic-signatures-admissible-in-court)
-- [Adobe — What is an e-signature audit trail?](https://www.adobe.com/acrobat/business/hub/esignature-audit-trail.html)
-- [Adobe Acrobat Sign — 21 CFR Part 11 compliance whitepaper](https://www.adobe.com/cc-shared/assets/pdf/trust-center/ungated/whitepapers/doc-cloud/acrobat-sign-compliance-21cfrpt11-wp.pdf)
+- [Uniform Law Commission — UETA, texto modelo final](https://www.uniformlaws.org/viewdocument/final-act-21?CommunityKey=2c04b76c-2b7d-4399-977e-d5876ba7e034)
+- [Oregon Revised Statutes Chapter 84 — Oregon Legislature (oficial)](https://www.oregonlegislature.gov/bills_laws/ors/ors084.html) ·
+  [ORS 84.013](https://oregon.public.law/statutes/ors_84.013) ·
+  [ORS 84.025](https://oregon.public.law/statutes/ors_84.025) ·
+  [ORS 84.034](https://oregon.public.law/statutes/ors_84.034) ·
+  [ORS 84.037](https://oregon.public.law/statutes/ors_84.037)
+- [California Civil Code, Title 2.5 (UETA de California)](https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?division=3.&lawCode=CIV&part=2.&title=2.5.)
+- [Federal Rules of Evidence (Dec. 1, 2025)](https://www.uscourts.gov/sites/default/files/document/federal-rules-of-evidence.pdf)
+- [FTC — reporte al Congreso, consentimiento del consumidor bajo ESIGN](https://www.ftc.gov/reports/report-congress-electronic-signatures-global-national-commerce-act-consumer-consent-provision)
+- [NIST SP 800-63 — gestion de riesgo de identidad digital](https://pages.nist.gov/800-63-4/sp800-63/dirm/) ·
+  [NIST SP 800-63B — guia de sesiones](https://pages.nist.gov/800-63-4/sp800-63b/session/)
+- [California Privacy Protection Agency — advisory de minimizacion](https://cppa.ca.gov/pdf/enfadvisory202401.pdf)
+- [DocuSign — platform safety](https://www.docusign.com/safety/platform-safety) ·
+  [DocuSign — are e-signatures admissible in court?](https://www.docusign.com/blog/are-electronic-signatures-admissible-in-court)
+- [Adobe — audit report controls](https://helpx.adobe.com/sign/config/global/audit-report.html) ·
+  [Adobe — esignature audit trail](https://www.adobe.com/acrobat/business/hub/esignature-audit-trail.html) ·
+  [Adobe — authentication methods](https://helpx.adobe.com/sign/config/send-settings/auth-methods/overview.html) ·
+  [Adobe — embedded signer identity](https://helpx.adobe.com/sign/developer/signer-identity-in-workflows.html) ·
+  [Adobe Acrobat Sign — 21 CFR Part 11 whitepaper](https://www.adobe.com/cc-shared/assets/pdf/trust-center/ungated/whitepapers/doc-cloud/acrobat-sign-compliance-21cfrpt11-wp.pdf)
+- [Dropbox Sign — audit trail overview](https://help.dropbox.com/security/dropbox-sign-audit-trail-overview) ·
+  [Dropbox Sign — signing ceremony](https://help.dropbox.com/share/signing-a-dropbox-sign-document)
+- `SingLw-V1` / `legal-evidence-policy.md` (ArtFocusSing, dueño propio, 2026-07-29) —
+  `D:\My Bussines\SQL BSE\ArtFouS app\dj-artfocus-prod\skills\singlw-v1\references\legal-evidence-policy.md`
 
 **Nota de responsabilidad:** este documento es investigacion tecnica distilada de fuentes publicas
 para informar decisiones de producto/ingenieria. No es asesoria legal. Antes de basar una defensa
-real en una demanda especifica en esto, consultar con un abogado licenciado en Oregon (o la
-jurisdiccion que aplique).
+real en una demanda especifica en esto, consultar con un abogado licenciado en la jurisdiccion que
+aplique.
