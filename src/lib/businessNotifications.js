@@ -61,6 +61,37 @@ export async function notifyEstimateViewed(estimate) {
 }
 
 /**
+ * Notify business that an estimate was saved with margin below the 25% threshold.
+ * Replaces the old Base44 lowMarginAlert function (Firebase/Twilio push+SMS, never
+ * ported to Supabase) with the same email-to-admin pattern already used elsewhere here.
+ */
+export async function notifyLowMargin(estimate, marginPct, userName) {
+  const num = estimate.estimate_number;
+  const subject = `⚠️ Low Margin Alert — Est. #${num}`;
+  const body = [
+    `Hi ${COMPANY} team,`,
+    '',
+    `Estimate #${num} was saved with a margin below 25%.`,
+    '',
+    `Client: ${estimate.client_name || 'Unknown'}`,
+    `Margin: ${parseFloat(marginPct).toFixed(1)}%`,
+    `Saved by: ${userName}`,
+    `Time: ${timestamp()}`,
+    '',
+    `Review estimate: ${estimateLink(estimate.id)}`,
+    '',
+    `- ${APP_NAME}`,
+  ].filter(Boolean).join('\n');
+
+  return nexartClient.integrations.Core.SendEmail({
+    to: BUSINESS_EMAIL,
+    subject,
+    body,
+    from_name: APP_NAME,
+  });
+}
+
+/**
  * Notify business that a client approved (without signature).
  */
 export async function notifyEstimateApproved(estimate) {

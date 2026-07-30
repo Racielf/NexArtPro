@@ -24,6 +24,36 @@ import { normalizeLineItem, normalizeMaterials, sanitizeMaterialForPersistence }
 import { archiveWithSnapshot } from '@/lib/softDelete';
 import { loadPriceBook, loadServices } from '@/lib/servicePersistence';
 import estimateCatalogPricingBrain from '@/brain/modules/estimateCatalogPricingBrain';
+import { notifyLowMargin } from '@/lib/businessNotifications';
+
+const LOW_MARGIN_SPAM_WINDOW_MS = 30 * 60 * 1000;
+
+async function sendLowMarginAlertIfNeeded(estimate, marginPct, userName) {
+  try {
+    const recent = await nexartClient.entities.EstimateVersionHistory.filter(
+      { estimate_id: estimate.id, action: 'low_margin_alert' },
+      '-created_date',
+      1,
+    );
+    const last = recent?.[0];
+    if (last?.created_date && Date.now() - new Date(last.created_date).getTime() < LOW_MARGIN_SPAM_WINDOW_MS) {
+      return;
+    }
+
+    await notifyLowMargin(estimate, marginPct, userName);
+
+    await nexartClient.entities.EstimateVersionHistory.create({
+      estimate_id: estimate.id,
+      estimate_number: estimate.estimate_number,
+      action: 'low_margin_alert',
+      actor: userName,
+      changes: { margin_pct: marginPct },
+      changes_note: `LOW_MARGIN_ALERT | margin: ${marginPct.toFixed(1)}% | triggered_by: ${userName}`,
+    });
+  } catch (err) {
+    console.warn('[lowMarginAlert] Notification failed (non-blocking):', err?.message);
+  }
+}
 
 export default function EstimateEditor() {
   const navigate = useNavigate();
@@ -206,12 +236,12 @@ export default function EstimateEditor() {
     const marginPct = parseFloat(updatedEstimate?.gross_margin_pct ?? updatedEstimate?.gross_margin_percent ?? 100);
     const isAdmin = normalizeUserRole(currentUser?.role) === 'admin';
     if (!isNaN(marginPct) && marginPct < 25 && !isAdmin && estimateId) {
-      nexartClient.functions.invoke('lowMarginAlert', {
-        estimate_id: estimateId,
-        estimate_number: updatedEstimate.estimate_number,
-        client_name: updatedEstimate.client_name,
-        margin_pct: marginPct,
-      }).catch(err => console.warn('[lowMarginAlert] Notification failed (non-blocking):', err?.message));
+      const userName = currentUser?.full_name || currentUser?.email || 'Unknown';
+      sendLowMarginAlertIfNeeded(
+        { id: estimateId, estimate_number: updatedEstimate.estimate_number, client_name: updatedEstimate.client_name },
+        marginPct,
+        userName,
+      );
     }
   };
 

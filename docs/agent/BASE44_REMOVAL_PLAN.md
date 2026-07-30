@@ -28,10 +28,10 @@ y cruzado contra la lista real de Edge Functions desplegadas en produccion
 | `submitContactForm` | **NO** | `src/pages/Contact.jsx:32`, `src/pages/PublicHome.jsx:91,116` — formulario de contacto publico del sitio |
 | `resolveEstimatePublicToken` | **SI — resuelto 2026-07-30** | `src/pages/ClientEstimateView.jsx:38` — vista publica del estimate que ve el cliente |
 | `resolveAttachmentPublicUrl` | **NO** — bloqueado, ver nota | `src/components/estimates/ClientAttachmentsSection.jsx:32` — adjuntos del estimate |
-| `lowMarginAlert` | **NO** | `src/pages/EstimateEditor.jsx:209` |
-| `approveMargin` | **NO** | `src/components/estimates/internal/PricingOverrideModal.jsx:67` |
+| `lowMarginAlert` | **Resuelto 2026-07-30 (rediseñado, no portado tal cual)** | `src/pages/EstimateEditor.jsx` |
+| `approveMargin` | **Resuelto 2026-07-30 (rediseñado, no portado tal cual)** | `src/components/estimates/internal/PricingOverrideModal.jsx:67` |
 | `agentTestRunner` | **NO** | `src/components/settings/AgentTestRunnerPanel.jsx:21` |
-| `sendSignedEstimateCopy` | **NO** | `src/lib/nexArtSignCompletion.js:141` — posible bug de nombre duplicado, ver nota abajo |
+| `sendSignedEstimateCopy` | **Cerrado 2026-07-30 — era codigo muerto, se borro** | (era `src/lib/nexArtSignCompletion.js:141`, archivo eliminado) |
 
 ### `resolveEstimatePublicToken` — resuelto 2026-07-30
 
@@ -78,16 +78,61 @@ Confirmado que `Contact.jsx` tiene try/catch que muestra el error al usuario (`"
 Please try again."`) — no falla en silencio. Cualquiera que llene el formulario de contacto
 publico del sitio hoy deberia estar viendo ese error.
 
-**Nota sobre `sendSignedEstimateCopy` vs `sendSignedCopy`:** existe una funcion `sendSignedCopy`
-(sin "Estimate") que SI esta desplegada y funciona (`src/pages/SignDocumentView.jsx:457`). Es
-posible que `nexArtSignCompletion.js` sea codigo viejo/no usado en el flujo activo, o un segundo
-flujo de completion que nunca se termino de portar. No investigado a fondo — anotar antes de
-tocarlo.
+### `sendSignedEstimateCopy` — cerrado 2026-07-30, era codigo muerto
+
+Se investigo: `grep` de `nexArtSignCompletion` en todo el repo (no solo `src/`) solo encontraba
+este mismo doc — **cero importadores reales**. Todo `src/lib/nexArtSignCompletion.js` estaba
+huerfano (incluia ademas `finalizeSignedEstimateFromPackage`, `finalizeDeclinedEstimateFromPackage`,
+`finalizeGenericSignedDocumentFromPackage`, tambien sin usar). El flujo de firma activo real pasa
+por `SignDocumentView.jsx` llamando directo a los Edge Functions ya migrados
+(`completeSigningPackage`, `sendSignedCopy`) — este archivo era un segundo intento de completion
+mas viejo, superado y nunca desconectado del repo. Confirmacion adicional de que era codigo muerto
+y no solo no-portado: `finalizeDeclinedEstimateFromPackage` escribia
+`signature_status`/`signing_package_id` sobre `estimates`, columnas que **no existen** en la tabla
+real (mismo problema de raiz que `resolveEstimatePublicToken` — ver esa seccion) — si alguna vez
+se hubiera ejecutado, habria fallado igual. Se borro el archivo completo
+(`git rm src/lib/nexArtSignCompletion.js`). No hace falta portar nada — no era una funcion real.
+
+### `lowMarginAlert` — resuelto 2026-07-30 (rediseñado, no portado tal cual)
+
+El original de Base44 mandaba una notificacion push via Firebase Cloud Messaging + SMS opcional
+via Twilio. Ninguno de los dos esta configurado en esta app — `src/docs/PRIVILEGED_ACTION_GUARD.md`
+ya documentaba "No OTP/2FA — Twilio not present" desde antes. En vez de resucitar integraciones
+nunca conectadas, se reemplazo con el patron que ya usa el resto de la app para notificar al admin
+de eventos de un estimate: `src/lib/businessNotifications.js` (mismo estilo que
+`notifyEstimateViewed`/`notifyEstimateApproved`, que ya mandan email via el Edge Function `sendEmail`
+ya desplegado). Nueva funcion `notifyLowMargin()` ahi, mas el anti-spam (1 alerta cada 30 min por
+estimate) reimplementado client-side contra `estimate_version_histories` (`action:
+'low_margin_alert'`) en `src/pages/EstimateEditor.jsx` — mismos nombres de columna reales
+verificados contra el schema (`action`, `actor`, `changes`, `changes_note`, no los que asumia el
+original de Base44). No se creo ningun Edge Function nuevo — no hacia falta.
+
+### `approveMargin` — resuelto 2026-07-30 (rediseñado, no portado tal cual — hallazgo de seguridad evitado)
+
+**El original de Base44 tenia un fallo real:** `const ADMIN_PIN = Deno.env.get('ADMIN_APPROVAL_PIN')
+|| '1234'` — si esa variable de entorno nunca se configuraba, cualquiera podia aprobar un override
+de margen con el PIN `1234`. Nunca se desplego a Supabase, asi que nunca se explotó en produccion,
+pero portarlo tal cual habria reintroducido el fallo. En vez de eso, se reescribio usando el
+sistema de PIN por admin que ya existe desde TAREA H (`app_users.pin_hash`, con
+`pin_failed_attempts`/`pin_locked_until`) — cada admin verifica su propio PIN, sin secreto
+compartido, mismo patron de rate-limit que `pin-login` (5 intentos, bloqueo 15 min). Nuevo
+`supabase/functions/approveMargin/index.ts`, reusando `_shared/authAdmin.ts`
+(`requireAdminCaller`) y `_shared/pinHash.ts` (`verifyPin`) ya existentes. Desplegado y verificado
+(rechaza correctamente sin sesion, `401 UNAUTHORIZED_NO_AUTH_HEADER`). El contrato de
+request/response hacia `PricingOverrideModal.jsx` no cambio — `{pin, estimate_id,
+estimate_number, margin_pct}` -> `{approved: true}` / `{error}`, cero cambios de frontend
+necesarios.
+
+**Nota operativa:** hoy **ningun admin tiene un PIN configurado** (`SELECT count(*) FROM app_users
+WHERE role='admin' AND pin_hash IS NOT NULL` = 0) — el override de margen va a mostrar "No PIN set
+for this account" hasta que el dueno configure su PIN en Settings (mismo flujo de `set-pin` de
+TAREA H). Es el comportamiento correcto (falla cerrado), no un bug.
 
 Funciones que SI se migraron correctamente y funcionan hoy (para referencia, no tocar):
 `sendEstimateEmail`, `sendEmail`, `issueSigningAccessLink`, `resolveSigningPackageToken`,
 `requestSigningOtp`, `verifySigningOtp`, `sendSignedCopy`, `completeSigningPackage`,
-`resolveSigningCertificate`, `createStripeCheckoutSession`.
+`resolveSigningCertificate`, `createStripeCheckoutSession`, `resolveEstimatePublicToken`,
+`approveMargin`.
 
 ## Inventario completo de Base44 en el repo
 

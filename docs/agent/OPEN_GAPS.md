@@ -369,7 +369,7 @@ Abierto
 
 ---
 
-## 10. Migracion Base44 -> Supabase incompleta — 6 de 7 funciones rotas siguen pendientes
+## 10. Migracion Base44 -> Supabase incompleta — 2 de 7 funciones rotas siguen pendientes
 
 ### Gap
 
@@ -379,21 +379,21 @@ las funciones nunca portadas fallan en produccion hoy, no es solo deuda tecnica 
 
 ### Impacto
 
-Alto y activo. `submitContactForm` (formulario de contacto publico, 3 call sites),
-`resolveAttachmentPublicUrl` (adjuntos del estimate — bloqueada, ver nota), `lowMarginAlert`,
-`approveMargin`, `agentTestRunner`, `sendSignedEstimateCopy` siguen fallando al invocarse —
-confirmado que `Contact.jsx` muestra el error visible al usuario, no falla en silencio.
-`resolveEstimatePublicToken` se resolvio 2026-07-30 (ver estado).
+Bajo ya (era Alto). Solo quedan rotas: `submitContactForm` (formulario de contacto publico, 3
+call sites) y `agentTestRunner` (panel interno de Settings). `resolveAttachmentPublicUrl` sigue
+bloqueada por una decision de diseño de datos (ver nota), no por falta de tiempo.
+`resolveEstimatePublicToken`, `lowMarginAlert`, `approveMargin` resueltos 2026-07-30.
+`sendSignedEstimateCopy` cerrado el mismo dia — era codigo muerto, se borro.
 
 ### Prioridad
 
-Alta — `resolveAttachmentPublicUrl` toca cash flow, pero esta bloqueada por una decision de diseño
-de datos (donde viven los adjuntos), no por falta de tiempo. Ver `docs/estimates-redesign-context.md`.
+Media — lo que tocaba cash flow directamente (el link publico del estimate) ya esta resuelto. Lo
+que queda es menor: un formulario de contacto y una herramienta interna de testing.
 
 ### Estado
 
 Documentado y con plan por etapas 2026-07-30, tras pedido del dueno de formalizar la estrategia de
-sacar Base44 del sistema. Plan completo, inventario, y tabla de las 7 funciones rotas en
+sacar Base44 del sistema. Plan completo, inventario, y tabla de las 7 funciones en
 `docs/agent/BASE44_REMOVAL_PLAN.md`. Se resolvio de paso la credencial de Base44 hardcodeada en
 `base44/.app.jsonc` (commiteada desde el primer commit).
 
@@ -401,10 +401,23 @@ sacar Base44 del sistema. Plan completo, inventario, y tabla de las 7 funciones 
 `estimates.public_share_token`/`public_share_token_created_at` no existian en produccion pese a
 que el frontend activo (`estimateSalesLifecycle.js`) ya las necesitaba para generar el link que se
 manda al cliente. Se agregaron esas 2 columnas (migracion aditiva) y se desplego la funcion nueva
-contra el schema real. Verificado end-to-end con un estimate real. Detalle completo en
-`docs/agent/BASE44_REMOVAL_PLAN.md`.
+contra el schema real. Verificado end-to-end con un estimate real.
 
-Las otras 6 siguen sin tocar — requiere decision del dueno sobre por cual seguir, o esperar a la
+**`lowMarginAlert` y `approveMargin` cerradas el mismo dia, rediseñadas en vez de portadas tal
+cual.** `approveMargin` tenia un fallo real en el original de Base44 (PIN de admin hardcodeado
+`'1234'` como fallback si la variable de entorno no estaba configurada) — se reescribio para
+reusar el sistema de PIN por admin de TAREA H (`app_users.pin_hash`) en vez de un secreto
+compartido. `lowMarginAlert` dependia de Firebase/Twilio, ninguno configurado — se reemplazo por
+el patron de notificacion por email que ya usa el resto de la app (`businessNotifications.js`).
+Ningun cambio de contrato hacia el frontend en ninguno de los dos casos.
+
+**`sendSignedEstimateCopy` cerrada el mismo dia — era codigo muerto.** Todo
+`src/lib/nexArtSignCompletion.js` (el archivo que la llamaba) no tenia ningun importador real en
+todo el repo — se borro. El flujo real de completion de firma pasa por
+`SignDocumentView.jsx` -> `completeSigningPackage`/`sendSignedCopy` (ya migrados).
+
+Solo quedan sin tocar: `submitContactForm`, `agentTestRunner`. Detalle completo de todo en
+`docs/agent/BASE44_REMOVAL_PLAN.md`. Requiere decision del dueno sobre si seguir con esas 2, o la
 sesion dedicada de rediseño de Estimates (gap 11) si aplica.
 
 ### Evidencia

@@ -2,12 +2,11 @@
 
 > Este archivo es leído automáticamente por Claude Code en cada sesión.
 > Leerlo completo antes de tocar cualquier archivo.
-> Versión actualizada: 2026-07-30 — TAREA G cerrada por completo (el "batch 2" no existia, estaba
-> mal contado), funciones SECURITY DEFINER expuestas de mas via RPC revocadas, NexArtSign Fase 6
-> (minimizacion de `/verify-document`) resuelta, estrategia de eliminacion de Base44 documentada
-> en `docs/agent/BASE44_REMOVAL_PLAN.md`, el link publico de Estimates arreglado (columnas
-> faltantes en produccion + funcion nueva), y rediseño completo de Estimates confirmado como
-> iniciativa futura propia (contexto en `docs/estimates-redesign-context.md`).
+> Versión actualizada: 2026-07-30 — TAREA G cerrada por completo, funciones SECURITY DEFINER
+> expuestas de mas via RPC revocadas, NexArtSign completo (Fases 6-7 + marco legal en
+> `docs/SignLaw.md`), 5 de 7 funciones de Base44 cerradas (`docs/agent/BASE44_REMOVAL_PLAN.md`),
+> link publico de Estimates arreglado, y rediseño completo de Estimates confirmado como iniciativa
+> futura propia (`docs/estimates-redesign-context.md`).
 >
 > Este archivo es la única fuente de verdad sobre **estado de fases**. Si `docs/fusion/FUSION_PHASES_STATUS.md`
 > o cualquier otro doc dice algo distinto sobre qué fase está completa, ese otro doc está desactualizado —
@@ -524,6 +523,17 @@ recorto la respuesta al minimo (numero de certificado, estado, fecha de firma, r
 verificacion de hash, proveedor) y se redeploy. Detalle completo en
 `docs/nexartsign-security-roadmap.md` Fase 6 y `docs/agent/OPEN_GAPS.md` gap 2.
 
+### Base44 — 3 funciones mas cerradas (5 de 7 resueltas), 2026-07-30
+
+`lowMarginAlert` y `approveMargin` (ligadas a Estimate) resueltas — **no portadas tal cual**:
+`approveMargin` tenia un PIN de admin hardcodeado (`'1234'`) como fallback en el original de
+Base44, reemplazado por el sistema de PIN por admin de TAREA H (`app_users.pin_hash`, sin secreto
+compartido); `lowMarginAlert` dependia de Firebase/Twilio (nunca configurados), reemplazado por el
+patron de email a admin que ya usa `businessNotifications.js`. `sendSignedEstimateCopy` resultó
+ser codigo muerto (`src/lib/nexArtSignCompletion.js` sin ningun importador real) — se borro el
+archivo completo, no hacia falta portar nada. Detalle en `docs/agent/BASE44_REMOVAL_PLAN.md`.
+Quedan sin tocar: `submitContactForm`, `agentTestRunner`.
+
 ### NexArtSign — marco legal de firma electronica investigado y documentado (`docs/SignLaw.md`), 2026-07-30
 
 Investigacion contra fuentes oficiales (ESIGN Act federal, UETA de Oregon/ORS 84) + estandar de
@@ -624,5 +634,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.8 — 2026-07-30*
+*Version: 2.9 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*
