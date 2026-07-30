@@ -559,6 +559,16 @@ entre si con hash (no solo hashear el PDF final), en vez de adoptar PAdES/PKI co
 esto se implemento — recomendaciones en `docs/SignLaw.md` seccion 10 y `docs/agent/OPEN_GAPS.md`
 gap 13, pendientes de decision del dueno. El documento sigue escrito para ser portable entre apps.
 
+**Mismo dia, cerrado un punto real:** el dueno confirmo que la recoleccion de IP/user-agent debe
+seguir (no es negociable), pero pidio investigar si "es publica, se puede recolectar sin mas" es
+correcto — **no lo es**. CCPA/CPRA y la Oregon Consumer Privacy Act (vigente desde 2024-07-01)
+tratan la IP como informacion personal, sobre todo guardada junto a otro identificador (nombre/
+email), que es exactamente lo que hace NexArtSign. La ley exige aviso, no opt-in (la IP no es "dato
+sensible" en estas leyes). Se agrego el aviso explicito al texto de consentimiento del firmante en
+`src/pages/SignDocumentView.jsx` (dice explicitamente que se recolecta IP/navegador-dispositivo/
+timestamp, con que proposito, y que se retiene como parte del registro legal) — excede el minimo
+legal y cierra el punto de disputa "no me avisaron".
+
 ### NexArtSign Fase 7 — confirmada completa 2026-07-30
 
 Quedaba como "sin verificar" al cerrar la Fase 6 (¿la app ya lee de Supabase o todavia depende de
@@ -647,5 +657,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.11 — 2026-07-30*
+*Version: 2.12 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

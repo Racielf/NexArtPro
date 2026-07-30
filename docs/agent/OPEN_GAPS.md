@@ -586,11 +586,20 @@ completo).
 
 **Divergencia marcada explicitamente, no oculta:** ArtFocusSing (la otra app del dueno) parte de
 no-recolectar IP/user-agent por defecto hasta aprobacion formal de privacidad; NexArtSign ya
-recolecta `ip_address`/`user_agent`/`device_fingerprint` en produccion sin ese proceso formal —
-señalado como decision de politica ya tomada de facto, no como bug.
+recolecta `ip_address`/`user_agent`/`device_fingerprint` en produccion. **Aviso agregado el mismo
+dia (2026-07-30):** el dueno confirmo que la recoleccion debe seguir — investigado que la IP **si
+es informacion personal** bajo CCPA/CPRA y la nueva Oregon Consumer Privacy Act (vigente desde
+2024-07-01), sobre todo guardada junto a otro identificador (como ya hace NexArtSign). La ley exige
+aviso, no consentimiento opt-in (la IP no es "dato sensible" en estas leyes). Se agrego el aviso
+explicito directamente al texto de consentimiento del firmante
+(`src/pages/SignDocumentView.jsx`, paso "Legal consent") — ahora dice explicitamente que se
+recolecta IP/navegador-dispositivo/timestamp, con que proposito, y que se retiene como parte del
+registro legal. Sigue pendiente la revision de privacidad formal por escrito (gobernanza interna,
+seccion 8 de `docs/SignLaw.md`) — el aviso al firmante ya existe, el proceso interno no.
 
-**No ejecutado hoy a proposito** — el pedido fue investigar y documentar, no implementar. Las 5
-recomendaciones (encadenar eventos con hash, pantalla de disclosure, evaluar PAdES, politica de
+**No ejecutado hoy a proposito (salvo el aviso de IP/UA, ver arriba)** — el pedido general fue
+investigar y documentar, no implementar todo. Las 5 recomendaciones restantes (encadenar eventos
+con hash, pantalla de disclosure completa, evaluar PAdES, politica de
 retencion, clasificador de elegibilidad) quedan en `docs/SignLaw.md` seccion 10, priorizadas por
 costo/impacto, pendientes de decision del dueno.
 

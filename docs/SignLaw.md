@@ -122,6 +122,36 @@ evidencia solo por ser electronica. Lo que gana o pierde una demanda no es "¿fu
 "¿se puede demostrar con evidencia solida que fue esa persona, que acepto ese documento exacto, y
 que el documento no se altero despues?"
 
+### La IP address SI es "informacion personal" — no importa que sea publica
+
+Investigado 2026-07-30 a pedido explicito del dueño: ¿la IP se puede recolectar libremente por ser
+"publica" (visible en cualquier request de red)? **No — "publica" no es lo mismo que "no regulada".**
+Confirmado contra fuentes oficiales:
+
+- **CCPA/CPRA (California)** — la definicion de "personal information" incluye explicitamente
+  identificadores como la IP address e "internet or other electronic network activity information".
+  Una IP sola, sin nada mas, podria no bastar para identificar a una persona — pero **guardada junto
+  a otro identificador (nombre, email)**, que es exactamente lo que hace NexArtSign en
+  `signing_participants`, la IP **si constituye informacion personal** sin ambigüedad. Fuentes:
+  [IAPP — are IP addresses "personal information" under CCPA?](https://iapp.org/news/a/are-ip-addresses-personal-information-under-ccpa) ·
+  [TermsFeed — is an IP address PI under CCPA/CPRA?](https://www.termsfeed.com/faq/is-an-ip-address-personal-information-under-ccpa-cpra/)
+- **Oregon Consumer Privacy Act (ORS 646A.570-646A.589, vigente desde 2024-07-01)** — define
+  "personal data" de forma amplia como cualquier informacion vinculable a un individuo o a su
+  dispositivo — una IP address vinculada a la sesion de un firmante especifico cae dentro de esa
+  definicion. Fuente oficial: [Oregon DOJ — Privacy Law FAQs for Businesses](https://www.doj.state.or.us/consumer-protection/for-businesses/privacy-law-faqs-for-businesses/).
+- **Que exige la ley hacer al respecto (segun la misma fuente de Oregon DOJ):** la OCPA exige un
+  **aviso claro (notice)**, no consentimiento de opt-in — porque la IP no es "dato sensible" bajo
+  esta ley (sensible = ubicacion precisa, salud, biometria, origen racial/etnico, orientacion
+  sexual, etc.). El aviso debe decir que tipos de datos se procesan, con que proposito especifico,
+  y si se comparten con terceros.
+- **Conclusion practica:** la ley solo exige un aviso de privacidad en algun lugar accesible (ej.
+  una politica de privacidad general). **Meter el aviso dentro del mismo clic de "estoy de
+  acuerdo" del firmante, en vez de solo una politica de privacidad separada que nadie lee, excede
+  el minimo legal** — y ademas cierra directamente el punto de disputa "no me dijeron que
+  recolectaban mi IP" (ver matriz de disputas, seccion 6) al mismo tiempo que satisface el
+  requisito de aviso. Es la razon tecnica por la que se agrego el texto explicito al paso de
+  consentimiento de NexArtSign (ver seccion 9).
+
 ---
 
 ## 3. Terminologia aprobada — limite obligatorio de afirmaciones
@@ -277,16 +307,31 @@ anteriores tuvo desactualizaciones — ver `docs/nexartsign-security-roadmap.md`
 | 9. Operaciones confiables | Cumple razonablemente — el flujo esta en produccion, versionado en migraciones (mayormente), y probado con casos reales hoy (formulario de contacto, etc. son casos aparte de Base44, no de NexArtSign). |
 | 10. Prueba reproducible | Parcial — existe `/verify-document` (`resolveSigningCertificate`, minimizado 2026-07-30) para que un tercero compare el hash del PDF. No existe todavia un export de litigio completo (manifiesto + cadena de eventos + versiones de renderer/schema) como describe el modelo de la seccion 5. |
 
-### Divergencia deliberada frente a ArtFocusSing — IP/user-agent
+### Divergencia frente a ArtFocusSing — IP/user-agent, aviso agregado 2026-07-30
 
 ArtFocusSing (`SingLw-V1`) parte de una posicion **conservadora por defecto**: no recolectar
 IP/user-agent hasta que abogado + dueño de privacidad aprueben proposito, minimizacion, y
-retencion especificos. **NexArtSign ya toma la decision contraria y ya esta en produccion:**
-recolecta `ip_address`/`user_agent`/`device_fingerprint` en `signing_participants` sin que conste
-una revision de privacidad formal por escrito. Esto no es necesariamente incorrecto (es exactamente
-el patron que usan DocuSign/Adobe), pero es una divergencia real que vale la pena que el dueño
-revise conscientemente — no es un gap tecnico, es una decision de politica ya tomada de facto por
-el codigo, sin el proceso de aprobacion formal que este documento recomienda en la seccion 8.
+retencion especificos. NexArtSign toma la decision contraria y ya esta en produccion: recolecta
+`ip_address`/`user_agent`/`device_fingerprint` en `signing_participants` — es exactamente el patron
+que usan DocuSign/Adobe (ver seccion 7).
+
+**Confirmado por el dueño (2026-07-30) que la recoleccion debe seguir — la correccion necesaria no
+era dejar de recolectar, era avisar explicitamente.** Investigado: la IP address **si es
+"informacion personal"** bajo CCPA/CPRA y la nueva Oregon Consumer Privacy Act (vigente desde
+2024-07-01), sobre todo guardada junto a otro identificador como ya hace NexArtSign — no
+importa que sea "publica" (ver subseccion nueva en seccion 2). La ley exige **aviso**, no
+consentimiento de opt-in (la IP no es "dato sensible" en estas leyes). Se cerro el gap agregando el
+aviso explicito directamente al paso de consentimiento del firmante
+(`src/pages/SignDocumentView.jsx`, texto bajo el checkbox de "Legal consent"): ahora dice
+explicitamente que se recolecta IP address, informacion de navegador/dispositivo, y fecha/hora de
+cada accion, con que proposito (verificar identidad e integridad de la firma), y que se retiene
+como parte del registro legal del documento firmado. Esto excede el minimo legal (que solo pide un
+aviso de privacidad en algun lugar) y cierra a la vez el punto de disputa "no me dijeron que
+recolectaban mi IP" (seccion 6).
+
+Sigue pendiente, no resuelto hoy: la revision de privacidad formal por escrito (dueño de privacidad
++ proposito/minimizacion/retencion documentados, seccion 8) — el aviso al firmante ya existe, el
+proceso de gobernanza interno todavia no.
 
 ### Resumen
 
@@ -305,8 +350,10 @@ arquitectura de firma.
 1. **Barato, cierra el hallazgo mas importante de v2:** encadenar `signing_events` con un hash del
    evento anterior (`previous_evidence_hash`), siguiendo el modelo de la seccion 5 — no requiere
    cambiar el modelo de firma, solo agregar una columna y calcular el hash al insertar cada evento.
-2. **Barato, alto valor legal:** agregar una pantalla de "Electronic Record and Signature
-   Disclosure" separada del consentimiento por documento (pilar 3).
+2. **Parcialmente resuelto 2026-07-30:** el texto de consentimiento ya avisa explicitamente sobre
+   IP/user-agent/device (ver seccion 9). Sigue pendiente una pantalla completa de "Electronic
+   Record and Signature Disclosure" separada (derecho a copia en papel, retiro de consentimiento,
+   requisitos de hardware/software — pilar 3), mas rigurosa que el aviso inline actual.
 3. **Mediano:** evaluar firmar digitalmente el PDF final (PAdES/PKI) — mas caro que la opcion 1,
    solo si se decide perseguir paridad total con DocuSign/Adobe.
 4. **Bajo costo, proceso:** documentar formalmente la politica de retencion/legal-hold, y someter
@@ -334,6 +381,9 @@ arquitectura de firma.
 - [NIST SP 800-63 — gestion de riesgo de identidad digital](https://pages.nist.gov/800-63-4/sp800-63/dirm/) ·
   [NIST SP 800-63B — guia de sesiones](https://pages.nist.gov/800-63-4/sp800-63b/session/)
 - [California Privacy Protection Agency — advisory de minimizacion](https://cppa.ca.gov/pdf/enfadvisory202401.pdf)
+- [Oregon DOJ — Privacy Law FAQs for Businesses (Oregon Consumer Privacy Act)](https://www.doj.state.or.us/consumer-protection/for-businesses/privacy-law-faqs-for-businesses/)
+- [IAPP — are IP addresses "personal information" under CCPA?](https://iapp.org/news/a/are-ip-addresses-personal-information-under-ccpa) ·
+  [TermsFeed — is an IP address personal information under CCPA/CPRA?](https://www.termsfeed.com/faq/is-an-ip-address-personal-information-under-ccpa-cpra/)
 - [DocuSign — platform safety](https://www.docusign.com/safety/platform-safety) ·
   [DocuSign — are e-signatures admissible in court?](https://www.docusign.com/blog/are-electronic-signatures-admissible-in-court)
 - [Adobe — audit report controls](https://helpx.adobe.com/sign/config/global/audit-report.html) ·

@@ -848,7 +848,7 @@ export default function SignDocumentView() {
         <span>I confirm that I am the intended signer, I have reviewed this document, and I agree to sign it electronically.</span>
       </label>
       <p style={{ fontSize:12, color:'#94a3b8', lineHeight:1.6, marginBottom:20, paddingLeft:30 }}>
-        By continuing, you agree that your electronic signature has the same intent as a handwritten signature and that NexArtSign will record a secure certificate and audit trail for this signing session.
+        By continuing, you agree that your electronic signature has the same legal intent as a handwritten signature. To create a secure, verifiable record of this signing session, NexArtSign will record your IP address, browser and device information, and the date/time of each action you take during this process. This information is used solely to verify your identity and the integrity of this signature, and is retained as part of the signed document&apos;s legal record.
       </p>
       <div style={{ display:'flex', justifyContent:'space-between' }}>
         <button onClick={goBack} style={{ ...S.btn, ...S.outline, padding:'8px 16px' }}><ArrowLeft style={{ width:14, height:14 }} /> Back</button>
