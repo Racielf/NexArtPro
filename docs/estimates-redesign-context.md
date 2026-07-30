@@ -19,10 +19,11 @@ como se hizo con NexArtSign.
 - Para intentar resolver eso, en algun momento se creo un "cerebro" autonomo (`src/brain/`,
   `securityBrain` — ver `docs/agent/SYSTEM_MAP.md`) pensado para vigilar los calculos y el sistema
   en general. Segun el dueno, esto termino mezclandose con temas de seguridad y borrado de
-  archivos, y hay 2-3 cosas relacionadas con seguridad que "no funcionan bien" como resultado —
-  sin identificar todavia cuales exactamente. **Investigar el alcance real de `src/brain/` /
-  `securityBrain` y que tanto se solapa con seguridad antes de tocar nada ahi** cuando se retome
-  esto.
+  archivos. **Ya investigado el 2026-07-30, ver `docs/agent/OPEN_GAPS.md` gap 12**: la plomeria
+  tecnica (columnas, IDs de accion) esta intacta hoy; las debilidades reales son limitaciones ya
+  auto-documentadas por el propio sistema (sin OTP/2FA, sesion solo en `sessionStorage`, uso de
+  `window.confirm`/`alert` para gating de seguridad) — no se encontro un bug reproducible todavia,
+  falta que el dueno de un caso concreto.
 - Las plantillas del documento no funcionaban bien.
 - Modelo de borrado: en vez de borrar de verdad, el sistema debia "archivar" — lo archivado va a
   un lugar que solo el admin puede ver y restaurar. El dueno dice que esto sigue siendo la

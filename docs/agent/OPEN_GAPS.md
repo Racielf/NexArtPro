@@ -446,6 +446,83 @@ abiertas para cuando se retome.
 
 ---
 
+## 12. "Cerebro" de seguridad (src/brain + privilegedActionGuard) — investigado, sin bug confirmado, requiere mas detalle del dueno
+
+### Gap
+
+El dueno describio (2026-07-30, en el contexto del rediseño de Estimates) que en algun momento
+creo un "cerebro" autonomo para vigilar calculos y el sistema en general, que esto se termino
+mezclando con seguridad y borrado de archivos, y que "dos o tres cosas de seguridad no funcionan
+bien" como resultado. Se investigo el codigo real para documentar el estado, no para arreglarlo
+todavia.
+
+### Que es esto tecnicamente
+
+- `src/brain/modules/securityBrain.js` — modulo de solo lectura: analiza `auth_security_logs` y
+  `audit_logs` (ultimas 24h/7d) y produce "checks" de salud (eventos criticos, intentos fallidos
+  repetidos, actividad de purge/restore) para el Security Dashboard.
+- `src/lib/privilegedActionGuard.js` — la pieza real de "seguridad mezclada con borrado de
+  archivos": gatea las acciones `RESTORE_RECORD` y `PURGE_RECORD` del Recovery Center
+  (`src/pages/RecoveryCenter.jsx`). Antes de dejar restaurar o purgar (borrado permanente) un
+  registro, llama a `securityBrain` como "advisory". Si `securityBrain` devuelve nivel `critical`
+  y la accion es `PURGE_RECORD`, la bloquea automaticamente (`auto_block_on_critical_brain`) con
+  un `window.alert`. Para `RESTORE_RECORD` o nivel `warning`, muestra un `window.confirm` y deja
+  seguir si el usuario acepta.
+- `src/brain/core/actionGuards.js` — funcion generica de gate (`allowed`/`blocked`/
+  `requiresConfirmation`) que usan varios modulos de brain, no solo seguridad.
+
+### Verificado hoy (solido, no roto)
+
+- Las columnas que `securityBrain.js` lee (`event_type`, `success`, `user_identifier`,
+  `created_date` en `auth_security_logs`; `action`, `performed_at`, `created_date` en
+  `audit_logs`) existen de verdad en las tablas reales de produccion — no hay mismatch de schema
+  como el que se encontro en `estimates` (ver gap 10/11).
+- Los IDs de accion coinciden entre `RecoveryCenter.jsx` (`'RESTORE_RECORD'`, `'PURGE_RECORD'`) y
+  `PRIVILEGED_ACTIONS` en `privilegedActionGuard.js` — no hay bug de nombre desalineado ahi.
+- No se encontro ningun error de ejecucion evidente (imports rotos, funciones inexistentes) en el
+  camino RecoveryCenter -> privilegedActionGuard -> securityBrain.
+
+### Debilidades reales, ya auto-documentadas por el propio sistema (no son un bug nuevo, son
+### tradeoffs aceptados en su momento)
+
+`src/docs/PRIVILEGED_ACTION_GUARD.md` (seccion "Current Limitations") ya admite: no hay
+reautenticacion con password, no hay OTP/2FA (nunca se conecto un proveedor SMS como Twilio), la
+sesion privilegiada vive solo en `sessionStorage` (se pierde al cerrar el navegador, no sincroniza
+entre pestañas), y el contador de intentos fallidos se resetea con un refresh de pagina. Ademas,
+usar `window.confirm`/`window.alert` para una decision de seguridad critica (bloquear un purge) es
+un patron fragil — no es una barrera real, es una confirmacion de UI.
+
+### Lo que no se pudo confirmar
+
+No se encontro un bug reproducible (crash, error visible, accion que deberia bloquear y no
+bloquea) con la investigacion de hoy. Es posible que lo que el dueno recuerda como "no funciona
+bien" haya sido el bug real de RLS encontrado y corregido en la misma sesion de hoy (TAREA G batch
+5, `CLAUDE.md` seccion 11): antes de esa correccion, cualquier usuario `authenticated` — no solo
+`admin` — podia leer `audit_logs`/`security_audit_logs`/`auth_security_logs` via una policy
+paralela (`"Allow all for authenticated"`), lo que habria hecho que el "advisory" de seguridad no
+protegiera nada de verdad para nadie con sesion. Esa policy paralela ya esta cerrada.
+
+### Prioridad
+
+Sin definir — requiere que el dueno aporte un caso concreto (que paso, en que pantalla, mensaje de
+error si hubo) para poder reproducir y arreglar algo especifico, en vez de rediseñar a ciegas.
+
+### Estado
+
+Investigado y documentado 2026-07-30. Sin bug confirmado todavia — pendiente de mas detalle del
+dueno o de una prueba en vivo guiada.
+
+### Evidencia
+
+- `src/brain/modules/securityBrain.js`
+- `src/lib/privilegedActionGuard.js`
+- `src/pages/RecoveryCenter.jsx` lineas 182, 192, 212, 243, 260
+- `src/docs/PRIVILEGED_ACTION_GUARD.md` (seccion "Current Limitations")
+- Columnas reales de `audit_logs`/`auth_security_logs` verificadas via `information_schema.columns`
+- `CLAUDE.md` seccion 11 TAREA G (hallazgo de la policy `"Allow all for authenticated"`)
+
+---
+
 ## Regla de mantenimiento
 
 Cuando un gap se cierre:
