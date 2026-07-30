@@ -63,6 +63,13 @@ punto de partida visual, no necesariamente como codigo a copiar 1:1 (es un proye
 aparte, con su propio schema — no asumir que coincide con el de NexArtPro sin revisar). Revisarlo
 a fondo cuando arranque la sesion de rediseño, no antes.
 
+**Ojo — existen 2 copias de NexArtProV3, usar la de Google Anti Gravity, no la del Agent:**
+`D:\My Bussines\SQL BSE\Fusion System\Agent\01-source-readonly\NexArtProV3-main` es una copia
+congelada de solo lectura (mencionada en el `CLAUDE.md` de esa carpeta como "referencia estetica"),
+mas vieja que `D:\My Bussines\Strategy\Google Anti Gravity\NexArtProV3` — esta ultima tiene
+archivos mas recientes (`SESION_LEADS_PUBLIC.md`, scripts de fix de encoding, un `dist/` de build
+reciente). Para diseño, usar la de Google Anti Gravity.
+
 ## Que preguntar / decidir cuando se retome (no decidir ahora)
 
 1. Adjuntos del estimate: donde y como se van a guardar de verdad (JSONB en la tabla vs tabla
