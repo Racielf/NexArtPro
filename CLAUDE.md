@@ -533,6 +533,14 @@ precios, clientes) via conexion a base propia o import CSV/Excel, como QuickBook
 chico y desactualizado (`src/docs/MULTI_TENANT_MIGRATION_PLAN.md`, era Base44) — no confundir, la
 vision nueva es un salto de alcance mayor.
 
+### Base44 — 6 de 7 resueltas, solo queda `agentTestRunner`, 2026-07-30
+
+`submitContactForm` cerrada tambien hoy: el original exigia `address` (Contact.jsx siempre manda
+`''`, se habria rechazado igual) y usaba columnas que no existen en `leads` real
+(`name`/`service` vs. `full_name`/`project_type`). Puerto nuevo contra el schema real, email de la
+empresa correcto (`info@rcartconstruction.com`), verificado end-to-end. Detalle en
+`docs/agent/BASE44_REMOVAL_PLAN.md`.
+
 ### Base44 — 3 funciones mas cerradas (5 de 7 resueltas), 2026-07-30
 
 `lowMarginAlert` y `approveMargin` (ligadas a Estimate) resueltas — **no portadas tal cual**:
@@ -664,5 +672,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.13 — 2026-07-30*
+*Version: 2.14 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

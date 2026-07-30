@@ -25,13 +25,30 @@ y cruzado contra la lista real de Edge Functions desplegadas en produccion
 
 | Funcion invocada desde el frontend | Desplegada en Supabase | Donde se llama |
 |---|---|---|
-| `submitContactForm` | **NO** | `src/pages/Contact.jsx:32`, `src/pages/PublicHome.jsx:91,116` — formulario de contacto publico del sitio |
+| `submitContactForm` | **SI — resuelto 2026-07-30** | `src/pages/Contact.jsx:32`, `src/pages/PublicHome.jsx:91,116` — formulario de contacto publico del sitio |
 | `resolveEstimatePublicToken` | **SI — resuelto 2026-07-30** | `src/pages/ClientEstimateView.jsx:38` — vista publica del estimate que ve el cliente |
 | `resolveAttachmentPublicUrl` | **NO** — bloqueado, ver nota | `src/components/estimates/ClientAttachmentsSection.jsx:32` — adjuntos del estimate |
 | `lowMarginAlert` | **Resuelto 2026-07-30 (rediseñado, no portado tal cual)** | `src/pages/EstimateEditor.jsx` |
 | `approveMargin` | **Resuelto 2026-07-30 (rediseñado, no portado tal cual)** | `src/components/estimates/internal/PricingOverrideModal.jsx:67` |
 | `agentTestRunner` | **NO** | `src/components/settings/AgentTestRunnerPanel.jsx:21` |
 | `sendSignedEstimateCopy` | **Cerrado 2026-07-30 — era codigo muerto, se borro** | (era `src/lib/nexArtSignCompletion.js:141`, archivo eliminado) |
+
+### `submitContactForm` — resuelto 2026-07-30
+
+Puerto directo, sin bloqueos de diseño (a diferencia de `resolveAttachmentPublicUrl`). Causa raiz
+de por que este tambien estaba mal: el original de Base44 exigia `address` como campo requerido,
+pero `Contact.jsx` siempre manda `address: ''` — el original lo habria rechazado igual aunque
+hubiera estado desplegado. Ademas usaba nombres de columna (`name`, `service`) que no existen en la
+tabla real `leads` (`full_name`, `project_type`). Nueva version en
+`supabase/functions/submitContactForm/index.ts`: solo exige `name`/`phone`/`email`, mapea contra
+las columnas reales (`full_name`, `project_type`, `scope`, `budget`, `timeline`, `zip`), y guarda
+los campos sin columna dedicada (`address`, `city`, `property_type`, `size`) en `metadata` jsonb.
+Los 2 emails (aviso al negocio + confirmacion al cliente) se mandan llamando al Edge Function
+`sendEmail` ya desplegado, usando el email real de la empresa (`info@rcartconstruction.com` desde
+`appConfig.js`, no el `sales@nexartpro.com` hardcodeado del original que ni siquiera es un dominio
+real de la empresa). Verificado end-to-end con un envio de prueba marcado claramente como test
+(insertado y luego borrado de `leads`), mas los 2 paths de validacion (campo faltante, email
+invalido).
 
 ### `resolveEstimatePublicToken` — resuelto 2026-07-30
 
@@ -132,7 +149,9 @@ Funciones que SI se migraron correctamente y funcionan hoy (para referencia, no 
 `sendEstimateEmail`, `sendEmail`, `issueSigningAccessLink`, `resolveSigningPackageToken`,
 `requestSigningOtp`, `verifySigningOtp`, `sendSignedCopy`, `completeSigningPackage`,
 `resolveSigningCertificate`, `createStripeCheckoutSession`, `resolveEstimatePublicToken`,
-`approveMargin`.
+`approveMargin`, `lowMarginAlert` (client-side, no Edge Function), `submitContactForm`.
+
+**Solo queda `agentTestRunner` de las 7 originales.**
 
 ## Inventario completo de Base44 en el repo
 

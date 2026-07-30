@@ -369,7 +369,7 @@ Abierto
 
 ---
 
-## 10. Migracion Base44 -> Supabase incompleta — 2 de 7 funciones rotas siguen pendientes
+## 10. Migracion Base44 -> Supabase incompleta — solo `agentTestRunner` sigue rota
 
 ### Gap
 
@@ -379,16 +379,15 @@ las funciones nunca portadas fallan en produccion hoy, no es solo deuda tecnica 
 
 ### Impacto
 
-Bajo ya (era Alto). Solo quedan rotas: `submitContactForm` (formulario de contacto publico, 3
-call sites) y `agentTestRunner` (panel interno de Settings). `resolveAttachmentPublicUrl` sigue
-bloqueada por una decision de diseño de datos (ver nota), no por falta de tiempo.
-`resolveEstimatePublicToken`, `lowMarginAlert`, `approveMargin` resueltos 2026-07-30.
-`sendSignedEstimateCopy` cerrado el mismo dia — era codigo muerto, se borro.
+Bajo. De las 7 originales, 6 estan resueltas. Solo queda `agentTestRunner` (panel interno de
+Settings, no publico). `resolveAttachmentPublicUrl` sigue bloqueada por una decision de diseño de
+datos (donde viven los adjuntos del estimate), no por falta de tiempo — se retoma con el rediseño
+de Estimates (gap 11).
 
 ### Prioridad
 
-Media — lo que tocaba cash flow directamente (el link publico del estimate) ya esta resuelto. Lo
-que queda es menor: un formulario de contacto y una herramienta interna de testing.
+Baja — lo que tocaba produccion visible (link de estimate, formulario de contacto, alertas de
+margen, aprobacion de margen) ya esta resuelto. Solo queda una herramienta interna de testing.
 
 ### Estado
 
@@ -416,9 +415,17 @@ Ningun cambio de contrato hacia el frontend en ninguno de los dos casos.
 todo el repo — se borro. El flujo real de completion de firma pasa por
 `SignDocumentView.jsx` -> `completeSigningPackage`/`sendSignedCopy` (ya migrados).
 
-Solo quedan sin tocar: `submitContactForm`, `agentTestRunner`. Detalle completo de todo en
-`docs/agent/BASE44_REMOVAL_PLAN.md`. Requiere decision del dueno sobre si seguir con esas 2, o la
-sesion dedicada de rediseño de Estimates (gap 11) si aplica.
+**`submitContactForm` cerrada el mismo dia.** El original de Base44 exigia `address` como campo
+requerido, pero `Contact.jsx` siempre manda `address: ''` — se habria rechazado igual aunque
+hubiera estado desplegado. Ademas usaba nombres de columna que no existen en la tabla real `leads`
+(`name`/`service` vs. las reales `full_name`/`project_type`). Puerto nuevo en
+`supabase/functions/submitContactForm/index.ts` contra el schema real, usando el email real de la
+empresa (`info@rcartconstruction.com`) en vez del dominio hardcodeado que ni siquiera es el
+correcto. Verificado end-to-end (insercion + borrado de un lead de prueba, mas los 2 paths de
+validacion).
+
+**Solo queda `agentTestRunner`** de las 7 originales — herramienta interna de Settings, no
+publica, prioridad baja. Detalle completo de todo en `docs/agent/BASE44_REMOVAL_PLAN.md`.
 
 ### Evidencia
 
