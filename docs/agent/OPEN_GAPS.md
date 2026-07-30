@@ -33,7 +33,10 @@ Critica
 
 Resuelto. Verificado directamente en codigo el 2026-07-27: cero lookups por `token` plano en `base44/functions/`, `buildIssuedTokenFields()` nunca persiste el token en texto plano, y el token se revoca (`token_hash`, `token`, `token_last_four` limpiados + `token_revoked_at`) al firmar o declinar. El roadmap decia "parcial" pero estaba desactualizado — el trabajo ya se habia hecho en una sesion anterior no documentada.
 
-Queda un punto sin verificar por separado: ruta de fallback para tokens legacy emitidos antes de este hardening. No confirmado ni descartado. Ver `docs/nexartsign-security-roadmap.md`.
+**Punto pendiente cerrado 2026-07-30:** se consulto directo la produccion — de 10 `signing_packages`
+y 11 `signing_participants` en total, **cero** filas tienen un `token` en texto plano (todas
+`NULL`/vacio). No hay ningun token legacy pre-hardening dando vueltas; el punto de fallback quedaba
+sin uso real, no hace falta ninguna ruta especial para el.
 
 ### Evidencia
 
@@ -41,6 +44,7 @@ Queda un punto sin verificar por separado: ruta de fallback para tokens legacy e
 - `base44/functions/resolveSigningPackageToken/entry.ts` (lineas 34, 44)
 - `base44/functions/completeSigningPackage/entry.ts` (lineas ~181, ~188, ~200, ~235-249)
 - `base44/functions/_shared/nexartsignSecurity.ts` (`buildIssuedTokenFields`, lineas 35-42)
+- Query directa a `signing_packages`/`signing_participants` en `hdiejuqbhqhebrpneymo`, 2026-07-30
 
 ---
 

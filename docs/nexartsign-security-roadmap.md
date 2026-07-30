@@ -49,9 +49,11 @@ Verified done (2026-07-27):
 - **Stop storing new tokens in plain text.** Confirmed: `base44/functions/_shared/nexartsignSecurity.ts` `buildIssuedTokenFields()` (line 35-42) returns `token: ''` and persists only `token_hash: await sha256Hex(rawToken)` plus `token_last_four` for support display.
 - **Kill or revoke token after final signature or decline.** Confirmed: `completeSigningPackage/entry.ts` clears `token`, `token_hash`, `token_last_four` and sets `token_revoked_at` at multiple completion/decline paths (lines ~235-249, ~662-672, ~869-882).
 
-Not verified either way (2026-07-27):
+Verified 2026-07-30 (previously open):
 
-- **Fallback migration path for legacy tokens.** Did not find or rule out specific handling for pre-hardening records that might still carry a plain-text `token` value from before this hardening shipped. Needs a dedicated check (e.g. query for any `SigningPackage`/`SigningParticipant` rows with non-empty `token` and empty/mismatched `token_hash`) before this line item can be marked resolved. Treat as open until checked.
+- **Fallback migration path for legacy tokens.** Queried production directly: 0 of 10
+  `signing_packages` and 0 of 11 `signing_participants` have a non-empty plain-text `token`. No
+  legacy pre-hardening tokens exist — no fallback path needed. Closed.
 
 Important files:
 
