@@ -143,7 +143,7 @@ Pendiente de documentar mejor
 
 ---
 
-## 6. Toda la base de datos de produccion — Batches 1, 4, 5 resueltos 2026-07-29, resto pendiente
+## 6. Toda la base de datos de produccion — CERRADO 2026-07-30 (salvo NexArtSign publico)
 
 ### Gap
 
@@ -197,6 +197,11 @@ auditoria actualizada (ahora son 3 patrones a buscar, no 2).
 **Pendiente (fuera de este batch):** solo las tablas publicas de NexArtSign (que se solapan con
 los gaps 1-3 de este mismo archivo — coordinar con ese roadmap, no redisenar). Lista completa en
 `CLAUDE.md` seccion 11 TAREA G.
+
+**Cierre 2026-07-30:** se verifico en vivo contra `pg_policies` (los 3 patrones de arriba) sobre
+las 64 tablas con RLS de `public`. No quedaba ningun "batch 2" real de tablas pendientes — el
+conteo de "~35+ tablas" del parrafo anterior estaba mal, la unica exposicion que sigue abierta son
+las 5 tablas publicas de NexArtSign ya mencionadas, diferidas a proposito. Gap cerrado.
 
 ### Evidencia
 
@@ -268,6 +273,77 @@ Cierra este gap. El siguiente paso natural es retomar gap 6 (RLS del resto de la
   que ninguna sesion real llega nunca a Postgres
 - `src/App.jsx` commit `5304dae` (2026-06-09) — bypass original; corregido 2026-07-27
 - `supabase/migrations/20260727_investor_hub_rls_remediation.sql` (la parte ya corregida)
+
+---
+
+## 8. Funciones SECURITY DEFINER expuestas de mas via RPC — RESUELTO 2026-07-30
+
+### Gap
+
+10 funciones `SECURITY DEFINER` eran ejecutables directo por `anon`/`authenticated` via
+`/rest/v1/rpc/...`, sin que ningun caller legitimo lo necesitara.
+
+### Impacto
+
+Alto para 3 de las 10: `create_security_block` permitia a cualquiera con la anon key bloquear el
+IP/fingerprint de otra persona (griefing/DoS contra el flujo publico de firma de NexArtSign),
+`write_security_audit_log` permitia contaminar el log de auditoria con entradas falsas, y
+`record_nexartsign_token_attempt` permitia falsificar intentos fallidos de otra persona (pudiendo
+disparar un bloqueo real contra una victima). Las otras 6 (`nexartsign_recent_failed_attempts`,
+`is_origin_blocked`, `handle_new_user`, `send_invoice_email`, `send_welcome_email`,
+`update_company_config_timestamp`) tenian menor riesgo practico.
+
+### Prioridad
+
+Alta
+
+### Estado
+
+Resuelto. Verificado que los unicos callers reales (`supabase/functions/_shared/nexartsignSecurity.ts`)
+usan `service_role` via `createSupabaseAdmin()`, que ignora GRANTs de Postgres — revocar el
+acceso de `anon`/`authenticated` no rompe ningun flujo real. `investor_user_role()` se dejo
+intacta a proposito (la usan las policies de RLS de toda la app). Detalle completo, incluyendo el
+bug de la primera migracion (revocar de `anon, authenticated` fue un no-op porque el permiso real
+venia del grant implicito a `PUBLIC`), en `CLAUDE.md` seccion 11 TAREA G.
+
+### Evidencia
+
+- Supabase security advisor: `anon_security_definer_function_executable` /
+  `authenticated_security_definer_function_executable`
+- `supabase/migrations/20260730_revoke_anon_rpc_security_definer_functions.sql`
+
+---
+
+## 9. Advisories menores de Supabase — Abierto, sin decision de prioridad
+
+### Gap
+
+Encontrados en el mismo barrido del gap 8, sin relacion directa con exposicion de datos de
+negocio: `function_search_path_mutable` (~20 funciones sin `SET search_path`, riesgo de hijacking
+via `search_path` si alguien puede crear objetos en un schema que aparezca antes en el path),
+`extension_in_public` (`pg_net` instalada en el schema `public` en vez de uno dedicado),
+`public_bucket_allows_listing` (el bucket de storage `documents` tiene una policy SELECT amplia
+que permite listar todos los archivos del bucket, no solo acceder por URL directa),
+`auth_leaked_password_protection` (Supabase Auth no esta chequeando contrasenas contra
+HaveIBeenPwned).
+
+### Impacto
+
+Bajo a medio. Ninguno expone datos de negocio directamente, pero son buenas practicas de
+seguridad reales, no ruido.
+
+### Prioridad
+
+Sin definir — requiere decision del dueno sobre si vale la pena dedicar una sesion a esto o
+esperar a que se acumule con otro trabajo de seguridad.
+
+### Estado
+
+Abierto
+
+### Evidencia
+
+- Supabase security advisor (`get_advisors`, tipo `security`), 2026-07-30
 
 ---
 

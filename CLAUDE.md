@@ -2,7 +2,8 @@
 
 > Este archivo es leído automáticamente por Claude Code en cada sesión.
 > Leerlo completo antes de tocar cualquier archivo.
-> Versión actualizada: 2026-07-29 — autenticacion real (TAREA H) y primera tanda de RLS (TAREA G) resueltas y verificadas.
+> Versión actualizada: 2026-07-30 — TAREA G cerrada por completo (el "batch 2" no existia, estaba
+> mal contado) y funciones SECURITY DEFINER expuestas de mas via RPC revocadas.
 >
 > Este archivo es la única fuente de verdad sobre **estado de fases**. Si `docs/fusion/FUSION_PHASES_STATUS.md`
 > o cualquier otro doc dice algo distinto sobre qué fase está completa, ese otro doc está desactualizado —
@@ -219,7 +220,7 @@ siguen abiertas de verdad.
 | 5.7 | FlipAnalysis create/edit form | Completo — `FlipAnalysisForm.jsx` |
 | 5.8 | Work Order -> Project selector | Completo — 2026-07-27, tarjeta "Job Details" en `WorkOrderDetail.jsx` |
 | 6 | Bridge Projects <-> Work Orders | Completo — `flip_analyses` + `work_orders.project_id` aplicados en produccion (2026-06-13) |
-| 7 | QA final y cleanup | Parcial. Route guard reactivado 2026-07-27. Autenticacion real resuelta 2026-07-29 (TAREA H). RLS del Investor Hub re-cerrado y verificado 2026-07-29 (TAREA G batch 1) — quedan ~35+ tablas fuera del Investor Hub pendientes (TAREA G, proxima tanda) |
+| 7 | QA final y cleanup | Parcial. Route guard reactivado 2026-07-27. Autenticacion real resuelta 2026-07-29 (TAREA H). RLS de toda la DB cerrada y verificada 2026-07-30 (TAREA G, completa salvo el lado publico de NexArtSign, diferido a proposito) — funciones SECURITY DEFINER con exposicion RPC de mas tambien cerradas el mismo dia |
 
 ---
 
@@ -332,7 +333,7 @@ verificar entrega end-to-end de un correo nuevo todavia.
 `auth.uid()` funciona de verdad — ya no deberia repetirse el problema de "arreglo que rompe la
 app" que paso con el primer intento de TAREA F.
 
-### TAREA G — Auditoria RLS del resto de la DB — BATCHES 1, 4, 5 RESUELTOS 2026-07-29, resto pendiente
+### TAREA G — Auditoria RLS del resto de la DB — CERRADA 2026-07-30 (salvo NexArtSign publico, diferido a proposito)
 
 Al intentar TAREA F (2026-07-27) se encontro que las tablas del Investor Hub tenian una policy
 `anon_full_access` (`roles: {anon}`, `cmd: ALL`, `USING (true)`) dando acceso publico total sin
@@ -424,7 +425,52 @@ buscar SIEMPRE 3 patrones, no 2: `'anon' = ANY(roles)`, `roles = '{public}'`, Y
 `roles = '{authenticated}' AND qual = 'true'` (o equivalente sin condicion real). El tercero se
 descubrio recien hoy y ya afecto 34 tablas sin ser detectado por las 2 auditorias anteriores.
 
-Requiere decision explicita del dueno sobre prioridad/alcance antes de la siguiente tanda.
+**Correccion 2026-07-30: "batch 2" ya no esta pendiente, estaba mal contado.** Se verifico en
+vivo contra `pg_policies` en produccion (los 3 patrones de arriba) sobre las 64 tablas con RLS de
+`public`. Resultado: la unica exposicion `anon`/`always true` que queda son las 5 tablas publicas
+de NexArtSign (`signing_packages`, `signing_participants`, `signing_events`,
+`signing_certificates`, `public_document_access`) — exactamente las que este documento y
+`OPEN_GAPS.md` ya marcaban como diferidas a proposito. No existe ningun otro batch de tablas
+pendiente de RLS por tabla. Cerrar esta tarea como completa (salvo el lado publico de NexArtSign,
+coordinado con `docs/nexartsign-security-roadmap.md`).
+
+**Hallazgo nuevo el mismo dia, distinto de RLS de tablas: funciones `SECURITY DEFINER`
+ejecutables directo por `anon`/`authenticated` via `/rest/v1/rpc/...` sin necesitarlo.** El
+security advisor de Supabase senalo 10 funciones callable por `anon`. Se verifico cada una
+(`pg_get_functiondef` + grep de callers reales en `supabase/functions/`): los unicos callers son
+Edge Functions en `supabase/functions/_shared/nexartsignSecurity.ts`, y **todas** usan
+`createSupabaseAdmin()` (autentica con `service_role`, que ignora GRANTs de Postgres por
+completo) — ningun caller legitimo necesitaba que `anon`/`authenticated` tuvieran `EXECUTE`.
+3 de las 10 eran explotables de verdad (funciones normales, no triggers, sin chequeo de auth
+adentro): `create_security_block` (cualquiera con la anon key podia bloquear el IP/fingerprint de
+otra persona — griefing/DoS contra el flujo publico de firma), `write_security_audit_log`
+(contaminar `security_audit_logs` con entradas falsas) y `record_nexartsign_token_attempt`
+(falsificar intentos fallidos de otra persona, pudiendo disparar un bloqueo real contra una
+victima). Las otras 6 tenian menor riesgo practico (funciones trigger que no ejecutan sentido
+fuera de un trigger real, o de solo lectura) pero se cerraron igual por consistencia.
+`investor_user_role()` se dejo intacta a proposito — la usan las policies de RLS de toda la app.
+
+**Bug de la primera migracion, corregido en la misma sesion:** el primer intento
+(`REVOKE EXECUTE ... FROM anon, authenticated`) fue un no-op — se verifico con
+`has_function_privilege()` y seguia dando `true`. La causa: el permiso real venia del grant
+implicito de Postgres a `PUBLIC` en cada funcion nueva (`pg_proc.proacl` mostraba `=X/postgres`,
+sin fila explicita para `anon`/`authenticated`), no de un grant especifico a esos roles. Revocar
+un rol especifico no quita lo que ese rol hereda de `PUBLIC`. La correccion fue
+`REVOKE EXECUTE ... FROM PUBLIC` + `GRANT EXECUTE ... TO service_role` explicito (por si acaso;
+`service_role` ya tenia su propia fila en el ACL y no se ve afectado por revocar de PUBLIC).
+Verificado con `has_function_privilege()` antes/despues de cada paso y con `get_advisors` — los 9
+warnings `anon_security_definer_function_executable`/`authenticated_security_definer_function_executable`
+para estas funciones ya no aparecen. Migracion:
+`supabase/migrations/20260730_revoke_anon_rpc_security_definer_functions.sql`.
+
+**Hallazgos del mismo barrido, NO resueltos hoy (una tarea por sesion), quedan en
+`OPEN_GAPS.md`:** `function_search_path_mutable` (~20 funciones sin `SET search_path`),
+`extension_in_public` (`pg_net` en schema public), `public_bucket_allows_listing` (bucket
+storage `documents` permite listar todos los archivos), `auth_leaked_password_protection`
+(deshabilitado en Supabase Auth).
+
+Requiere decision explicita del dueno sobre prioridad para los hallazgos nuevos de arriba antes
+de la siguiente tanda de trabajo en RLS/seguridad.
 
 ---
 
@@ -521,5 +567,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.2 — 2026-07-29*
+*Version: 2.3 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*
