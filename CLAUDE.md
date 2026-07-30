@@ -524,6 +524,14 @@ recorto la respuesta al minimo (numero de certificado, estado, fecha de firma, r
 verificacion de hash, proveedor) y se redeploy. Detalle completo en
 `docs/nexartsign-security-roadmap.md` Fase 6 y `docs/agent/OPEN_GAPS.md` gap 2.
 
+### NexArtSign Fase 7 — confirmada completa 2026-07-30
+
+Quedaba como "sin verificar" al cerrar la Fase 6 (¿la app ya lee de Supabase o todavia depende de
+Base44 para packages/participants/events/certificates?). Se verifico directo en codigo: cero
+referencias a `base44` en `NexArtSign.jsx`, `SignDocumentView.jsx` ni `nexArtSign.js` — todo el
+flujo de firma (admin y publico) ya corre sobre `nexartClient`/Supabase. Roadmap y `OPEN_GAPS.md`
+gap 3 actualizados a resuelto.
+
 ### Estimates — link publico arreglado 2026-07-30, rediseño completo confirmado como iniciativa futura
 
 Al portar `resolveEstimatePublicToken` (ver Base44 abajo) se encontro la causa raiz de un bug real
@@ -604,5 +612,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.6 — 2026-07-30*
+*Version: 2.7 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

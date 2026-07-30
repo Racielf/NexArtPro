@@ -256,16 +256,13 @@ production so far, so only the 404 path could be exercised end-to-end (confirmed
 "Certificate not found"}`); the "found" path was verified by code review against the new response
 shape, not a live signed certificate.
 
-**Found while closing this phase, not yet investigated:** Phase 7 below still lists
-`signing_packages`/`signing_participants`/`signing_events`/`signing_certificates` as "next phase"
-to move to Supabase — but those 4 tables already exist in Supabase with RLS today (confirmed via
-`pg_policies` during the 2026-07-29/30 RLS audit, see `CLAUDE.md` section 11 TAREA G). Either the DB
-layer already migrated and only the application code (`NexArtSign.jsx`, the public signing Edge
-Functions) still needs to switch over from Base44 entity calls, or this phase is more complete than
-this file currently says. Needs a dedicated check before Phase 7 is picked up — don't assume either
-way from this note alone.
+**Follow-up 2026-07-30:** the open question above (whether Phase 7 below was actually complete)
+was checked directly and closed the same day — see Phase 7 status.
 
 ### Phase 7 - Supabase/RLS migration for NexArtSign
+
+**Status:** Confirmed complete 2026-07-30. This entry previously said "next phase" -- stale; the
+work had already been done, just never marked here.
 
 Goal:
 
@@ -273,7 +270,19 @@ Move NexArtSign packages, participants, events, and certificates from Base44 ent
 
 Checklist:
 
-- Create Supabase tables for signing packages, participants, events, certificates.
-- Apply RLS policies using `has_app_permission(...)`.
-- Replace admin panel reads in `NexArtSign.jsx`.
-- Replace public signing functions with Supabase Edge Functions.
+- Create Supabase tables for signing packages, participants, events, certificates. Done —
+  `signing_packages`, `signing_participants`, `signing_events`, `signing_certificates` exist in
+  Supabase.
+- Apply RLS policies. Done — closed in TAREA G (see `CLAUDE.md` section 11): `admin`/`agent` team
+  access restored, `anon` public-signing side deliberately still open (separate, tracked concern,
+  see OPEN_GAPS.md gaps 1-3 top of this file).
+- Replace admin panel reads in `NexArtSign.jsx`. Done — confirmed 2026-07-30, zero references to
+  `base44` anywhere in the file; reads go through `nexartClient.entities.SigningPackage` /
+  `SigningParticipant` / `SigningEvent` / `SigningCertificate`, all mapped to real Supabase tables
+  in `src/api/nexartClient.js`.
+- Replace public signing functions with Supabase Edge Functions. Done — confirmed 2026-07-30,
+  zero `base44` references in `src/pages/SignDocumentView.jsx` or `src/lib/nexArtSign.js`. Every
+  `functions.invoke(...)` call in the public signing flow
+  (`resolveSigningPackageToken`, `requestSigningOtp`, `verifySigningOtp`, `sendSignedCopy`,
+  `completeSigningPackage`) resolves to a real, deployed Supabase Edge Function (cross-checked
+  against `list_edge_functions` on `hdiejuqbhqhebrpneymo`).

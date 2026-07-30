@@ -77,7 +77,7 @@ hash, proveedor) y se redeploy (version 9). Detalle completo en
 
 ---
 
-## 3. NexArtSign
+## 3. NexArtSign — RESUELTO 2026-07-30
 
 ### Gap
 
@@ -93,16 +93,20 @@ Alta
 
 ### Estado
 
-Sin verificar del todo — posible desactualizacion del roadmap. Al cerrar la Fase 6 (2026-07-30) se
-noto que `signing_packages`/`signing_participants`/`signing_events`/`signing_certificates` **ya
-existen como tablas Supabase con RLS** (confirmado via `pg_policies` en TAREA G, ver `CLAUDE.md`
-seccion 11). No se investigo si la capa de aplicacion (`NexArtSign.jsx`, funciones publicas de
-firma) ya lee de esas tablas o todavia depende de Base44 — eso es lo que falta chequear antes de
-poder cerrar este gap. No asumir resuelto ni pendiente sin verificar directo en el codigo.
+Resuelto. Se verifico directo en codigo (no solo en la DB): cero referencias a `base44` en
+`src/pages/NexArtSign.jsx` (panel admin), `src/pages/SignDocumentView.jsx` (vista publica de
+firma), ni `src/lib/nexArtSign.js`. `nexartClient.js` mapea `SigningPackage`/`SigningParticipant`/
+`SigningEvent`/`SigningCertificate` a tablas Supabase reales, y las 5 funciones que invoca el flujo
+publico de firma (`resolveSigningPackageToken`, `requestSigningOtp`, `verifySigningOtp`,
+`sendSignedCopy`, `completeSigningPackage`) estan desplegadas de verdad en Supabase (cruzado contra
+`list_edge_functions`). Fase 7 del roadmap actualizada a completa.
 
 ### Evidencia
 
-- `docs/nexartsign-security-roadmap.md`
+- `docs/nexartsign-security-roadmap.md` Fase 7
+- `src/pages/NexArtSign.jsx`, `src/pages/SignDocumentView.jsx`, `src/lib/nexArtSign.js` — cero
+  referencias a `base44`
+- `src/api/nexartClient.js` (mapeo de entidades de firma a tablas Supabase)
 
 ---
 
