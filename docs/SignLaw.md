@@ -1,5 +1,9 @@
 # SignLaw — Marco legal de firmas electronicas y estandar de auditoria defendible en corte
 
+> **Documento vivo / fase abierta a proposito** — el dueno va a seguir redactando mas politicas
+> legales sobre NexArtSign en sesiones futuras. No tratar esto como un entregable cerrado; esperar
+> v3, v4... a medida que se agreguen mas politicas. Ver `docs/agent/OPEN_GAPS.md` gap 13.
+>
 > v2, 2026-07-30. Escrito para ser portable — las secciones 1-8 (base legal, terminologia, pilares
 > de exigibilidad, modelo de evidencia, matriz de disputas, patrones de industria, roles/gates,
 > fuentes) no dependen de NexArtPro y se pueden reusar en cualquier app que implemente firma

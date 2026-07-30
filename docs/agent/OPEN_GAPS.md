@@ -544,7 +544,7 @@ dueno o de una prueba en vivo guiada.
 
 ---
 
-## 13. Marco legal de firma electronica (NexArtSign) — investigado y documentado, recomendaciones sin ejecutar
+## 13. Marco legal de firma electronica (NexArtSign) — FASE ABIERTA, se seguiran redactando mas politicas
 
 ### Gap
 
@@ -602,6 +602,13 @@ investigar y documentar, no implementar todo. Las 5 recomendaciones restantes (e
 con hash, pantalla de disclosure completa, evaluar PAdES, politica de
 retencion, clasificador de elegibilidad) quedan en `docs/SignLaw.md` seccion 10, priorizadas por
 costo/impacto, pendientes de decision del dueno.
+
+**Fase declarada abierta a proposito (2026-07-30) — no cerrar este gap.** El dueno confirmo que van
+a seguir redactando mas politicas legales sobre NexArtSign en sesiones futuras (no es un
+entregable de una sola vez). `docs/SignLaw.md` va a seguir recibiendo versiones nuevas (v3, v4...)
+a medida que se agreguen mas politicas — tratar este gap como vivo/recurrente, no como algo para
+marcar "resuelto" cuando se cierre una recomendacion puntual de la seccion 10. Actualizar este gap
+en cada sesion futura que toque `docs/SignLaw.md`, no crear un gap nuevo cada vez.
 
 ### Evidencia
 
