@@ -361,7 +361,7 @@ Abierto
 
 ---
 
-## 10. Migracion Base44 -> Supabase incompleta — 7 funciones rotas en produccion, plan en marcha
+## 10. Migracion Base44 -> Supabase incompleta — 6 de 7 funciones rotas siguen pendientes
 
 ### Gap
 
@@ -372,23 +372,32 @@ las funciones nunca portadas fallan en produccion hoy, no es solo deuda tecnica 
 ### Impacto
 
 Alto y activo. `submitContactForm` (formulario de contacto publico, 3 call sites),
-`resolveEstimatePublicToken` (vista publica del estimate para el cliente),
-`resolveAttachmentPublicUrl` (adjuntos del estimate), `lowMarginAlert`, `approveMargin`,
-`agentTestRunner`, `sendSignedEstimateCopy` fallan al invocarse — confirmado que `Contact.jsx`
-muestra el error visible al usuario, no falla en silencio.
+`resolveAttachmentPublicUrl` (adjuntos del estimate — bloqueada, ver nota), `lowMarginAlert`,
+`approveMargin`, `agentTestRunner`, `sendSignedEstimateCopy` siguen fallando al invocarse —
+confirmado que `Contact.jsx` muestra el error visible al usuario, no falla en silencio.
+`resolveEstimatePublicToken` se resolvio 2026-07-30 (ver estado).
 
 ### Prioridad
 
-Alta — `resolveEstimatePublicToken`/`resolveAttachmentPublicUrl` tocan cash flow (estimate es el
-primer paso hacia el cobro, prioridad #2 en `OPERATING_PRIORITIES.md`).
+Alta — `resolveAttachmentPublicUrl` toca cash flow, pero esta bloqueada por una decision de diseño
+de datos (donde viven los adjuntos), no por falta de tiempo. Ver `docs/estimates-redesign-context.md`.
 
 ### Estado
 
 Documentado y con plan por etapas 2026-07-30, tras pedido del dueno de formalizar la estrategia de
 sacar Base44 del sistema. Plan completo, inventario, y tabla de las 7 funciones rotas en
 `docs/agent/BASE44_REMOVAL_PLAN.md`. Se resolvio de paso la credencial de Base44 hardcodeada en
-`base44/.app.jsonc` (commiteada desde el primer commit). Nada mas ejecutado todavia — requiere
-decision del dueno sobre por cual de las 7 funciones empezar.
+`base44/.app.jsonc` (commiteada desde el primer commit).
+
+**`resolveEstimatePublicToken` cerrada el mismo dia.** Causa raiz real: no era solo la funcion —
+`estimates.public_share_token`/`public_share_token_created_at` no existian en produccion pese a
+que el frontend activo (`estimateSalesLifecycle.js`) ya las necesitaba para generar el link que se
+manda al cliente. Se agregaron esas 2 columnas (migracion aditiva) y se desplego la funcion nueva
+contra el schema real. Verificado end-to-end con un estimate real. Detalle completo en
+`docs/agent/BASE44_REMOVAL_PLAN.md`.
+
+Las otras 6 siguen sin tocar — requiere decision del dueno sobre por cual seguir, o esperar a la
+sesion dedicada de rediseño de Estimates (gap 11) si aplica.
 
 ### Evidencia
 
@@ -396,6 +405,44 @@ decision del dueno sobre por cual de las 7 funciones empezar.
 - `src/api/nexartClient.js` lineas 381-417 (`functionsProxy`, sin fallback a Base44)
 - `mcp__claude_ai_Supabase__list_edge_functions` sobre `hdiejuqbhqhebrpneymo`, cruzado contra
   `grep functions.invoke( src/`
+- `supabase/migrations/20260730_estimates_add_public_share_token.sql`
+- `supabase/functions/resolveEstimatePublicToken/index.ts`
+
+---
+
+## 11. Rediseño completo de Estimates — diferido a proposito, contexto capturado
+
+### Gap
+
+El dueno confirmo 2026-07-30 que quiere rediseñar el modulo de Estimates de punta a punta (armado
+del documento, plantillas, adjuntos, integracion con NexArtSign, modelo de archivado/restauracion)
+en una sesion dedicada, en vez de seguir parchando. No es un gap tecnico puntual — es una decision
+de producto/arquitectura pendiente de planear.
+
+### Impacto
+
+Alto. Estimates es el primer paso de la cadena hacia el cobro (prioridad #2 en
+`OPERATING_PRIORITIES.md`) y alimenta Invoices, Work Orders y NexArtSign.
+
+### Prioridad
+
+A definir por el dueno cuando quiera agendar esa sesion — no es urgente en el sentido de "algo
+roto ahora mismo" (lo que estaba activamente roto, `resolveEstimatePublicToken`, ya se arreglo por
+separado en gap 10), pero el resto del modulo (adjuntos, integracion de firma, plantillas) sigue
+con huecos reales de datos.
+
+### Estado
+
+Contexto capturado, sin plan todavia — a proposito, para no arrancar sin alinear alcance primero.
+Ver `docs/estimates-redesign-context.md` para el detalle completo: por que el dueno quiere
+rediseñarlo, la evidencia tecnica que respalda esa frustracion (schema real vs. lo que el codigo
+asume, migraciones aplicadas a produccion sin quedar versionadas en el repo), y las preguntas
+abiertas para cuando se retome.
+
+### Evidencia
+
+- `docs/estimates-redesign-context.md`
+- `docs/agent/BASE44_REMOVAL_PLAN.md` (causa raiz tecnica de `resolveEstimatePublicToken`)
 
 ---
 

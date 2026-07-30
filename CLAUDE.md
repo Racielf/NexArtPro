@@ -4,8 +4,10 @@
 > Leerlo completo antes de tocar cualquier archivo.
 > Versión actualizada: 2026-07-30 — TAREA G cerrada por completo (el "batch 2" no existia, estaba
 > mal contado), funciones SECURITY DEFINER expuestas de mas via RPC revocadas, NexArtSign Fase 6
-> (minimizacion de `/verify-document`) resuelta, y estrategia de eliminacion de Base44 documentada
-> en `docs/agent/BASE44_REMOVAL_PLAN.md` (incluye 7 funciones rotas en produccion, ver seccion 11).
+> (minimizacion de `/verify-document`) resuelta, estrategia de eliminacion de Base44 documentada
+> en `docs/agent/BASE44_REMOVAL_PLAN.md`, el link publico de Estimates arreglado (columnas
+> faltantes en produccion + funcion nueva), y rediseño completo de Estimates confirmado como
+> iniciativa futura propia (contexto en `docs/estimates-redesign-context.md`).
 >
 > Este archivo es la única fuente de verdad sobre **estado de fases**. Si `docs/fusion/FUSION_PHASES_STATUS.md`
 > o cualquier otro doc dice algo distinto sobre qué fase está completa, ese otro doc está desactualizado —
@@ -522,6 +524,20 @@ recorto la respuesta al minimo (numero de certificado, estado, fecha de firma, r
 verificacion de hash, proveedor) y se redeploy. Detalle completo en
 `docs/nexartsign-security-roadmap.md` Fase 6 y `docs/agent/OPEN_GAPS.md` gap 2.
 
+### Estimates — link publico arreglado 2026-07-30, rediseño completo confirmado como iniciativa futura
+
+Al portar `resolveEstimatePublicToken` (ver Base44 abajo) se encontro la causa raiz de un bug real
+en produccion: `estimates.public_share_token`/`public_share_token_created_at` no existian en la
+tabla real, pese a que `estimateSalesLifecycle.js` (activo, no legacy) ya las necesitaba para
+generar el link que se manda al cliente — el link jamas se podia generar. Se agregaron esas 2
+columnas (migracion aditiva) y se desplego la funcion contra el schema real, verificado end-to-end.
+Detalle en `docs/agent/BASE44_REMOVAL_PLAN.md`.
+
+El dueno confirmo que quiere ademas un rediseño completo del modulo (armado del documento,
+plantillas, adjuntos, integracion con NexArtSign, archivado/restauracion) en una sesion propia —
+no se arranca hoy. Contexto completo capturado en `docs/estimates-redesign-context.md` y
+`docs/agent/OPEN_GAPS.md` gap 11, para no perderlo antes de esa sesion.
+
 ### Eliminacion de Base44 del sistema — plan documentado 2026-07-30
 
 El dueno pidio formalizar la estrategia (discutida antes, nunca documentada) de sacar el nombre y
@@ -588,5 +604,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.5 — 2026-07-30*
+*Version: 2.6 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

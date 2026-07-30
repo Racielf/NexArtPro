@@ -26,12 +26,53 @@ y cruzado contra la lista real de Edge Functions desplegadas en produccion
 | Funcion invocada desde el frontend | Desplegada en Supabase | Donde se llama |
 |---|---|---|
 | `submitContactForm` | **NO** | `src/pages/Contact.jsx:32`, `src/pages/PublicHome.jsx:91,116` — formulario de contacto publico del sitio |
-| `resolveEstimatePublicToken` | **NO** | `src/pages/ClientEstimateView.jsx:38` — vista publica del estimate que ve el cliente |
-| `resolveAttachmentPublicUrl` | **NO** | `src/components/estimates/ClientAttachmentsSection.jsx:32` — adjuntos del estimate |
+| `resolveEstimatePublicToken` | **SI — resuelto 2026-07-30** | `src/pages/ClientEstimateView.jsx:38` — vista publica del estimate que ve el cliente |
+| `resolveAttachmentPublicUrl` | **NO** — bloqueado, ver nota | `src/components/estimates/ClientAttachmentsSection.jsx:32` — adjuntos del estimate |
 | `lowMarginAlert` | **NO** | `src/pages/EstimateEditor.jsx:209` |
 | `approveMargin` | **NO** | `src/components/estimates/internal/PricingOverrideModal.jsx:67` |
 | `agentTestRunner` | **NO** | `src/components/settings/AgentTestRunnerPanel.jsx:21` |
 | `sendSignedEstimateCopy` | **NO** | `src/lib/nexArtSignCompletion.js:141` — posible bug de nombre duplicado, ver nota abajo |
+
+### `resolveEstimatePublicToken` — resuelto 2026-07-30
+
+Al portar esta encontramos la causa raiz real: la tabla `estimates` en produccion **no tenia**
+`public_share_token`/`public_share_token_created_at`, pese a que el codigo activo del frontend
+(`src/lib/estimateSalesLifecycle.js` `generatePublicShareToken()`, usado por
+`SendEstimateModal.jsx` para armar el link que se le manda al cliente) ya intentaba escribir esas
+columnas desde antes. `supabase/migrations/001_core_tables.sql` las declara, pero **ese archivo
+nunca se aplico a produccion** — confirmado contra el historial real de migraciones de Supabase
+(`list_migrations`), que no tiene ninguna entrada correspondiente. Osea: el link para que el
+cliente vea/apruebe su estimate **no se podia ni generar**, mas alla de que la funcion de
+resolucion tampoco existiera.
+
+Arreglo aplicado (acotado, solo lo necesario para desbloquear esto, sin tocar el resto del
+modulo — el dueno confirmo que el rediseño completo de Estimates va aparte, ver seccion mas
+abajo):
+- `supabase/migrations/20260730_estimates_add_public_share_token.sql` — agrega las 2 columnas
+  faltantes (nullable, aditivo, no rompe nada existente).
+- `supabase/functions/resolveEstimatePublicToken/index.ts` — reescrito contra el schema real de
+  `estimates` (no el de Base44). Devuelve un subconjunto seguro para el cliente (excluye
+  `*_cost`, `margin_*`, `gross_margin*`, `net_profit*`, `total_book_value`, `total_variance`,
+  `internal_notes`, `assigned_to`, `sales_stage`, `approval_note` — datos internos de costo/margen
+  que el cliente nunca deberia ver).
+- Verificado end-to-end contra un estimate real en produccion (token de prueba temporal, limpiado
+  despues de verificar) — path de exito y path 404 confirmados.
+
+**Nota sobre el resto de campos que el Base44 original esperaba y siguen sin existir**
+(`attachments`, `document_config`, `signing_package_token`/`status`, `final_signed_pdf_url`,
+`signature_brand_logo_url`, etc.): no se agregaron. La funcion nueva simplemente no los devuelve —
+el frontend (`ClientEstimateView.jsx`) ya los trata como opcionales (`estimate?.campo`), asi que no
+rompe nada, pero significa que **hoy el cliente puede ver y aprobar el estimate, sin adjuntos y sin
+integracion con el paquete de firma de NexArtSign visible desde esa pantalla**. Eso coincide con lo
+que el dueno describio (adjuntos y firma nunca funcionaron bien del todo) y queda deliberadamente
+fuera de este arreglo puntual — es tema del rediseño de Estimates, no de este parche.
+
+### `resolveAttachmentPublicUrl` — sigue bloqueada, no confundir con lo de arriba
+
+No se toco. La tabla `estimates` no tiene columna `attachments` en absoluto (ni JSONB ni tabla
+aparte encontrada) — no hay datos que esta funcion pueda resolver todavia. Portarla requeriria
+antes decidir donde y como se van a guardar los adjuntos del estimate, lo cual es una decision de
+diseño real, no un port mecanico. Queda para cuando se aborde el rediseño de Estimates.
 
 Confirmado que `Contact.jsx` tiene try/catch que muestra el error al usuario (`"An error occurred.
 Please try again."`) — no falla en silencio. Cualquiera que llene el formulario de contacto
