@@ -219,21 +219,51 @@ Important files:
 
 ### Phase 6 - Public verification minimization
 
+**Status:** Implemented 2026-07-30.
+
 Goal:
 
 Make `/verify-document` safe for public use.
 
 Checklist:
 
-- Do not expose full signer email publicly.
-- Do not expose IP or user-agent publicly.
-- Do not expose full audit trail publicly.
+- Do not expose full signer email publicly. Done.
+- Do not expose IP or user-agent publicly. Done.
+- Do not expose full audit trail publicly. Done.
 - Show only:
   - certificate number
   - document status
   - signed date
   - hash verification result
   - provider
+
+**What was found:** `src/pages/VerifyDocument.jsx` already only *displayed* a minimal subset
+(`certificate_number`/`status`/`signed_at`/`expected_hash`), but the actual problem was server-side
+— the public Edge Function `resolveSigningCertificate` (no JWT check, service-role client, ignores
+RLS) returned the full row in its JSON response: `signer_name`, `signer_email`, `ip_address`, the
+complete `audit_trail`, plus `final_pdf_url`/`source_pdf_url`. Anyone who could see the raw network
+response (DevTools/curl) with just a certificate number got the signer's real name, email, signing
+IP, full audit trail, and direct links to the signed/source PDFs — client-side filtering never
+protected any of that.
+
+**Fix:** trimmed the JSON payload in
+`supabase/functions/resolveSigningCertificate/index.ts` to exactly the checklist above (added
+`provider` from the linked `signing_packages` row, kept `expected_hash` since it's the SHA-256 the
+public verify flow needs to compare against an uploaded PDF, not PII). Deployed as version 9
+(`verify_jwt` stays `false` — intentionally public). No frontend change needed; `VerifyDocument.jsx`
+already only reads the fields that remain. Verified live: `signing_certificates` has zero rows in
+production so far, so only the 404 path could be exercised end-to-end (confirmed clean `{"error":
+"Certificate not found"}`); the "found" path was verified by code review against the new response
+shape, not a live signed certificate.
+
+**Found while closing this phase, not yet investigated:** Phase 7 below still lists
+`signing_packages`/`signing_participants`/`signing_events`/`signing_certificates` as "next phase"
+to move to Supabase — but those 4 tables already exist in Supabase with RLS today (confirmed via
+`pg_policies` during the 2026-07-29/30 RLS audit, see `CLAUDE.md` section 11 TAREA G). Either the DB
+layer already migrated and only the application code (`NexArtSign.jsx`, the public signing Edge
+Functions) still needs to switch over from Base44 entity calls, or this phase is more complete than
+this file currently says. Needs a dedicated check before Phase 7 is picked up — don't assume either
+way from this note alone.
 
 ### Phase 7 - Supabase/RLS migration for NexArtSign
 

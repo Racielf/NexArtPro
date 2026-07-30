@@ -44,7 +44,7 @@ Queda un punto sin verificar por separado: ruta de fallback para tokens legacy e
 
 ---
 
-## 2. NexArtSign
+## 2. NexArtSign — RESUELTO 2026-07-30
 
 ### Gap
 
@@ -52,7 +52,10 @@ Minimizacion de la verificacion publica en `/verify-document`.
 
 ### Impacto
 
-Exposicion innecesaria de datos de firma si la vista publica muestra mas de lo necesario.
+Exposicion innecesaria de datos de firma si la vista publica muestra mas de lo necesario. Real,
+no hipotetico: el Edge Function publico `resolveSigningCertificate` devolvia nombre y email del
+firmante, su IP, el audit trail completo, y URLs directas al PDF firmado/fuente — con solo un
+numero de certificado, sin login.
 
 ### Prioridad
 
@@ -60,11 +63,17 @@ Alta
 
 ### Estado
 
-Pendiente segun roadmap.
+Resuelto (Fase 6 del roadmap de NexArtSign). El frontend (`VerifyDocument.jsx`) ya proyectaba solo
+un subconjunto minimo, pero eso no protegia nada — la respuesta cruda del Edge Function traia todo.
+Se recorto el payload de `supabase/functions/resolveSigningCertificate/index.ts` al checklist
+exacto de la Fase 6 (numero de certificado, estado, fecha de firma, resultado de verificacion de
+hash, proveedor) y se redeploy (version 9). Detalle completo en
+`docs/nexartsign-security-roadmap.md` Fase 6.
 
 ### Evidencia
 
-- `docs/nexartsign-security-roadmap.md`
+- `docs/nexartsign-security-roadmap.md` Fase 6
+- `supabase/functions/resolveSigningCertificate/index.ts`
 
 ---
 
@@ -84,7 +93,12 @@ Alta
 
 ### Estado
 
-Pendiente segun roadmap.
+Sin verificar del todo — posible desactualizacion del roadmap. Al cerrar la Fase 6 (2026-07-30) se
+noto que `signing_packages`/`signing_participants`/`signing_events`/`signing_certificates` **ya
+existen como tablas Supabase con RLS** (confirmado via `pg_policies` en TAREA G, ver `CLAUDE.md`
+seccion 11). No se investigo si la capa de aplicacion (`NexArtSign.jsx`, funciones publicas de
+firma) ya lee de esas tablas o todavia depende de Base44 — eso es lo que falta chequear antes de
+poder cerrar este gap. No asumir resuelto ni pendiente sin verificar directo en el codigo.
 
 ### Evidencia
 

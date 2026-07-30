@@ -3,7 +3,8 @@
 > Este archivo es leído automáticamente por Claude Code en cada sesión.
 > Leerlo completo antes de tocar cualquier archivo.
 > Versión actualizada: 2026-07-30 — TAREA G cerrada por completo (el "batch 2" no existia, estaba
-> mal contado) y funciones SECURITY DEFINER expuestas de mas via RPC revocadas.
+> mal contado), funciones SECURITY DEFINER expuestas de mas via RPC revocadas, y NexArtSign Fase 6
+> (minimizacion de `/verify-document`) resuelta.
 >
 > Este archivo es la única fuente de verdad sobre **estado de fases**. Si `docs/fusion/FUSION_PHASES_STATUS.md`
 > o cualquier otro doc dice algo distinto sobre qué fase está completa, ese otro doc está desactualizado —
@@ -513,6 +514,13 @@ operativo — es decir, acceso por modulo, no solo por rol binario admin/agent.
   sistema de Work Orders externo) antes de tocar `work_orders` en produccion (regla existente,
   seccion 4).
 
+**NexArtSign — Fase 6 (minimizacion de `/verify-document`) resuelta 2026-07-30:** el Edge Function
+publico `resolveSigningCertificate` devolvia nombre/email del firmante, su IP, el audit trail
+completo y URLs directas al PDF firmado/fuente con solo un numero de certificado, sin login. Se
+recorto la respuesta al minimo (numero de certificado, estado, fecha de firma, resultado de
+verificacion de hash, proveedor) y se redeploy. Detalle completo en
+`docs/nexartsign-security-roadmap.md` Fase 6 y `docs/agent/OPEN_GAPS.md` gap 2.
+
 **NexArtSign — decision de arquitectura confirmada por el dueno (2026-07-29):** se intento
 desarrollar NexArtSign como proyecto separado, fuera de NexArtPro, y no funciono. Decision: seguir
 desarrollando NexArtSign **dentro de NexArtPro** (donde ya vive hoy — `signing_packages`,
@@ -567,5 +575,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.3 — 2026-07-30*
+*Version: 2.4 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

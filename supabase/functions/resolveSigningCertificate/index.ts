@@ -35,33 +35,19 @@ Deno.serve(async (req) => {
       !pkg || !pkg.source_pdf_hash || documentHash === pkg.source_pdf_hash || documentHash === pkg.final_pdf_hash
     );
 
+    // Public, unauthenticated endpoint (service-role client, no RLS) -- only return the minimal
+    // fields a signer/third-party needs to verify a document. Do not add signer PII, IP, audit
+    // trail, or PDF URLs back into this payload; those are available to admins via the
+    // authenticated NexArtSign panel, which reads the tables directly.
     return json({
       certificate: {
-        id: cert.id,
         certificate_number: cert.certificate_number,
-        signing_package_id: cert.signing_package_id,
-        document_type: cert.document_type,
-        document_id: cert.document_id,
-        generated_at: cert.generated_at,
-        signer_name: cert.signer_name,
-        signer_email: cert.signer_email,
+        status: cert.status || (hashMatches ? 'valid' : 'unknown'),
         signed_at: cert.signed_at,
-        ip_address: cert.ip_address,
-        document_hash: cert.document_hash,
-        final_pdf_hash: cert.final_pdf_hash,
-        hash_algorithm: cert.hash_algorithm || 'SHA-256',
-        audit_trail: cert.audit_trail || [],
       },
       package: pkg ? {
-        id: pkg.id,
         status: pkg.status,
-        document_title: pkg.document_title,
-        document_number: pkg.document_number,
         provider: pkg.provider,
-        source_pdf_hash: pkg.source_pdf_hash,
-        final_pdf_hash: pkg.final_pdf_hash,
-        final_pdf_url: pkg.final_pdf_url,
-        source_pdf_url: pkg.source_pdf_url,
       } : null,
       verification: {
         status: hashMatches ? 'valid' : 'unknown',
