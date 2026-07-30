@@ -3,8 +3,9 @@
 > Este archivo es leído automáticamente por Claude Code en cada sesión.
 > Leerlo completo antes de tocar cualquier archivo.
 > Versión actualizada: 2026-07-30 — TAREA G cerrada por completo (el "batch 2" no existia, estaba
-> mal contado), funciones SECURITY DEFINER expuestas de mas via RPC revocadas, y NexArtSign Fase 6
-> (minimizacion de `/verify-document`) resuelta.
+> mal contado), funciones SECURITY DEFINER expuestas de mas via RPC revocadas, NexArtSign Fase 6
+> (minimizacion de `/verify-document`) resuelta, y estrategia de eliminacion de Base44 documentada
+> en `docs/agent/BASE44_REMOVAL_PLAN.md` (incluye 7 funciones rotas en produccion, ver seccion 11).
 >
 > Este archivo es la única fuente de verdad sobre **estado de fases**. Si `docs/fusion/FUSION_PHASES_STATUS.md`
 > o cualquier otro doc dice algo distinto sobre qué fase está completa, ese otro doc está desactualizado —
@@ -521,6 +522,18 @@ recorto la respuesta al minimo (numero de certificado, estado, fecha de firma, r
 verificacion de hash, proveedor) y se redeploy. Detalle completo en
 `docs/nexartsign-security-roadmap.md` Fase 6 y `docs/agent/OPEN_GAPS.md` gap 2.
 
+### Eliminacion de Base44 del sistema — plan documentado 2026-07-30
+
+El dueno pidio formalizar la estrategia (discutida antes, nunca documentada) de sacar el nombre y
+la dependencia de Base44 del sistema mientras se sigue desarrollando. Inventario completo, tabla de
+funciones, y plan por etapas en `docs/agent/BASE44_REMOVAL_PLAN.md` y `docs/agent/OPEN_GAPS.md`
+gap 10. Resumen: no es solo branding — la migracion de `base44/functions/` a
+`supabase/functions/` quedo a medias, y 7 funciones que el frontend sigue llamando
+(`submitContactForm`, `resolveEstimatePublicToken`, `resolveAttachmentPublicUrl`,
+`lowMarginAlert`, `approveMargin`, `agentTestRunner`, `sendSignedEstimateCopy`) fallan en
+produccion hoy porque nunca se desplegaron del lado de Supabase. Se resolvio de paso una API key
+de Base44 hardcodeada en `base44/.app.jsonc` desde el primer commit del repo.
+
 **NexArtSign — decision de arquitectura confirmada por el dueno (2026-07-29):** se intento
 desarrollar NexArtSign como proyecto separado, fuera de NexArtPro, y no funciono. Decision: seguir
 desarrollando NexArtSign **dentro de NexArtPro** (donde ya vive hoy — `signing_packages`,
@@ -575,5 +588,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.4 — 2026-07-30*
+*Version: 2.5 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

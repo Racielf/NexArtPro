@@ -361,6 +361,44 @@ Abierto
 
 ---
 
+## 10. Migracion Base44 -> Supabase incompleta — 7 funciones rotas en produccion, plan en marcha
+
+### Gap
+
+La migracion de `base44/functions/` a `supabase/functions/` quedo a medias. `nexartClient.js`
+rutea toda llamada a `functions.invoke(...)` directo a Supabase, sin fallback a Base44 — asi que
+las funciones nunca portadas fallan en produccion hoy, no es solo deuda tecnica cosmetica.
+
+### Impacto
+
+Alto y activo. `submitContactForm` (formulario de contacto publico, 3 call sites),
+`resolveEstimatePublicToken` (vista publica del estimate para el cliente),
+`resolveAttachmentPublicUrl` (adjuntos del estimate), `lowMarginAlert`, `approveMargin`,
+`agentTestRunner`, `sendSignedEstimateCopy` fallan al invocarse — confirmado que `Contact.jsx`
+muestra el error visible al usuario, no falla en silencio.
+
+### Prioridad
+
+Alta — `resolveEstimatePublicToken`/`resolveAttachmentPublicUrl` tocan cash flow (estimate es el
+primer paso hacia el cobro, prioridad #2 en `OPERATING_PRIORITIES.md`).
+
+### Estado
+
+Documentado y con plan por etapas 2026-07-30, tras pedido del dueno de formalizar la estrategia de
+sacar Base44 del sistema. Plan completo, inventario, y tabla de las 7 funciones rotas en
+`docs/agent/BASE44_REMOVAL_PLAN.md`. Se resolvio de paso la credencial de Base44 hardcodeada en
+`base44/.app.jsonc` (commiteada desde el primer commit). Nada mas ejecutado todavia — requiere
+decision del dueno sobre por cual de las 7 funciones empezar.
+
+### Evidencia
+
+- `docs/agent/BASE44_REMOVAL_PLAN.md`
+- `src/api/nexartClient.js` lineas 381-417 (`functionsProxy`, sin fallback a Base44)
+- `mcp__claude_ai_Supabase__list_edge_functions` sobre `hdiejuqbhqhebrpneymo`, cruzado contra
+  `grep functions.invoke( src/`
+
+---
+
 ## Regla de mantenimiento
 
 Cuando un gap se cierre:

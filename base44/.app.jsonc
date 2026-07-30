@@ -1,8 +1,14 @@
+// Legacy Base44 platform config, not read by this app's own build (vite.config.js/src/ never
+// import this file). Left here only because Base44's own CLI/dashboard may still expect it.
+// The hardcoded api_key that used to live here was removed 2026-07-30 -- it had been committed
+// to git since the very first commit (a6eeaa8). Rotate/revoke it in the Base44 dashboard if the
+// account is still reachable; deleting it from this file does not undo its exposure in git
+// history. See docs/agent/BASE44_REMOVAL_PLAN.md.
 import { createClient } from '@base44/sdk';
 
 const base44 = createClient({
   appId: "69cc888bb34befdf803a06b0",
   headers: {
-    "api_key": "ac9d17611edc42d0b1250abf094bf498"
+    "api_key": process.env.BASE44_API_KEY || ""
   }
 });
