@@ -523,6 +523,16 @@ recorto la respuesta al minimo (numero de certificado, estado, fecha de firma, r
 verificacion de hash, proveedor) y se redeploy. Detalle completo en
 `docs/nexartsign-security-roadmap.md` Fase 6 y `docs/agent/OPEN_GAPS.md` gap 2.
 
+### Vision futura — SaaS multi-tenant + integraciones configurables, 2026-07-30
+
+Capturada, no ejecutada: vender NexArtPro por suscripcion a otras empresas de contratistas, con
+integraciones configurables por empresa (Twilio quedo como primer ejemplo — se dejo sin conectar
+a proposito, decision de cada empresa) y onboarding trayendo datos propios (contactos, documentos,
+precios, clientes) via conexion a base propia o import CSV/Excel, como QuickBooks. Documentado en
+`docs/saas-multitenant-vision.md` y `docs/agent/OPEN_GAPS.md` gap 14. Existe un plan previo mas
+chico y desactualizado (`src/docs/MULTI_TENANT_MIGRATION_PLAN.md`, era Base44) — no confundir, la
+vision nueva es un salto de alcance mayor.
+
 ### Base44 — 3 funciones mas cerradas (5 de 7 resueltas), 2026-07-30
 
 `lowMarginAlert` y `approveMargin` (ligadas a Estimate) resueltas — **no portadas tal cual**:
@@ -634,5 +644,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.9 — 2026-07-30*
+*Version: 2.10 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

@@ -596,6 +596,44 @@ pendientes de decision del dueno sobre cuales ejecutar y cuando.
 
 ---
 
+## 14. Vision SaaS multi-tenant + integraciones configurables + import de datos propios — capturada, sin plan
+
+### Gap
+
+No es un gap tecnico — es una vision de producto que el dueno pidio documentar para no perderla
+(2026-07-30), surgida al decidir dejar Twilio como integracion opcional por empresa en vez de
+conectarla ahora. La idea: vender NexArtPro por suscripcion a otras empresas de contratistas, con
+integraciones configurables por empresa (Twilio es solo el primer ejemplo), y que una empresa nueva
+pueda traer su propia base de datos (contactos, documentos, precios, clientes) al darse de alta —
+via conexion a su propia base o importando CSV/Excel/otros formatos, como hace QuickBooks.
+
+### Impacto
+
+Alto a largo plazo (modelo de negocio), ninguno hoy — nada de esto se ejecuta todavia.
+
+### Prioridad
+
+Sin definir — vision capturada para el futuro, no una tarea en cola.
+
+### Estado
+
+Documentado 2026-07-30 en `docs/saas-multitenant-vision.md`. Se reviso `src/docs/
+MULTI_TENANT_MIGRATION_PLAN.md` (2026-04-07) — un plan previo mas acotado (solo agregar
+`company_id` a 4 entidades) y tecnicamente desactualizado (escrito contra `base44.entities`, era
+pre-Supabase). La base tecnica de ese plan viejo (columna `company_id`) ya esta parcialmente en
+produccion hoy (regla 4 de `CLAUDE.md`, un solo valor `'rc-art'` en uso) — la vision nueva es un
+salto de alcance mucho mayor, no una continuacion directa de ese plan viejo. Nada planeado en
+detalle todavia a proposito — requiere su propia sesion de Plan mode cuando el dueno decida
+retomarlo.
+
+### Evidencia
+
+- `docs/saas-multitenant-vision.md`
+- `src/docs/MULTI_TENANT_MIGRATION_PLAN.md` (prior art, desactualizado)
+- `CLAUDE.md` seccion 4 (regla de `company_id: 'rc-art'`)
+
+---
+
 ## Regla de mantenimiento
 
 Cuando un gap se cierre:
