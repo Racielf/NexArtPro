@@ -524,6 +524,18 @@ recorto la respuesta al minimo (numero de certificado, estado, fecha de firma, r
 verificacion de hash, proveedor) y se redeploy. Detalle completo en
 `docs/nexartsign-security-roadmap.md` Fase 6 y `docs/agent/OPEN_GAPS.md` gap 2.
 
+### NexArtSign — marco legal de firma electronica investigado y documentado (`docs/SignLaw.md`), 2026-07-30
+
+Investigacion contra fuentes oficiales (ESIGN Act federal, UETA de Oregon/ORS 84) + estandar de
+industria (DocuSign, Adobe Sign) sobre que hace defendible una firma electronica en una demanda,
+mas gap analysis de NexArtSign contra ese estandar. Resultado: cumple 10/12 puntos solido; los 2
+gaps reales son que la integridad del PDF final depende de un hash en la base de datos propia (no
+una firma digital embebida tipo PAdES/PKI verificable por un tercero), y que falta una pantalla de
+consentimiento formal a transaccionar electronicamente separada del consentimiento por documento.
+Nada de esto se implemento hoy — era pedido de investigacion/documentacion, recomendaciones
+priorizadas en `docs/SignLaw.md` seccion 4 y `docs/agent/OPEN_GAPS.md` gap 13, pendientes de
+decision del dueno. El documento esta escrito para ser portable — se va a reusar en otra app.
+
 ### NexArtSign Fase 7 — confirmada completa 2026-07-30
 
 Quedaba como "sin verificar" al cerrar la Fase 6 (¿la app ya lee de Supabase o todavia depende de
@@ -612,5 +624,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.7 — 2026-07-30*
+*Version: 2.8 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

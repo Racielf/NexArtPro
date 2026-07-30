@@ -2,6 +2,12 @@
 
 This file tracks the security hardening work for NexArtSign so the project can be resumed later without losing context.
 
+**See also `docs/SignLaw.md` (2026-07-30):** legal research on the ESIGN Act + Oregon UETA, an
+industry-standard (DocuSign/Adobe Sign) audit trail checklist, and a gap analysis of NexArtSign
+against it. Read that before making architectural changes to the signing/audit trail — it
+identifies the 2 real gaps (no PDF-embedded digital signature, no separate e-signature
+disclosure screen) that should inform Phase 8+ if this roadmap continues.
+
 ## What NexArtSign is
 
 An e-signature module built into NexArtPro (like DocuSign) — not a separate product. A document

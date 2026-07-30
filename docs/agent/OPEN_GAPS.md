@@ -531,6 +531,58 @@ dueno o de una prueba en vivo guiada.
 
 ---
 
+## 13. Marco legal de firma electronica (NexArtSign) — investigado y documentado, recomendaciones sin ejecutar
+
+### Gap
+
+El dueno pidio investigar el sustento legal real de las firmas digitales (ley federal ESIGN Act +
+ley de Oregon UETA) contra fuentes oficiales, comparar contra el estandar de industria (DocuSign,
+Adobe Sign), y evaluar si NexArtSign aguantaria un escenario de demanda — documentar esto si no
+existia. No existia ningun documento asi antes de hoy.
+
+### Impacto
+
+Alto — es literalmente la pregunta de si el modulo de firma (que ya se usa para convertir estimates
+en contratos vinculantes) se sostiene legalmente si alguna vez se disputa en corte.
+
+### Prioridad
+
+Alta, ligada a NexArtSign (prioridad #1 del proyecto).
+
+### Estado
+
+Investigado y documentado 2026-07-30 en `docs/SignLaw.md` (escrito para ser portable — el dueno lo
+va a reusar en otra app que esta desarrollando). Contiene: texto oficial citado de 15 U.S.C. §7001
+y §7003 (ESIGN Act, incluye exclusiones que NO se pueden resolver solo con firma electronica), ORS
+84.013/84.019/84.025/84.034/84.037 (UETA de Oregon), un checklist de 12 requisitos sintetizado de
+la practica real de DocuSign/Adobe Sign, y un gap analysis especifico de NexArtSign contra ese
+checklist.
+
+**Resultado del gap analysis:** NexArtSign cumple 10 de 12 puntos de forma solida (identidad, OTP,
+IP, fingerprint, timestamps, orden de firma, registro de rechazos, retencion). Los 2 puntos
+parciales comparten una misma raiz: la integridad del PDF final depende de un hash SHA-256 guardado
+en la base de datos propia (`completeSigningPackage`), no de una firma digital criptografica
+embebida en el PDF (PAdES/PKI, que es lo que usan DocuSign/Adobe) verificable por un tercero sin
+depender de la base de datos de NexArtPro. Tambien falta una pantalla formal de "consentimiento a
+transaccionar electronicamente" separada del consentimiento especifico de cada documento (existe
+el segundo, no el primero) — esta es la mas barata de agregar si se decide hacerlo.
+
+**No ejecutado hoy a proposito** — el pedido fue investigar y documentar, no implementar. Las 3
+recomendaciones (pantalla de disclosure, evaluar firma digital embebida tipo PAdES, politica
+formal de retencion escrita) quedan en `docs/SignLaw.md` seccion 4, priorizadas por costo/impacto,
+pendientes de decision del dueno sobre cuales ejecutar y cuando.
+
+### Evidencia
+
+- `docs/SignLaw.md`
+- `src/pages/SignDocumentView.jsx` (paso de consentimiento, lineas ~641, ~839-848)
+- `supabase/functions/completeSigningPackage/index.ts` (`sha256HexFromBytes`, sin firma digital
+  embebida)
+- Fuentes oficiales citadas en `docs/SignLaw.md` (govinfo.gov, Cornell LII, oregonlegislature.gov,
+  oregon.public.law, docusign.com, adobe.com)
+
+---
+
 ## Regla de mantenimiento
 
 Cuando un gap se cierre:
