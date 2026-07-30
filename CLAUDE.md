@@ -569,6 +569,13 @@ sensible" en estas leyes). Se agrego el aviso explicito al texto de consentimien
 timestamp, con que proposito, y que se retiene como parte del registro legal) — excede el minimo
 legal y cierra el punto de disputa "no me avisaron".
 
+**Correccion de alcance agregada al mismo doc:** se aclaro explicitamente que `docs/SignLaw.md`
+solo cubre EEUU (federal + Oregon + California) — cualquier mencion previa de eIDAS (UE) o leyes de
+Latinoamerica no esta verificada contra fuente oficial y no debe tratarse como investigada. Se
+agrego tambien el concepto de deslinde de responsabilidad de la plataforma (relevante solo si se
+ejecuta la vision SaaS multi-tenant, seccion 8 de `docs/SignLaw.md` y `OPEN_GAPS.md` gap 14) — no
+implementado, solo documentado.
+
 ### NexArtSign Fase 7 — confirmada completa 2026-07-30
 
 Quedaba como "sin verificar" al cerrar la Fase 6 (¿la app ya lee de Supabase o todavia depende de
@@ -657,5 +664,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.12 — 2026-07-30*
+*Version: 2.13 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

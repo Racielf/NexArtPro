@@ -29,6 +29,16 @@ instancia, un juez.
 
 ## 2. Base legal (fuentes oficiales)
 
+**Alcance de jurisdiccion de este documento (importante, no asumir mas de lo verificado):** toda la
+investigacion de este documento cubre **EEUU** (ley federal + Oregon + California como referencia
+de UETA estatal). R.C Art Construction LLC opera solo en Oregon. **No se investigo ni se verifica
+aca eIDAS (Union Europea) ni ninguna legislacion de firma electronica de Latinoamerica** — cualquier
+afirmacion sobre esas jurisdicciones en discusiones previas del equipo no esta respaldada por
+fuente oficial en este documento y no debe tratarse como verificada. Si en el futuro NexArtSign
+sirve a clientes fuera de EEUU (relevante para la vision SaaS multi-tenant, ver
+`docs/saas-multitenant-vision.md`), esa investigacion se hace aparte, contra fuentes oficiales de
+esa jurisdiccion especifica, cuando haya un caso real que lo requiera — no antes.
+
 ### Federal — ESIGN Act (Electronic Signatures in Global and National Commerce Act)
 
 Ley federal de EEUU, codificada en **15 U.S.C. §7001 et seq.** Texto oficial:
@@ -285,6 +295,25 @@ preparacion de artefacto protegido (migracion/RLS/RPC/campo de evidencia) solo c
 exacta del dueño; (4) ejecucion en ambiente desechable/local; (5) QA de runtime y adversarial
 (reintentos, manipulacion, fallas, multi-tenant); (6) release final solo con aprobacion del
 abogado contra el release exacto implementado.
+
+### Deslinde de responsabilidad de la plataforma (nuevo, 2026-07-30)
+
+Hoy R.C Art Construction LLC es a la vez el operador de NexArtSign y la empresa que emite los
+documentos — no hace falta un deslinde entre "plataforma" y "empresa" porque son la misma entidad.
+**Esto cambia si se ejecuta la vision SaaS multi-tenant** (`docs/saas-multitenant-vision.md`):
+cuando otra empresa cliente use NexArtSign para firmar sus propios documentos con sus propios
+clientes, NexArtSign (la plataforma/proveedor de tecnologia) deja de ser parte del contrato
+subyacente entre esa empresa-tenant y su cliente — es un facilitador tecnico, no una parte
+contractual. Practica estandar de la industria (DocuSign, Adobe Sign) es declarar esto
+explicitamente en los terminos de servicio de la plataforma: la plataforma provee la tecnologia de
+firma/auditoria, pero cualquier disputa sobre el contenido o terminos del documento firmado es
+entre el emisor (empresa-tenant) y el firmante, no contra la plataforma.
+
+**No implementado hoy** — no es necesario mientras NexArtPro sirva solo a R.C Art Construction
+LLC. Anotado para cuando se retome la vision SaaS multi-tenant (`docs/agent/OPEN_GAPS.md` gap 14):
+la ubicacion natural para este texto es una pagina de Terminos de Servicio de la plataforma (no el
+mismo checkbox de consentimiento de cada firma, que ya esta cargado de texto), enlazada desde el
+portal de firma.
 
 ---
 

@@ -647,11 +647,18 @@ salto de alcance mucho mayor, no una continuacion directa de ese plan viejo. Nad
 detalle todavia a proposito — requiere su propia sesion de Plan mode cuando el dueno decida
 retomarlo.
 
+**Anotado el mismo dia en `docs/SignLaw.md` seccion 8:** si esto se ejecuta, NexArtSign deja de ser
+"la misma entidad que emite documentos" (R.C Art Construction) y pasa a ser un facilitador tecnico
+para empresas-tenant terceras — hace falta un deslinde de responsabilidad de la plataforma en los
+Terminos de Servicio (la disputa sobre el contenido del documento es entre la empresa-tenant y su
+cliente, no contra NexArtSign). No implementado, solo anotado para cuando se retome esta vision.
+
 ### Evidencia
 
 - `docs/saas-multitenant-vision.md`
 - `src/docs/MULTI_TENANT_MIGRATION_PLAN.md` (prior art, desactualizado)
 - `CLAUDE.md` seccion 4 (regla de `company_id: 'rc-art'`)
+- `docs/SignLaw.md` seccion 8 (deslinde de responsabilidad de plataforma)
 
 ---
 
