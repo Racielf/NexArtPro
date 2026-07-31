@@ -5,8 +5,17 @@
 > Versión actualizada: 2026-07-30 — TAREA G cerrada por completo, funciones SECURITY DEFINER
 > expuestas de mas via RPC revocadas, NexArtSign completo (Fases 6-7 + marco legal en
 > `docs/SignLaw.md`), 5 de 7 funciones de Base44 cerradas (`docs/agent/BASE44_REMOVAL_PLAN.md`),
-> link publico de Estimates arreglado, y rediseño completo de Estimates confirmado como iniciativa
-> futura propia (`docs/estimates-redesign-context.md`).
+> link publico de Estimates arreglado, rediseño completo de Estimates confirmado como iniciativa
+> futura propia (`docs/estimates-redesign-context.md`), y **Invoices — modulo entero arreglado**:
+> nunca habia funcionado en produccion (0 facturas creadas, ~49 columnas faltantes en la tabla real
+> por el mismo motivo que Estimates), migracion aditiva aplicada y verificada end-to-end en las 3
+> vias de creacion (`docs/agent/OPEN_GAPS.md` gap 5). El Supabase de produccion esta compartido con
+> un repo no relacionado y abandonado (`NexArtProV3`) pero se confirmo inerte, sin trafico real
+> (gap 15, cerrado). Modulo de Conciliacion Bancaria documentado para el futuro, no construido
+> (gap 16, `docs/bank-reconciliation-module.md`). **Sesion siguiente (mismo dia):** rediseño
+> completo del Dashboard (`/dashboard`) — primera de una serie de tareas modulo por modulo en
+> orden de navegacion (Dashboard -> Leads -> Customers -> Appointments -> Calendar -> Estimates ->
+> Proposals, la siguiente parada explicita es Leads). Ver seccion 12 para el detalle completo.
 >
 > Este archivo es la única fuente de verdad sobre **estado de fases**. Si `docs/fusion/FUSION_PHASES_STATUS.md`
 > o cualquier otro doc dice algo distinto sobre qué fase está completa, ese otro doc está desactualizado —
@@ -481,14 +490,161 @@ de la siguiente tanda de trabajo en RLS/seguridad.
 
 | Modulo | Rutas | Estado |
 |---|---|---|
+| Dashboard | /dashboard | Produccion — rediseño completo 2026-07-30, ver seccion abajo |
 | Estimates | /estimates, /estimate-editor, /send-estimate | Produccion |
 | Work Orders | /work-orders, /work-orders/:id, /field | Produccion — ver seccion 12.5, sistema externo de WO en desarrollo aparte se conectara aqui |
-| Invoices | /invoices, /invoice-create | Produccion |
+| Invoices | /invoices, /invoice-create | Produccion — arreglado y verificado en el navegador 2026-07-30 (nunca habia funcionado antes; las 3 vias de creacion probadas end-to-end, ver seccion abajo y `OPEN_GAPS.md` gap 5) |
 | Proposals | /proposals, /proposal-editor | Produccion |
 | NexArtSign | /nexartsign, /sign/:token | Produccion |
 | Workers | /workers | Produccion |
 | Payroll | /payroll | Produccion |
 | Payments | /payments | Produccion |
+
+### Dashboard — rediseño completo, 2026-07-30
+
+El dueño pidio empezar una serie de tareas modulo por modulo, en el orden real de navegacion del
+sidebar (`Dashboard -> Leads -> Customers -> Appointments -> Calendar -> Estimates -> Proposals`),
+arrancando por Dashboard ("no me gusta, necesito algo mas profesional") usando el dashboard de
+`nexartwo-main` como referencia de estilo a "fortalecer" — **no** para portar codigo: ese repo es
+HTML/CSS/JS vanilla estatico sin React ni libreria de graficos, asi que solo aporto lenguaje visual
+(tarjetas con chip de icono tintado, barra de acento en hover, badges tipo pill, puntos de color en
+feeds, grillas asimetricas 2:1, coloreado condicional por signo del numero) para reinterpretar con
+lo que ya existia en este repo (Tailwind, shadcn/Radix, Recharts, tokens de marca en
+`src/index.css`) — nada nuevo que instalar.
+
+**Hallazgo real antes de tocar nada:** `src/components/dashboard/` ya tenia 4 widgets completos y
+sin usar (`AlertsPanel.jsx`, `JobPipelineCard.jsx`, `RevenueBreakdownCard.jsx`,
+`SalesFunnelCard.jsx`) — `Dashboard.jsx` (660 lineas, todo inline) reimplementaba duplicados
+peores de 3 de ellos y nunca uso el cuarto (`SalesFunnelCard`, un funnel Leads->Estimates->
+Approved->Jobs->Paid que no tenia ningun equivalente — el dashboard mostraba cero visualizacion de
+conversion de ventas pese a tener el componente ya construido). Tambien habia codigo muerto real:
+`import StatusBadge` nunca renderizado, y un fetch de `Proposal.list(...)` guardado en estado
+(`allProposals`) que tampoco se consumia en ningun lado.
+
+**Decision de alcance (confirmada con el dueño antes de escribir codigo):** el Sales Funnel nuevo
+muestra totales independientes por etapa (no cohorte real rastreado — no existe FK Lead->Estimate
+en el schema), y el nombre de empresa del topbar usa el nombre legal completo de Settings (no se
+agrego un campo de nombre corto nuevo).
+
+**Cambios concretos:**
+- `Dashboard.jsx` paso de 660 lineas monoliticas a una capa delgada de fetching (via `useQuery`,
+  ya patron establecido en 22 archivos de este repo) + composicion. Cada sub-componente inline se
+  extrajo a `src/components/dashboard/` (`DashboardPrimitives.jsx`, `NxtStat.jsx`,
+  `RevenueTrendCard.jsx`, `RecentWorkOrdersTable.jsx`, `ActivityFeed.jsx`, `MoneyControl.jsx`,
+  `dashboardFormat.js`).
+- Los 4 huerfanos se corrigieron **en su lugar** (no se crearon duplicados nuevos, regla de
+  `docs/agent/EXECUTION_RULES.md` "no duplicar logica si ya hay un modulo real"): `AlertsPanel.jsx`
+  fusiona lo mejor de su version huerfana (`computeProposalReminders()`, integracion real con
+  Proposals) y la version inline (prioridad/orden, boton de descarte); `JobPipelineCard.jsx` y
+  `SalesFunnelCard.jsx` se restilaron a los tokens de marca; `RevenueBreakdownCard.jsx` se
+  **elimino** (calculaba exactamente el mismo numero que el `RevenueChart` inline, solo en forma de
+  barras en vez de area — dos graficos del mismo dato no es mas informacion, es ruido).
+- `NotificationsPanel.jsx` migrado de un fetch propio con `setInterval` cada 60s (duplicando
+  trafico de red con el fetch del padre) a `useQuery` con las mismas query keys que `Dashboard.jsx`
+  para `work_orders`/`invoices`/`estimates` — verificado con Network trace en el navegador que cada
+  entidad se pide **una sola vez** al montar, no dos.
+- Nombre de empresa hardcodeado e incorrecto ("RC Art Contractors", ni siquiera coincidia con el
+  nombre real de la empresa) reemplazado por `useCompanyConfig().name` (mismo hook que ya usa el
+  branding de NexArtSign) — viola si no `docs/agent/BUSINESS_RULES.md` ("no hardcodear branding
+  operativo si puede salir de settings").
+- Fix de un solo lugar en `src/index.css`: `.nxt-stat-icon` tenia el mismo fondo ambar fijo sin
+  importar el color semantico del stat — se agrego `var(--nxt-stat-bg, ...)` para que cada tile
+  tenga su chip de icono tintado a juego (patron ya usado en `.cal-stat-ic` de la pagina Calendar).
+
+**Verificado en el navegador real** (Playwright headless contra el dev server, login real con PIN
+de una cuenta de agente — `yaymirc@gmail.com`): las 6 tiles, el strip financiero, la tabla de
+Recent Work Orders (con `StatusBadge`/`priority-dot`/chip de iniciales), Activity Feed, Revenue
+Trend, Job Pipeline, Sales Funnel, Alerts y Notifications renderizan todos con datos reales, sin
+errores de consola atribuibles al cambio (el unico error de consola es una URL de logo externa
+rota, `media.nexartclient.com`, preexistente y sin relacion con este rediseño). Nombre de empresa
+confirmado como "R.C Art Construction LLC" (de Settings), no el string hardcodeado viejo. `npm run
+build` y `npx eslint` limpios en todos los archivos tocados.
+
+**Fuera de alcance de esta sesion, a proposito:** Leads y cualquier otro modulo (proxima sesion,
+por instruccion explicita del dueño); RLS/backend (cambio 100% frontend, de solo lectura); el
+desajuste de vocabulario de status entre `WorkOrders.jsx` y lo que usa Dashboard (pre-existente,
+tema del modulo de Work Orders, anotado no resuelto). Plan completo en el archivo de plan de la
+sesion (`ethereal-floating-hennessy.md`).
+
+**Agregado el mismo dia, a pedido del dueño:** 3 graficos circulares nuevos para "medir
+estadisticas" de un vistazo — `DonutStat.jsx` (primitiva reusable de dona con Recharts `PieChart`
++ leyenda con conteos exactos, no solo proporcion visual), usada por `JobPipelineCard.jsx`
+(reemplaza la grilla de 4 tiles por una dona de distribucion de work orders por status) y por
+`InvoiceStatusDonutCard.jsx` (nuevo, dona de facturas por status: paid/partial/sent/overdue/draft,
+complementa a Money Control que ya muestra montos en $ pero no la distribucion por cantidad).
+`ApprovalGaugeCard.jsx` (nuevo) — anillo de progreso circular (Recharts `RadialBarChart`,
+`cx/cy` 50%/50%, `startAngle=90 endAngle=-270`) para la tasa de aprobacion de estimates. Ambos
+nuevos se ubican en una fila propia entre Revenue Trend/Job Pipeline y Sales Funnel/Alerts/
+Notifications. Bug encontrado y corregido en el mismo pase: el primer intento del gauge usaba un
+semicirculo (`startAngle=180 endAngle=0`) con el centro (`cy`) pegado al borde inferior del
+contenedor para simular una aguja de medidor — verificado en el navegador que no renderizaba nada
+(el radio disponible se calcula desde el centro hasta el borde mas cercano, y con `cy` casi en el
+borde ese radio colapsaba a casi cero). Reemplazado por el patron estandar de anillo de progreso
+circular completo, mismo patron ya usado (implicitamente, via Recharts) en dashboards similares —
+verificado que el anillo de fondo (track) renderiza correctamente en el tamaño y posicion
+esperados.
+
+### Invoices — nunca habia funcionado en produccion, arreglado 2026-07-30
+
+Al retomar gap 5 de `OPEN_GAPS.md` (mapear cash flow: invoice -> payments -> conciliacion
+bancaria) se encontro que la tabla `invoices` en produccion tenia **0 filas** — nunca se creo una
+factura exitosamente desde que existe el repo, pese a estar listada como "Produccion" arriba. Mismo
+patron que el bug de `estimates.public_share_token` (2026-07-30, mas abajo): el codigo activo
+(`InvoiceCreate.jsx`, `workOrderInvoiceConversion.js`, conversion desde Estimate y desde Proposal,
+registro de pagos, SLA de cobranza, respuesta del cliente) siempre escribio ~49 columnas que jamas
+se aplicaron al schema real (`payments`, `balance_due`, `payment_status`, `client_name`,
+`work_order_id`, `estimate_id`, `groups`/`line_items`, `discount_*`/`tax_*`, `billing_issue_*`,
+`sla_*`, etc.) — cualquier intento de crear una factura tiraba un error de columna inexistente.
+
+**Causa raiz:** el proyecto Supabase de produccion (`hdiejuqbhqhebrpneymo`) esta compartido con un
+repo distinto, `NexArtProV3` — tiene un Edge Function `stripe-webhook` (desplegado desde ese otro
+repo via su propio CI) que escribe en la misma tabla `invoices` con un schema de **facturacion de
+suscripcion SaaS** (`user_id`, `stripe_invoice_id`, `amount`, `status`, `paid_at`), un dominio
+totalmente distinto al de facturar trabajos de construccion. Ese schema quedo como el real. Sin
+resolver si esa funcion sigue recibiendo trafico real hoy — ver `OPEN_GAPS.md` gap 15 (nuevo, sin
+prioridad definida, requiere que el dueno confirme el estado de `NexArtProV3`).
+
+**Fix:** migracion puramente aditiva (`supabase/migrations/20260730_invoices_add_missing_columns.sql`),
+mismo patron que Estimates — `ADD COLUMN IF NOT EXISTS` en las ~49 columnas que el codigo ya
+necesitaba, mas `work_orders.invoice_id`/`invoiced_at` (tambien faltantes, bloqueaban la conversion
+Work Order -> Invoice). Se corrigio de paso un bug relacionado en `preparePayloadForDB`
+(`src/api/nexartClient.js`): campos `_id` vacios (`''`) ahora se limpian a `null` antes de escribir,
+igual que ya se hacia con fechas vacias — sin esto, `client_id: estimate.client_id || ''` rompia
+contra la columna `uuid` cuando el estimate no tenia cliente vinculado.
+
+Verificado primero por SQL directo, y **despues en el navegador de verdad** (Playwright headless
+contra el dev server, login real con PIN de agente): crear factura desde `/invoice-create` funciono
+limpio, pero grabar un pago desde "Add Payment" en el detalle de factura fallo con un bug nuevo, sin
+relacion al schema — `PaymentInputModal.jsx` y `PaymentHistory.jsx` llamaban a
+`window.nexartClient.entities.Invoice.update(...)`, un global que nunca existio en el bundle, en vez
+de importar `nexartClient` como todo el resto del codigo. Roto desde que se escribieron esos
+componentes. Corregido en ambos archivos. Reverificado en el navegador: factura creada, pago
+parcial de $300 grabado sin error, balance/estado actualizados correctamente. Las facturas de
+prueba se borraron de produccion al terminar.
+
+**Misma sesion, verificacion de la conversion Work Order -> Invoice: 5 bugs mas.** Para probar
+`ensureInvoiceFromWorkOrder()` sin tocar un work order real (regla de la seccion 4), se creo uno
+descartable por SQL y se lo completo por `/field/work-orders/:id` en el navegador. Se encontraron y
+corrigieron en cadena: (1) `nexartClient.entities.WorkOrder.get` no existia — la clase
+`SupabaseEntity` nunca tuvo metodo `get(id)`, agregado; (2) `checked_in_at`/`field_status`/
+`checked_in_by` faltaban en `work_orders` — el boton "Check In" (oficina y campo) nunca funciono,
+columnas agregadas con aprobacion explicita del dueno; (3) el canvas de firma nunca dibujaba nada
+para nadie — el `useEffect` que engancha los listeners nativos dependia solo de `[drawing]`, pero
+el canvas no existe en el primer render (spinner de carga), y esa transicion no cambia `drawing`,
+asi que los listeners nunca se re-enganchaban — se agrego `workOrder` a las dependencias; el
+componente compartido `SignaturePad.jsx` no tiene este bug porque usa props sinteticas de React en
+vez de `addEventListener` nativo; (4) `closure_signature` tambien faltaba en `work_orders`. Cada
+bug bloqueaba la verificacion del siguiente — ninguno se hubiera encontrado sin probar el flujo
+real de punta a punta. Resultado final verificado: work order completado (check-in, resumen, firma
+real, fotos), factura creada con `work_order_id` vinculado, `work_orders.status` a `invoiced`. Datos
+de prueba borrados, rol de la cuenta de prueba revertido. `npm run build` y `eslint` limpios en
+todos los archivos tocados.
+
+**Tercer camino verificado, sin bugs nuevos: Estimate -> Invoice** (`ConvertToInvoiceButton.jsx`,
+dropdown "Convert to Invoice" en `/estimate-editor`). Estimate de prueba con `status='approved'`,
+convertido en el navegador en el primer intento — factura creada con `estimate_id` vinculado, sin
+errores. Las 3 vias de creacion de Invoice (manual, Work Order, Estimate) quedan verificadas
+end-to-end en el navegador real. Detalle completo en `docs/agent/OPEN_GAPS.md` gap 5.
 
 ---
 
@@ -606,6 +762,16 @@ plantillas, adjuntos, integracion con NexArtSign, archivado/restauracion) en una
 no se arranca hoy. Contexto completo capturado en `docs/estimates-redesign-context.md` y
 `docs/agent/OPEN_GAPS.md` gap 11, para no perderlo antes de esa sesion.
 
+### Módulo de Conciliación Bancaria — documentado, no construido, 2026-07-30
+
+El dueño trajo un documento de investigación técnica completo (schema, motor de matching con
+fórmulas verificadas, integración Plaid, estado legal EEUU) para un futuro módulo de conciliación
+bancaria semi-automática. Archivado en `docs/bank-reconciliation-module.md` para que quede en el
+lugar correcto del repo. Verificado contra `src/components/finance/BankAccounts.jsx`: hoy no existe
+nada de lo descrito — `bank_accounts`/`bank_transactions` reales son 100% manuales, sin agregador
+ni conciliación automática. Sin plan de implementación todavía, sin prioridad definida — ver
+`docs/agent/OPEN_GAPS.md` gap 16.
+
 ### Eliminacion de Base44 del sistema — plan documentado 2026-07-30
 
 El dueno pidio formalizar la estrategia (discutida antes, nunca documentada) de sacar el nombre y
@@ -672,5 +838,5 @@ VITE_INVESTOR_HUB_ENABLED=true
 
 ---
 
-*Version: 2.14 — 2026-07-30*
+*Version: 2.22 — 2026-07-30*
 *R.C Art Construction LLC — NexArtPro*

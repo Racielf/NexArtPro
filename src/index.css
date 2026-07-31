@@ -975,6 +975,20 @@ table tbody tr:hover td {
   box-shadow: var(--shadow-glow);
 }
 
+/* ── Dashboard card — same surface/hover language, no padding/cursor baked in ── */
+.dashboard-card {
+  background: var(--gradient-card);
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  transition: var(--nexart-transition);
+}
+.dashboard-card:hover {
+  border-color: var(--border-warm);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+
 /* ── Priority dot with glow ─────────────────────────────────────*/
 .priority-dot {
   width: 8px; height: 8px;
@@ -1089,7 +1103,7 @@ table tbody tr:hover td {
 .nxt-stat-icon {
   width: 36px; height: 36px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  background: var(--accent-soft);
+  background: var(--nxt-stat-bg, var(--accent-soft));
   color: var(--nxt-stat-color, var(--burnt-500));
 }
 .nxt-stat-value {

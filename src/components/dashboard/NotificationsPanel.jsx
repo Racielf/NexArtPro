@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { nexartClient } from '@/api/nexartClient';
-import { Bell, AlertCircle, ChevronRight, RefreshCw } from 'lucide-react';
+import { Bell, ChevronRight, RefreshCw } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 
 const ESTIMATE_FOLLOWUP_DAYS = 5;
@@ -185,37 +186,47 @@ const typeStyles = {
 };
 
 export default function NotificationsPanel() {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState(null);
+  const woQuery = useQuery({
+    queryKey: ['work-orders'],
+    queryFn: () => nexartClient.entities.WorkOrder.list('-created_date', 200),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const invQuery = useQuery({
+    queryKey: ['invoices'],
+    queryFn: () => nexartClient.entities.Invoice.list('-created_date', 200),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const estQuery = useQuery({
+    queryKey: ['estimates'],
+    queryFn: () => nexartClient.entities.Estimate.list('-created_date', 200),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const bankQuery = useQuery({
+    queryKey: ['bank-transactions'],
+    queryFn: () => nexartClient.entities.BankTransaction.list('-created_date', 200),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
 
-  useEffect(() => {
-    loadNotifications();
-    const interval = setInterval(loadNotifications, 60 * 1000); // refresh every 60s
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadNotifications = async () => {
-    try {
-      const [workOrders, invoices, estimates, bankTransactions] = await Promise.all([
-        nexartClient.entities.WorkOrder.list('-created_date', 200),
-        nexartClient.entities.Invoice.list('-created_date', 200),
-        nexartClient.entities.Estimate.list('-created_date', 200),
-        nexartClient.entities.BankTransaction.list('-created_date', 200),
-      ]);
-      setNotifications(buildNotifications({ workOrders, invoices, estimates, bankTransactions }));
-      setLastRefresh(new Date());
-    } catch {
-      // local_auth mode — no backend available
-    }
-    setLoading(false);
-  };
+  const loading = woQuery.isLoading || invQuery.isLoading || estQuery.isLoading || bankQuery.isLoading;
+  const notifications = loading ? [] : buildNotifications({
+    workOrders: woQuery.data || [],
+    invoices: invQuery.data || [],
+    estimates: estQuery.data || [],
+    bankTransactions: bankQuery.data || [],
+  });
+  const lastRefresh = [woQuery.dataUpdatedAt, invQuery.dataUpdatedAt, estQuery.dataUpdatedAt, bankQuery.dataUpdatedAt]
+    .filter(Boolean)
+    .reduce((max, t) => Math.max(max, t), 0);
 
   if (loading) return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 animate-pulse">
       <div className="h-4 bg-slate-100 rounded w-1/3 mb-3" />
       <div className="space-y-2">
-        {[1,2,3].map(i => <div key={i} className="h-10 bg-slate-50 rounded-lg" />)}
+        {[1, 2, 3].map(i => <div key={i} className="h-10 bg-slate-50 rounded-lg" />)}
       </div>
     </div>
   );
@@ -234,7 +245,7 @@ export default function NotificationsPanel() {
           )}
         </div>
         <button
-          onClick={loadNotifications}
+          onClick={() => { woQuery.refetch(); invQuery.refetch(); estQuery.refetch(); bankQuery.refetch(); }}
           className="text-slate-400 hover:text-slate-600 transition-colors"
           title="Refresh"
         >
@@ -255,7 +266,7 @@ export default function NotificationsPanel() {
             const s = typeStyles[n.type];
             return (
               <Link key={n.id} to={n.link}>
-                <div className={`flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 group`}>
+                <div className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 group">
                   <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${s.bar}`} />
                   <span className="text-sm flex-shrink-0">{n.icon}</span>
                   <p className={`flex-1 text-[11px] font-semibold ${s.text} leading-snug`}>{n.message}</p>
@@ -267,9 +278,9 @@ export default function NotificationsPanel() {
         )}
       </div>
 
-      {lastRefresh && (
+      {lastRefresh > 0 && (
         <div className="px-5 py-2 border-t border-slate-50">
-          <p className="text-[10px] text-slate-300">Updated {format(lastRefresh, 'h:mm a')}</p>
+          <p className="text-[10px] text-slate-300">Updated {format(new Date(lastRefresh), 'h:mm a')}</p>
         </div>
       )}
     </div>
