@@ -676,6 +676,7 @@ export default function EstimateEditor() {
               onAttachmentsUpdate={handleAttachmentsUpdate}
               onOpenSettings={() => setShowSettingsPanel(true)}
               onEstimateUpdate={handleSidebarEstimateUpdate}
+              readOnly={isLocked}
             />
           )}
         </div>

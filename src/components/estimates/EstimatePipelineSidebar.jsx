@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Camera,
   Check,
   CheckCircle2,
   ChevronUp,
@@ -18,7 +19,9 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { nexartClient } from '@/api/nexartClient';
 import EstimateAttachments from '@/components/estimates/EstimateAttachments';
 import CommTimeline from '@/components/shared/CommTimeline';
 import { ORGANIC } from '@/components/estimates/estimatePipelineTheme';
@@ -61,6 +64,7 @@ export default function EstimatePipelineSidebar({
   onAttachmentsUpdate,
   onOpenSettings,
   onEstimateUpdate,
+  readOnly = false,
 }) {
   const { t } = useLanguage();
   const [editing, setEditing] = useState(false);
@@ -79,7 +83,11 @@ export default function EstimatePipelineSidebar({
   const [tags, setTags] = useState([]);
   const [privateNotes, setPrivateNotes] = useState('');
   const [streetViewUnavailable, setStreetViewUnavailable] = useState(false);
+  const [propertyPhoto, setPropertyPhoto] = useState(null);
+  const [propertyPhotoLoading, setPropertyPhotoLoading] = useState(false);
+  const [propertyPhotoUploading, setPropertyPhotoUploading] = useState(false);
   const [form, setForm] = useState({ client_name: '', client_email: '', client_phone: '', client_address: '' });
+  const propertyPhotoInputRef = useRef(null);
 
   useEffect(() => {
     setForm({
@@ -102,6 +110,7 @@ export default function EstimatePipelineSidebar({
   const displayEmail = estimate?.client_email || client?.email || '';
   const displayPhone = estimate?.client_phone || client?.phone || '';
   const displayAddress = resolvePropertyAddress(estimate, client);
+  const propertyOwnerId = estimate?.client_id || client?.id || '';
   const attachmentCount = Array.isArray(estimate?.attachments) ? estimate.attachments.length : 0;
   const mapsUrl = displayAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}` : '';
   const streetViewUrl = GOOGLE_MAPS_API_KEY && displayAddress
@@ -111,6 +120,62 @@ export default function EstimatePipelineSidebar({
   useEffect(() => {
     setStreetViewUnavailable(false);
   }, [displayAddress]);
+
+  useEffect(() => {
+    let active = true;
+    if (!propertyOwnerId) {
+      setPropertyPhoto(null);
+      return () => { active = false; };
+    }
+
+    setPropertyPhotoLoading(true);
+    nexartClient.entities.ProjectPhoto
+      .filter({ customer_id: propertyOwnerId, category: 'property' }, '-created_date')
+      .then((photos) => {
+        if (active) setPropertyPhoto(photos?.[0] || null);
+      })
+      .catch((error) => {
+        console.warn('[EstimatePipelineSidebar] property photo load failed:', error);
+        if (active) setPropertyPhoto(null);
+      })
+      .finally(() => {
+        if (active) setPropertyPhotoLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [propertyOwnerId]);
+
+  const uploadPropertyPhoto = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !propertyOwnerId || readOnly) return;
+    if (!file.type?.startsWith('image/')) {
+      toast.error(t('estimate.sidebar.propertyImageOnly'));
+      return;
+    }
+
+    setPropertyPhotoUploading(true);
+    try {
+      const { file_url } = await nexartClient.integrations.Core.UploadFile({ file });
+      const user = await nexartClient.auth.me();
+      const created = await nexartClient.entities.ProjectPhoto.create({
+        photo_url: file_url,
+        phase: 'before',
+        category: 'property',
+        caption: t('estimate.sidebar.propertyPhoto'),
+        customer_id: propertyOwnerId,
+        customer_name: displayName,
+        taken_by: user?.full_name || user?.name || user?.email || 'Admin',
+      });
+      setPropertyPhoto(created);
+      toast.success(t('estimate.sidebar.propertySaved'));
+    } catch (error) {
+      console.error('[EstimatePipelineSidebar] property photo upload failed:', error);
+      toast.error(error?.message || t('estimate.sidebar.propertyUploadFailed'));
+    } finally {
+      setPropertyPhotoUploading(false);
+    }
+  };
 
   const persistPipeline = async (patch) => {
     const currentPipeline = estimate?.metadata?.pipeline_editor || {};
@@ -179,9 +244,15 @@ export default function EstimatePipelineSidebar({
           <ChevronUp className="w-4 h-4" style={{ color: ORGANIC.ink400 }} />
         </div>
 
-        <div className="mx-3 h-[145px] rounded-2xl overflow-hidden relative" style={{ background: ORGANIC.olive200 }}>
-          {displayAddress ? (
-            <a href={mapsUrl} target="_blank" rel="noreferrer" className="block h-full group" title={t('estimate.sidebar.openMaps')}>
+        <div className="mx-3 h-[145px] rounded-2xl overflow-hidden relative group" style={{ background: ORGANIC.olive200 }}>
+          {propertyPhotoLoading ? (
+            <div className="h-full animate-pulse" style={{ background: ORGANIC.neutral200 }} />
+          ) : propertyPhoto?.photo_url ? (
+            <a href={propertyPhoto.photo_url} target="_blank" rel="noreferrer" className="block h-full" title={t('estimate.sidebar.openPropertyPhoto')}>
+              <img src={propertyPhoto.photo_url} alt={`${t('estimate.sidebar.propertyPhoto')}: ${displayAddress || displayName}`} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" loading="lazy" />
+            </a>
+          ) : displayAddress ? (
+            <a href={mapsUrl} target="_blank" rel="noreferrer" className="block h-full" title={t('estimate.sidebar.openMaps')}>
               {streetViewUrl && !streetViewUnavailable ? (
                 <img
                   src={streetViewUrl}
@@ -201,16 +272,38 @@ export default function EstimatePipelineSidebar({
                   </div>
                 </div>
               )}
-              <span className="absolute left-2.5 bottom-2.5 max-w-[calc(100%-20px)] inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold text-white shadow-sm" style={{ background: 'rgba(32,30,29,0.76)' }}>
-                {streetViewUrl && !streetViewUnavailable ? t('estimate.sidebar.propertyStreetView') : t('estimate.sidebar.openMaps')}
-                <ExternalLink className="w-3 h-3" />
-              </span>
             </a>
           ) : (
             <div className="h-full border-2 border-dashed grid place-items-center text-center px-4" style={{ borderColor: ORGANIC.neutral300, color: ORGANIC.ink400 }}>
               <div><FileText className="w-5 h-5 mx-auto mb-1.5" /><p className="text-[11px]">{t('estimate.sidebar.propertyPhoto')}<br /><span style={{ color: ORGANIC.ink300 }}>{t('estimate.sidebar.noImage')}</span></p></div>
             </div>
           )}
+          {!propertyPhotoLoading && (
+            <span className="absolute left-2.5 bottom-2.5 max-w-[calc(100%-20px)] inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold text-white shadow-sm pointer-events-none" style={{ background: 'rgba(32,30,29,0.76)' }}>
+              {propertyPhoto?.photo_url
+                ? t('estimate.sidebar.propertyUploaded')
+                : streetViewUrl && !streetViewUnavailable
+                  ? t('estimate.sidebar.propertyStreetView')
+                  : displayAddress ? t('estimate.sidebar.openMaps') : t('estimate.sidebar.noImage')}
+              {(propertyPhoto?.photo_url || displayAddress) && <ExternalLink className="w-3 h-3" />}
+            </span>
+          )}
+          {!readOnly && propertyOwnerId && (
+            <button
+              type="button"
+              onClick={() => propertyPhotoInputRef.current?.click()}
+              disabled={propertyPhotoUploading}
+              className="absolute right-2.5 top-2.5 h-8 px-3 rounded-full inline-flex items-center gap-1.5 text-[10px] font-bold text-white shadow-sm disabled:opacity-60"
+              style={{ background: 'rgba(32,30,29,0.78)' }}
+              title={propertyPhoto?.photo_url ? t('estimate.sidebar.replacePropertyPhoto') : t('estimate.sidebar.uploadPropertyPhoto')}
+            >
+              <Camera className="w-3.5 h-3.5" />
+              {propertyPhotoUploading
+                ? t('estimate.sidebar.propertyUploading')
+                : propertyPhoto?.photo_url ? t('estimate.sidebar.replacePhoto') : t('estimate.sidebar.uploadPhoto')}
+            </button>
+          )}
+          <input ref={propertyPhotoInputRef} type="file" accept="image/*" className="hidden" onChange={uploadPropertyPhoto} />
         </div>
 
         {editing ? (

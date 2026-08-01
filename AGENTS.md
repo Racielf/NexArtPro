@@ -79,6 +79,7 @@ Estructura visual vigente:
 - las notificaciones Sonner globales permanecen en `bottom-right` para no cubrir las acciones del header.
 - no mostrar “Opción #1” ni “Añadir opción”: NexArtPro no tiene todavía un flujo real de alternativas del mismo estimate. Solo reintroducirlo con modelo, persistencia y acciones completas.
 - la tarjeta superior de propiedad es exclusivamente para la fachada/Street View: usa la imagen cuando existe `VITE_GOOGLE_MAPS_API_KEY` y Google tiene cobertura; sin clave o sin cobertura muestra un estado neutro, nunca duplica el mapa de ubicación inferior.
+- una foto propia subida desde esa tarjeta se guarda mediante `nexartClient.integrations.Core.UploadFile` y una fila `ProjectPhoto` con `category: 'property'` y `customer_id`; tiene prioridad visual sobre Street View. No copiar ni rehostear imágenes de Google en Supabase.
 
 Componentes específicos del rediseño:
 

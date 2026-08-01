@@ -69,6 +69,7 @@ El rail derecho persistente y el medidor inferior pegajoso quedaron fuera de la 
 - Los controles falsos de opciones múltiples, Plantillas dentro de Partidas y tabla/lista fueron retirados. No deben reaparecer hasta existir un flujo real.
 - El rótulo residual “Opción #1” también fue retirado el 2026-08-01: no existía modelo ni persistencia de múltiples opciones. El header muestra el número real del estimate.
 - La tarjeta de propiedad resuelve primero `estimate.client_address` y luego la dirección de servicio completa del cliente. Con `VITE_GOOGLE_MAPS_API_KEY` usa Street View Static API y `return_error_code=true`; si falta la clave o Google no tiene cobertura, muestra un estado neutro enlazado a Google Maps. La tarjeta superior nunca duplica el mapa inferior: está reservada para la fachada/Street View.
+- Desde el 2026-08-01 la tarjeta también permite subir o reemplazar una foto propia. Reutiliza el bucket `documents` mediante `nexartClient.integrations.Core.UploadFile` y registra cada versión en `project_photos` con `category = 'property'` y el `customer_id`. La última versión tiene prioridad sobre Street View; no se borra la versión anterior ni se persiste contenido de Google.
 - El banner de e-sign abre el módulo real `/nexartsign`; ya no simula una activación local.
 - El selector de servicios/materiales evita persistir filas completamente vacías durante el autosave.
 - La vista pública del cliente y la consistencia PDF/email deben revisarse separadamente; no mezclarlas con cambios cosméticos del editor.
