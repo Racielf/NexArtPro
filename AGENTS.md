@@ -70,13 +70,15 @@ El diseño aprobado es el prototipo **Pipeline para estimate editor**, no el lay
 
 Estructura visual vigente:
 
-- header orgánico y compacto con opción, template, estado de guardado, herramientas y acción principal;
+- header orgánico y compacto con número de estimate, template, estado de guardado, herramientas y acción principal;
 - columna izquierda de 320 px con cliente, ubicación, tareas y secciones auxiliares;
 - columna principal centrada con e-sign, pipeline, encabezado del presupuesto, Partidas y Actividad;
 - funciones técnicas avanzadas dentro del panel secundario **Ajustes**, no como rail persistente;
 - sin medidor financiero pegajoso en la parte inferior;
 - sin toast de éxito por cada autosave. El estado de guardado se comunica en el header; los errores sí pueden usar toast.
 - las notificaciones Sonner globales permanecen en `bottom-right` para no cubrir las acciones del header.
+- no mostrar “Opción #1” ni “Añadir opción”: NexArtPro no tiene todavía un flujo real de alternativas del mismo estimate. Solo reintroducirlo con modelo, persistencia y acciones completas.
+- la tarjeta superior de propiedad usa Street View cuando existe `VITE_GOOGLE_MAPS_API_KEY` y Google tiene cobertura; sin clave o sin cobertura, muestra la ubicación satelital como fallback.
 
 Componentes específicos del rediseño:
 

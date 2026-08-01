@@ -525,10 +525,9 @@ export default function EstimateEditor() {
     <div className="fixed inset-0 flex flex-col z-50" style={{ background: C.cream50, fontFamily: ORGANIC.fontBody }}>
       <div className="flex-shrink-0 relative z-20 px-3 pt-3" style={{ background: ORGANIC.bg }}>
         <div className="min-h-[64px] flex items-center gap-2 px-3 rounded-[22px] border min-w-0" style={{ background: ORGANIC.surface, borderColor: ORGANIC.divider, boxShadow: ORGANIC.shadowSm }}>
-          <div className="flex items-center self-stretch px-2 text-[21px] mr-1" style={{ ...organicHeadingStyle, color: ORGANIC.ink900 }}>{t('estimate.header.title')}</div>
-          <div className="self-stretch flex flex-col items-center justify-center px-4 border-b-[3px]" style={{ borderColor: ORGANIC.accent, color: ORGANIC.accent700 }}>
-            <span className="text-[12px] font-bold">{t('estimate.header.option')}</span>
-            <span className="text-[10px] font-semibold" style={{ color: ORGANIC.ink500 }}>{fmt0(meter.total)}</span>
+          <div className="flex items-baseline gap-2 self-stretch px-2 mr-1 min-w-0" style={{ color: ORGANIC.ink900 }}>
+            <span className="self-center text-[21px]" style={organicHeadingStyle}>{t('estimate.header.title')}</span>
+            <span className="self-center text-[12px] font-semibold truncate" style={{ color: ORGANIC.ink400 }}>#{estimate.estimate_number}</span>
           </div>
 
           <div className="ml-auto flex items-center gap-2 min-w-0 pl-3 border-l" style={{ borderColor: ORGANIC.divider }}>

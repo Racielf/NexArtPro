@@ -22,7 +22,7 @@ Ese enfoque no correspondía al prototipo aprobado. Exponía demasiada informaci
 
 `src/pages/EstimateEditor.jsx` ahora presenta:
 
-1. Header orgánico con selección de opción, template, estado de guardado, herramientas y acción principal.
+1. Header orgánico con número de estimate, template, estado de guardado, herramientas y acción principal.
 2. Sidebar de 320 px mediante `EstimatePipelineSidebar.jsx`.
 3. Columna principal centrada de hasta 1040 px.
 4. Banner de firma electrónica.
@@ -67,6 +67,8 @@ El rail derecho persistente y el medidor inferior pegajoso quedaron fuera de la 
 
 - Tareas, campos personalizados, etiquetas y notas privadas del sidebar ya son editables. Tareas/campos/etiquetas se guardan bajo `estimate.metadata.pipeline_editor`; notas privadas usan `internal_notes`.
 - Los controles falsos de opciones múltiples, Plantillas dentro de Partidas y tabla/lista fueron retirados. No deben reaparecer hasta existir un flujo real.
+- El rótulo residual “Opción #1” también fue retirado el 2026-08-01: no existía modelo ni persistencia de múltiples opciones. El header muestra el número real del estimate.
+- La tarjeta de propiedad resuelve primero `estimate.client_address` y luego la dirección de servicio completa del cliente. Con `VITE_GOOGLE_MAPS_API_KEY` usa Street View Static API y `return_error_code=true`; si falta la clave o Google no tiene cobertura, muestra una vista satelital. Ambos estados abren la dirección en Google Maps.
 - El banner de e-sign abre el módulo real `/nexartsign`; ya no simula una activación local.
 - El selector de servicios/materiales evita persistir filas completamente vacías durante el autosave.
 - La vista pública del cliente y la consistencia PDF/email deben revisarse separadamente; no mezclarlas con cambios cosméticos del editor.

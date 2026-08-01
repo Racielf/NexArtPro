@@ -25,6 +25,18 @@ import { ORGANIC } from '@/components/estimates/estimatePipelineTheme';
 import { useLanguage } from '@/lib/i18n';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim() || '';
+
+function resolvePropertyAddress(estimate, client) {
+  const estimateAddress = estimate?.client_address?.trim();
+  if (estimateAddress) return estimateAddress;
+
+  const street = client?.service_address || client?.address || '';
+  return [street, client?.city, client?.state, client?.zip]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(', ');
+}
 
 function SidebarRow({ icon: Icon, label, onClick, expanded, children }) {
   return (
@@ -66,6 +78,7 @@ export default function EstimatePipelineSidebar({
   const [customFields, setCustomFields] = useState([]);
   const [tags, setTags] = useState([]);
   const [privateNotes, setPrivateNotes] = useState('');
+  const [streetViewUnavailable, setStreetViewUnavailable] = useState(false);
   const [form, setForm] = useState({ client_name: '', client_email: '', client_phone: '', client_address: '' });
 
   useEffect(() => {
@@ -88,8 +101,16 @@ export default function EstimatePipelineSidebar({
   const displayName = estimate?.client_name || client?.full_name || 'Cliente';
   const displayEmail = estimate?.client_email || client?.email || '';
   const displayPhone = estimate?.client_phone || client?.phone || '';
-  const displayAddress = estimate?.client_address || client?.address || '';
+  const displayAddress = resolvePropertyAddress(estimate, client);
   const attachmentCount = Array.isArray(estimate?.attachments) ? estimate.attachments.length : 0;
+  const mapsUrl = displayAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}` : '';
+  const streetViewUrl = GOOGLE_MAPS_API_KEY && displayAddress
+    ? `https://maps.googleapis.com/maps/api/streetview?size=640x320&location=${encodeURIComponent(displayAddress)}&fov=80&pitch=0&radius=100&return_error_code=true&key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}`
+    : '';
+
+  useEffect(() => {
+    setStreetViewUnavailable(false);
+  }, [displayAddress]);
 
   const persistPipeline = async (patch) => {
     const currentPipeline = estimate?.metadata?.pipeline_editor || {};
@@ -158,8 +179,39 @@ export default function EstimatePipelineSidebar({
           <ChevronUp className="w-4 h-4" style={{ color: ORGANIC.ink400 }} />
         </div>
 
-        <div className="mx-3 h-[145px] rounded-2xl border-2 border-dashed grid place-items-center text-center px-4" style={{ borderColor: ORGANIC.neutral300, color: ORGANIC.ink400 }}>
-          <div><FileText className="w-5 h-5 mx-auto mb-1.5" /><p className="text-[11px]">{t('estimate.sidebar.propertyPhoto')}<br /><span style={{ color: ORGANIC.ink300 }}>{t('estimate.sidebar.noImage')}</span></p></div>
+        <div className="mx-3 h-[145px] rounded-2xl overflow-hidden relative" style={{ background: ORGANIC.olive200 }}>
+          {displayAddress ? (
+            <a href={mapsUrl} target="_blank" rel="noreferrer" className="block h-full group" title={t('estimate.sidebar.openMaps')}>
+              {streetViewUrl && !streetViewUnavailable ? (
+                <img
+                  src={streetViewUrl}
+                  alt={`${t('estimate.sidebar.propertyPhoto')}: ${displayAddress}`}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  loading="lazy"
+                  onError={() => setStreetViewUnavailable(true)}
+                />
+              ) : (
+                <iframe
+                  title={`${t('estimate.sidebar.propertySatellite')}: ${displayAddress}`}
+                  width="100%"
+                  height="145"
+                  className="pointer-events-none"
+                  style={{ border: 0, display: 'block' }}
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(displayAddress)}&output=embed&t=k&z=19`}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              )}
+              <span className="absolute left-2.5 bottom-2.5 max-w-[calc(100%-20px)] inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold text-white shadow-sm" style={{ background: 'rgba(32,30,29,0.76)' }}>
+                {streetViewUrl && !streetViewUnavailable ? t('estimate.sidebar.propertyStreetView') : t('estimate.sidebar.propertySatellite')}
+                <ExternalLink className="w-3 h-3" />
+              </span>
+            </a>
+          ) : (
+            <div className="h-full border-2 border-dashed grid place-items-center text-center px-4" style={{ borderColor: ORGANIC.neutral300, color: ORGANIC.ink400 }}>
+              <div><FileText className="w-5 h-5 mx-auto mb-1.5" /><p className="text-[11px]">{t('estimate.sidebar.propertyPhoto')}<br /><span style={{ color: ORGANIC.ink300 }}>{t('estimate.sidebar.noImage')}</span></p></div>
+            </div>
+          )}
         </div>
 
         {editing ? (
@@ -179,7 +231,7 @@ export default function EstimatePipelineSidebar({
               <strong className="text-[14px] flex-1 truncate" style={{ color: ORGANIC.ink900 }}>{displayName}</strong>
               <button type="button" onClick={() => setEditing(true)} className="h-8 px-3.5 rounded-full border-2 text-[11.5px] font-semibold" style={{ borderColor: ORGANIC.accent, color: ORGANIC.accent700 }}>{t('estimate.sidebar.details')}</button>
             </div>
-            {displayAddress && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`} target="_blank" rel="noreferrer" className="flex items-start gap-2 mt-3 text-[12.5px]" style={{ color: ORGANIC.ink700 }}><MapPin className="w-3.5 h-3.5 mt-0.5 flex-none" />{displayAddress}</a>}
+            {displayAddress && <a href={mapsUrl} target="_blank" rel="noreferrer" className="flex items-start gap-2 mt-3 text-[12.5px]" style={{ color: ORGANIC.ink700 }}><MapPin className="w-3.5 h-3.5 mt-0.5 flex-none" />{displayAddress}</a>}
             {displayPhone && <a href={`tel:${displayPhone}`} className="flex items-center gap-2 mt-3 pt-3 border-t text-[12.5px]" style={{ borderColor: ORGANIC.divider, color: ORGANIC.ink700 }}><Phone className="w-3.5 h-3.5" />{displayPhone}</a>}
             {displayEmail && <a href={`mailto:${displayEmail}`} className="flex items-center gap-2 mt-3 pt-3 border-t text-[12.5px]" style={{ borderColor: ORGANIC.divider, color: ORGANIC.ink700 }}><Mail className="w-3.5 h-3.5" /><span className="truncate">{displayEmail}</span></a>}
             {displayEmail && <span className="inline-block mt-3 px-3 py-1 rounded-full text-[10.5px] font-semibold" style={{ background: ORGANIC.olive200, color: ORGANIC.olive800 }}>{t('estimate.sidebar.notifications')}</span>}
@@ -194,7 +246,7 @@ export default function EstimatePipelineSidebar({
       {displayAddress && (
         <section className="p-3" style={{ background: ORGANIC.surface, borderRadius: ORGANIC.radiusLg, boxShadow: ORGANIC.shadowSm }}>
           <div className="h-[205px] rounded-2xl overflow-hidden" style={{ background: ORGANIC.olive200 }}>
-            <iframe title="Ubicación del cliente" width="100%" height="205" style={{ border: 0, display: 'block' }} src={`https://www.google.com/maps?q=${encodeURIComponent(displayAddress)}&output=embed`} loading="lazy" />
+            <iframe title={t('estimate.sidebar.projectLocation')} width="100%" height="205" style={{ border: 0, display: 'block' }} src={`https://www.google.com/maps?q=${encodeURIComponent(displayAddress)}&output=embed`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
           </div>
           <div className="flex items-center justify-center gap-1.5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: ORGANIC.accent700 }}><MapPin className="w-3.5 h-3.5" />{t('estimate.sidebar.projectLocation')}</div>
         </section>
