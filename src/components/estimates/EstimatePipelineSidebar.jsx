@@ -191,19 +191,18 @@ export default function EstimatePipelineSidebar({
                   onError={() => setStreetViewUnavailable(true)}
                 />
               ) : (
-                <iframe
-                  title={`${t('estimate.sidebar.propertySatellite')}: ${displayAddress}`}
-                  width="100%"
-                  height="145"
-                  className="pointer-events-none"
-                  style={{ border: 0, display: 'block' }}
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(displayAddress)}&output=embed&t=k&z=19`}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
+                <div className="h-full border-2 border-dashed grid place-items-center text-center px-5" style={{ borderColor: ORGANIC.neutral300, color: ORGANIC.ink400, background: ORGANIC.neutral100 }}>
+                  <div>
+                    <FileText className="w-5 h-5 mx-auto mb-1.5" />
+                    <p className="text-[11px] font-semibold">{t('estimate.sidebar.propertyPhoto')}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: ORGANIC.ink300 }}>
+                      {GOOGLE_MAPS_API_KEY ? t('estimate.sidebar.propertyUnavailable') : t('estimate.sidebar.propertySetupRequired')}
+                    </p>
+                  </div>
+                </div>
               )}
               <span className="absolute left-2.5 bottom-2.5 max-w-[calc(100%-20px)] inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold text-white shadow-sm" style={{ background: 'rgba(32,30,29,0.76)' }}>
-                {streetViewUrl && !streetViewUnavailable ? t('estimate.sidebar.propertyStreetView') : t('estimate.sidebar.propertySatellite')}
+                {streetViewUrl && !streetViewUnavailable ? t('estimate.sidebar.propertyStreetView') : t('estimate.sidebar.openMaps')}
                 <ExternalLink className="w-3 h-3" />
               </span>
             </a>
