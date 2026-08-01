@@ -16,8 +16,10 @@ import BrainCommandCenterPanel from '@/components/settings/BrainCommandCenterPan
 import RecoveryCenterPanel from '@/components/settings/RecoveryCenterPanel';
 import SecurityLogPanel from '@/components/settings/SecurityLogPanel';
 import AgentTestRunnerPanel from '@/components/settings/AgentTestRunnerPanel';
+import { useLanguage } from '@/lib/i18n';
 
 export default function Settings() {
+  const { language, languages, setLanguage, t } = useLanguage();
   const [activeSection, setActiveSection] = useState('company');
   const [userRole, setUserRole] = useState(() => sessionStorage.getItem('user_role') || 'user');
 
@@ -114,9 +116,17 @@ export default function Settings() {
     team: <TeamAccessPanel />,
 
     general: (
-      <SettingsSection title="General" description="Configure regional and display preferences.">
-        <SettingsCard title="Regional">
-          <SettingsRow label="Timezone" description="Used for scheduling and timestamps">
+      <SettingsSection title={t('settings.general')} description={t('settings.generalDescription')}>
+        <SettingsCard title={t('settings.regional')}>
+          <SettingsRow label={t('settings.language')} description={t('settings.languageDescription')}>
+            <div className="flex flex-col items-end gap-1.5">
+              <select className="h-9 border border-input rounded-md px-3 text-sm bg-background w-48" value={language} onChange={event => setLanguage(event.target.value)}>
+                {languages.map(option => <option key={option.code} value={option.code}>{option.nativeLabel}</option>)}
+              </select>
+              <span className="max-w-sm text-right text-[11px] text-slate-400">{t('settings.languageHint')}</span>
+            </div>
+          </SettingsRow>
+          <SettingsRow label={t('settings.timezone')} description="Used for scheduling and timestamps">
             <select className="h-9 border border-input rounded-md px-3 text-sm bg-background w-56" value={general.timezone} onChange={e => setGeneral(g => ({ ...g, timezone: e.target.value }))}>
               <option value="America/Los_Angeles">Pacific (LA)</option>
               <option value="America/Denver">Mountain (Denver)</option>
@@ -124,14 +134,14 @@ export default function Settings() {
               <option value="America/New_York">Eastern (New York)</option>
             </select>
           </SettingsRow>
-          <SettingsRow label="Date format">
+          <SettingsRow label={t('settings.dateFormat')}>
             <select className="h-9 border border-input rounded-md px-3 text-sm bg-background w-48" value={general.dateFormat} onChange={e => setGeneral(g => ({ ...g, dateFormat: e.target.value }))}>
               <option value="MM/DD/YYYY">MM/DD/YYYY</option>
               <option value="DD/MM/YYYY">DD/MM/YYYY</option>
               <option value="YYYY-MM-DD">YYYY-MM-DD</option>
             </select>
           </SettingsRow>
-          <SettingsRow label="Currency">
+          <SettingsRow label={t('settings.currency')}>
             <select className="h-9 border border-input rounded-md px-3 text-sm bg-background w-32" value={general.currency} onChange={e => setGeneral(g => ({ ...g, currency: e.target.value }))}>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
@@ -157,8 +167,8 @@ export default function Settings() {
   return (
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
       <div className="bg-white border-b border-slate-100 px-4 sm:px-8 py-4 sm:py-5 flex-shrink-0">
-        <h1 className="text-lg sm:text-xl font-bold text-slate-900">Settings</h1>
-        <p className="text-sm text-slate-400 mt-0.5">Manage your account and application preferences</p>
+        <h1 className="text-lg sm:text-xl font-bold text-slate-900">{t('settings.title')}</h1>
+        <p className="text-sm text-slate-400 mt-0.5">{t('settings.subtitle')}</p>
       </div>
 
       {/* Mobile: Horizontal scrollable tabs */}

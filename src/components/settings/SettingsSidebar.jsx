@@ -4,6 +4,7 @@ import {
   ClipboardList, CreditCard, Settings, ShieldCheck, BookMarked, Package, RotateCcw, Activity, FlaskConical, Brain, LayoutDashboard
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/lib/i18n';
 
 const BASE_SECTIONS = [
   { id: 'company',   label: 'Company',              icon: Building2 },
@@ -33,6 +34,7 @@ const ADMIN_SECTIONS = [
  */
 export default function SettingsSidebar({ active, onChange, userRole, horizontal = false }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const sections = userRole === 'admin'
     ? [...BASE_SECTIONS, ...ADMIN_SECTIONS]
     : BASE_SECTIONS;
@@ -44,6 +46,7 @@ export default function SettingsSidebar({ active, onChange, userRole, horizontal
         {sections.map((s) => {
           const Icon = s.icon;
           const isActive = active === s.id;
+          const label = t(`settings.nav.${s.id}`) === `settings.nav.${s.id}` ? s.label : t(`settings.nav.${s.id}`);
           if (s.isLink) {
             return (
               <button
@@ -52,7 +55,7 @@ export default function SettingsSidebar({ active, onChange, userRole, horizontal
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all text-slate-400 hover:text-blue-600 hover:bg-blue-50"
               >
                 <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                {s.label}
+                {label}
               </button>
             );
           }
@@ -67,7 +70,7 @@ export default function SettingsSidebar({ active, onChange, userRole, horizontal
               }`}
             >
               <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? (s.adminOnly ? 'text-red-500' : 'text-blue-500') : ''}`} />
-              {s.label}
+              {label}
             </button>
           );
         })}
@@ -82,6 +85,7 @@ export default function SettingsSidebar({ active, onChange, userRole, horizontal
         {sections.map((s) => {
           const Icon = s.icon;
           const isActive = active === s.id;
+          const label = t(`settings.nav.${s.id}`) === `settings.nav.${s.id}` ? s.label : t(`settings.nav.${s.id}`);
           if (s.isLink) {
             return (
               <button
@@ -90,7 +94,7 @@ export default function SettingsSidebar({ active, onChange, userRole, horizontal
                 className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-blue-600 hover:bg-blue-50"
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
-                {s.label}
+                {label}
               </button>
             );
           }
@@ -105,7 +109,7 @@ export default function SettingsSidebar({ active, onChange, userRole, horizontal
               }`}
             >
               <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? (s.adminOnly ? 'text-red-500' : 'text-blue-500') : ''}`} />
-              {s.label}
+              {label}
             </button>
           );
         })}
